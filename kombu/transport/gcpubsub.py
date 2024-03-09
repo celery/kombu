@@ -169,7 +169,7 @@ class Channel(virtual.Channel):
     default_ack_deadline_seconds = 240
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
-    default_bulk_max_messages = 1
+    default_bulk_max_messages = 10
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -437,9 +437,7 @@ class Channel(virtual.Channel):
         """Retrieves a bulk of messages from a queue."""
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
-        max_messages = (
-            self.qos.can_consume_max_estimate() or self.bulk_max_messages
-        )
+        max_messages = self._get_max_messages_estimate()
         try:
             response = self.subscriber.pull(
                 request={
@@ -483,6 +481,14 @@ class Channel(virtual.Channel):
             self._do_ack(auto_ack_ids, qdesc.subscription_path)
 
         return queue, ret_payloads
+
+    def _get_max_messages_estimate(self):
+        max_allowed = self.qos.can_consume_max_estimate()
+        max_if_unlimited = self.bulk_max_messages
+        return min(
+            max_if_unlimited if max_allowed is None else max(max_allowed, 1),
+            max_if_unlimited,
+        )
 
     def _lookup(self, exchange, routing_key, default=None):
         exchange_info = self.state.exchanges.get(exchange, {})
@@ -736,16 +742,8 @@ class Transport(virtual.Transport):
 
     @classmethod
     def as_uri(self, uri: str, include_password=False, mask='**') -> str:
-        if not uri:
-            return 'gcpubsub://'
-        if include_password:
-            return uri
+        return uri or 'gcpubsub://'
 
-        if ',' not in uri:
-            return maybe_sanitize_url(uri)
-
-        uri1, remainder = uri.split(',', 1)
-        return ','.join([maybe_sanitize_url(uri1), remainder])
 
     def drain_events(self, connection, timeout=None):
         time_start = monotonic()
