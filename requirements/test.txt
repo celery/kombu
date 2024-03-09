@@ -2,4 +2,4 @@ hypothesis<=6.98.17
 Pyro4
 pytest-freezer
 pytest-sugar==1.0.0
-pytest==8.1.0
+pytest==8.1.1
