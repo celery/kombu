@@ -1,5 +1,5 @@
 # redis transport
-redis>=4.5.2,<5.0.2,!=4.5.5
+redis>=4.5.2,!=5.0.2,!=4.5.5
 
 # MongoDB transport
 pymongo
