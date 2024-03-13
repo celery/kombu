@@ -32,7 +32,9 @@ class JSONEncoder(json.JSONEncoder):
 
         for t, (marker, encoder) in _encoders.items():
             if isinstance(o, t):
-                return encoder(o) if marker is None else _as(marker, encoder(o))
+                return (
+                    encoder(o) if marker is None else _as(marker, encoder(o))
+                )
 
         # Bytes is slightly trickier, so we cannot put them directly
         # into _encoders, because we use two formats: bytes, and base64.
@@ -49,7 +51,13 @@ def _as(t: str, v: Any):
     return {"__type__": t, "__value__": v}
 
 
-def dumps(s, _dumps=json.dumps, cls=JSONEncoder, default_kwargs=None, **kwargs):
+def dumps(
+    s,
+    _dumps=json.dumps,
+    cls=JSONEncoder,
+    default_kwargs=None,
+    **kwargs
+):
     """Serialize object to json string."""
     default_kwargs = default_kwargs or {}
     return _dumps(s, cls=cls, **dict(default_kwargs, **kwargs))
@@ -89,6 +97,7 @@ DecoderT = EncoderT = Callable[[Any], Any]
 T = TypeVar("T")
 EncodedT = TypeVar("EncodedT")
 
+
 def register_type(
     t: type[T],
     marker: str | None,
@@ -96,9 +105,10 @@ def register_type(
     decoder: Callable[[EncodedT], T] = lambda d: d,
 ):
     """
-    Add support for serializing/deserializing native python type. If marker is None, the encoding is
-    a pure transformation and the result is not placed in an envelope, so `decoder` is unnecessary.
-    Decoding must instead be handled outside this library.
+    Add support for serializing/deserializing native python type. If marker is
+    None, the encoding is a pure transformation and the result is not placed
+    in an envelope, so `decoder` is unnecessary. Decoding must instead be
+    handled outside this library.
     """
     _encoders[t] = (marker, encoder)
     if marker is not None:
@@ -111,10 +121,12 @@ _decoders: dict[str, DecoderT] = {
     "base64": lambda o: base64.b64decode(o.encode("utf-8")),
 }
 
+
 def _register_default_types():
     # NOTE: datetime should be registered before date,
     # because datetime is also instance of date.
-    register_type(datetime, "datetime", datetime.isoformat, datetime.fromisoformat)
+    register_type(datetime, "datetime", datetime.isoformat,
+                  datetime.fromisoformat)
     register_type(
         date,
         "date",
@@ -129,5 +141,6 @@ def _register_default_types():
         lambda o: {"hex": o.hex},
         lambda o: uuid.UUID(**o),
     )
+
 
 _register_default_types()

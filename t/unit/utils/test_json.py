@@ -107,7 +107,12 @@ class test_JSONEncoder:
         assert loaded_value == {'u': "custom"}
 
     def test_register_type_with_empty_marker(self):
-        register_type(datetime, None, lambda o: o.isoformat(), lambda o: "should never be used")
+        register_type(
+            datetime,
+            None,
+            lambda o: o.isoformat(),
+            lambda o: "should never be used"
+        )
         now = datetime.utcnow()
         serialized_str = dumps({'now': now})
         deserialized_value = loads(serialized_str)
@@ -117,9 +122,6 @@ class test_JSONEncoder:
 
         # Check that there is no extra deserialization happening
         assert deserialized_value == {'now': now.isoformat()}
-
-
-
 
     def test_default(self):
         with pytest.raises(TypeError):
