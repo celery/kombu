@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import uuid
 from collections import namedtuple
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 
@@ -11,7 +12,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
-from kombu.utils.json import dumps, loads
+from kombu.utils.json import (_register_default_types, dumps, loads,
+                              register_type)
 
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo
@@ -28,6 +30,10 @@ class Custom:
 
 
 class test_JSONEncoder:
+    @pytest.fixture(autouse=True)
+    def reset_registered_types(self):
+        _register_default_types()
+
     @pytest.mark.freeze_time("2015-10-21")
     def test_datetime(self):
         now = datetime.utcnow()
@@ -81,6 +87,41 @@ class test_JSONEncoder:
             loaded_value = loads(dumps({'u': id}))
             assert loaded_value == {'u': id}
             assert loaded_value["u"].version == id.version
+
+    def test_register_type_overrides_defaults(self):
+        # This type is already registered by default, let's override it
+        register_type(uuid.UUID, "uuid", lambda o: "custom", lambda o: o)
+        value = uuid.uuid4()
+        loaded_value = loads(dumps({'u': value}))
+        assert loaded_value == {'u': "custom"}
+
+    def test_register_type_with_new_type(self):
+        # Guaranteed never before seen type
+        @dataclass()
+        class SomeType:
+            a: int
+
+        register_type(SomeType, "some_type", lambda o: "custom", lambda o: o)
+        value = SomeType(42)
+        loaded_value = loads(dumps({'u': value}))
+        assert loaded_value == {'u': "custom"}
+
+    def test_register_type_with_empty_marker(self):
+        register_type(
+            datetime,
+            None,
+            lambda o: o.isoformat(),
+            lambda o: "should never be used"
+        )
+        now = datetime.utcnow()
+        serialized_str = dumps({'now': now})
+        deserialized_value = loads(serialized_str)
+
+        assert "__type__" not in serialized_str
+        assert "__value__" not in serialized_str
+
+        # Check that there is no extra deserialization happening
+        assert deserialized_value == {'now': now.isoformat()}
 
     def test_default(self):
         with pytest.raises(TypeError):
