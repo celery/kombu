@@ -105,7 +105,7 @@ def register_type(
     decoder: Callable[[EncodedT], T] = lambda d: d,
 ):
     """Add support for serializing/deserializing native python type.
-    
+
     If marker is `None`, the encoding is a pure transformation and the result
     is not placed in an envelope, so `decoder` is unnecessary. Decoding must
     instead be handled outside this library.
