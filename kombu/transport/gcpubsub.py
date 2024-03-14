@@ -790,6 +790,11 @@ class Transport(virtual.Transport):
             queue, payloads = f.result()
             for payload in payloads:
                 logger.debug('consuming message from queue: %s', queue)
+                if queue not in self._callbacks:
+                    logger.warning(
+                        'Message for queue %s without consumers', queue)
+                    continue
+
                 self._callbacks[queue](payload)
                 # self._deliver(payload, queue)
             self._get_bulk_future_to_queue.pop(f, None)
