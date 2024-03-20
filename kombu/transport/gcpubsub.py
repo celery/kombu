@@ -744,7 +744,6 @@ class Transport(virtual.Transport):
     def as_uri(self, uri: str, include_password=False, mask='**') -> str:
         return uri or 'gcpubsub://'
 
-
     def drain_events(self, connection, timeout=None):
         time_start = monotonic()
         polling_interval = self.polling_interval
@@ -765,6 +764,11 @@ class Transport(virtual.Transport):
         queues_with_submitted_get_bulk = set(
             self._get_bulk_future_to_queue.values()
         )
+        # cleanup empty requests from prev run
+        empty = {f for f in self._get_bulk_future_to_queue if f.exception()}
+        for f in empty:
+            self._get_bulk_future_to_queue.pop(f, None)
+
         for channel in self.channels:
             for queue in channel._active_queues:
                 if queue in queues_with_submitted_get_bulk:
