@@ -761,20 +761,8 @@ class Transport(virtual.Transport):
                 break
 
     def _drain_from_active_queues(self, timeout):
-        queues_with_submitted_get_bulk = set(
-            self._get_bulk_future_to_queue.values()
-        )
-        # cleanup empty requests from prev run
-        empty = {f for f in self._get_bulk_future_to_queue if f.exception()}
-        for f in empty:
-            self._get_bulk_future_to_queue.pop(f, None)
-
-        for channel in self.channels:
-            for queue in channel._active_queues:
-                if queue in queues_with_submitted_get_bulk:
-                    continue
-                future = self._pool.submit(channel._get_bulk, queue, timeout)
-                self._get_bulk_future_to_queue[future] = queue
+        self._rm_empty_bulk_requets()  # cleanup empty requests from prev run
+        self._submit_get_bulk_requests(timeout)
 
         done, _ = wait(
             self._get_bulk_future_to_queue,
@@ -802,3 +790,21 @@ class Transport(virtual.Transport):
                 self._callbacks[queue](payload)
                 # self._deliver(payload, queue)
             self._get_bulk_future_to_queue.pop(f, None)
+
+    def _rm_empty_bulk_requets(self):
+        empty = {f for f in self._get_bulk_future_to_queue if f.exception()}
+        for f in empty:
+            self._get_bulk_future_to_queue.pop(f, None)
+
+    def _submit_get_bulk_requests(self, timeout):
+        queues_with_submitted_get_bulk = set(
+            self._get_bulk_future_to_queue.values()
+        )
+
+        for channel in self.channels:
+            for queue in channel._active_queues:
+                if queue in queues_with_submitted_get_bulk:
+                    continue
+                future = self._pool.submit(channel._get_bulk, queue, timeout)
+                self._get_bulk_future_to_queue[future] = queue
+
