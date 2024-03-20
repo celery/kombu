@@ -140,6 +140,7 @@ extras_require = extra['extras_require'] = {
     'pyro': extras('pyro.txt'),
     'slmq': extras('slmq.txt'),
     'qpid': extras('qpid.txt'),
+    'gcpubsub': extras('gcpubsub.txt'),
 }
 
 setup(
