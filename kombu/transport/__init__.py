@@ -24,6 +24,7 @@ TRANSPORT_ALIASES = {
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
     'confluentkafka': 'kombu.transport.confluentkafka:Transport',
+    'kafka': 'kombu.transport.confluentkafka:Transport',
     'memory': 'kombu.transport.memory:Transport',
     'redis': 'kombu.transport.redis:Transport',
     'rediss': 'kombu.transport.redis:Transport',
