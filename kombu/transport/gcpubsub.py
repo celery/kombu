@@ -31,6 +31,7 @@ Transport Options
   Examples of subscriber activities include open connections,
   active pulls, or successful pushes.
 * ``wait_time_seconds``: (int) The maximum time to wait for new messages.
+  Defaults to 10.
 * ``retry_timeout_seconds``: (int) The maximum time to wait before retrying.
 * ``bulk_max_messages``: (int) The maximum number of messages to pull in bulk.
   Defaults to 1.
@@ -165,7 +166,7 @@ class Channel(virtual.Channel):
 
     supports_fanout = True
     do_restore = False  # pub/sub does that for us
-    default_wait_time_seconds = 1
+    default_wait_time_seconds = 10
     default_ack_deadline_seconds = 240
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
@@ -761,8 +762,13 @@ class Transport(virtual.Transport):
                 break
 
     def _drain_from_active_queues(self, timeout):
-        self._rm_empty_bulk_requets()  # cleanup empty requests from prev run
-        self._submit_get_bulk_requests(timeout)
+        # cleanup empty requests from prev run
+        self._rm_empty_bulk_requests()
+
+        # submit new requests for all active queues
+        # longer timeout means less frequent polling
+        # and more messages in a single bulk
+        self._submit_get_bulk_requests(timeout=10)
 
         done, _ = wait(
             self._get_bulk_future_to_queue,
@@ -791,8 +797,9 @@ class Transport(virtual.Transport):
                 # self._deliver(payload, queue)
             self._get_bulk_future_to_queue.pop(f, None)
 
-    def _rm_empty_bulk_requets(self):
-        empty = {f for f in self._get_bulk_future_to_queue if f.exception()}
+    def _rm_empty_bulk_requests(self):
+        empty = {f for f in self._get_bulk_future_to_queue if
+                 f.done() and f.exception()}
         for f in empty:
             self._get_bulk_future_to_queue.pop(f, None)
 
