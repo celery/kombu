@@ -1,4 +1,4 @@
-pytest-cov
+pytest-cov==5.0.0
 codecov; sys_platform == 'win32'
 librabbitmq>=2.0.0; sys_platform == 'win32'
 -r extras/redis.txt
