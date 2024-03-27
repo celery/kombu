@@ -4,6 +4,28 @@
  Change history
 ================
 
+.. _version-5.3.6:
+
+5.3.6
+=====
+:release-date: 27 Mar, 2024
+:release-by: Tomer Nosrati
+
+- boto3>=1.26.143 (#1890)
+- Always convert azureservicebus namespace to fully qualified (#1892)
+- Pin pytest-sugar to latest version 1.0.0 (#1912)
+- Upgrade to pytest v8 that removed nose compatibility (#1914)
+- fix warning for usage of utcfromtimestamp (#1926)
+- Update pytest to 8.0.2 (#1942)
+- Hotfix: Fix CI failures (limit redis to <5.0.2 instead of <6.0.0) (#1961)
+- Expose cancel callback from py-amqp channel.basic_consume (#1953)
+- Update mypy to 1.9.0 (#1963)
+- Update pytest to 8.1.1 (#1965)
+- Pin hypothesis to hypothesis<7 (#1966)
+- redis>=4.5.2,<5.0.2,!=4.5.5 -> redis>=4.5.2,!=5.0.2,!=4.5.5 (#1969)
+- add escape hatch for custom JSON serialization (#1955)
+- Pin pytest-cov to latest version 5.0.0 (#1972)
+
 .. _version-5.3.5:
 
 5.3.5
