@@ -284,6 +284,10 @@ class Channel(virtual.Channel):
         client = self.connection.client
         hostname = client.hostname
 
+        if hostname.startswith('srv://'):
+            scheme = 'mongodb+srv://'
+            hostname = 'mongodb+' + hostname
+
         if not hostname.startswith(scheme):
             hostname = scheme + hostname
 
@@ -316,6 +320,9 @@ class Channel(virtual.Channel):
         }
         options.update(parsed['options'])
         options = self._prepare_client_options(options)
+
+        if 'tls' in options:
+            options.pop('ssl')
 
         return hostname, dbname, options
 
