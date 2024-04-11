@@ -4,6 +4,15 @@
  Change history
 ================
 
+.. _version-5.3.7:
+
+5.3.7
+=====
+:release-date: 11 April, 2024
+:release-by: Tomer Nosrati
+
+The release of v5.3.6 was missing the bumbversion commit so v5.3.7 is only released to sync it back.
+
 .. _version-5.3.6:
 
 5.3.6
