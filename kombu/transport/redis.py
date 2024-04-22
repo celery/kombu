@@ -1433,6 +1433,8 @@ class SentinelChannel(Channel):
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
+        params = self._connparams(asynchronous=asynchronous)
+        self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
 
 
