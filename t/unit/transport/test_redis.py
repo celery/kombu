@@ -1634,6 +1634,18 @@ class test_RedisSentinel:
             connection.channel()
             p.assert_called()
 
+    def test_keyprefix_fanout(self):
+        from kombu.transport.redis import SentinelChannel
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/1',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+            assert channel.keyprefix_fanout == '/1.'
+
     def test_getting_master_from_sentinel(self):
         with patch('redis.sentinel.Sentinel') as patched:
             connection = Connection(
