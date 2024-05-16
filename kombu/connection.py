@@ -56,8 +56,8 @@ failover_strategies = {
     'shuffle': shufflecycle,
 }
 
-_log_connection = os.environ.get('KOMBU_LOG_CONNECTION', True)
-_log_channel = os.environ.get('KOMBU_LOG_CHANNEL', True)
+_log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
+_log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
 class Connection:
