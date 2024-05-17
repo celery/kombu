@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from tembo_pgmq_python import __version__ as pgmq_version
 
 from kombu import Connection
 from kombu.transport.pgmq import PGMQTransport
-from tembo_pgmq_python import __version__ as pgmq_version
 
 pytest.importorskip('tembo_pgmq_python')
 

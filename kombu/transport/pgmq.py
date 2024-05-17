@@ -1,14 +1,17 @@
-import time
+from __future__ import annotations
+
 import json
 import uuid
+
+from tembo_pgmq_python import PGMQueue
+from tembo_pgmq_python import __version__ as pgmq_version
+
 from kombu.exceptions import InconsistencyError
+from kombu.transport import virtual
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.url import _parse_url
-from kombu.transport import virtual
-
-from tembo_pgmq_python import PGMQueue, __version__ as pgmq_version
 
 DEFAULT_PORT = 5432
 DEFAULT_HOST = 'localhost'
