@@ -1204,7 +1204,8 @@ class Channel(virtual.Channel):
             class Connection(connection_cls):
                 def disconnect(self, *args):
                     super().disconnect(*args)
-                    # We only remove the connection from the poller if it has been added properly
+                    # We only remove the connection from the poller
+                    # only if it has been added properly.
                     if channel._registered:
                         channel._on_connection_disconnect(self)
             connection_cls = Connection
