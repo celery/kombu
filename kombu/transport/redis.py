@@ -13,6 +13,7 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from time import time
 
 from amqp import promise
@@ -150,6 +151,7 @@ class QoS(virtual.QoS):
         with self.channel.conn_or_acquire(client) as client:
             for tag in self._delivered:
                 self.restore_by_tag(tag, client=client)
+        logger.info('restored %d unacked messages', len(self._delivered))
         self._delivered.clear()
 
     def ack(self, delivery_tag):
@@ -190,6 +192,11 @@ class QoS(virtual.QoS):
                         start=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
+                    if visible:
+                        ts = datetime.fromtimestamp(time(), tz=timezone.utc)
+                        logger.info(
+                            'restored %d unacked message(s) [visible] ts: %s',
+                            len(visible), ts)
             except MutexHeld:
                 pass
 

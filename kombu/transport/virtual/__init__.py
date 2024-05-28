@@ -216,14 +216,15 @@ class QoS(object):
             return
         try:
             if state:
-                say('Restoring {0!r} unacknowledged message(s).',
+                logger.info(
+                    'Restoring {0!r} unacknowledged message(s). [once]',
                     len(self._delivered))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    say('UNABLE TO RESTORE {0} MESSAGES: {1}',
-                        len(errors), errors)
+                    logger.error('UNABLE TO RESTORE {0} MESSAGES: {1}',
+                                 len(errors), errors)
                     emergency_dump_state(messages)
         finally:
             state.restored = True
