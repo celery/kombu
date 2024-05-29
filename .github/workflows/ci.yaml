@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker>=5.0.0 docker>=7.1.0 requests>=2.32.2
       - name: Run unittest
         run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
   #################### Integration tests ####################
@@ -45,7 +45,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker>=5.0.0 docker>=7.1.0 requests>=2.32.2
       # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
       - name: Run AMQP integration tests
         run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
@@ -75,7 +75,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker>=5.0.0 docker>=7.1.0 requests>=2.32.2
       - name: Run flake8
         run: tox -v -e flake8 -- -v
       - name: Run pydocstyle
