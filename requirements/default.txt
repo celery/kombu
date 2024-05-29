@@ -4,4 +4,4 @@ vine
 backports.zoneinfo[tzdata]>=0.2.1; python_version < '3.9'
 # due to this bug https://github.com/docker/docker-py/issues/3256
 # we need to hard-code the version of requests
-requests<2.32.0
+requests==2.32.3
