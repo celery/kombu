@@ -110,7 +110,6 @@ class test_ConsumerMixin:
             next(it)
         c.connection.heartbeat_check.assert_not_called()
 
-
     def test_Consumer_context(self):
         c, Acons, Bcons = self._context()
 
