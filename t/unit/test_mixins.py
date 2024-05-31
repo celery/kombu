@@ -89,6 +89,27 @@ class test_ConsumerMixin:
         c.connection.drain_events.side_effect = se
         with pytest.raises(socket.error):
             next(it)
+        c.connection.heartbeat_check.assert_called()
+
+    def test_consume_drain_no_heartbeat_check(self):
+        c, Acons, Bcons = self._context()
+        c.should_stop = False
+        it = c.consume(no_ack=True, timeout=None)
+
+        def se(*args, **kwargs):
+            c.should_stop = True
+            raise socket.timeout()
+        c.connection.drain_events.side_effect = se
+        with pytest.raises(StopIteration):
+            next(it)
+        c.connection.heartbeat_check.assert_not_called()
+
+        it = c.consume(no_ack=True, timeout=0)
+        c.connection.drain_events.side_effect = se
+        with pytest.raises(StopIteration):
+            next(it)
+        c.connection.heartbeat_check.assert_not_called()
+
 
     def test_Consumer_context(self):
         c, Acons, Bcons = self._context()
