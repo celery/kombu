@@ -1065,7 +1065,8 @@ class ConnectionPool(Resource):
     def setup(self):
         if self.limit:
             q = self._resource.queue
-            while len(q) < self.limit:
+            # Keep in mind dirty/used resources
+            while len(q) < self.limit - len(self._dirty):
                 self._resource.put_nowait(lazy(self.new))
 
     def prepare(self, resource):
@@ -1091,7 +1092,8 @@ class ChannelPool(Resource):
         channel = self.new()
         if self.limit:
             q = self._resource.queue
-            while len(q) < self.limit:
+            # Keep in mind dirty/used resources
+            while len(q) < self.limit - len(self._dirty):
                 self._resource.put_nowait(lazy(channel))
 
     def prepare(self, channel):

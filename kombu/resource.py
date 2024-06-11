@@ -144,15 +144,20 @@ class Resource:
     def collect_resource(self, resource):
         pass
 
-    def force_close_all(self):
+    def force_close_all(self, close_pool=True):
         """Close and remove all resources in the pool (also those in use).
 
         Used to close resources from parent processes after fork
         (e.g. sockets/connections).
+
+        Arguments:
+        ---------
+            close_pool (bool): If True (default) then the pool is marked
+                as closed. In case of False the pool can be reused.
         """
         if self._closed:
             return
-        self._closed = True
+        self._closed = close_pool
         dirty = self._dirty
         resource = self._resource
         while 1:  # - acquired
@@ -188,7 +193,7 @@ class Resource:
         self._limit = limit
         if reset:
             try:
-                self.force_close_all()
+                self.force_close_all(close_pool=False)
             except Exception:
                 pass
         self.setup()
@@ -211,7 +216,9 @@ class Resource:
         resource = self._resource
         # Items to the left are last recently used, so we remove those first.
         with getattr(resource, 'mutex', Noop()):
-            while len(resource.queue) > self.limit:
+            # keep in mind the dirty resources are not shrinking
+            while len(resource.queue) and \
+                    (len(resource.queue) + len(self._dirty)) > self.limit:
                 R = resource.queue.popleft()
                 if collect:
                     self.collect_resource(R)

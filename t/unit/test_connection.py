@@ -811,6 +811,93 @@ class ResourceCase:
         P = self.create_resource(None)
         P.acquire().release()
 
+    def test_acquire_resize_in_use(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(5)]
+        self.assert_state(P, 0, 5)
+        with pytest.raises(RuntimeError):
+            P.resize(4)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 5, 0)
+
+    def test_acquire_resize_ignore_err_no_shrink(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(5)]
+        self.assert_state(P, 0, 5)
+        P.resize(4, ignore_errors=True)
+        self.assert_state(P, 0, 5)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 5, 0)
+
+    def test_acquire_resize_ignore_err_shrink(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(4)]
+        self.assert_state(P, 1, 4)
+        P.resize(4, ignore_errors=True)
+        self.assert_state(P, 0, 4)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 4, 0)
+
+    def test_acquire_resize_larger(self):
+        P = self.create_resource(1)
+        self.assert_state(P, 1, 0)
+        c1 = P.acquire()
+        self.assert_state(P, 0, 1)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(2)
+        self.assert_state(P, 1, 1)
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        c1.release()
+        c2.release()
+        self.assert_state(P, 2, 0)
+
+    def test_acquire_resize_force_smaller(self):
+        P = self.create_resource(2)
+        self.assert_state(P, 2, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(1, force=True)     # acts like reset
+        del c1
+        del c2
+        self.assert_state(P, 1, 0)
+        c1 = P.acquire()
+        self.assert_state(P, 0, 1)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        c1.release()
+        self.assert_state(P, 1, 0)
+
+    def test_acquire_resize_reset(self):
+        P = self.create_resource(2)
+        self.assert_state(P, 2, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(3, reset=True)
+        del c1
+        del c2
+        self.assert_state(P, 3, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        c3 = P.acquire()
+        self.assert_state(P, 0, 3)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        c1.release()
+        c2.release()
+        c3.release()
+        self.assert_state(P, 3, 0)
+
     def test_replace_when_limit(self):
         P = self.create_resource(10)
         r = P.acquire()
