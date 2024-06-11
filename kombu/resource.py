@@ -216,7 +216,7 @@ class Resource:
         resource = self._resource
         # Items to the left are last recently used, so we remove those first.
         with getattr(resource, 'mutex', Noop()):
-            # keep in mind teh dirty resources are not shrinked
+            # keep in mind the dirty resources are not shrinking
             while len(resource.queue) and \
                     (len(resource.queue) + len(self._dirty)) > self.limit:
                 R = resource.queue.popleft()
