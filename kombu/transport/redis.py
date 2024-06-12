@@ -722,7 +722,7 @@ class Channel(virtual.Channel):
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
-
+        self._registered = False
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -747,6 +747,9 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
+        # and set to true after sucessfuly added channel to the poll.
+        self._registered = True
+
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
@@ -1201,7 +1204,10 @@ class Channel(virtual.Channel):
             class Connection(connection_cls):
                 def disconnect(self, *args):
                     super().disconnect(*args)
-                    channel._on_connection_disconnect(self)
+                    # We remove the connection from the poller
+                    # only if it has been added properly.
+                    if channel._registered:
+                        channel._on_connection_disconnect(self)
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
