@@ -789,8 +789,10 @@ class Channel(virtual.Channel):
             except KeyError:
                 pass
             for queue in self._lookup(exchange, routing_key):
+                pri = self._get_message_priority(payload, reverse=False)
+
                 (pipe.lpush if leftmost else pipe.rpush)(
-                    queue, dumps(payload),
+                    self._q_for_pri(queue, pri), dumps(payload),
                 )
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
