@@ -627,7 +627,8 @@ class test_Channel:
             payload, 'exchange', 'routing_key', client,
         )
 
-        client.rpush.assert_called_with(self.channel._q_for_pri(queue, 3), dumps(result_payload))
+        client.rpush.assert_called_with(self.channel._q_for_pri(queue, 3),
+                                        dumps(result_payload))
 
     def test_restore_no_messages(self):
         message = Mock(name='message')
