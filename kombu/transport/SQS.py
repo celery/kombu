@@ -128,7 +128,7 @@ import base64
 import socket
 import string
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from queue import Empty
 
 from botocore.client import Config
