@@ -737,7 +737,9 @@ class Channel(virtual.Channel):
         datetime_now_utc = datetime.now(timezone.utc).replace(
             tzinfo=None
         )
-        sts_token_timeout = self.transport_options.get('sts_token_timeout', 900)
+        sts_token_timeout = self.transport_options.get(
+            'sts_token_timeout', 900
+        )
         # STS token is generated only if it is not present or
         # the time reaches 80% of the token TTL
         if (not hasattr(self, 'sts_expiration')) or (
