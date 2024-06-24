@@ -168,8 +168,7 @@ class test_RedisPriority(BasePriority):
                 )
                 consumer.register_callback(callback)
                 with consumer:
-                    # drain_events() returns just on number in
-                    # Virtual transports
+                    # drain_events() consumes only one value unlike in py-amqp.
                     conn.drain_events(timeout=1)
                     conn.drain_events(timeout=1)
                     conn.drain_events(timeout=1)
