@@ -4,6 +4,41 @@
  Change history
 ================
 
+.. _version-5.4.0rc1:
+
+5.4.0rc1
+========
+:release-date: 22 June, 2024
+:release-by: Tomer Nosrati
+
+We want to add a special thanks to contribution #2007 by @awmackowiak for fixing the Redis reconnection bug.
+This release candidate aims to allow the community to test the changes and provide feedback.
+
+Please let us know if Redis is stable again!
+
+New: #1998, #2016, #2024, #1976
+The rest of the changes are bug fixes and dependency updates.
+
+Lastly, ``requests`` is limited to <2.32.0 per #2011.
+
+- Update mypy to 1.10.0 (#1988)
+- Update pytest to 8.2.0 (#1990)
+- fix: Fanout exchange messages mixed across virtual databases in Redis sentinel (#1986)
+- Pin pymongo to latest version 4.7.2 (#1994)
+- enable/fix test_etcd.py (resolves #2001) (#2002)
+- Bump pytest from 8.2.0 to 8.2.1 (#2005)
+- Limit requests<2.32.0 due to docker-py issue 3256 (#2011)
+- enhance: allow users to disable broker heartbeats (#1998)
+- enhance: allow uses to disable broker heartbeats by not providing a timeout (#1997,#1998) (#2016)
+- Pin typing_extensions to latest version 4.12.1 (#2017)
+- chore(typing): annotate `utils/debug.py` (#1714)
+- Bump pytest from 8.2.1 to 8.2.2 (#2021)
+- Bump pymongo from 4.7.2 to 4.7.3 (#2022)
+- ConnectionPool can't be used after .resize(..., reset=True) (resolves #2018) (#2024)
+- Fix Redis connections after reconnect - consumer starts consuming the tasks after crash. (#2007)
+- Update flake8 to 7.1.0 (#2028)
+- Add support for mongodb+srv scheme (#1976)
+
 .. _version-5.3.7:
 
 5.3.7
