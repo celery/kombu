@@ -609,7 +609,7 @@ class test_Channel:
                     "exchange": "",
                     "routing_key": "celery",
                 },
-                "priority": 0,
+                "priority": 3,
                 "body_encoding": "base64",
                 "delivery_tag": "badb725e-9c3e-45be-b0a4-07e44630519f",
             },
@@ -627,7 +627,8 @@ class test_Channel:
             payload, 'exchange', 'routing_key', client,
         )
 
-        client.rpush.assert_called_with(queue, dumps(result_payload))
+        client.rpush.assert_called_with(self.channel._q_for_pri(queue, 3),
+                                        dumps(result_payload))
 
     def test_restore_no_messages(self):
         message = Mock(name='message')

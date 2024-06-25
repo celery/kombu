@@ -130,6 +130,78 @@ class test_RedisPriority(BasePriority):
                 assert received_messages[1] == {'msg': 'first'}
                 assert received_messages[2] == {'msg': 'third'}
 
+    def test_publish_requeue_consume(self, connection):
+        test_queue = kombu.Queue(
+            'priority_requeue_test',
+            routing_key='priority_requeue_test', max_priority=10
+        )
+
+        received_messages = []
+        received_message_bodies = []
+
+        def callback(body, message):
+            received_messages.append(message)
+            received_message_bodies.append(body)
+            # don't ack the message so it can be requeued
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for msg, prio in [
+                    [{'msg': 'first'}, 6],
+                    [{'msg': 'second'}, 3],
+                    [{'msg': 'third'}, 6],
+                ]:
+                    producer.publish(
+                        msg,
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='pickle',
+                        priority=prio
+                    )
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+                with consumer:
+                    # drain_events() consumes only one value unlike in py-amqp.
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+
+                # requeue the messages
+                for msg in received_messages:
+                    msg.requeue()
+                received_messages.clear()
+                received_message_bodies.clear()
+
+                # add a fourth higher priority message
+                producer.publish(
+                    {'msg': 'fourth'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='pickle',
+                    priority=0  # highest priority
+                )
+
+                with consumer:
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+
+                # Fourth message must be received first
+                assert received_message_bodies[0] == {'msg': 'fourth'}
+                assert received_message_bodies[1] == {'msg': 'second'}
+                assert received_message_bodies[2] == {'msg': 'first'}
+                assert received_message_bodies[3] == {'msg': 'third'}
+
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
