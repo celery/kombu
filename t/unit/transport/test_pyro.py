@@ -9,7 +9,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 class test_PyroTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.c = Connection(transport='pyro', virtual_host="kombu.broker")
         self.e = Exchange('test_transport_pyro')
         self.q = Queue('test_transport_pyro',
@@ -61,8 +61,8 @@ class test_PyroTransport:
         with pytest.raises(socket.timeout):
             self.c.drain_events(timeout=0.1)
 
-        del(c1)  # so pyflakes doesn't complain.
-        del(c2)
+        del c1  # so pyflakes doesn't complain.
+        del c2
 
     @pytest.mark.skip("requires running Pyro nameserver and Kombu Broker")
     def test_drain_events_unregistered_queue(self):

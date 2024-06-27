@@ -6,19 +6,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.7,3.8,3.9]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker
       - name: Run unittest
         run: tox -v -e ${{ matrix.python-version }}-linux-unit -- -v
   #################### Integration tests ####################
@@ -29,37 +29,33 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7,3.8,3.9]
+        python-version: [3.8,3.9,"3.10","3.11","3.12"]
         experimental: [false]
         include:
-          - python-version: pypy-3.7
-            experimental: true
-          - python-version: pypy-3.8
+          - python-version: pypy3.9
             experimental: true
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
-      # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.8" to "pypy3.8".
-      - name: Determine Python version
-        run: echo PYTHON_VERSION=$(echo ${{ matrix.python-version }} | sed s/-//) >> $GITHUB_ENV
+        run: pip install --upgrade pip wheel tox tox-docker
+      # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
       - name: Run AMQP integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-amqp -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-amqp -- -v
       - name: Run redis integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-redis -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-redis -- -v
       - name: Run MongoDB integration tests
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-mongodb -- -v
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-mongodb -- -v
       - name: Run kafka integration tests
-        if: ${{ env.PYTHON_VERSION != 'pypy3.7' && env.PYTHON_VERSION != 'pypy3.8' }}
-        run: tox -v -e ${{ env.PYTHON_VERSION }}-linux-integration-py-kafka -- -v
+        if: ${{ matrix.python-version != 'pypy3.9'}}
+        run: tox -v -e ${{ matrix.python-version }}-linux-integration-py-kafka -- -v
 
   #################### Linters and checkers ####################
   lint:
@@ -67,19 +63,19 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.9]
+        python-version: ["3.10"]
     steps:
       - name: Install system packages
-        run: sudo apt update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: actions/setup-python@main
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
-        run: pip install --upgrade pip setuptools wheel tox tox-docker
+        run: pip install --upgrade pip wheel tox tox-docker
       - name: Run flake8
         run: tox -v -e flake8 -- -v
       - name: Run pydocstyle

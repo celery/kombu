@@ -96,17 +96,15 @@ import shutil
 import tempfile
 import uuid
 from collections import namedtuple
-from contextlib import contextmanager
 from pathlib import Path
 from queue import Empty
 from time import monotonic
 
 from kombu.exceptions import ChannelError
+from kombu.transport import virtual
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
-
-from . import virtual
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
@@ -138,7 +136,7 @@ if os.name == 'nt':
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_NB, LOCK_SH  # noqa
+    from fcntl import LOCK_EX, LOCK_SH
 
     def lock(file, flags):
         """Create file lock."""
@@ -163,40 +161,45 @@ class Channel(virtual.Channel):
 
     supports_fanout = True
 
-    @contextmanager
-    def _get_exchange_file_obj(self, exchange, mode="rb"):
-        file = self.control_folder / f"{exchange}.exchange"
-        if "w" in mode:
-            self.control_folder.mkdir(exist_ok=True)
-        f_obj = file.open(mode)
-
-        try:
-            if "w" in mode:
-                lock(f_obj, LOCK_EX)
-            yield f_obj
-        except OSError:
-            raise ChannelError(f"Cannot open {file}")
-        finally:
-            if "w" in mode:
-                unlock(f_obj)
-            f_obj.close()
-
     def get_table(self, exchange):
+        file = self.control_folder / f"{exchange}.exchange"
         try:
-            with self._get_exchange_file_obj(exchange) as f_obj:
+            f_obj = file.open("r")
+            try:
+                lock(f_obj, LOCK_SH)
                 exchange_table = loads(bytes_to_str(f_obj.read()))
                 return [exchange_queue_t(*q) for q in exchange_table]
+            finally:
+                unlock(f_obj)
+                f_obj.close()
         except FileNotFoundError:
             return []
+        except OSError:
+            raise ChannelError(f"Cannot open {file}")
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
-        queues = self.get_table(exchange)
+        file = self.control_folder / f"{exchange}.exchange"
+        self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
-        if queue_val not in queues:
-            queues.insert(0, queue_val)
-        with self._get_exchange_file_obj(exchange, "wb") as f_obj:
-            f_obj.write(str_to_bytes(dumps(queues)))
+        try:
+            if file.exists():
+                f_obj = file.open("rb+", buffering=0)
+                lock(f_obj, LOCK_EX)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                queues = [exchange_queue_t(*q) for q in exchange_table]
+                if queue_val not in queues:
+                    queues.insert(0, queue_val)
+                    f_obj.seek(0)
+                    f_obj.write(str_to_bytes(dumps(queues)))
+            else:
+                f_obj = file.open("wb", buffering=0)
+                lock(f_obj, LOCK_EX)
+                queues = [queue_val]
+                f_obj.write(str_to_bytes(dumps(queues)))
+        finally:
+            unlock(f_obj)
+            f_obj.close()
 
     def _put_fanout(self, exchange, payload, routing_key, **kwargs):
         for q in self.get_table(exchange):
@@ -209,7 +212,7 @@ class Channel(virtual.Channel):
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
-            f = open(filename, 'wb')
+            f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
         except OSError:
@@ -241,7 +244,8 @@ class Channel(virtual.Channel):
                 shutil.move(os.path.join(self.data_folder_in, filename),
                             processed_folder)
             except OSError:
-                pass  # file could be locked, or removed in meantime so ignore
+                # file could be locked, or removed in meantime so ignore
+                continue
 
             filename = os.path.join(processed_folder, filename)
             try:

@@ -21,7 +21,7 @@ class test_ProducerPool:
         def Producer(self, connection):
             return self.instance
 
-    def setup(self):
+    def setup_method(self):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
 
@@ -141,7 +141,7 @@ class test_PoolGroup:
     def test_delitem(self):
         g = self.MyGroup()
         g['foo']
-        del(g['foo'])
+        del g['foo']
         assert 'foo' not in g
 
     def test_Connections(self):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import tempfile
+from fcntl import LOCK_EX, LOCK_SH
 from queue import Empty
+from unittest.mock import call, patch
 
 import pytest
 
@@ -12,7 +14,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 @t.skip.if_win32
 class test_FilesystemTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.channels = set()
         try:
             data_folder_in = tempfile.mkdtemp()
@@ -39,7 +41,7 @@ class test_FilesystemTransport:
                         exchange=self.e,
                         routing_key='test_transport_filesystem2')
 
-    def teardown(self):
+    def teardown_method(self):
         # make sure we don't attempt to restore messages at shutdown.
         for channel in self.channels:
             try:
@@ -145,7 +147,7 @@ class test_FilesystemTransport:
 
 @t.skip.if_win32
 class test_FilesystemFanout:
-    def setup(self):
+    def setup_method(self):
         try:
             data_folder_in = tempfile.mkdtemp()
             data_folder_out = tempfile.mkdtemp()
@@ -175,7 +177,7 @@ class test_FilesystemFanout:
         self.q1 = Queue("queue1", exchange=self.exchange)
         self.q2 = Queue("queue2", exchange=self.exchange)
 
-    def teardown(self):
+    def teardown_method(self):
         # make sure we don't attempt to restore messages at shutdown.
         for channel in [self.producer_channel, self.consumer_connection]:
             try:
@@ -234,3 +236,69 @@ class test_FilesystemFanout:
         assert self.q2(self.consume_channel).get()
         self.q2(self.consume_channel).purge()
         assert self.q2(self.consume_channel).get() is None
+
+
+@t.skip.if_win32
+class test_FilesystemLock:
+    def setup_method(self):
+        try:
+            data_folder_in = tempfile.mkdtemp()
+            data_folder_out = tempfile.mkdtemp()
+            control_folder = tempfile.mkdtemp()
+        except Exception:
+            pytest.skip("filesystem transport: cannot create tempfiles")
+
+        self.consumer_connection = Connection(
+            transport="filesystem",
+            transport_options={
+                "data_folder_in": data_folder_in,
+                "data_folder_out": data_folder_out,
+                "control_folder": control_folder,
+            },
+        )
+        self.consume_channel = self.consumer_connection.channel()
+        self.produce_connection = Connection(
+            transport="filesystem",
+            transport_options={
+                "data_folder_in": data_folder_out,
+                "data_folder_out": data_folder_in,
+                "control_folder": control_folder,
+            },
+        )
+        self.producer_channel = self.produce_connection.channel()
+        self.exchange = Exchange("filesystem_exchange_lock", type="fanout")
+        self.q = Queue("queue1", exchange=self.exchange)
+
+    def teardown_method(self):
+        # make sure we don't attempt to restore messages at shutdown.
+        for channel in [self.producer_channel, self.consumer_connection]:
+            try:
+                channel._qos._dirty.clear()
+            except AttributeError:
+                pass
+            try:
+                channel._qos._delivered.clear()
+            except AttributeError:
+                pass
+
+    def test_lock_during_process(self):
+        producer = Producer(self.producer_channel, self.exchange)
+
+        with patch("kombu.transport.filesystem.lock") as lock_m, patch(
+            "kombu.transport.filesystem.unlock"
+        ) as unlock_m:
+            Consumer(self.consume_channel, self.q)
+            assert unlock_m.call_count == 1
+            lock_m.assert_called_once_with(unlock_m.call_args[0][0], LOCK_EX)
+
+        self.q(self.consume_channel).declare()
+        with patch("kombu.transport.filesystem.lock") as lock_m, patch(
+            "kombu.transport.filesystem.unlock"
+        ) as unlock_m:
+            producer.publish({"foo": 1})
+            assert unlock_m.call_count == 2
+            assert lock_m.call_count == 2
+            exchange_file_obj = unlock_m.call_args_list[0][0][0]
+            msg_file_obj = unlock_m.call_args_list[1][0][0]
+            assert lock_m.call_args_list == [call(exchange_file_obj, LOCK_SH),
+                                             call(msg_file_obj, LOCK_EX)]

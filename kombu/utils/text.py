@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from difflib import SequenceMatcher
-from typing import Iterable, Iterator, Optional, Tuple, Union
+from typing import Iterable, Iterator
 
 from kombu import version_info_t
 
@@ -22,7 +22,8 @@ def escape_regex(p, white=''):
 def fmatch_iter(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) -> Iterator[tuple[float, str]]:
     """Fuzzy match: iteratively.
 
-    Yields:
+    Yields
+    ------
         Tuple: of ratio and key.
     """
     for key in haystack:

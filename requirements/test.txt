@@ -1,6 +1,5 @@
-pytz>dev
-pytest~=7.1.1
-pytest-sugar
+hypothesis<7
 Pyro4
-hypothesis
-pytest-freezegun
+pytest-freezer
+pytest-sugar==1.0.0
+pytest==8.2.2

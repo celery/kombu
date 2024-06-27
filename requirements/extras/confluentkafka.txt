@@ -1,1 +1,1 @@
-confluent-kafka
+confluent-kafka>=2.2.0

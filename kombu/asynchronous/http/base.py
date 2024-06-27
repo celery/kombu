@@ -44,10 +44,12 @@ class Request:
     """A HTTP Request.
 
     Arguments:
+    ---------
         url (str): The URL to request.
         method (str): The HTTP method to use (defaults to ``GET``).
 
     Keyword Arguments:
+    -----------------
         headers (Dict, ~kombu.asynchronous.http.Headers): Optional headers for
             this request
         body (str): Optional body for this request.
@@ -138,7 +140,8 @@ class Request:
 class Response:
     """HTTP Response.
 
-    Arguments:
+    Arguments
+    ---------
         request (~kombu.asynchronous.http.Request): See :attr:`request`.
         code (int): See :attr:`code`.
         headers (~kombu.asynchronous.http.Headers): See :attr:`headers`.
@@ -146,7 +149,8 @@ class Response:
         effective_url (str): See :attr:`effective_url`.
         status (str): See :attr:`status`.
 
-    Attributes:
+    Attributes
+    ----------
         request (~kombu.asynchronous.http.Request): object used to
             get this response.
         code (int): HTTP response code (e.g. 200, 404, or 500).
@@ -182,7 +186,8 @@ class Response:
     def raise_for_error(self):
         """Raise if the request resulted in an HTTP error code.
 
-        Raises:
+        Raises
+        ------
             :class:`~kombu.exceptions.HttpError`
         """
         if self.error:
@@ -193,6 +198,7 @@ class Response:
         """The full contents of the response body.
 
         Note:
+        ----
             Accessing this property will evaluate the buffer
             and subsequent accesses will be cached.
         """

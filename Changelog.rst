@@ -4,6 +4,250 @@
  Change history
 ================
 
+.. _version-5.4.0rc1:
+
+5.4.0rc1
+========
+:release-date: 22 June, 2024
+:release-by: Tomer Nosrati
+
+We want to add a special thanks to contribution #2007 by @awmackowiak for fixing the Redis reconnection bug.
+This release candidate aims to allow the community to test the changes and provide feedback.
+
+Please let us know if Redis is stable again!
+
+New: #1998, #2016, #2024, #1976
+The rest of the changes are bug fixes and dependency updates.
+
+Lastly, ``requests`` is limited to <2.32.0 per #2011.
+
+- Update mypy to 1.10.0 (#1988)
+- Update pytest to 8.2.0 (#1990)
+- fix: Fanout exchange messages mixed across virtual databases in Redis sentinel (#1986)
+- Pin pymongo to latest version 4.7.2 (#1994)
+- enable/fix test_etcd.py (resolves #2001) (#2002)
+- Bump pytest from 8.2.0 to 8.2.1 (#2005)
+- Limit requests<2.32.0 due to docker-py issue 3256 (#2011)
+- enhance: allow users to disable broker heartbeats (#1998)
+- enhance: allow uses to disable broker heartbeats by not providing a timeout (#1997,#1998) (#2016)
+- Pin typing_extensions to latest version 4.12.1 (#2017)
+- chore(typing): annotate `utils/debug.py` (#1714)
+- Bump pytest from 8.2.1 to 8.2.2 (#2021)
+- Bump pymongo from 4.7.2 to 4.7.3 (#2022)
+- ConnectionPool can't be used after .resize(..., reset=True) (resolves #2018) (#2024)
+- Fix Redis connections after reconnect - consumer starts consuming the tasks after crash. (#2007)
+- Update flake8 to 7.1.0 (#2028)
+- Add support for mongodb+srv scheme (#1976)
+
+.. _version-5.3.7:
+
+5.3.7
+=====
+:release-date: 11 April, 2024
+:release-by: Tomer Nosrati
+
+The release of v5.3.6 was missing the bumbversion commit so v5.3.7 is only released to sync it back.
+
+.. _version-5.3.6:
+
+5.3.6
+=====
+:release-date: 27 Mar, 2024
+:release-by: Tomer Nosrati
+
+- boto3>=1.26.143 (#1890)
+- Always convert azureservicebus namespace to fully qualified (#1892)
+- Pin pytest-sugar to latest version 1.0.0 (#1912)
+- Upgrade to pytest v8 that removed nose compatibility (#1914)
+- fix warning for usage of utcfromtimestamp (#1926)
+- Update pytest to 8.0.2 (#1942)
+- Hotfix: Fix CI failures (limit redis to <5.0.2 instead of <6.0.0) (#1961)
+- Expose cancel callback from py-amqp channel.basic_consume (#1953)
+- Update mypy to 1.9.0 (#1963)
+- Update pytest to 8.1.1 (#1965)
+- Pin hypothesis to hypothesis<7 (#1966)
+- redis>=4.5.2,<5.0.2,!=4.5.5 -> redis>=4.5.2,!=5.0.2,!=4.5.5 (#1969)
+- add escape hatch for custom JSON serialization (#1955)
+- Pin pytest-cov to latest version 5.0.0 (#1972)
+
+.. _version-5.3.5:
+
+5.3.5
+=====
+:release-date: 12 Jan, 2024
+:release-by: Tomer Nosrati
+
+- Fix ReadTheDocs CI (#1827).
+- fix(docs): add Redis to the list of transports where SSL is supported (#1826).
+- Fixed Improper Method Call: Replaced `mktemp` (#1828).
+- Bump actions/setup-python from 4 to 5 (#1829).
+- Bump github/codeql-action from 2 to 3 (#1832).
+- fix: freeze set during ticks iter in async hub (#1830).
+- azure service bus: fix TypeError when using Managed Identities (#1825).
+- Fix unacknowledge typo in restore_visible() (#1839).
+- Changed pyup -> dependabot for updating dependencies (#1842).
+- Bump pytest from 7.4.3 to 7.4.4 (#1843).
+- Bump flake8 from 6.0.0 to 7.0.0 (#1845).
+- Bump mypy from 1.3.0 to 1.8.0 (#1844).
+- Fix crash when using global_keyprefix with a sentinel connection (#1838)
+- Fixed version_dev in docs/conf.py (#1875).
+
+.. _version-5.3.4:
+
+5.3.4
+=====
+:release-date: 16 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Use the correct protocol for SQS requests (#1807).
+
+
+.. _version-5.3.3:
+
+5.3.3
+=====
+:release-date: 6 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Raise access denied error when ack.
+- test redis 5.0.0.
+- fix azure servicebus using managed identity support (#1801).
+- Added as_uri method to MongoDB transport - Fixes #1795 (#1796).
+- Revert "[fix #1726] Use boto3 for SQS async requests (#1759)" (#1799).
+- Create a lock on cached_property if not present (#1811).
+- Bump kafka deps versions & fix integration test failures (#1818).
+- Added Python 3.12 support.
+- Fix: redis requeue concurrency bug #1800 (#1805).
+
+
+.. _version-5.3.2:
+
+5.3.2
+=====
+:release-date: 31 Aug, 2023
+:release-by: Tomer Nosrati
+
+- Reverted unwanted constraint introduced in #1629 with max_retries (#1755)
+- Doc fix (hotfix for #1755) (#1758)
+- Python3.12: fix imports in kombu/utils/objects.py (#1756)
+- [fix #1726] Use boto3 for SQS async requests (#1759)
+- docs: Remove SimpleQueue import (#1764)
+- Fixed pre-commit issues (#1773)
+- azure service bus: add managed identity support (#1641)
+- fix: Prevent redis task loss when closing connection while in poll (#1733)
+- Kombu & celery with SQS #222 (#1779)
+- syntax correction (#1780)
+
+.. _version-5.3.1:
+
+5.3.1
+=====
+:release-date: 15 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Update pycurl version.
+- Declare python 3.11 support (#1425).
+- Fix: allow deserializing any version of UUID.
+- Update PyCurl version in SQS (#1747).
+
+
+.. _version-5.3.0:
+
+5.3.0
+=====
+:release-date: 03 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Support for Kafka as transport.
+- Add fanout to filesystem (#1499).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Support pymongo 4.x (#1536).
+- Support redis-py 4.5.x.
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Add managed identity support to azure storage queue (#1631).
+- Add Support of sqlalchemy v2.0.
+- Deprecate pytz and use zoneinfo (#1680)
+
+
+.. _version-5.3.0rc2:
+
+5.3.0rc2
+========
+:release-date: 31 May, 2023
+:release-by: Asif Saif Uddin
+
+- add missing zoneinfo dependency (#1732).
+- Support redis >= 4.5.2
+- Loosen urlib3 version range for botocore compat
+
+
+.. _version-5.3.0rc1:
+
+5.3.0rc1
+========
+:release-date: 24 May, 2023
+:release-by: Asif Saif Uddin
+
+- Moved to pytest-freezer (#1683).
+- Deprecate pytz and use zoneinfo (#1680).
+- handle keyerror in azureservicebus transport when message is not
+found in qos and perform basic_ack (#1691).
+- fix mongodb transport obsolete calls (#1694).
+- SQS: avoid excessive GetQueueURL calls by using cached queue url (#1621).
+- Update confluentkafka.txt version (#1727).
+- Revert back to pyro4 for now.
+
+
+.. _version-5.3.0b3:
+
+5.3.0b3
+=======
+:release-date: 20 Mar, 2023
+:release-by: Asif Saif Uddin
+
+- Use SPDX license expression in project metadata.
+- Allowing Connection.ensure() to retry on specific exceptions given by policy (#1629).
+- Redis==4.3.4 temporarilly in an attempt to avoid BC (#1634).
+- Add managed identity support to azure storage queue (#1631).
+- Support sqla v2.0 (#1651).
+- Switch to Pyro5 (#1655).
+- Remove unused _setupfuns from serialization.py.
+- Refactor: Refactor utils/json (#1659).
+- Adapt the mock to correctly mock the behaviors as implemented on Python 3.10. (Ref #1663).
+
+
+.. _version-5.3.0b2:
+
+5.3.0b2
+=======
+:release-date: 19 Oct, 2022
+:release-by: Asif Saif Uddin
+
+- fix: save QueueProperties to _queue_name_cache instead of QueueClient.
+- hub: tick delay fix (#1587).
+- Fix incompatibility with redis in disconnect() (#1589).
+- Solve Kombu filesystem transport not thread safe.
+- importlib_metadata remove deprecated entry point interfaces (#1601).
+- Allow azurestoragequeues transport to be used with Azurite emulator in docker-compose (#1611).
+
+
+.. _version-5.3.0b1:
+
+5.3.0b1
+=======
+:release-date: 1 Aug, 2022
+:release-by: Asif Saif Uddin
+
+- Add ext.py files to setup.cfg.
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- chore: add confluentkafka to extras.
+
 .. _version-5.3.0a1:
 
 5.3.0a1

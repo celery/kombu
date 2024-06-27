@@ -49,6 +49,7 @@ class ConsumerMixin:
     channels can be used for different QoS requirements.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerMixin):
@@ -65,8 +66,8 @@ class ConsumerMixin:
                     print('Got task: {0!r}'.format(body))
                     message.ack()
 
-    Methods:
-
+    Methods
+    -------
         * :meth:`extra_context`
 
             Optional extra context manager that will be entered
@@ -194,10 +195,11 @@ class ConsumerMixin:
                 try:
                     conn.drain_events(timeout=safety_interval)
                 except socket.timeout:
-                    conn.heartbeat_check()
-                    elapsed += safety_interval
-                    if timeout and elapsed >= timeout:
-                        raise
+                    if timeout:
+                        conn.heartbeat_check()
+                        elapsed += safety_interval
+                        if elapsed >= timeout:
+                            raise
                 except OSError:
                     if not self.should_stop:
                         raise
@@ -257,6 +259,7 @@ class ConsumerProducerMixin(ConsumerMixin):
     publishing messages.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerProducerMixin):

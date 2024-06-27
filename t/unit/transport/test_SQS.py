@@ -141,7 +141,7 @@ class test_Channel:
     def handleMessageCallback(self, message):
         self.callback_message = message
 
-    def setup(self):
+    def setup_method(self):
         """Mock the back-end SQS classes"""
         # Sanity check... if SQS is None, then it did not import and we
         # cannot execute our tests.
@@ -195,7 +195,7 @@ class test_Channel:
                                    callback=self.handleMessageCallback,
                                    consumer_tag='unittest')
 
-    def teardown(self):
+    def teardown_method(self):
         # Removes QoS reserved messages so we don't restore msgs on shutdown.
         try:
             qos = self.channel._qos
@@ -443,6 +443,38 @@ class test_Channel:
         self.channel._get_bulk(self.queue_name)
         self.channel.connection._deliver.assert_called_once()
 
+    # hub required for successful instantiation of AsyncSQSConnection
+    @pytest.mark.usefixtures('hub')
+    def test_get_async(self):
+        """Basic coverage of async code typically used via:
+        basic_consume > _loop1 > _schedule_queue > _get_bulk_async"""
+        # Prepare
+        for i in range(3):
+            message = 'message: %s' % i
+            self.producer.publish(message)
+
+        # SQS.Channel.asynsqs constructs AsyncSQSConnection using self.sqs
+        # which is already a mock thanks to `setup` above, we just need to
+        # mock the async-specific methods (as test_AsyncSQSConnection does)
+        async_sqs_conn = self.channel.asynsqs(self.queue_name)
+        async_sqs_conn.get_list = Mock(name='X.get_list')
+
+        # Call key method
+        self.channel._get_bulk_async(self.queue_name)
+
+        assert async_sqs_conn.get_list.call_count == 1
+        get_list_args = async_sqs_conn.get_list.call_args[0]
+        get_list_kwargs = async_sqs_conn.get_list.call_args[1]
+        assert get_list_args[0] == 'ReceiveMessage'
+        assert get_list_args[1] == {
+            'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
+            'AttributeName.1': 'ApproximateReceiveCount',
+            'WaitTimeSeconds': self.channel.wait_time_seconds,
+        }
+        assert get_list_args[3] == \
+               self.channel.sqs().get_queue_url(self.queue_name).url
+        assert get_list_kwargs['parent'] == self.queue_name
+
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
             return False
@@ -613,6 +645,46 @@ class test_Channel:
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
         basic_reject_mock.assert_called_with(2)
+        assert not basic_ack_mock.called
+
+    @patch('kombu.transport.virtual.base.Channel.basic_ack')
+    @patch('kombu.transport.virtual.base.Channel.basic_reject')
+    def test_basic_ack_access_denied(self, basic_reject_mock, basic_ack_mock):
+        """Test that basic_ack raises AccessDeniedQueueException when
+           access is denied"""
+        message = {
+            'sqs_message': {
+                'ReceiptHandle': '2'
+            },
+            'sqs_queue': 'testing_queue'
+        }
+        error_response = {
+            'Error': {
+                'Code': 'AccessDenied',
+                'Message': """An error occurred (AccessDenied) when calling the
+                              DeleteMessage operation."""
+            }
+        }
+        operation_name = 'DeleteMessage'
+
+        mock_messages = Mock()
+        mock_messages.delivery_info = message
+        self.channel.qos.append(mock_messages, 2)
+        self.channel.sqs().delete_message = Mock()
+        self.channel.sqs().delete_message.side_effect = ClientError(
+            error_response=error_response,
+            operation_name=operation_name
+        )
+
+        # Expecting the custom AccessDeniedQueueException to be raised
+        with pytest.raises(SQS.AccessDeniedQueueException):
+            self.channel.basic_ack(2)
+
+        self.sqs_conn_mock.delete_message.assert_called_with(
+            QueueUrl=message['sqs_queue'],
+            ReceiptHandle=message['sqs_message']['ReceiptHandle']
+        )
+        assert not basic_reject_mock.called
         assert not basic_ack_mock.called
 
     def test_reject_when_no_predefined_queues(self):

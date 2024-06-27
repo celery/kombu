@@ -8,9 +8,9 @@ import sys
 from collections import namedtuple
 from typing import Any, cast
 
-__version__ = '5.3.0a1'
+__version__ = '5.4.0rc1'
 __author__ = 'Ask Solem'
-__contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
+__contact__ = 'auvipy@gmail.com'
 __homepage__ = 'https://kombu.readthedocs.io'
 __docformat__ = 'restructuredtext en'
 
@@ -26,8 +26,8 @@ _temp = cast(re.Match, re.match(
     r'(\d+)\.(\d+).(\d+)(.+)?', __version__)).groups()
 VERSION = version_info = version_info_t(
     int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or '', '')
-del(_temp)
-del(re)
+del _temp
+del re
 
 STATICA_HACK = True
 globals()['kcah_acitats'[::-1].upper()] = False

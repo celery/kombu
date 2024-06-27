@@ -7,10 +7,14 @@ import numbers
 import os
 import sys
 from logging.handlers import WatchedFileHandler
+from typing import TYPE_CHECKING
 
 from .utils.encoding import safe_repr, safe_str
 from .utils.functional import maybe_evaluate
 from .utils.objects import cached_property
+
+if TYPE_CHECKING:
+    from logging import Logger
 
 __all__ = ('LogMixin', 'LOG_LEVELS', 'get_loglevel', 'setup_logging')
 
@@ -21,7 +25,7 @@ LOG_LEVELS.setdefault(logging.FATAL, 'FATAL')
 DISABLE_TRACEBACKS = os.environ.get('DISABLE_TRACEBACKS')
 
 
-def get_logger(logger):
+def get_logger(logger: str | Logger):
     """Get logger by name."""
     if isinstance(logger, str):
         logger = logging.getLogger(logger)

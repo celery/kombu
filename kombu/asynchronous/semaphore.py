@@ -26,6 +26,7 @@ class LaxBoundedSemaphore:
     range even if released more times than it was acquired.
 
     Example:
+    -------
         >>> x = LaxBoundedSemaphore(2)
 
         >>> x.acquire(print, 'HELLO 1')
@@ -61,6 +62,7 @@ class LaxBoundedSemaphore:
         until the semaphore is released.
 
         Arguments:
+        ---------
             callback (Callable): The callback to apply.
             *partial_args (Any): partial arguments to callback.
         """
@@ -77,6 +79,7 @@ class LaxBoundedSemaphore:
         """Release semaphore.
 
         Note:
+        ----
             If there are any waiters this will apply the first waiter
             that is waiting for the resource (FIFO order).
         """

@@ -168,7 +168,7 @@ class test_retry_over_time:
     class Predicate(Exception):
         pass
 
-    def setup(self):
+    def setup_method(self):
         self.index = 0
 
     def myfun(self):

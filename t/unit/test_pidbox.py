@@ -27,7 +27,7 @@ class test_Mailbox:
         def _collect(self, *args, **kwargs):
             return 'COLLECTED'
 
-    def setup(self):
+    def setup_method(self):
         self.mailbox = self.Mailbox('test_pidbox')
         self.connection = Connection(transport='memory')
         self.state = {'var': 1}

@@ -77,7 +77,7 @@ class test_misc:
 
 class test_Publisher:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
 
     def test_constructor(self):
@@ -130,7 +130,7 @@ class test_Publisher:
 
 class test_Consumer:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
 
     @patch('kombu.compat._iterconsume')
@@ -266,7 +266,7 @@ class test_Consumer:
 
 class test_ConsumerSet:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
 
     def test_providing_channel(self):

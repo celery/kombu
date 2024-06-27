@@ -16,6 +16,13 @@ import azure.core.exceptions  # noqa
 import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
 
+try:
+    from azure.identity import (DefaultAzureCredential,
+                                ManagedIdentityCredential)
+except ImportError:
+    DefaultAzureCredential = None
+    ManagedIdentityCredential = None
+
 from kombu.transport import azureservicebus  # noqa
 
 
@@ -95,7 +102,12 @@ class ASBMgmtMock:
 
 
 URL_NOCREDS = 'azureservicebus://'
-URL_CREDS = 'azureservicebus://policyname:ke/y@hostname'
+URL_CREDS_SAS = 'azureservicebus://policyname:ke/y@hostname'
+URL_CREDS_SAS_FQ = 'azureservicebus://policyname:ke/y@hostname.servicebus.windows.net'  # noqa
+URL_CREDS_DA = 'azureservicebus://DefaultAzureCredential@hostname'
+URL_CREDS_DA_FQ = 'azureservicebus://DefaultAzureCredential@hostname.servicebus.windows.net' # noqa
+URL_CREDS_MI = 'azureservicebus://ManagedIdentityCredential@hostname'
+URL_CREDS_MI_FQ = 'azureservicebus://ManagedIdentityCredential@hostname.servicebus.windows.net' # noqa
 
 
 def test_queue_service_nocredentials():
@@ -105,9 +117,9 @@ def test_queue_service_nocredentials():
         assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'   # noqa
 
 
-def test_queue_service():
+def test_queue_service_sas():
     # Test gettings queue service without credentials
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
         channel = conn.channel()
 
@@ -124,22 +136,43 @@ def test_queue_service():
         # Ensure that queue_service is cached
         assert channel.queue_service == 'test'
         assert m.from_connection_string.call_count == 1
+        assert channel._namespace == 'hostname.servicebus.windows.net'
+
+
+def test_queue_service_da():
+    conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    # Check the DefaultAzureCredential has been parsed from the url correctly
+    # and the credential is a ManagedIdentityCredential
+    assert isinstance(channel._credential, DefaultAzureCredential)
+    assert channel._namespace == 'hostname.servicebus.windows.net'
+
+
+def test_queue_service_mi():
+    conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    # Check the ManagedIdentityCredential has been parsed from the url
+    # correctly and the credential is a ManagedIdentityCredential
+    assert isinstance(channel._credential, ManagedIdentityCredential)
+    assert channel._namespace == 'hostname.servicebus.windows.net'
 
 
 def test_conninfo():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
     assert channel.conninfo is conn
 
 
 def test_transport_type():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
     assert not channel.transport_options
 
 
 def test_default_wait_timeout_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     assert channel.wait_time_seconds == \
@@ -148,7 +181,7 @@ def test_default_wait_timeout_seconds():
 
 def test_custom_wait_timeout_seconds():
     conn = Connection(
-        URL_CREDS,
+        URL_CREDS_SAS,
         transport=azureservicebus.Transport,
         transport_options={'wait_time_seconds': 10}
     )
@@ -158,7 +191,7 @@ def test_custom_wait_timeout_seconds():
 
 
 def test_default_peek_lock_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     assert channel.peek_lock_seconds == \
@@ -166,7 +199,7 @@ def test_default_peek_lock_seconds():
 
 
 def test_custom_peek_lock_seconds():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
                       transport_options={'peek_lock_seconds': 65})
     channel = conn.channel()
 
@@ -175,7 +208,7 @@ def test_custom_peek_lock_seconds():
 
 def test_invalid_peek_lock_seconds():
     # Max is 300
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport,
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
                       transport_options={'peek_lock_seconds': 900})
     channel = conn.channel()
 
@@ -203,14 +236,35 @@ MockQueue = namedtuple(
 )
 
 
+@pytest.fixture(autouse=True)
+def sbac_class_patch():
+    with patch('kombu.transport.azureservicebus.ServiceBusAdministrationClient') as sbac: # noqa
+        yield sbac
+
+
+@pytest.fixture(autouse=True)
+def sbc_class_patch():
+    with patch('kombu.transport.azureservicebus.ServiceBusClient') as sbc: # noqa
+        yield sbc
+
+
+@pytest.fixture(autouse=True)
+def mock_clients(
+    sbc_class_patch,
+    sbac_class_patch,
+    mock_asb,
+    mock_asb_management
+):
+    sbc_class_patch.from_connection_string.return_value = mock_asb
+    sbac_class_patch.from_connection_string.return_value = mock_asb_management
+
+
 @pytest.fixture
 def mock_queue(mock_asb, mock_asb_management, random_queue) -> MockQueue:
     exchange = Exchange('test_servicebus', type='direct')
     queue = Queue(random_queue, exchange, random_queue)
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
-    channel._queue_service = mock_asb
-    channel._queue_mgmt_service = mock_asb_management
 
     queue(channel).declare()
     producer = messaging.Producer(channel, exchange, routing_key=random_queue)
@@ -291,7 +345,7 @@ def test_purge(mock_queue: MockQueue):
 
 def test_custom_queue_name_prefix():
     conn = Connection(
-        URL_CREDS,
+        URL_CREDS_SAS,
         transport=azureservicebus.Transport,
         transport_options={'queue_name_prefix': 'test-queue'}
     )
@@ -301,7 +355,7 @@ def test_custom_queue_name_prefix():
 
 
 def test_custom_entity_name():
-    conn = Connection(URL_CREDS, transport=azureservicebus.Transport)
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     channel = conn.channel()
 
     # dashes allowed and dots replaced by dashes
@@ -312,3 +366,104 @@ def test_custom_entity_name():
     assert channel.entity_name('test_celery') == 'test_celery'
     assert channel.entity_name('test:celery') == 'test_celery'
     assert channel.entity_name('test+celery') == 'test_celery'
+
+
+def test_basic_ack_complete_message(mock_queue: MockQueue):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(return_value=None)
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_ack.call_count == 1
+
+
+def test_basic_ack_when_already_settled(mock_queue: MockQueue):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=azure.servicebus.exceptions.MessageAlreadySettled())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_ack.call_count == 1
+
+
+def test_basic_ack_when_qos_raises_keyerror(mock_queue: MockQueue):
+    """Test that basic_ack calls super method when keyerror"""
+    mock_queue.channel.qos.get = MagicMock(side_effect=KeyError())
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_ack'
+    ) as super_basic_ack:
+        mock_queue.channel.basic_ack("invented_delivery_tag")
+        assert super_basic_ack.call_count == 1
+        assert mock_queue.channel.qos.get.call_count == 1
+
+
+def test_basic_ack_reject_message_when_raises_exception(
+    mock_queue: MockQueue
+):
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(side_effect=Exception())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject:
+        mock_queue.channel.basic_ack("test_delivery_tag")
+        assert mock_queue.channel.qos.get.call_count == 1
+        assert mock_queue.channel._get_asb_receiver.call_count == 1
+        assert queue_object_mock.receiver.complete_message.call_count == 1
+        assert super_basic_reject.call_count == 1
+
+
+def test_returning_sas():
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_SAS_FQ
+
+
+def test_returning_da():
+    conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_DA_FQ
+
+
+def test_returning_mi():
+    conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
+    assert conn.as_uri(True) == URL_CREDS_MI_FQ

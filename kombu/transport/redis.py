@@ -134,6 +134,7 @@ def get_redis_error_classes():
             IOError,
             OSError,
             exceptions.ConnectionError,
+            exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError)),
         (virtual.Transport.channel_errors + (
@@ -211,6 +212,7 @@ class GlobalKeyPrefixMixin:
         "DEL": {"args_start": 0, "args_end": None},
         "BRPOP": {"args_start": 0, "args_end": -1},
         "EVALSHA": {"args_start": 2, "args_end": 3},
+        "WATCH": {"args_start": 0, "args_end": None},
     }
 
     def _prefix_args(self, args):
@@ -381,7 +383,9 @@ class QoS(virtual.QoS):
     def reject(self, delivery_tag, requeue=False):
         if requeue:
             self.restore_by_tag(delivery_tag, leftmost=True)
-        self.ack(delivery_tag)
+        else:
+            self._remove_from_indices(delivery_tag).execute()
+        super().ack(delivery_tag)
 
     @contextmanager
     def pipe_or_acquire(self, pipe=None, client=None):
@@ -718,7 +722,7 @@ class Channel(virtual.Channel):
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
-
+        self._registered = False
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -743,6 +747,9 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
+        # and set to true after sucessfuly added channel to the poll.
+        self._registered = True
+
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
@@ -782,8 +789,10 @@ class Channel(virtual.Channel):
             except KeyError:
                 pass
             for queue in self._lookup(exchange, routing_key):
+                pri = self._get_message_priority(payload, reverse=False)
+
                 (pipe.lpush if leftmost else pipe.rpush)(
-                    queue, dumps(payload),
+                    self._q_for_pri(queue, pri), dumps(payload),
                 )
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
@@ -1078,6 +1087,11 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._closing = True
+        if self._in_poll:
+            try:
+                self._brpop_read()
+            except Empty:
+                pass
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
@@ -1142,11 +1156,17 @@ class Channel(virtual.Channel):
 
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
-        if (
-            hasattr(conn_class, '__init__') and
-            not accepts_argument(conn_class.__init__, 'health_check_interval')
-        ):
-            connparams.pop('health_check_interval')
+        if hasattr(conn_class, '__init__'):
+            # check health_check_interval for the class and bases
+            # classes
+            classes = [conn_class]
+            if hasattr(conn_class, '__bases__'):
+                classes += list(conn_class.__bases__)
+            for klass in classes:
+                if accepts_argument(klass.__init__, 'health_check_interval'):
+                    break
+            else:  # no break
+                connparams.pop('health_check_interval')
 
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
@@ -1184,9 +1204,12 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self):
-                    super().disconnect()
-                    channel._on_connection_disconnect(self)
+                def disconnect(self, *args):
+                    super().disconnect(*args)
+                    # We remove the connection from the poller
+                    # only if it has been added properly.
+                    if channel._registered:
+                        channel._on_connection_disconnect(self)
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
@@ -1215,7 +1238,7 @@ class Channel(virtual.Channel):
                 global_keyprefix=self.global_keyprefix,
             )
 
-        return redis.StrictRedis
+        return redis.Redis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
@@ -1361,7 +1384,7 @@ class SentinelChannel(Channel):
      * `master_name` - name of the redis group to poll
 
     Example:
-
+    -------
     .. code-block:: python
 
         >>> import kombu
@@ -1414,10 +1437,12 @@ class SentinelChannel(Channel):
 
         return sentinel_inst.master_for(
             master_name,
-            self.Client,
+            redis.Redis,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
+        params = self._connparams(asynchronous=asynchronous)
+        self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
 
 
