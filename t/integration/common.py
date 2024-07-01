@@ -410,6 +410,8 @@ class BasePriority:
                     serializer='pickle',
                     priority=prio_max
                 )
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
 
                 with consumer:
                     conn.drain_events(timeout=1)
