@@ -141,8 +141,13 @@ class Channel(virtual.Channel):
         self._namespace, self._credential = Transport.parse_uri(
             self.conninfo.hostname)
 
-        if (isinstance(self._credential, DefaultAzureCredential) or
-                isinstance(self._credential, ManagedIdentityCredential)):
+        if (
+            DefaultAzureCredential is not None
+            and isinstance(self._credential, DefaultAzureCredential)
+        ) or (
+            ManagedIdentityCredential is not None
+            and isinstance(self._credential, ManagedIdentityCredential)
+        ):
             return None
 
         if ":" in self._credential:
