@@ -4,6 +4,29 @@
  Change history
 ================
 
+.. _version-5.4.0rc2:
+
+5.4.0rc2
+========
+:release-date: 11 July, 2024
+:release-by: Tomer Nosrati
+
+The ``requests`` is no longer limited to <2.32.0 per #2041.
+Contribution #2007 by @awmackowiak was confirmed to have solved the Redis reconnection bug.
+
+- Bump mypy from 1.10.0 to 1.10.1 (#2039)
+- Fix typo in README.rst (#2036)
+- Reverted limiting requests<2.32.0 in requirements/default.txt but kept in tox.ini due to docker-py issue 3256 (#2041)
+- Redis transport - Redelivered messages should respect the original priority (#2026)
+- Exclude Unit 3.9 from CI (#2046)
+- Fixed CI error from excluding Python 3.9 unit tests (#2047)
+- Fixed flaky integration test: test_publish_requeue_consume() (#2048)
+- Bump pymongo from 4.7.3 to 4.8.0 (#2044)
+- fix: don't crash on `properties`.`body_encoding`: `utf-8` (#1690)
+- chore: handle kafka transport with confluentkafka ✨ (#1574)
+- Revert "Exclude Unit 3.9 from CI #2046" (#2054)
+- fix azure service bus isinstance checks when None (#2053)
+
 .. _version-5.4.0rc1:
 
 5.4.0rc1
