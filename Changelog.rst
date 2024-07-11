@@ -11,7 +11,7 @@
 :release-date: 11 July, 2024
 :release-by: Tomer Nosrati
 
-The ``requests`` is no longer limited to <2.32.0 per #2041.
+The ``requests`` package is no longer limited to <2.32.0 per #2041.
 Contribution #2007 by @awmackowiak was confirmed to have solved the Redis reconnection bug.
 
 - Bump mypy from 1.10.0 to 1.10.1 (#2039)
