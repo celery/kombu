@@ -34,6 +34,14 @@ up to 'prefetch_count' messages from queueA and work on them all before
 moving on to queueB.  If queueB is empty, it will wait up until
 'polling_interval' expires before moving back and checking on queueA.
 
+Message Attributes
+-----------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.
+
 Other Features supported by this transport
 ==========================================
 Predefined Queues
