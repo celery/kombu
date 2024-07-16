@@ -89,7 +89,7 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
-crit, warn = logger.critical, logger.warn
+crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -939,8 +939,8 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
-                        warn('Cannot process event on channel %r: %s',
-                             channel, repr(payload)[:4096], exc_info=1)
+                        warning('Cannot process event on channel %r: %s',
+                                channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
                     self.connection._deliver(
