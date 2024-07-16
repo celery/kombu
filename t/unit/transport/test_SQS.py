@@ -107,7 +107,8 @@ class SQSClientMock:
     def get_queue_url(self, QueueName=None):
         return self._queues[QueueName]
 
-    def send_message(self, QueueUrl=None, MessageBody=None, MessageAttributes=None):
+    def send_message(self, QueueUrl=None, MessageBody=None,
+                     MessageAttributes=None):
         for q in self._queues.values():
             if q.url == QueueUrl:
                 handle = ''.join(random.choice(string.ascii_lowercase) for
