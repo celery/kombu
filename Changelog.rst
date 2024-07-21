@@ -8,7 +8,7 @@
 
 5.4.0rc3
 ========
-:release-date: 21 July, 2024
+:release-date: 22 July, 2024
 :release-by: Tomer Nosrati
 
 - Fixed typo in Changelog for v5.4.0rc2 (#2057)
