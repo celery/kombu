@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-5.4.0rc3:
+
+5.4.0rc3
+========
+:release-date: 21 July, 2024
+:release-by: Tomer Nosrati
+
+- Fixed typo in Changelog for v5.4.0rc2 (#2057)
+- Use logging.Logger.warning (#2058)
+- Pin zstandard to latest version 0.23.0 (#2060)
+- Update mypy to 1.11.0 (#2062)
+- Update pytest to 8.3.1 (#2063)
+- SQS: add support for passing MessageAttributes (#2059)
+
 .. _version-5.4.0rc2:
 
 5.4.0rc2
