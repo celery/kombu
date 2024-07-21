@@ -107,13 +107,15 @@ class SQSClientMock:
     def get_queue_url(self, QueueName=None):
         return self._queues[QueueName]
 
-    def send_message(self, QueueUrl=None, MessageBody=None):
+    def send_message(self, QueueUrl=None, MessageBody=None,
+                     MessageAttributes=None):
         for q in self._queues.values():
             if q.url == QueueUrl:
                 handle = ''.join(random.choice(string.ascii_lowercase) for
                                  x in range(10))
                 q.messages.append({'Body': MessageBody,
-                                   'ReceiptHandle': handle})
+                                   'ReceiptHandle': handle,
+                                   'MessageAttributes': MessageAttributes})
                 break
 
     def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1,
@@ -472,7 +474,7 @@ class test_Channel:
             'WaitTimeSeconds': self.channel.wait_time_seconds,
         }
         assert get_list_args[3] == \
-               self.channel.sqs().get_queue_url(self.queue_name).url
+            self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
 
     def test_drain_events_with_empty_list(self):
@@ -977,3 +979,15 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_not_called()
+
+    def test_message_attribute(self):
+        message = 'my test message'
+        self.producer.publish(message, message_attributes={
+            'Attribute1': {'DataType': 'String',
+                           'StringValue': 'STRING_VALUE'}
+        }
+        )
+        output_message = self.queue(self.channel).get()
+        assert message == output_message.payload
+        # It's not propogated to the properties
+        assert 'message_attributes' not in output_message.properties

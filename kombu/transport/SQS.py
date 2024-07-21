@@ -34,6 +34,14 @@ up to 'prefetch_count' messages from queueA and work on them all before
 moving on to queueB.  If queueB is empty, it will wait up until
 'polling_interval' expires before moving back and checking on queueA.
 
+Message Attributes
+-----------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.
+
 Other Features supported by this transport
 ==========================================
 Predefined Queues
@@ -412,13 +420,12 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        if self.sqs_base64_encoding:
-            body = AsyncMessage().encode(dumps(message))
-        else:
-            body = dumps(message)
-        kwargs = {'QueueUrl': q_url, 'MessageBody': body}
-
+        kwargs = {'QueueUrl': q_url}
         if 'properties' in message:
+            if 'message_attributes' in message['properties']:
+                # we don't want to want to have the attribute in the body
+                kwargs['MessageAttributes'] = \
+                    message['properties'].pop('message_attributes')
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' in message['properties']:
                     kwargs['MessageGroupId'] = \
@@ -434,6 +441,13 @@ class Channel(virtual.Channel):
                 if "DelaySeconds" in message['properties']:
                     kwargs['DelaySeconds'] = \
                         message['properties']['DelaySeconds']
+
+        if self.sqs_base64_encoding:
+            body = AsyncMessage().encode(dumps(message))
+        else:
+            body = dumps(message)
+        kwargs['MessageBody'] = body
+
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(
