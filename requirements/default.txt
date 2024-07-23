@@ -1,4 +1,4 @@
-typing_extensions==4.12.1; python_version<"3.10"
+typing_extensions==4.12.2; python_version<"3.10"
 amqp>=5.1.1,<6.0.0
 vine
 backports.zoneinfo[tzdata]>=0.2.1; python_version < '3.9'
