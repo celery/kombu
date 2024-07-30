@@ -5,7 +5,7 @@ redis>=4.5.2,!=5.0.2,!=4.5.5
 pymongo==4.8.0
 
 # Zookeeper transport
-kazoo
+kazoo==2.10.0
 
 # SQS transport
 boto3>=1.26.143
