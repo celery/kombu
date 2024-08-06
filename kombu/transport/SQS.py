@@ -453,7 +453,7 @@ class Channel(virtual.Channel):
             c.change_message_visibility(
                 QueueUrl=q_url,
                 ReceiptHandle=message['properties']['delivery_tag'],
-                VisibilityTimeout=0
+                VisibilityTimeout=self.wait_time_seconds
             )
         else:
             c.send_message(**kwargs)
