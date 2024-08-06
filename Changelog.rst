@@ -4,6 +4,94 @@
  Change history
 ================
 
+.. _version-5.4.0:
+
+5.4.0
+=====
+:release-date: 6 August, 2024
+:release-by: Tomer Nosrati
+
+We want to add a special thanks to contribution `#2007 <https://github.com/celery/kombu/pull/2007>`_ by
+@awmackowiak for fixing the Redis reconnection bug. Restoring Redis stability has been an essential improvement - thank you!
+
+The rest of the changes are listed below.
+
+Changes
+-------
+- fix: Fanout exchange messages mixed across virtual databases in Redis sentinel (#1986)
+- Pin pymongo to latest version 4.7.2 (#1994)
+- enable/fix test_etcd.py (resolves #2001) (#2002)
+- Limit requests<2.32.0 due to docker-py issue 3256 (#2011)
+- enhance: allow users to disable broker heartbeats (#1998)
+- enhance: allow uses to disable broker heartbeats by not providing a timeout (#1997, #1998) (#2016)
+- chore(typing): annotate `utils/debug.py` (#1714)
+- ConnectionPool can't be used after .resize(..., reset=True) (resolves #2018) (#2024)
+- Fix Redis connections after reconnect - consumer starts consuming the tasks after crash (#2007)
+- Add support for mongodb+srv scheme (#1976)
+- Added Changelog for v5.4.0rc1 (#2033)
+- Fixed bumpversion bug with RC versions (#2034)
+- Fix typo in README.rst (#2036)
+- Reverted limiting requests<2.32.0 in requirements/default.txt but kept in tox.ini due to docker-py issue 3256 (#2041)
+- Redis transport - Redelivered messages should respect the original priority (#2026)
+- Exclude Unit 3.9 from CI (#2046)
+- Fixed CI error from excluding Python 3.9 unit tests (#2047)
+- Fixed flaky integration test: test_publish_requeue_consume() (#2048)
+- fix: don't crash on `properties`.`body_encoding`: `utf-8` (#1690)
+- chore: handle kafka transport with confluentkafka ✨ (#1574)
+- Revert "Exclude Unit 3.9 from CI #2046" (#2054)
+- fix azure service bus isinstance checks when None (#2053)
+- Added Changelog for v5.4.0rc2 (#2056)
+- Fixed typo in Changelog for v5.4.0rc2 (#2057)
+- Use logging.Logger.warning (#2058)
+- SQS: add support for passing MessageAttributes (#2059)
+- Added Changelog for v5.4.0rc3 (#2064)
+- Prepare for release: v5.4.0 (#2095)
+
+Dependencies Updates
+--------------------
+- Update mypy to 1.10.0 (#1988)
+- Update pytest to 8.2.0 (#1990)
+- Bump pytest from 8.2.0 to 8.2.1 (#2005)
+- Pin typing_extensions to latest version 4.12.1 (#2017)
+- Bump pytest from 8.2.1 to 8.2.2 (#2021)
+- Bump pymongo from 4.7.2 to 4.7.3 (#2022)
+- Update flake8 to 7.1.0 (#2028)
+- Bump mypy from 1.10.0 to 1.10.1 (#2039)
+- Bump pymongo from 4.7.3 to 4.8.0 (#2044)
+- Pin zstandard to latest version 0.23.0 (#2060)
+- Update mypy to 1.11.0 (#2062)
+- Update pytest to 8.3.1 (#2063)
+- Update typing_extensions to 4.12.2 (#2066)
+- Pin vine to latest version 5.1.0 (#2067)
+- Update pytest to 8.3.2 (#2076)
+- Pin codecov to latest version 2.1.13 (#2084)
+- Pin pytest-freezer to latest version 0.4.8 (#2085)
+- Pin msgpack to latest version 1.0.8 (#2080)
+- Pin python-consul2 to latest version 0.1.5 (#2078)
+- Pin pycouchdb to latest version 1.16.0 (#2079)
+- Pin bumpversion to latest version 0.6.0 (#2083)
+- Pin kazoo to latest version 2.10.0 (#2082)
+- Pin pyro4 to latest version 4.82 (#2081)
+- Bump mypy from 1.11.0 to 1.11.1 (#2087)
+- Bump flake8 from 7.1.0 to 7.1.1 (#2090)
+
+Changes since 5.4.0rc3
+----------------------
+- Update typing_extensions to 4.12.2 (#2066)
+- Pin vine to latest version 5.1.0 (#2067)
+- Update pytest to 8.3.2 (#2076)
+- Pin codecov to latest version 2.1.13 (#2084)
+- Pin pytest-freezer to latest version 0.4.8 (#2085)
+- Pin msgpack to latest version 1.0.8 (#2080)
+- Pin python-consul2 to latest version 0.1.5 (#2078)
+- Pin pycouchdb to latest version 1.16.0 (#2079)
+- Pin bumpversion to latest version 0.6.0 (#2083)
+- Pin kazoo to latest version 2.10.0 (#2082)
+- Pin pyro4 to latest version 4.82 (#2081)
+- Bump mypy from 1.11.0 to 1.11.1 (#2087)
+- Bump flake8 from 7.1.0 to 7.1.1 (#2090)
+- Prepare for release: v5.4.0 (#2095)
+
 .. _version-5.4.0rc3:
 
 5.4.0rc3
