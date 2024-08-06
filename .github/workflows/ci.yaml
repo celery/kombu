@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
     steps:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
@@ -17,6 +17,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - name: Allow pre-releases in tox on Python 3.13
+        run: echo "PIP_PRE=1" >> $GITHUB_ENV
+        if: ${{ matrix.python-version == '3.13' }}
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
       - name: Run unittest
@@ -29,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.8,3.9,"3.10","3.11","3.12"]
+        python-version: [3.8,3.9,"3.10","3.11","3.12","3.13"]
         experimental: [false]
         include:
           - python-version: pypy3.9
@@ -44,6 +48,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - name: Allow pre-releases in tox on Python 3.13
+        run: echo "PIP_PRE=1" >> $GITHUB_ENV
+        if: ${{ matrix.python-version == '3.13' }}
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
       # Tox fails if a Python versions contains a hyphen, this changes "pypy-3.9" to "pypy3.9".
@@ -74,6 +82,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          allow-prereleases: true
+      - name: Allow pre-releases in tox on Python 3.13
+        run: echo "PIP_PRE=1" >> $GITHUB_ENV
+        if: ${{ matrix.python-version == '3.13' }}
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
       - name: Run flake8
