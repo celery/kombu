@@ -5,8 +5,8 @@
 from __future__ import annotations
 
 from difflib import SequenceMatcher
-from typing import Iterable, Iterator
-from typing import Tuple
+from typing import Iterable, Iterator, Tuple
+
 from kombu import version_info_t
 
 
