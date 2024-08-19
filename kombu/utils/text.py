@@ -4,9 +4,10 @@
 
 from __future__ import annotations
 
+import re
 from difflib import SequenceMatcher
 from typing import Iterable, Iterator
-from typing import Tuple
+
 from kombu import version_info_t
 
 
@@ -42,16 +43,33 @@ def fmatch_best(needle: str, haystack: Iterable[str], min_ratio: float = 0.6) ->
         return None
 
 
-def version_string_as_tuple(s: str) -> version_info_t:
-    """Convert version string to version info tuple."""
-    v = _unpack_version(*s.split('.'))
-    # X.Y.3a1 -> (X, Y, 3, 'a1')
-    if isinstance(v.micro, str):
-        v = version_info_t(v.major, v.minor, *_splitmicro(*v[2:]))
-    # X.Y.3a1-40 -> (X, Y, 3, 'a1', '40')
-    if not v.serial and v.releaselevel and '-' in v.releaselevel:
-        v = version_info_t(*list(v[0:3]) + v.releaselevel.split('-'))
-    return v
+def version_string_as_tuple(version: str) -> version_info_t:
+    """
+    This is a function for parsing the version into
+    meaningful comment.
+    """
+
+    # regex pattern to match the different parts of the version string
+    pattern = r"^(\d+)"  # catching the major version (mandatory)
+    pattern += r"(?:\.(\d+))?"  # optionally catching the minor version
+    pattern += r"(?:\.(\d+))?"  # optionally catching the micro version
+    pattern += r"(?:\.*([a-zA-Z+-][\da-zA-Z+-]*))?"  # optionally catching the release level (starting with a letter, + or -) after a dot
+    pattern += r"(?:\.(.*))?"  # optionally catching the serial number after a dot
+
+    # applying the regex pattern to the input version string
+    match = re.match(pattern, version)
+
+    if not match:
+        raise ValueError(f"Invalid version string: {version}")
+
+    # extracting the matched groups
+    major = int(match.group(1))
+    minor = int(match.group(2)) if match.group(2) else 0
+    micro = int(match.group(3)) if match.group(3) else 0
+    releaselevel = match.group(4) if match.group(4) else ""
+    serial = match.group(5) if match.group(5) else ""
+
+    return _unpack_version(major, minor, micro, releaselevel, serial)
 
 
 def _unpack_version(
@@ -60,7 +78,6 @@ def _unpack_version(
     micro: str | int = 0,
     releaselevel: str = '',
     serial: str = '',
-    *args: Tuple[str]
 ) -> version_info_t:
     return version_info_t(int(major), int(minor), micro, releaselevel, serial)
 
