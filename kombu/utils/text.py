@@ -6,7 +6,11 @@ from __future__ import annotations
 
 import re
 from difflib import SequenceMatcher
+<<<<<<< HEAD
 from typing import Iterable, Iterator
+=======
+from typing import Iterable, Iterator, Tuple
+>>>>>>> b8cf3ab6c566bc61da06943a5e2c0d56b51cdaa1
 
 from kombu import version_info_t
 
