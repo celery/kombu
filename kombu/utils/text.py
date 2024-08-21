@@ -12,12 +12,12 @@ from typing import Iterable, Iterator
 from kombu import version_info_t
 
 
-def escape_regex(p, white=""):
+def escape_regex(p, white=''):
     # type: (str, str) -> str
     """Escape string for use within a regular expression."""
     # what's up with re.escape? that code must be neglected or something
-    return "".join(
-        c if c.isalnum() or c in white else ("\\000" if c == "\000" else "\\" + c)
+    return ''.join(
+        c if c.isalnum() or c in white else ('\\000' if c == '\000' else '\\' + c)
         for c in p
     )
 
@@ -72,11 +72,11 @@ def version_string_as_tuple(version: str) -> version_info_t:
     ------
         ValueError: If the version string is invalid and does not match the expected pattern.
     """
-    pattern = r"^(\d+)"  # catching the major version (mandatory)
-    pattern += r"(?:\.(\d+))?"  # optionally catching the minor version
-    pattern += r"(?:\.(\d+))?"  # optionally catching the micro version
-    pattern += r"(?:\.*([a-zA-Z+-][\da-zA-Z+-]*))?"  # optionally catching the release level (starting with a letter, + or -) after a dot
-    pattern += r"(?:\.(.*))?"  # optionally catching the serial number after a dot
+    pattern = r'^(\d+)'  # catching the major version (mandatory)
+    pattern += r'(?:\.(\d+))?'  # optionally catching the minor version
+    pattern += r'(?:\.(\d+))?'  # optionally catching the micro version
+    pattern += r'(?:\.*([a-zA-Z+-][\da-zA-Z+-]*))?'  # optionally catching the release level (starting with a letter, + or -) after a dot
+    pattern += r'(?:\.(.*))?'  # optionally catching the serial number after a dot
 
     # applying the regex pattern to the input version string
     match = re.match(pattern, version)
@@ -88,24 +88,24 @@ def version_string_as_tuple(version: str) -> version_info_t:
     major = int(match.group(1))
     minor = int(match.group(2)) if match.group(2) else 0
     micro = int(match.group(3)) if match.group(3) else 0
-    releaselevel = match.group(4) if match.group(4) else ""
-    serial = match.group(5) if match.group(5) else ""
+    releaselevel = match.group(4) if match.group(4) else ''
+    serial = match.group(5) if match.group(5) else ''
 
     return _unpack_version(major, minor, micro, releaselevel, serial)
 
 
 def _unpack_version(
-    major: str,
+    major: str | int = 0,
     minor: str | int = 0,
     micro: str | int = 0,
-    releaselevel: str = "",
-    serial: str = "",
+    releaselevel: str = '',
+    serial: str = '',
 ) -> version_info_t:
-    return version_info_t(int(major), int(minor), micro, releaselevel, serial)
+    return version_info_t(int(major), int(minor), int(micro), releaselevel, serial)
 
 
 def _splitmicro(
-    micro: str, releaselevel: str = "", serial: str = ""
+    micro: str, releaselevel: str = '', serial: str = ''
 ) -> tuple[int, str, str]:
     for index, char in enumerate(micro):
         if not char.isdigit():
