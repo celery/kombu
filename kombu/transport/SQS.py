@@ -428,7 +428,11 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-        super()._delete(queue)
+
+        q_url = self._resolve_queue_url(queue)
+        self.sqs().delete_queue(
+            QueueUrl=q_url,
+        )
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
