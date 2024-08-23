@@ -262,6 +262,11 @@ class test_Channel:
             'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
 
+    def test_resolve_queue_url(self):
+        queue_name = 'unittest_queue'
+        assert self.sqs_conn_mock._queues[queue_name].url == \
+            self.channel._resolve_queue_url(queue_name)
+
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
