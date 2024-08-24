@@ -384,7 +384,7 @@ class Channel(virtual.Channel):
                 ).format(sqs_qname))
 
             raise DoesNotExistQueueException(
-                "Queue with name '{}' doesn't exist in SQS".format(sqs_qname)
+                f"Queue with name '{sqs_qname}' doesn't exist in SQS"
             )
 
     def _new_queue(self, queue, **kwargs):
