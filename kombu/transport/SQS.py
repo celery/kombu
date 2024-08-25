@@ -192,6 +192,10 @@ class AccessDeniedQueueException(Exception):
     """
 
 
+class DoesNotExistQueueException(Exception):
+    """The specified queue doesn't exist."""
+
+
 class QoS(virtual.QoS):
     """Quality of Service guarantees implementation for SQS."""
 
@@ -358,15 +362,8 @@ class Channel(virtual.Channel):
     def canonical_queue_name(self, queue_name):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
-    def _new_queue(self, queue, **kwargs):
-        """Ensure a queue with given name exists in SQS.
-
-        Arguments:
-        ---------
-            queue (str): the AMQP queue name
-        Returns
-            str: the SQS queue URL
-        """
+    def _resolve_queue_url(self, queue):
+        """Try to retrieve the SQS queue URL for a given queue name."""
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
         sqs_qname = self.canonical_queue_name(queue)
@@ -386,6 +383,23 @@ class Channel(virtual.Channel):
                     "defined in 'predefined_queues'."
                 ).format(sqs_qname))
 
+            raise DoesNotExistQueueException(
+                f"Queue with name '{sqs_qname}' doesn't exist in SQS"
+            )
+
+    def _new_queue(self, queue, **kwargs):
+        """Ensure a queue with given name exists in SQS.
+
+        Arguments:
+        ---------
+            queue (str): the AMQP queue name
+        Returns
+            str: the SQS queue URL
+        """
+        try:
+            return self._resolve_queue_url(queue)
+        except DoesNotExistQueueException:
+            sqs_qname = self.canonical_queue_name(queue)
             attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
             if sqs_qname.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
@@ -414,7 +428,11 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-        super()._delete(queue)
+
+        q_url = self._resolve_queue_url(queue)
+        self.sqs().delete_queue(
+            QueueUrl=q_url,
+        )
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):

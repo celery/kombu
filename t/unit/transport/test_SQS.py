@@ -137,6 +137,16 @@ class SQSClientMock:
             if q.url == QueueUrl:
                 q.messages = []
 
+    def delete_queue(self, QueueUrl=None):
+        queue_name = None
+        for key, val in self._queues.items():
+            if val.url == QueueUrl:
+                queue_name = key
+                break
+        if queue_name is None:
+            raise Exception(f"Queue url {QueueUrl} not found")
+        del self._queues[queue_name]
+
 
 class test_Channel:
 
@@ -262,6 +272,11 @@ class test_Channel:
             'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
 
+    def test_resolve_queue_url(self):
+        queue_name = 'unittest_queue'
+        assert self.sqs_conn_mock._queues[queue_name].url == \
+            self.channel._resolve_queue_url(queue_name)
+
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
@@ -316,6 +331,7 @@ class test_Channel:
         self.channel._new_queue(queue_name)
         self.channel._delete(queue_name)
         assert queue_name not in self.channel._queue_cache
+        assert queue_name not in self.sqs_conn_mock._queues
 
     def test_get_from_sqs(self):
         # Test getting a single message
