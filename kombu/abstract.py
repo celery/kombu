@@ -53,7 +53,7 @@ class Object:
                     setattr(self, name, None)
 
     def as_dict(self, recurse: bool = False) -> dict[str, Any]:
-        def f(obj: Any, type: Callable[[Any], Any]) -> Any:
+        def f(obj: Any, type: Callable[[Any], Any] | None = None) -> Any:
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
             return type(obj) if type and obj is not None else obj

@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
+
+from botocore.serialize import Serializer
 from vine import transform
 
 from kombu.asynchronous.aws.connection import AsyncAWSQueryConnection
+from kombu.asynchronous.aws.ext import AWSRequest
 
 from .ext import boto3
 from .message import AsyncMessage
@@ -24,6 +28,84 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             region_name=region, debug=debug,
             **kwargs
         )
+
+    def _create_query_request(self, operation, params, queue_url, method):
+        params = params.copy()
+        if operation:
+            params['Action'] = operation
+
+        # defaults for non-get
+        param_payload = {'data': params}
+        if method.lower() == 'get':
+            # query-based opts
+            param_payload = {'params': params}
+
+        return AWSRequest(method=method, url=queue_url, **param_payload)
+
+    def _create_json_request(self, operation, params, queue_url):
+        params = params.copy()
+        params['QueueUrl'] = queue_url
+
+        service_model = self.sqs_connection.meta.service_model
+        operation_model = service_model.operation_model(operation)
+
+        url = self.sqs_connection._endpoint.host
+
+        headers = {}
+        # Content-Type
+        json_version = operation_model.metadata['jsonVersion']
+        content_type = f'application/x-amz-json-{json_version}'
+        headers['Content-Type'] = content_type
+
+        # X-Amz-Target
+        target = '{}.{}'.format(
+            operation_model.metadata['targetPrefix'],
+            operation_model.name,
+        )
+        headers['X-Amz-Target'] = target
+
+        param_payload = {
+            'data': json.dumps(params),
+            'headers': headers
+        }
+
+        method = operation_model.http.get('method', Serializer.DEFAULT_METHOD)
+        return AWSRequest(
+            method=method,
+            url=url,
+            **param_payload
+        )
+
+    def make_request(self, operation_name, params, queue_url, verb, callback=None):  # noqa
+        """
+        Overide make_request to support different protocols.
+
+        botocore is soon going to change the default protocol of communicating
+        with SQS backend from 'query' to 'json', so we need a special
+        implementation of make_request for SQS. More information on this can
+        be found in: https://github.com/celery/kombu/pull/1807.
+        """
+        signer = self.sqs_connection._request_signer
+
+        service_model = self.sqs_connection.meta.service_model
+        protocol = service_model.protocol
+
+        if protocol == 'query':
+            request = self._create_query_request(
+                operation_name, params, queue_url, verb)
+        elif protocol == 'json':
+            request = self._create_json_request(
+                operation_name, params, queue_url)
+        else:
+            raise Exception(f'Unsupported protocol: {protocol}.')
+
+        signing_type = 'presign-url' if request.method.lower() == 'get' \
+            else 'standard'
+
+        signer.sign(operation_name, request, signing_type=signing_type)
+        prepared_request = request.prepare()
+
+        return self._mexe(prepared_request, callback=callback)
 
     def create_queue(self, queue_name,
                      visibility_timeout=None, callback=None):

@@ -8,9 +8,9 @@ import sys
 from collections import namedtuple
 from typing import Any, cast
 
-__version__ = '5.3.0b3'
+__version__ = '5.4.0'
 __author__ = 'Ask Solem'
-__contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
+__contact__ = 'auvipy@gmail.com'
 __homepage__ = 'https://kombu.readthedocs.io'
 __docformat__ = 'restructuredtext en'
 

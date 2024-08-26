@@ -1,6 +1,5 @@
-pytz
-pytest>=7.1.1
-pytest-sugar
-Pyro4
-hypothesis
-pytest-freezegun
+hypothesis<7
+Pyro4==4.82
+pytest-freezer==0.4.8
+pytest-sugar==1.0.0
+pytest==8.3.2

@@ -92,7 +92,7 @@ class AsyncHTTPSConnection:
         headers = Headers(self.headers)
         return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
-                            request_timeout=self.timeout, validate_cert=False)
+                            request_timeout=self.timeout, validate_cert=True)
 
     def getresponse(self, callback=None):
         request = self.getrequest()
@@ -193,7 +193,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         param_payload = {'data': params}
         if verb.lower() == 'get':
             # query-based opts
-            signing_type = 'presignurl'
+            signing_type = 'presign-url'
             param_payload = {'params': params}
 
         request = AWSRequest(method=verb, url=path, **param_payload)

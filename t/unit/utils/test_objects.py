@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest import mock
+
 from kombu.utils.objects import cached_property
 
 
@@ -51,3 +53,33 @@ class test_cached_property:
         assert x.xx == 10
 
         del x.foo
+
+    def test_locks_on_access(self):
+
+        class X:
+            @cached_property
+            def foo(self):
+                return 42
+
+        x = X()
+
+        # Getting the value acquires the lock, and may do so recursively
+        # on Python < 3.12 because the superclass acquires it.
+        with mock.patch.object(X.foo, 'lock') as mock_lock:
+            assert x.foo == 42
+        mock_lock.__enter__.assert_called()
+        mock_lock.__exit__.assert_called()
+
+        # Setting a value also acquires the lock.
+        with mock.patch.object(X.foo, 'lock') as mock_lock:
+            x.foo = 314
+        assert x.foo == 314
+        mock_lock.__enter__.assert_called_once()
+        mock_lock.__exit__.assert_called_once()
+
+        # .. as does clearing the cached value to recompute it.
+        with mock.patch.object(X.foo, 'lock') as mock_lock:
+            del x.foo
+        assert x.foo == 42
+        mock_lock.__enter__.assert_called_once()
+        mock_lock.__exit__.assert_called_once()

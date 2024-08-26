@@ -46,7 +46,7 @@ class BreakOutException(Exception):
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_QoS__init__:
 
-    def setup(self):
+    def setup_method(self):
         self.mock_session = Mock()
         self.qos = QoS(self.mock_session)
 
@@ -64,7 +64,7 @@ class test_QoS__init__:
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_QoS_can_consume:
 
-    def setup(self):
+    def setup_method(self):
         session = Mock()
         self.qos = QoS(session)
 
@@ -87,7 +87,7 @@ class test_QoS_can_consume:
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_QoS_can_consume_max_estimate:
 
-    def setup(self):
+    def setup_method(self):
         self.mock_session = Mock()
         self.qos = QoS(self.mock_session)
 
@@ -104,7 +104,7 @@ class test_QoS_can_consume_max_estimate:
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_QoS_ack:
 
-    def setup(self):
+    def setup_method(self):
         self.mock_session = Mock()
         self.qos = QoS(self.mock_session)
 
@@ -132,7 +132,7 @@ class test_QoS_reject:
         self.mock_RELEASED = self.mock_qpid.messaging.RELEASED
         self.mock_REJECTED = self.mock_qpid.messaging.REJECTED
 
-    def setup(self):
+    def setup_method(self):
         self.mock_session = Mock()
         self.mock_message = Mock()
         self.qos = QoS(self.mock_session)
@@ -185,7 +185,7 @@ class test_QoS:
         m, m_delivery_tag = self.mock_message_factory()
         qos.append(m, m_delivery_tag)
 
-    def setup(self):
+    def setup_method(self):
         self.mock_session = Mock()
         self.qos_no_limit = QoS(self.mock_session)
         self.qos_limit_2 = QoS(self.mock_session, prefetch_count=2)
@@ -226,7 +226,7 @@ class test_QoS:
 class ConnectionTestBase:
 
     @patch(QPID_MODULE + '.qpid')
-    def setup(self, mock_qpid):
+    def setup_method(self, mock_qpid):
         self.connection_options = {
             'host': 'localhost',
             'port': 5672,
@@ -389,8 +389,8 @@ class test_Connection_close(ConnectionTestBase):
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_Connection_close_channel(ConnectionTestBase):
 
-    def setup(self):
-        super().setup()
+    def setup_method(self):
+        super().setup_method()
         self.conn.channels = Mock()
 
     def test_connection_close_channel_removes_channel_from_channel_list(self):
@@ -425,7 +425,7 @@ class ChannelTestBase:
 @pytest.mark.skip(reason='Not supported in Python3')
 class test_Channel_purge(ChannelTestBase):
 
-    def setup(self):
+    def setup_method(self):
         self.mock_queue = Mock()
 
     def test_gets_queue(self):
@@ -815,7 +815,7 @@ class test_Channel_queue_delete(ChannelTestBase):
 class test_Channel:
 
     @patch(QPID_MODULE + '.qpidtoollibs')
-    def setup(self, mock_qpidtoollibs):
+    def setup_method(self, mock_qpidtoollibs):
         self.mock_connection = Mock()
         self.mock_qpid_connection = Mock()
         self.mock_qpid_session = Mock()
@@ -1690,7 +1690,7 @@ class test_Transport_Qpid_callback_handlers_async:
 class test_Transport_Qpid_callback_handlers_sync:
 
     @pytest.fixture(autouse=True)
-    def setup(self, patching, disable_runtime_dependency_check):
+    def setup_method(self, patching, disable_runtime_dependency_check):
         self.mock_os_write = patching(QPID_MODULE + '.os.write')
         self.transport = Transport(Mock())
 
@@ -1775,7 +1775,7 @@ class test_Transport_verify_runtime_environment:
 @pytest.mark.usefixtures('disable_runtime_dependency_check')
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         """Creates a mock_client to be used in testing."""
         self.mock_client = Mock()
 

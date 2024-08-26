@@ -66,6 +66,7 @@ class Broadcast(Queue):
     and both the queue and exchange is configured with auto deletion.
 
     Arguments:
+    ---------
         name (str): This is used as the name of the exchange.
         queue (str): By default a unique id is used for the queue
             name for every consumer.  You can specify a custom
@@ -203,7 +204,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
 
     ``eventloop`` is a generator.
 
-    Examples:
+    Examples
+    --------
         >>> from kombu.common import eventloop
 
         >>> def run(conn):
@@ -219,7 +221,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         for _ in eventloop(connection, limit=1, timeout=1):
             pass
 
-    See Also:
+    See Also
+    --------
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.
     """
@@ -236,6 +239,7 @@ def send_reply(exchange, req, msg,
     """Send reply for request.
 
     Arguments:
+    ---------
         exchange (kombu.Exchange, str): Reply exchange
         req (~kombu.Message): Original request, a message with
             a ``reply_to`` property.
@@ -309,6 +313,7 @@ def ignore_errors(conn, fun=None, *args, **kwargs):
 
 
     Note:
+    ----
         Connection and channel errors should be properly handled,
         and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
@@ -348,12 +353,14 @@ class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
     Arguments:
+    ---------
         callback (Callable): Function used to set new prefetch count,
             e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
             with a single ``prefetch_count`` keyword argument.
         initial_value (int): Initial prefetch count value..
 
     Example:
+    -------
         >>> from kombu import Consumer, Connection
         >>> connection = Connection('amqp://')
         >>> consumer = Consumer(connection)
@@ -396,6 +403,7 @@ class QoS:
         """Increment the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
             when necessary.
         """
@@ -408,6 +416,7 @@ class QoS:
         """Decrement the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
             when necessary.
         """

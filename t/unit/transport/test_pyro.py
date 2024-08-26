@@ -9,7 +9,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 class test_PyroTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.c = Connection(transport='pyro', virtual_host="kombu.broker")
         self.e = Exchange('test_transport_pyro')
         self.q = Queue('test_transport_pyro',
