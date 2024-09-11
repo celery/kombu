@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-5.4.1:
+
+5.4.1
+=====
+:release-date: 11 Sep, 2024
+:release-by: Tomer Nosrati
+
+- Update mypy to 1.11.2 (#2101)
+- SQS: Fixes #2091 queue_delete() method doesn't actually delete the queue (#2099)
+- Validate SQS SSL certs by default (#2094)
+- Resolving TypeError, during version unpacking (#2098)
+- Revert: allow users to disable broker heartbeats by not providing a timeout (#2097, #2016) (#2104)
+- Update msgpack to 1.1.0 (#2105)
+- Update pytest to 8.3.3 (#2108)
+- Prepare for release: v5.4.1 (#2109)
+
 .. _version-5.4.0:
 
 5.4.0
