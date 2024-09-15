@@ -34,6 +34,14 @@ up to 'prefetch_count' messages from queueA and work on them all before
 moving on to queueB.  If queueB is empty, it will wait up until
 'polling_interval' expires before moving back and checking on queueA.
 
+Message Attributes
+-----------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.
+
 Other Features supported by this transport
 ==========================================
 Predefined Queues
@@ -182,6 +190,10 @@ class AccessDeniedQueueException(Exception):
     This may occur if the permissions are not correctly set or the
     credentials are invalid.
     """
+
+
+class DoesNotExistQueueException(Exception):
+    """The specified queue doesn't exist."""
 
 
 class QoS(virtual.QoS):
@@ -350,15 +362,8 @@ class Channel(virtual.Channel):
     def canonical_queue_name(self, queue_name):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
-    def _new_queue(self, queue, **kwargs):
-        """Ensure a queue with given name exists in SQS.
-
-        Arguments:
-        ---------
-            queue (str): the AMQP queue name
-        Returns
-            str: the SQS queue URL
-        """
+    def _resolve_queue_url(self, queue):
+        """Try to retrieve the SQS queue URL for a given queue name."""
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
         sqs_qname = self.canonical_queue_name(queue)
@@ -378,6 +383,23 @@ class Channel(virtual.Channel):
                     "defined in 'predefined_queues'."
                 ).format(sqs_qname))
 
+            raise DoesNotExistQueueException(
+                f"Queue with name '{sqs_qname}' doesn't exist in SQS"
+            )
+
+    def _new_queue(self, queue, **kwargs):
+        """Ensure a queue with given name exists in SQS.
+
+        Arguments:
+        ---------
+            queue (str): the AMQP queue name
+        Returns
+            str: the SQS queue URL
+        """
+        try:
+            return self._resolve_queue_url(queue)
+        except DoesNotExistQueueException:
+            sqs_qname = self.canonical_queue_name(queue)
             attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
             if sqs_qname.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
@@ -406,19 +428,22 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-        super()._delete(queue)
+
+        q_url = self._resolve_queue_url(queue)
+        self.sqs().delete_queue(
+            QueueUrl=q_url,
+        )
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        if self.sqs_base64_encoding:
-            body = AsyncMessage().encode(dumps(message))
-        else:
-            body = dumps(message)
-        kwargs = {'QueueUrl': q_url, 'MessageBody': body}
-
+        kwargs = {'QueueUrl': q_url}
         if 'properties' in message:
+            if 'message_attributes' in message['properties']:
+                # we don't want to want to have the attribute in the body
+                kwargs['MessageAttributes'] = \
+                    message['properties'].pop('message_attributes')
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' in message['properties']:
                     kwargs['MessageGroupId'] = \
@@ -434,6 +459,13 @@ class Channel(virtual.Channel):
                 if "DelaySeconds" in message['properties']:
                     kwargs['DelaySeconds'] = \
                         message['properties']['DelaySeconds']
+
+        if self.sqs_base64_encoding:
+            body = AsyncMessage().encode(dumps(message))
+        else:
+            body = dumps(message)
+        kwargs['MessageBody'] = body
+
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(

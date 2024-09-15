@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.4.0rc1
+:Version: 5.4.1
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -168,7 +168,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
