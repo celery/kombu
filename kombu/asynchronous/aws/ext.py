@@ -4,12 +4,14 @@ from __future__ import annotations
 
 try:
     import boto3
+    import sqs_extended_client
     from botocore import exceptions
     from botocore.awsrequest import AWSRequest
     from botocore.httpsession import get_cert_path
     from botocore.response import get_response
 except ImportError:
     boto3 = None
+    sqs_extended_client = None
 
     class _void:
         pass
