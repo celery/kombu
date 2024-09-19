@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-5.4.2:
+
+5.4.2
+=====
+:release-date: 19 Sep, 2024
+:release-by: Tomer Nosrati
+
+Fixed issue with SQS #2113
+
+- tzdata is required for machines without IANA database (#2107)
+- blacksmith.sh: Migrate workflows to Blacksmith (#2112)
+- Revert "Validate SQS SSL certs by default" (#2114)
+- Update pymongo to 4.9 (#2115)
+- Bump pymongo from 4.9 to 4.9.1 (#2118)
+- Prepare for release: v5.4.2 (#2119)
+
 .. _version-5.4.1:
 
 5.4.1
