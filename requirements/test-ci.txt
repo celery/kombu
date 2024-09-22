@@ -1,5 +1,5 @@
 pytest-cov==5.0.0
-codecov; sys_platform == 'win32'
+codecov==2.1.13; sys_platform == 'win32'
 librabbitmq>=2.0.0; sys_platform == 'win32'
 -r extras/redis.txt
 pymongo>=4.1.1; sys_platform != 'win32'
