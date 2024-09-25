@@ -1,0 +1,120 @@
+# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
+
+name: Kombu
+
+on:
+  push:
+    branches: [ 'main']
+    paths:
+        - '**.py'
+        - '**.txt'
+        - '.github/workflows/python-package.yml'
+        - '**.toml'
+        - "tox.ini"
+  pull_request:
+    branches: [ 'main' ]
+    paths:
+        - '**.py'
+        - '**.txt'
+        - '**.toml'
+        - '.github/workflows/python-package.yml'
+        - "tox.ini"
+  workflow_dispatch:
+
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  Unit:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        os: ["blacksmith-4vcpu-ubuntu-2204"]
+
+    steps:
+    - name: Install apt packages
+      if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
+      run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: useblacksmith/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+        cache: 'pip'
+        cache-dependency-path: '**/setup.py'
+
+    - name: Install tox
+      run: python -m pip install --upgrade pip wheel tox tox-docker
+    - name: >
+        Run tox for
+        "${{ matrix.python-version }}-unit"
+      timeout-minutes: 5
+      run: >
+          tox --verbose --verbose -e
+          "${{ matrix.python-version }}-unit" -vv
+
+    - uses: codecov/codecov-action@v4
+      with:
+        flags: unittests # optional
+        fail_ci_if_error: false # optional (default = false)
+        token: ${{ secrets.CODECOV_TOKEN }}
+        verbose: true # optional (default = false)
+
+  Integration:
+      needs:
+      - Unit
+      if: needs.Unit.result == 'success'
+
+      runs-on: blacksmith-4vcpu-ubuntu-2204
+      strategy:
+          fail-fast: false
+          matrix:
+              python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+              toxenv: [
+                  'py-amqp',
+                  'py-redis',
+                  'py-mongodb',
+                  'py-kafka'
+              ]
+              experimental: [false]
+              include:
+                - python-version: pypy3.10
+                  toxenv: 'py-amqp'
+                  experimental: true
+                - python-version: pypy3.10
+                  toxenv: 'py-redis'
+                  experimental: true
+                - python-version: pypy3.10
+                  toxenv: 'py-mongodb'
+                  experimental: true
+                # - python-version: pypy3.10
+                #   toxenv: 'py-kafka'
+                #   experimental: true
+
+      steps:
+          -   name: Install apt packages
+              run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+
+          -   uses: actions/checkout@v4
+          -   name: Set up Python ${{ matrix.python-version }}
+              uses: useblacksmith/setup-python@v6
+              with:
+                  python-version: ${{ matrix.python-version }}
+                  allow-prereleases: true
+                  cache: 'pip'
+                  cache-dependency-path: '**/setup.py'
+          -   name: Install tox
+              run: python -m pip install --upgrade pip wheel tox tox-docker
+          -   name: >
+                  Run tox for
+                  "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}"
+              timeout-minutes: 30
+              run: >
+                  tox --verbose --verbose -e
+                  "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}" -vv
