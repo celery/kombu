@@ -89,6 +89,7 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
+
 crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
