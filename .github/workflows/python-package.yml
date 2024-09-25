@@ -67,15 +67,15 @@ jobs:
         verbose: true # optional (default = false)
 
   Integration:
-      # needs:
-      # - Unit
-      # if: needs.Unit.result == 'success'
+      needs:
+      - Unit
+      if: needs.Unit.result == 'success'
 
       runs-on: blacksmith-4vcpu-ubuntu-2204
       strategy:
           fail-fast: false
           matrix:
-              python-version: ['3.12']
+              python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
               toxenv: [
                   'py-amqp',
                   'py-redis',
