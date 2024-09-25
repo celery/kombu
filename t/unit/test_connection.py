@@ -163,7 +163,7 @@ class test_Connection:
         conn._ensure_connection = Mock()
 
         conn.connect()
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -182,7 +182,7 @@ class test_Connection:
 
         conn.connect()
         # connect() is ignoring transport options
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False

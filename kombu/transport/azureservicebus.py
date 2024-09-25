@@ -122,8 +122,8 @@ class Channel(virtual.Channel):
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
     domain_format: str = 'kombu%(vhost)s'
-    _queue_cache: Dict[str, SendReceive] = {}
-    _noack_queues: Set[str] = set()
+    _queue_cache: dict[str, SendReceive] = {}
+    _noack_queues: set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

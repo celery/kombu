@@ -93,7 +93,7 @@ class Resource:
                             # not evaluated yet, just put it back
                             self._resource.put_nowait(R)
                         else:
-                            # evaluted so must try to release/close first.
+                            # evaluated so must try to release/close first.
                             self.release(R)
                         raise
                     self._dirty.add(R)

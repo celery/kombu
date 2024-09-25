@@ -392,11 +392,11 @@ class test_Channel:
         # the connection was added to the cycle
         conn.transport.cycle.add.assert_called_once()
         assert len(conn.transport.channels) == 1
-        # the channel was flaged as registered into poller
+        # the channel was flagged as registered into poller
         assert chan._registered
 
     def test_redis_on_disconnect_channel_only_if_was_registered(self):
-        """Test shoud check if the _on_disconnect method is called only
+        """Test should check if the _on_disconnect method is called only
            if the channel was registered into the poller."""
         # given: mock pool and client
         pool = Mock(name='pool')
@@ -437,7 +437,7 @@ class test_Channel:
                 transport_options={},
                 hostname="127.0.0.1",
                 virtual_host=None)))
-        # create the _connparams with overriden connection_class
+        # create the _connparams with overridden connection_class
         connparams = chan._connparams(asynchronous=True)
         # create redis.Connection
         redis_connection = connparams['connection_class']()
@@ -498,7 +498,7 @@ class test_Channel:
                     transport_options={},
                     hostname="127.0.0.1",
                     virtual_host=None)))
-            # create the _connparams with overriden connection_class
+            # create the _connparams with overridden connection_class
             connparams = chan._connparams(asynchronous=True)
             # create redis.Connection
             redis_connection = connparams['connection_class']()

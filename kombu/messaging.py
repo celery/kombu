@@ -51,7 +51,7 @@ class Producer:
     #: Default compression method.  Disabled by default.
     compression = None
 
-    #: By default, if a defualt exchange is set,
+    #: By default, if a default exchange is set,
     #: that exchange will be declare when publishing a message.
     auto_declare = True
 
