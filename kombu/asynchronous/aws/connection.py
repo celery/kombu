@@ -92,7 +92,7 @@ class AsyncHTTPSConnection:
         headers = Headers(self.headers)
         return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
-                            request_timeout=self.timeout, validate_cert=True)
+                            request_timeout=self.timeout, validate_cert=False)
 
     def getresponse(self, callback=None):
         request = self.getrequest()
