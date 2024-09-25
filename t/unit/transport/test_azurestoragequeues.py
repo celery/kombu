@@ -28,7 +28,7 @@ def test_queue_service_nocredentials():
 
 
 def test_queue_service():
-    # Test gettings queue service without credentials
+    # Test getting queue service without credentials
     conn = Connection(URL_CREDS, transport=azurestoragequeues.Transport)
     with patch('kombu.transport.azurestoragequeues.QueueServiceClient'):
         channel = conn.channel()

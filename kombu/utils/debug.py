@@ -11,7 +11,7 @@ from kombu.log import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger
-    from typing import Any, Callable, Dict, List, Optional
+    from typing import Any, Callable
 
     from kombu.transport.base import Transport
 

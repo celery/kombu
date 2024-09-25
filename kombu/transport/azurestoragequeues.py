@@ -54,7 +54,7 @@ from __future__ import annotations
 
 import string
 from queue import Empty
-from typing import Any, Optional
+from typing import Any
 
 from azure.core.exceptions import ResourceExistsError
 
