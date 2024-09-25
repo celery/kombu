@@ -61,7 +61,6 @@ jobs:
 
     - uses: codecov/codecov-action@v4
       with:
-        flags: unittests # optional
         fail_ci_if_error: false # optional (default = false)
         token: ${{ secrets.CODECOV_TOKEN }}
         verbose: true # optional (default = false)
