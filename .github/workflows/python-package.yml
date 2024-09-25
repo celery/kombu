@@ -55,8 +55,9 @@ jobs:
         Run tox for
         "${{ matrix.python-version }}-unit"
       timeout-minutes: 5
-      run: |
-        tox --verbose --verbose
+      run: >
+          tox --verbose --verbose -e
+          "${{ matrix.python-version }}-unit" -vv
 
     - uses: codecov/codecov-action@v4
       with:
@@ -107,4 +108,3 @@ jobs:
               run: >
                   tox --verbose --verbose -e
                   "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}" -vv
-  
