@@ -118,7 +118,7 @@ def test_queue_service_nocredentials():
 
 
 def test_queue_service_sas():
-    # Test gettings queue service without credentials
+    # Test getting queue service without credentials
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
         channel = conn.channel()

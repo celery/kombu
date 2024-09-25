@@ -356,7 +356,7 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        # TODO: Remove this once we solely on Redis-py 3.0.0+
         if redis.VERSION[0] >= 3:
             # Redis-py changed the format of zadd args in v3.0.0
             zadd_args = [{delivery_tag: time()}]
@@ -747,7 +747,7 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
-        # and set to true after sucessfuly added channel to the poll.
+        # and set to true after successfully added channel to the poll.
         self._registered = True
 
         # copy errors, in case channel closed but threads still

@@ -1005,5 +1005,5 @@ class test_Channel:
         )
         output_message = self.queue(self.channel).get()
         assert message == output_message.payload
-        # It's not propogated to the properties
+        # It's not propagated to the properties
         assert 'message_attributes' not in output_message.properties
