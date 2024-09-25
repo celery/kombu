@@ -1,0 +1,40 @@
+name: Linter
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  pre-commit:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+
+      - name: Checkout branch
+        uses: actions/checkout@v4
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.1
+
+  lint:
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Install system packages
+        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+      - name: Check out code from GitHub
+        uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
+        id: python
+        uses: useblacksmith/setup-python@v6
+        with:
+            python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: pip install --upgrade pip wheel tox tox-docker
+      - name: Run flake8
+        run: tox -v -e flake8 -- -v
+      - name: Run pydocstyle
+        run: tox -v -e pydocstyle -- -v
+      - name: Run apicheck
+        run: tox -v -e apicheck -- -v
+      - name: Run mypy
+        run: tox -v -e mypy -- -v
