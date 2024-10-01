@@ -3,8 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from kombu.asynchronous import get_event_loop
-from kombu.asynchronous.http.base import Headers, Request, Response, BaseClient
-
+from kombu.asynchronous.http.base import BaseClient, Headers, Request, Response
 from kombu.asynchronous.hub import Hub
 
 if TYPE_CHECKING:

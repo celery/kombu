@@ -1,6 +1,9 @@
-import urllib3
+from __future__ import annotations
+
 from collections import deque
 from io import BytesIO
+
+import urllib3
 
 from kombu.asynchronous.hub import Hub, get_event_loop
 from kombu.exceptions import HttpError
