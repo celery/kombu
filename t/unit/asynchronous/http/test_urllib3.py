@@ -12,7 +12,6 @@ from kombu.asynchronous.http.urllib3_client import Urllib3Client
 @t.skip.if_pypy
 @pytest.mark.usefixtures('hub')
 class test_Urllib3Client:
-
     class Client(Urllib3Client):
         Urllib3 = Mock(name='Urllib3')
 
@@ -21,7 +20,9 @@ class test_Urllib3Client:
         assert x.max_clients == 303
 
     def test_init(self):
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager') as _PoolManager:
+        with patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ) as _PoolManager:
             x = self.Client()
             assert x._http is not None
             assert x._pending is not None
@@ -30,7 +31,9 @@ class test_Urllib3Client:
             _PoolManager.assert_called_with(maxsize=x.max_clients)
 
     def test_close(self):
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'):
+        with patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ):
             x = self.Client()
             x._timeout_check_tref = Mock(name='timeout_check_tref')
             x.close()
@@ -38,7 +41,9 @@ class test_Urllib3Client:
             x._http.clear.assert_called_with()
 
     def test_add_request(self):
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'):
+        with patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ):
             x = self.Client()
             x._process_queue = Mock(name='_process_queue')
             request = Mock(name='request')
@@ -47,7 +52,9 @@ class test_Urllib3Client:
             x._process_queue.assert_called_with()
 
     def test_timeout_check(self):
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'):
+        with patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ):
             hub = Mock(name='hub')
             x = self.Client(hub)
             x._process_pending_requests = Mock(name='process_pending')
@@ -55,10 +62,23 @@ class test_Urllib3Client:
             x._process_pending_requests.assert_called_with()
 
     def test_process_request(self):
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager') as _PoolManager:
+        with (patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ) as _PoolManager):
             x = self.Client()
-            request = Mock(name='request', method='GET', url='http://example.com', headers={}, body=None)
-            response = Mock(name='response', status=200, headers={}, data=b'content')
+            request = Mock(
+                name='request',
+                method='GET',
+                url='http://example.com',
+                headers={},
+                body=None
+            )
+            response = Mock(
+                name='response',
+                status=200,
+                headers={},
+                data=b'content'
+            )
             response.geturl.return_value = 'http://example.com'
             _PoolManager.return_value.request.return_value = response
 
@@ -75,7 +95,10 @@ class test_Urllib3Client:
             called_response = request.on_ready.call_args[0][0]
             assert called_response.code == response_obj.code
             assert called_response.headers == response_obj.headers
-            assert called_response.buffer.getvalue() == response_obj.buffer.getvalue()
+            assert (
+                    called_response.buffer.getvalue() ==
+                    response_obj.buffer.getvalue()
+            )
             assert called_response.effective_url == response_obj.effective_url
             assert called_response.error == response_obj.error
 
