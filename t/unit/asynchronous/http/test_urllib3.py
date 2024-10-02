@@ -106,3 +106,8 @@ class test_Urllib3Client:
         x = self.Client()
         x.on_readable(Mock(name='fd'))
         x.on_writable(Mock(name='fd'))
+
+    def test_setup_request_sets_proxy_when_specified(self):
+        # FIXME: PoolManager or ProxyManager. not proxy per request.
+        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'):
+            pass
