@@ -109,5 +109,7 @@ class test_Urllib3Client:
 
     def test_setup_request_sets_proxy_when_specified(self):
         # FIXME: PoolManager or ProxyManager. not proxy per request.
-        with patch('kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'):
+        with patch(
+                'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
+        ):
             pass
