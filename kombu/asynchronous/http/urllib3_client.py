@@ -23,6 +23,7 @@ class Urllib3Client(BaseClient):
         hub = hub or get_event_loop()
         super().__init__(hub)
         self.max_clients = max_clients
+        # FIXME: PoolManager or ProxyManager. not proxy per request
         self._http = urllib3.PoolManager(maxsize=max_clients)
         self._pending = deque()
         self._timeout_check_tref = self.hub.call_repeatedly(
