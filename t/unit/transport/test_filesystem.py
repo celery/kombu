@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import tempfile
-from fcntl import LOCK_EX, LOCK_SH
 from queue import Empty
 from unittest.mock import call, patch
 
@@ -282,6 +281,9 @@ class test_FilesystemLock:
                 pass
 
     def test_lock_during_process(self):
+        pytest.importorskip('fcntl')
+        from fcntl import LOCK_EX, LOCK_SH
+
         producer = Producer(self.producer_channel, self.exchange)
 
         with patch("kombu.transport.filesystem.lock") as lock_m, patch(
