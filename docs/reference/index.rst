@@ -70,7 +70,7 @@ Kombu Asynchronous
     kombu.asynchronous.debug
     kombu.asynchronous.http
     kombu.asynchronous.http.base
-    kombu.asynchronous.http.curl
+    kombu.asynchronous.http.urllib3_client
     kombu.asynchronous.aws
     kombu.asynchronous.aws.connection
     kombu.asynchronous.aws.sqs
