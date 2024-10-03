@@ -752,6 +752,42 @@ class test_Connection:
                 conn.default_channel
             assert conn._establish_connection.call_count == 2
 
+    def test_connection_timeout_with_errback(self):
+        errback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'errback': errback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        errback.assert_called()
+
+    def test_connection_timeout_with_callback(self):
+        callback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'callback': callback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        callback.assert_called()
+
 
 class test_Connection_with_transport_options:
 
