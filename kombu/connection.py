@@ -903,6 +903,10 @@ class Connection:
             if 'connect_retries_timeout' in transport_opts:
                 conn_opts['timeout'] = \
                     transport_opts['connect_retries_timeout']
+            if 'errback' in transport_opts:
+                conn_opts['errback'] = transport_opts['errback']
+            if 'callback' in transport_opts:
+                conn_opts['callback'] = transport_opts['callback']
         return conn_opts
 
     @property
