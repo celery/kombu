@@ -1,4 +1,5 @@
 """Native Delayed Delivery API.
+
 Only relevant for RabbitMQ.
 """
 from __future__ import annotations
