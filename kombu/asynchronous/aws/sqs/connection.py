@@ -76,7 +76,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             **param_payload
         )
 
-    def make_request(self, operation_name, params, queue_url, verb, callback=None):  # noqa
+    def make_request(self, operation_name, params, queue_url, verb, callback=None):
         """
         Override make_request to support different protocols.
 
