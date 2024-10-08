@@ -6,8 +6,8 @@ try:
     import boto3
     from botocore import exceptions
     from botocore.awsrequest import AWSRequest
-    from botocore.response import get_response
     from botocore.httpsession import get_cert_path
+    from botocore.response import get_response
 except ImportError:
     boto3 = None
 

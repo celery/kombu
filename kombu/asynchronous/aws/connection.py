@@ -7,7 +7,7 @@ from email.mime.message import MIMEMessage
 
 from vine import promise, transform
 
-from kombu.asynchronous.aws.ext import AWSRequest, get_response, get_cert_path
+from kombu.asynchronous.aws.ext import AWSRequest, get_cert_path, get_response
 from kombu.asynchronous.http import Headers, Request, get_client
 
 
