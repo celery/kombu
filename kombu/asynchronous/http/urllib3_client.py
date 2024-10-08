@@ -161,9 +161,14 @@ class Urllib3Client(BaseClient):
 
         # Authentication
         if request.auth_username is not None:
-            auth = (request.auth_username, request.auth_password or '')
-        else:
-            auth = None
+            headers.update(
+                urllib3.util.make_headers(
+                    basic_auth=(
+                        f"{request.auth_username}"
+                        f":{request.auth_password or ''}"
+                    )
+                )
+            )
 
         # Make the request using urllib3
         try:
@@ -175,7 +180,6 @@ class Urllib3Client(BaseClient):
                 body=request.body,
                 preload_content=False,
                 redirect=request.follow_redirects,
-                auth=auth,
             )
             buffer = BytesIO(response.data)
             response_obj = self.Response(
