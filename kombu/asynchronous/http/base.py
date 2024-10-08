@@ -16,7 +16,7 @@ from kombu.utils.functional import maybe_list, memoize
 if TYPE_CHECKING:
     from types import TracebackType
 
-__all__ = ('Headers', 'Response', 'Request')
+__all__ = ('Headers', 'Response', 'Request', 'BaseClient')
 
 PYPY = hasattr(sys, 'pypy_version_info')
 

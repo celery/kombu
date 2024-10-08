@@ -4,7 +4,7 @@ from kombu.asynchronous import get_event_loop
 from kombu.asynchronous.http.base import BaseClient, Headers, Request, Response
 from kombu.asynchronous.hub import Hub
 
-__all__ = ('Client', 'Headers', 'Response', 'Request')
+__all__ = ('Client', 'Headers', 'Response', 'Request', 'get_client')
 
 
 def Client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
