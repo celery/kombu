@@ -18,7 +18,7 @@ DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; urllib3)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
-def _get_pool_key_parts(request: Request)-> list[str]:
+def _get_pool_key_parts(request: Request) -> list[str]:
     _pool_key_parts = []
 
     if request.network_interface:
@@ -55,10 +55,14 @@ class Urllib3Client(BaseClient):
             1.0, self._timeout_check,
         )
 
-    def close(self):
-        self._timeout_check_tref.cancel()
+    def pools_close(self):
         for pool in self._pools.values():
             pool.close()
+        self._pools.clear()
+
+    def close(self):
+        self._timeout_check_tref.cancel()
+        self.pools_close()
 
     def add_request(self, request):
         self._pending.append(request)
@@ -69,6 +73,7 @@ class Urllib3Client(BaseClient):
         _pool_key_parts = _get_pool_key_parts(request=request)
 
         _proxy_url = None
+        proxy_headers = None
         if request.proxy_host:
             _proxy_url = urllib3.util.Url(
                 scheme=None,
@@ -76,13 +81,22 @@ class Urllib3Client(BaseClient):
                 port=request.proxy_port,
             )
             if request.proxy_username:
-                _proxy_url.auth = f"{request.proxy_username}:{request.proxy_password}"
+                proxy_headers = urllib3.make_headers(
+                    proxy_basic_auth=(
+                        f"{request.proxy_username}"
+                        f":{request.proxy_password}"
+                    )
+                )
+            else:
+                proxy_headers = None
 
             _proxy_url = _proxy_url.url
+
             _pool_key_parts.append(f"proxy={_proxy_url}")
+            if proxy_headers:
+                _pool_key_parts.append(f"proxy_headers={str(proxy_headers)}")
 
         _pool_key = "|".join(_pool_key_parts)
-
         if _pool_key in self._pools:
             return self._pools[_pool_key]
 
@@ -91,13 +105,17 @@ class Urllib3Client(BaseClient):
             _pool = urllib3.ProxyManager(
                 proxy_url=_proxy_url,
                 num_pools=self.max_clients,
+                proxy_headers=proxy_headers
             )
         else:
             _pool = urllib3.PoolManager(num_pools=self.max_clients)
 
         # Network Interface
         if request.network_interface:
-            _pool.connection_pool_kw['source_address'] = (request.network_interface, 0)
+            _pool.connection_pool_kw['source_address'] = (
+                request.network_interface,
+                0
+            )
 
         # SSL Verification
         if request.validate_cert:
@@ -132,8 +150,14 @@ class Urllib3Client(BaseClient):
     def _process_request(self, request: Request):
         # Prepare headers
         headers = request.headers
-        headers.setdefault('User-Agent', bytes_to_str(request.user_agent or DEFAULT_USER_AGENT))
-        headers.setdefault('Accept-Encoding', 'gzip,deflate' if request.use_gzip else 'none')
+        headers.setdefault(
+            'User-Agent',
+            bytes_to_str(request.user_agent or DEFAULT_USER_AGENT)
+        )
+        headers.setdefault(
+            'Accept-Encoding',
+            'gzip,deflate' if request.use_gzip else 'none'
+        )
 
         # Authentication
         if request.auth_username is not None:
@@ -142,8 +166,8 @@ class Urllib3Client(BaseClient):
             auth = None
 
         # Make the request using urllib3
-        _pool = self.get_pool(request=request)
         try:
+            _pool = self.get_pool(request=request)
             response = _pool.request(
                 request.method,
                 request.url,
