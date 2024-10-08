@@ -128,6 +128,12 @@ class Urllib3Client(BaseClient):
         # CA Certificates
         if request.ca_certs is not None:
             _pool.connection_pool_kw['ca_certs'] = request.ca_certs
+        elif request.validate_cert is True:
+            try:
+                from certifi import where
+                _pool.connection_pool_kw['ca_certs'] = where()
+            except ImportError:
+                pass
 
         # Client Certificates
         if request.client_cert is not None:
