@@ -127,7 +127,7 @@ Features
 * Supports Fanout: Yes
 * Supports Priority: No
 * Supports TTL: No
-"""  # noqa: E501
+"""
 
 
 from __future__ import annotations

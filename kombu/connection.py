@@ -249,7 +249,7 @@ class Connection:
         self.declared_entities.clear()
         self._closed = False
         conn_params = (
-            parse_url(conn_str) if "://" in conn_str else {"hostname": conn_str}  # noqa
+            parse_url(conn_str) if "://" in conn_str else {"hostname": conn_str}
         )
         self._init_params(**dict(self._initial_params, **conn_params))
 

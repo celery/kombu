@@ -87,7 +87,7 @@ class test_mongodb_uri_parsing:
         assert hostname == 'mongodb://localhost:27018'
 
     def test_replicaset_hosts(self):
-        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
+        url = 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'
         channel = _create_mock_connection(url).default_channel
         hostname, dbname, options = channel._parse_uri()
 

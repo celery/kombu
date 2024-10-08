@@ -76,9 +76,8 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             **param_payload
         )
 
-    def make_request(self, operation_name, params, queue_url, verb, callback=None):  # noqa
-        """
-        Override make_request to support different protocols.
+    def make_request(self, operation_name, params, queue_url, verb, callback=None):
+        """Override make_request to support different protocols.
 
         botocore is soon going to change the default protocol of communicating
         with SQS backend from 'query' to 'json', so we need a special
