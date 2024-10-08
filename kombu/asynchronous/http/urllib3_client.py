@@ -2,29 +2,55 @@ from __future__ import annotations
 
 from collections import deque
 from io import BytesIO
+from typing import List
 
 import urllib3
 
 from kombu.asynchronous.hub import Hub, get_event_loop
 from kombu.exceptions import HttpError
 
-from .base import BaseClient
+from .base import BaseClient, Request
 
 __all__ = ('Urllib3Client',)
+
+from ...utils.encoding import bytes_to_str
 
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; urllib3)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
+def _get_pool_key_parts(request: Request)-> List[str]:
+    _pool_key_parts = []
+
+    if request.network_interface:
+        _pool_key_parts.append(f"interface={request.network_interface}")
+
+    if request.validate_cert:
+        _pool_key_parts.append("validate_cert=True")
+    else:
+        _pool_key_parts.append("validate_cert=False")
+
+    if request.ca_certs:
+        _pool_key_parts.append(f"ca_certs={request.ca_certs}")
+
+    if request.client_cert:
+        _pool_key_parts.append(f"client_cert={request.client_cert}")
+
+    if request.client_key:
+        _pool_key_parts.append(f"client_key={request.client_key}")
+
+    return _pool_key_parts
+
+
 class Urllib3Client(BaseClient):
     """Urllib3 HTTP Client."""
+
+    _pools = {}
 
     def __init__(self, hub: Hub | None = None, max_clients: int = 10):
         hub = hub or get_event_loop()
         super().__init__(hub)
         self.max_clients = max_clients
-        # FIXME: PoolManager or ProxyManager. not proxy per request
-        self._http = urllib3.PoolManager(maxsize=max_clients)
         self._pending = deque()
         self._timeout_check_tref = self.hub.call_repeatedly(
             1.0, self._timeout_check,
@@ -32,12 +58,69 @@ class Urllib3Client(BaseClient):
 
     def close(self):
         self._timeout_check_tref.cancel()
-        self._http.clear()
+        for pool in self._pools.values():
+            pool.close()
 
     def add_request(self, request):
         self._pending.append(request)
         self._process_queue()
         return request
+
+    def get_pool(self, request: Request):
+        _pool_key_parts = _get_pool_key_parts(request=request)
+
+        _proxy_url = None
+        if request.proxy_host:
+            _proxy_url = urllib3.util.Url(
+                scheme=None,
+                host=request.proxy_host,
+                port=request.proxy_port,
+            )
+            if request.proxy_username:
+                _proxy_url.auth = f"{request.proxy_username}:{request.proxy_password}"
+
+            _proxy_url = _proxy_url.url
+            _pool_key_parts.append(f"proxy={_proxy_url}")
+
+        _pool_key = "|".join(_pool_key_parts)
+
+        if _pool_key in self._pools:
+            return self._pools[_pool_key]
+
+        # create new pool
+        if _proxy_url:
+            _pool = urllib3.ProxyManager(
+                proxy_url=_proxy_url,
+                num_pools=self.max_clients,
+            )
+        else:
+            _pool = urllib3.PoolManager(num_pools=self.max_clients)
+
+        # Network Interface
+        if request.network_interface:
+            _pool.connection_pool_kw['source_address'] = (request.network_interface, 0)
+
+        # SSL Verification
+        if request.validate_cert:
+            _pool.connection_pool_kw['cert_reqs'] = 'CERT_REQUIRED'
+            _pool.connection_pool_kw['assert_hostname'] = True
+        else:
+            _pool.connection_pool_kw['cert_reqs'] = 'CERT_NONE'
+            _pool.connection_pool_kw['assert_hostname'] = False
+
+        # CA Certificates
+        if request.ca_certs is not None:
+            _pool.connection_pool_kw['ca_certs'] = request.ca_certs
+
+        # Client Certificates
+        if request.client_cert is not None:
+            _pool.connection_pool_kw['cert_file'] = request.client_cert
+        if request.client_key is not None:
+            _pool.connection_pool_kw['key_file'] = request.client_key
+
+        self._pools[_pool_key] = _pool
+
+        return _pool
 
     def _timeout_check(self):
         self._process_pending_requests()
@@ -47,19 +130,29 @@ class Urllib3Client(BaseClient):
             request = self._pending.popleft()
             self._process_request(request)
 
-    def _process_request(self, request):
-        method = request.method
-        url = request.url
+    def _process_request(self, request: Request):
+        # Prepare headers
         headers = request.headers
-        body = request.body
+        headers.setdefault('User-Agent', bytes_to_str(request.user_agent or DEFAULT_USER_AGENT))
+        headers.setdefault('Accept-Encoding', 'gzip,deflate' if request.use_gzip else 'none')
 
+        # Authentication
+        if request.auth_username is not None:
+            auth = (request.auth_username, request.auth_password or '')
+        else:
+            auth = None
+
+        # Make the request using urllib3
+        _pool = self.get_pool(request=request)
         try:
-            response = self._http.request(
-                method,
-                url,
+            response = _pool.request(
+                request.method,
+                request.url,
                 headers=headers,
-                body=body,
-                preload_content=False
+                body=request.body,
+                preload_content=False,
+                redirect=request.follow_redirects,
+                auth=auth,
             )
             buffer = BytesIO(response.data)
             response_obj = self.Response(
