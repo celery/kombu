@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import deque
 from io import BytesIO
-from typing import List
 
 import urllib3
 
@@ -19,7 +18,7 @@ DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; urllib3)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
-def _get_pool_key_parts(request: Request)-> List[str]:
+def _get_pool_key_parts(request: Request)-> list[str]:
     _pool_key_parts = []
 
     if request.network_interface:
