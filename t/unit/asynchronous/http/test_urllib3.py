@@ -119,7 +119,7 @@ class test_Urllib3Client:
                 'kombu.asynchronous.http.urllib3_client.urllib3.PoolManager'
         ) as _pool_manager:
             x = self.Client()
-            x.pools_close()
+            x.close()
             request = Mock(
                 name='request',
                 method='GET',
