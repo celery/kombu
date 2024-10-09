@@ -7,7 +7,7 @@ from email.mime.message import MIMEMessage
 
 from vine import promise, transform
 
-from kombu.asynchronous.aws.ext import AWSRequest, get_response
+from kombu.asynchronous.aws.ext import AWSRequest, get_cert_path, get_response
 from kombu.asynchronous.http import Headers, Request, get_client
 
 
@@ -92,7 +92,8 @@ class AsyncHTTPSConnection:
         headers = Headers(self.headers)
         return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
-                            request_timeout=self.timeout, validate_cert=False)
+                            request_timeout=self.timeout,
+                            validate_cert=True, ca_certs=get_cert_path(True))
 
     def getresponse(self, callback=None):
         request = self.getrequest()

@@ -20,7 +20,7 @@ jobs:
         python-version: ["3.12"]
     steps:
       - name: Install system packages
-        run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+        run: sudo apt-get update && sudo apt-get install libssl-dev
       - name: Check out code from GitHub
         uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
