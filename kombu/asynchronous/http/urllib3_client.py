@@ -120,10 +120,8 @@ class Urllib3Client(BaseClient):
         # SSL Verification
         if request.validate_cert:
             _pool.connection_pool_kw['cert_reqs'] = 'CERT_REQUIRED'
-            _pool.connection_pool_kw['assert_hostname'] = True
         else:
             _pool.connection_pool_kw['cert_reqs'] = 'CERT_NONE'
-            _pool.connection_pool_kw['assert_hostname'] = False
 
         # CA Certificates
         if request.ca_certs is not None:
