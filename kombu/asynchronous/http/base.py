@@ -236,8 +236,7 @@ def header_parser(keyt=normalize_header):
 
 
 class BaseClient:
-    """
-    Base class for HTTP clients.
+    """Base class for HTTP clients.
 
     This class provides the basic structure and functionality for HTTP clients.
     Subclasses should implement specific HTTP client behavior.
