@@ -435,10 +435,12 @@ class Channel(virtual.Channel):
         )
 
     def _get_bulk(self, queue: str, timeout: float):
-        """Retrieves a bulk of messages from a queue."""
+        """Retrieves bulk of messages from a queue."""
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
         max_messages = self._get_max_messages_estimate()
+        if not max_messages:
+            raise Empty()
         try:
             response = self.subscriber.pull(
                 request={
@@ -486,10 +488,7 @@ class Channel(virtual.Channel):
     def _get_max_messages_estimate(self):
         max_allowed = self.qos.can_consume_max_estimate()
         max_if_unlimited = self.bulk_max_messages
-        return min(
-            max_if_unlimited if max_allowed is None else max(max_allowed, 1),
-            max_if_unlimited,
-        )
+        return max_if_unlimited if max_allowed is None else max_allowed
 
     def _lookup(self, exchange, routing_key, default=None):
         exchange_info = self.state.exchanges.get(exchange, {})
