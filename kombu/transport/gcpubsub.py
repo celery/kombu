@@ -34,7 +34,7 @@ Transport Options
   Defaults to 10.
 * ``retry_timeout_seconds``: (int) The maximum time to wait before retrying.
 * ``bulk_max_messages``: (int) The maximum number of messages to pull in bulk.
-  Defaults to 1.
+  Defaults to 100.
 """
 
 from __future__ import annotations
@@ -170,7 +170,7 @@ class Channel(virtual.Channel):
     default_ack_deadline_seconds = 240
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
-    default_bulk_max_messages = 10
+    default_bulk_max_messages = 100
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -701,7 +701,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     can_parse_url: bool = True
-    polling_interval: int = 1
+    polling_interval: float = 0.1
     connection_errors = virtual.Transport.connection_errors + (
         pubsub_exceptions.TimeoutError,
     )
