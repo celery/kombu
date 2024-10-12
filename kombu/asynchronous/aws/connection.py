@@ -182,7 +182,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         super().__init__(sqs_connection, http_client,
                          **http_client_params)
 
-    def make_request(self, operation, params_, path, verb, callback=None):  # noqa
+    def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
         if operation:
             params['Action'] = operation
@@ -202,7 +202,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
         return self._mexe(prepared_request, callback=callback)
 
-    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):  # noqa
+    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -211,7 +211,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
@@ -219,7 +219,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
             ),
         )
 
-    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(

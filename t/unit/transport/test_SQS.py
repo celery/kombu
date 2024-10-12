@@ -358,7 +358,7 @@ class test_Channel:
 
     def test_optional_b64_decode(self):
         raw = b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",' \
-              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'     # noqa
+              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
         b64_enc = base64.b64encode(raw)
         assert self.channel._optional_b64_decode(b64_enc) == raw
         assert self.channel._optional_b64_decode(raw) == raw
