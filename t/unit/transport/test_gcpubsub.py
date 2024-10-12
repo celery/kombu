@@ -93,7 +93,7 @@ class test_Channel:
     def test_channel_init(self):
         with (
             patch('kombu.transport.gcpubsub.ThreadPoolExecutor'),
-            patch('kombu.transport.gcpubsub.threading.Event') as mock_event,
+            patch('kombu.transport.gcpubsub.threading.Event'),
             patch('kombu.transport.gcpubsub.threading.Thread') as mock_thread,
         ):
             mock_connection = MagicMock()
@@ -382,11 +382,10 @@ class test_Channel:
         )
         channel._queue_cache[channel.entity_name(queue)] = qdesc
 
+        data = b'{"properties": {"delivery_info": {"exchange": "exchange"}}}'
         received_message = MagicMock(
             ack_id="ack_id",
-            message=MagicMock(
-                data=b'{"properties": {"delivery_info": {"exchange": "exchange"}}}'
-            ),
+            message=MagicMock(data=data),
         )
         channel.subscriber.pull = MagicMock(
             return_value=MagicMock(received_messages=[received_message])
@@ -445,7 +444,7 @@ class test_Channel:
             name=queue,
             topic_path="projects/project-id/topics/test_topic",
             subscription_id=subscription_id,
-            subscription_path="projects/project-id/subscriptions/test_subscription",
+            subscription_path="projects/project-id/subscriptions/test_subscription", # noqa E501
         )
         channel._queue_cache[channel.entity_name(queue)] = qdesc
 
