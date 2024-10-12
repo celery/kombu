@@ -611,7 +611,7 @@ class Channel(virtual.Channel):
         queue = self.entity_name(queue)
         sub = self.subscriber.subscription_path(self.project_id, queue)
         logger.debug(
-            f'after_reply_message_received: queue: %s, sub: %s', queue, sub
+            'after_reply_message_received: queue: %s, sub: %s', queue, sub
         )
         self._tmp_subscriptions.add(sub)
 
