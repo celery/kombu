@@ -50,7 +50,6 @@ from os import getpid
 from queue import Empty
 from threading import Lock
 from time import monotonic, sleep
-from typing import Dict
 from uuid import NAMESPACE_OID, uuid3
 
 from _socket import gethostname
@@ -727,7 +726,7 @@ class Transport(virtual.Transport):
     def __init__(self, client, **kwargs):
         super().__init__(client, **kwargs)
         self._pool = ThreadPoolExecutor()
-        self._get_bulk_future_to_queue: Dict[Future, str] = dict()
+        self._get_bulk_future_to_queue: dict[Future, str] = dict()
 
     def driver_version(self):
         return package_version.__version__

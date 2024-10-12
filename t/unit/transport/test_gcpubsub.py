@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from concurrent.futures import Future
 from queue import Empty
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from _socket import timeout as socket_timeout
 from future.backports.datetime import datetime
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         PermissionDenied)
-from mock.mock import call
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
                                       Transport, UnackedIds)
