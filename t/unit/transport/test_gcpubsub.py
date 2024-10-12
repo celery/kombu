@@ -439,7 +439,9 @@ class test_Channel:
         )
         assert result == [exchange]
 
-    def test_size(self, channel):
+    @patch('kombu.transport.gcpubsub.monitoring_v3')
+    @patch('kombu.transport.gcpubsub.query.Query')
+    def test_size(self, mock_query, mock_monitor, channel):
         queue = "test_queue"
         subscription_id = "test_subscription"
         qdesc = QueueDescriptor(
@@ -454,29 +456,22 @@ class test_Channel:
         mock_query_result.select_resources.return_value = [
             MagicMock(points=[MagicMock(value=MagicMock(int64_value=5))])
         ]
-        with patch(
-            'kombu.transport.gcpubsub.query.Query',
-            return_value=mock_query_result,
-        ):
-            size = channel._size(queue)
-            assert size == 5
+        mock_query.return_value = mock_query_result
+        size = channel._size(queue)
+        assert size == 5
 
-            # Test the case where the queue is not in the cache
-            size = channel._size("non_existent_queue")
-            assert size == 0
+        # Test the case where the queue is not in the cache
+        size = channel._size("non_existent_queue")
+        assert size == 0
 
         # Test the case where the query raises PermissionDenied
-        with patch(
-            'kombu.transport.gcpubsub.query.Query',
-            return_value=mock_query_result,
-        ):
-            mock_item = MagicMock()
-            mock_item.points.__getitem__.side_effect = PermissionDenied(
-                'test_error'
-            )
-            mock_query_result.select_resources.return_value = [mock_item]
-            size = channel._size(queue)
-            assert size == -1
+        mock_item = MagicMock()
+        mock_item.points.__getitem__.side_effect = PermissionDenied(
+            'test_error'
+        )
+        mock_query_result.select_resources.return_value = [mock_item]
+        size = channel._size(queue)
+        assert size == -1
 
     def test_basic_ack(self, channel):
         delivery_tag = "test_delivery_tag"
