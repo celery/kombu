@@ -590,7 +590,7 @@ class Channel(virtual.Channel):
                     )
                     continue
                 logger.debug(
-                    'thread [%s]: extend ack deadline for %s: %d messages [%s]',
+                    'thread [%s]: extend ack deadline for %s: %d msgs [%s]',
                     thread_id,
                     qdesc.subscription_path,
                     len(qdesc.unacked_ids),
