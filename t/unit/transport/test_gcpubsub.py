@@ -89,30 +89,33 @@ def channel():
 
 
 class test_Channel:
-    def test_channel_init(self):
-        with (
-            patch('kombu.transport.gcpubsub.ThreadPoolExecutor'),
-            patch('kombu.transport.gcpubsub.threading.Event'),
-            patch('kombu.transport.gcpubsub.threading.Thread') as mock_thread,
-        ):
-            mock_connection = MagicMock()
-            with (
-                patch(
-                    'kombu.transport.gcpubsub.Channel._get_free_channel_id',
-                    return_value=1,
-                ),
-                patch(
-                    'kombu.transport.gcpubsub.Channel._n_channels.inc',
-                    return_value=1,
-                ),
-            ):
-                ch = Channel(mock_connection)
-                ch._n_channels.inc.assert_called_once()
-                mock_thread.assert_called_once_with(
-                    target=ch._extend_unacked_deadline,
-                    daemon=True,
-                )
-                mock_thread.return_value.start.assert_called_once()
+    @patch('kombu.transport.gcpubsub.ThreadPoolExecutor')
+    @patch('kombu.transport.gcpubsub.threading.Event')
+    @patch('kombu.transport.gcpubsub.threading.Thread')
+    @patch(
+        'kombu.transport.gcpubsub.Channel._get_free_channel_id',
+        return_value=1,
+    )
+    @patch(
+        'kombu.transport.gcpubsub.Channel._n_channels.inc',
+        return_value=1,
+    )
+    def test_channel_init(
+        self,
+        n_channels_in_mock,
+        channel_id_mock,
+        mock_thread,
+        mock_event,
+        mock_executor,
+    ):
+        mock_connection = MagicMock()
+        ch = Channel(mock_connection)
+        ch._n_channels.inc.assert_called_once()
+        mock_thread.assert_called_once_with(
+            target=ch._extend_unacked_deadline,
+            daemon=True,
+        )
+        mock_thread.return_value.start.assert_called_once()
 
     def test_entity_name(self, channel):
         name = "test_queue"
@@ -443,7 +446,7 @@ class test_Channel:
             name=queue,
             topic_path="projects/project-id/topics/test_topic",
             subscription_id=subscription_id,
-            subscription_path="projects/project-id/subscriptions/test_subscription", # noqa E501
+            subscription_path="projects/project-id/subscriptions/test_subscription",  # noqa E501
         )
         channel._queue_cache[channel.entity_name(queue)] = qdesc
 
