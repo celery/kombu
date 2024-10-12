@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, call, patch
 
 import pytest
 from _socket import timeout as socket_timeout
-from future.backports.datetime import datetime
+from datetime import datetime
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         PermissionDenied)
 
