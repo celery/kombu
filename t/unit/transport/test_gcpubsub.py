@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from concurrent.futures import Future
+from datetime import datetime
 from queue import Empty
 from unittest.mock import MagicMock, call, patch
 
 import pytest
 from _socket import timeout as socket_timeout
-from datetime import datetime
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         PermissionDenied)
 
