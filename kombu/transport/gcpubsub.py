@@ -187,7 +187,6 @@ class Channel(virtual.Channel):
 
     def entity_name(self, name: str, table=CHARS_REPLACE_TABLE) -> str:
         """Format AMQP queue name into a valid Pub/Sub queue name."""
-
         if not name.startswith(self.queue_name_prefix):
             name = self.queue_name_prefix + name
 
@@ -331,7 +330,6 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue by name."""
-
         queue = self.entity_name(queue)
         logger.info('deleting queue: %s', queue)
         qdesc = self._queue_cache.get(queue)
@@ -344,7 +342,6 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Put a message onto the queue."""
-
         queue = self.entity_name(queue)
         qdesc = self._queue_cache[queue]
         routing_key = self._get_routing_key(message)
@@ -363,7 +360,6 @@ class Channel(virtual.Channel):
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Put a message onto fanout exchange."""
-
         self._lookup(exchange, routing_key)
         topic_path = self.publisher.topic_path(self.project_id, exchange)
         logger.debug(
@@ -380,7 +376,6 @@ class Channel(virtual.Channel):
 
     def _get(self, queue: str, timeout: float = None):
         """Retrieves a single message from a queue."""
-
         queue = self.entity_name(queue)
         qdesc = self._queue_cache[queue]
         try:
@@ -432,7 +427,6 @@ class Channel(virtual.Channel):
 
     def _get_bulk(self, queue: str, timeout: float):
         """Retrieves bulk of messages from a queue."""
-
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
         max_messages = self._get_max_messages_estimate()
@@ -556,7 +550,6 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue: str):
         """Delete all current messages in a queue."""
-
         queue = self.entity_name(queue)
         qdesc = self._queue_cache.get(queue)
         if not qdesc:
@@ -670,7 +663,6 @@ class Channel(virtual.Channel):
 
     def close(self):
         """Close the channel."""
-
         logger.debug('closing channel')
         while self._tmp_subscriptions:
             sub = self._tmp_subscriptions.pop()
