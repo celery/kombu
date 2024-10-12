@@ -1,3 +1,2 @@
 google-cloud-pubsub>=2.18.4
 google-cloud-monitoring>=2.16.0
---extra-index-url https://celery.github.io/celery-wheelhouse/repo/simple/ grpcio==1.66.2
