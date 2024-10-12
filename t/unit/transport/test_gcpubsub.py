@@ -3,7 +3,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from datetime import datetime
 from queue import Empty
-from mock import MagicMock, call, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from _socket import timeout as socket_timeout
