@@ -448,7 +448,7 @@ class test_Channel:
             name=queue,
             topic_path="projects/project-id/topics/test_topic",
             subscription_id=subscription_id,
-            subscription_path="projects/project-id/subscriptions/test_subscription",  # noqa E501
+            subscription_path="projects/project-id/subscriptions/test_subscription",  # E501
         )
         channel._queue_cache[channel.entity_name(queue)] = qdesc
 

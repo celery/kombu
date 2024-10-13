@@ -148,7 +148,7 @@ class QueueDescriptor:
     name: str
     topic_path: str  # projects/{project_id}/topics/{topic_id}
     subscription_id: str
-    subscription_path: str  # noqa:E501 projects/{project_id}/subscriptions/{subscription_id}
+    subscription_path: str  # projects/{project_id}/subscriptions/{subscription_id}
     unacked_ids: UnackedIds = dataclasses.field(default_factory=UnackedIds)
 
 
