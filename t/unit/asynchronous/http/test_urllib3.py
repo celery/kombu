@@ -142,7 +142,7 @@ class test_Urllib3Client:
                 proxy_password=None,
                 on_ready=Mock(name='on_ready')
             )
-            _pool_manager.return_value.request.side_effect = urllib3.exceptions.HTTPError("Test Error")  # noqa
+            _pool_manager.return_value.request.side_effect = urllib3.exceptions.HTTPError("Test Error")
 
             x._process_request(request)
             request.on_ready.assert_called()
