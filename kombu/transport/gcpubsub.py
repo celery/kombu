@@ -430,6 +430,8 @@ class Channel(virtual.Channel):
         prefixed_queue = self.entity_name(queue)
         qdesc = self._queue_cache[prefixed_queue]
         max_messages = self._get_max_messages_estimate()
+        if not max_messages:
+            raise Empty()
         try:
             response = self.subscriber.pull(
                 request={
@@ -474,7 +476,7 @@ class Channel(virtual.Channel):
 
         return queue, ret_payloads
 
-    def _get_max_messages_estimate(self):
+    def _get_max_messages_estimate(self) -> int:
         max_allowed = self.qos.can_consume_max_estimate()
         max_if_unlimited = self.bulk_max_messages
         return max_if_unlimited if max_allowed is None else max_allowed
