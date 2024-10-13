@@ -182,6 +182,7 @@ class Producer:
                 declare.append(self.exchange)
 
         if retry:
+            self.connection.transport_options.update(retry_policy)
             _publish = self.connection.ensure(self, _publish, **retry_policy)
         return _publish(
             body, priority, content_type, content_encoding,
