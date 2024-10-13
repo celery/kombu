@@ -16,3 +16,4 @@ urllib3>=1.26.16; sys_platform != 'win32'
 -r extras/zstd.txt
 -r extras/sqlalchemy.txt
 -r extras/etcd.txt
+-r extras/gcpubsub.txt
