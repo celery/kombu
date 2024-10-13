@@ -122,6 +122,17 @@ class test_Producer:
         assert ctype == 'text/plain'
         assert cencoding == 'utf-8'
 
+    def test_publish_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        expected_retry_policy = {
+            'max_retries': 20
+        }
+        p.publish('hello', retry=True, retry_policy=expected_retry_policy)
+
+        assert self.connection.transport_options == expected_retry_policy
+
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
         p.channel = Mock()
