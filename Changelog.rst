@@ -18,7 +18,7 @@ Native Delayed Delivery
 -----------------------
 
 Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
-which is required to enable ETA tasks with quorom queues in Celery.
+which is required to enable ETA tasks with quorum queues in Celery.
 
 urllib3 instead of curl
 -----------------------
