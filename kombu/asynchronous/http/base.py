@@ -16,7 +16,7 @@ from kombu.utils.functional import maybe_list, memoize
 if TYPE_CHECKING:
     from types import TracebackType
 
-__all__ = ('Headers', 'Response', 'Request')
+__all__ = ('Headers', 'Response', 'Request', 'BaseClient')
 
 PYPY = hasattr(sys, 'pypy_version_info')
 
@@ -236,6 +236,12 @@ def header_parser(keyt=normalize_header):
 
 
 class BaseClient:
+    """Base class for HTTP clients.
+
+    This class provides the basic structure and functionality for HTTP clients.
+    Subclasses should implement specific HTTP client behavior.
+    """
+
     Headers = Headers
     Request = Request
     Response = Response
