@@ -106,11 +106,11 @@ def declaration_cached(entity, channel):
     return entity in channel.connection.client.declared_entities
 
 
-def maybe_declare(entity, channel=None, retry=False, **retry_policy):
+async def maybe_declare(entity, channel=None, retry=False, **retry_policy):
     """Declare entity (cached)."""
     if retry:
-        return _imaybe_declare(entity, channel, **retry_policy)
-    return _maybe_declare(entity, channel)
+        return await _imaybe_declare(entity, channel, **retry_policy)
+    return await _maybe_declare(entity, channel)
 
 
 def _ensure_channel_is_bound(entity, channel):
@@ -129,7 +129,7 @@ def _ensure_channel_is_bound(entity, channel):
         return entity
 
 
-def _maybe_declare(entity, channel):
+async def _maybe_declare(entity, channel):
     # _maybe_declare sets name on original for autogen queues
     orig = entity
 
@@ -150,7 +150,7 @@ def _maybe_declare(entity, channel):
 
     if not channel.connection:
         raise RecoverableConnectionError('channel disconnected')
-    entity.declare(channel=channel)
+    await entity.declare(channel=channel)
     if declared is not None and ident:
         declared.add(ident)
     if orig is not None:
@@ -158,13 +158,13 @@ def _maybe_declare(entity, channel):
     return True
 
 
-def _imaybe_declare(entity, channel, **retry_policy):
+async def _imaybe_declare(entity, channel, **retry_policy):
     _ensure_channel_is_bound(entity, channel)
 
     if not entity.channel.connection:
         raise RecoverableConnectionError('channel disconnected')
 
-    return entity.channel.connection.client.ensure(
+    return await entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(entity, channel)
 
 
