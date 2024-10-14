@@ -7,7 +7,7 @@ import pytest
 import urllib3
 
 import t.skip
-from kombu.asynchronous.http.urllib3_client import Urllib3Client
+from kombu.asynchronous.http.urllib3_client import Urllib3Client, _get_pool_key_parts
 
 
 @t.skip.if_pypy
@@ -232,3 +232,25 @@ class test_Urllib3Client:
             )
             assert called_response.effective_url == response_obj.effective_url
             assert called_response.error == response_obj.error
+
+    def test_pool_key_parts(self):
+        request = Mock(
+            name='request',
+            method='GET',
+            url='http://example.com',
+            headers={},
+            body=None,
+            network_interface='test',
+            validate_cert=False,
+            ca_certs='test0.pem',
+            client_cert='test1.pem',
+            client_key='some_key',
+        )
+        pool_key = _get_pool_key_parts(request)
+        assert pool_key == [
+            "interface=test",
+            "validate_cert=False",
+            "ca_certs=test0.pem",
+            "client_cert=test1.pem",
+            "client_key=some_key"
+        ]
