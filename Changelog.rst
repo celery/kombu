@@ -25,6 +25,11 @@ urllib3 instead of curl
 
 We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
 
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
 What's Changed
 ~~~~~~~~~~~~~~
 
