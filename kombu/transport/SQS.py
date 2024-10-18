@@ -133,6 +133,7 @@ Features
 from __future__ import annotations
 
 import base64
+import json
 import socket
 import string
 import uuid
@@ -144,7 +145,7 @@ from botocore.exceptions import ClientError
 from vine import ensure_promise, promise, transform
 
 from kombu.asynchronous import get_event_loop
-from kombu.asynchronous.aws.ext import boto3, exceptions
+from kombu.asynchronous.aws.ext import boto3, exceptions, sqs_extended_client
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.log import get_logger
@@ -498,6 +499,25 @@ class Channel(virtual.Channel):
                 message['ReceiptHandle'],
             )
         else:
+
+            if (
+                sqs_extended_client and
+                isinstance(payload, list)
+                and payload[0] == sqs_extended_client.client.MESSAGE_POINTER_CLASS
+            ):
+                # Used the sqs_extended_client, so we need to fetch the file from S3 and use that as the payload
+                s3_details = payload[1]
+                s3_bucket_name, s3_key = s3_details["s3BucketName"], s3_details["s3Key"]
+
+                s3_client = self.s3()
+                response = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_key)
+
+                # The message body is under a wrapper class called StreamingBody
+                streaming_body = response["Body"]
+                payload = json.loads(
+                    self._optional_b64_decode(streaming_body.read())
+                )
+
             try:
                 properties = payload['properties']
                 delivery_info = payload['properties']['delivery_info']
@@ -713,6 +733,32 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
+    def new_s3_client(
+        self, region, access_key_id, secret_access_key, session_token=None
+    ):
+        session = boto3.session.Session(
+            region_name=region,
+            aws_access_key_id=access_key_id,
+            aws_secret_access_key=secret_access_key,
+            aws_session_token=session_token,
+        )
+        is_secure = self.is_secure if self.is_secure is not None else True
+        client_kwargs = {"use_ssl": is_secure}
+
+        if self.endpoint_url is not None:
+            client_kwargs["endpoint_url"] = self.endpoint_url
+
+        client = session.client("s3", **client_kwargs)
+
+        return client
+
+    def s3(self):
+        return self.new_s3_client(
+            region=self.region,
+            access_key_id=self.conninfo.userid,
+            secret_access_key=self.conninfo.password,
+        )
+
     def new_sqs_client(self, region, access_key_id,
                        secret_access_key, session_token=None):
         session = boto3.session.Session(
@@ -729,7 +775,13 @@ class Channel(virtual.Channel):
             client_kwargs['endpoint_url'] = self.endpoint_url
         client_config = self.transport_options.get('client-config') or {}
         config = Config(**client_config)
-        return session.client('sqs', config=config, **client_kwargs)
+        client = session.client('sqs', config=config, **client_kwargs)
+
+        if self.transport_options.get('large_payload_bucket') and sqs_extended_client:
+            client.large_payload_support = self.transport_options.get('large_payload_bucket')
+            client.use_legacy_attribute = False
+
+        return client
 
     def sqs(self, queue=None):
         if queue is not None and self.predefined_queues:
