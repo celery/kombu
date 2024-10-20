@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.exceptions import MessageStateError
+from kombu.exceptions import MessageStateError, OperationalError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
@@ -153,6 +153,20 @@ class test_Producer:
         p.channel = Mock()
         p.channel.connection.client.declared_entities = set()
         p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
+
+    def test_publish_with_timeout_and_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1, retry_policy={
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        })
         timeout = p._channel.basic_publish.call_args[1]['timeout']
         assert timeout == 1
 
