@@ -54,7 +54,6 @@ Moreover parameters of :func:`sqlalchemy.create_engine()` function can be passed
 from __future__ import annotations
 
 import threading
-from imghdr import test_rast
 from json import dumps, loads
 from queue import Empty
 
