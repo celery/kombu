@@ -1451,7 +1451,7 @@ class test_Redis:
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
         conn1._sock.data = [('BRPOP', ('test_Redis',))]
-        c._in_poll = True
+        c._in_poll = conn1
         c.close()
         assert conn1.disconnected
         assert conn1._sock.data == []
