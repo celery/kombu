@@ -17,7 +17,7 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
     steps:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libssl-dev

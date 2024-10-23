@@ -1326,11 +1326,16 @@ class test_Channel:
 
             channel.qos.restore_by_tag('test-tag')
             assert mock_execute_command is not None
-            assert mock_execute_command.mock_calls == [
-                call('WATCH', 'foo_unacked'),
-                call('HGET', 'foo_unacked', 'test-tag'),
-                call('ZREM', 'foo_unacked_index', 'test-tag'),
-                call('HDEL', 'foo_unacked', 'test-tag')
+            # https://github.com/redis/redis-py/pull/3038 (redis>=5.1.0a1)
+            # adds keyword argument `keys` to redis client.
+            # To be compatible with all supported redis versions,
+            # take into account only `call.args`.
+            call_args = [call.args for call in mock_execute_command.mock_calls]
+            assert call_args == [
+                ('WATCH', 'foo_unacked'),
+                ('HGET', 'foo_unacked', 'test-tag'),
+                ('ZREM', 'foo_unacked_index', 'test-tag'),
+                ('HDEL', 'foo_unacked', 'test-tag')
             ]
 
 
