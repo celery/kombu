@@ -9,6 +9,7 @@ import pytest
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         PermissionDenied)
+from google.pubsub_v1.types.pubsub import Subscription
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
                                       Transport, UnackedIds)
@@ -282,6 +283,17 @@ class test_Channel:
         )
         assert result == subscription_path
         channel.subscriber.create_subscription.assert_called_once()
+
+    def test_create_subscription_protobuf_compat(self):
+        request = {
+            'name': 'projects/my_project/subscriptions/kombu-1111-2222',
+            'topic': 'projects/jether-fox/topics/reply.celery.pidbox',
+            'ack_deadline_seconds': 240,
+            'expiration_policy': {'ttl': '86400s'},
+            'message_retention_duration': '86400s',
+            'filter': 'attributes.routing_key="1111-2222"',
+        }
+        Subscription(request)
 
     def test_delete(self, channel):
         queue = "test_queue"
