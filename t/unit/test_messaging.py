@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 import sys
 from collections import defaultdict
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
@@ -170,6 +170,34 @@ class test_Producer:
         timeout = p._channel.basic_publish.call_args[1]['timeout']
         assert timeout == 1
 
+    @patch('kombu.messaging.maybe_declare')
+    def test_publish_maybe_declare_with_retry_policy(self, maybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        maybe_declare.assert_called_once_with(ANY, ANY, True, **expected_retry_policy)
+
+    @patch('kombu.common._imaybe_declare')
+    def test_publish_maybe_declare_with_retry_policy_ensure_connection(self, _imaybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        _imaybe_declare.assert_called_once_with(ANY, ANY, **expected_retry_policy)
+
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
         p.channel = Mock()
@@ -200,7 +228,7 @@ class test_Producer:
         p.connection.ensure = Mock()
         ex = Exchange('foo')
         p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
-        p.maybe_declare.assert_called_with(ex)
+        p.maybe_declare.assert_called_with(ex, retry=False)
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()

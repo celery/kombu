@@ -126,7 +126,7 @@ def _ensure_channel_is_bound(entity, channel):
             raise ChannelError(
                 f"Cannot bind channel {channel} to entity {entity}")
         entity = entity.bind(channel)
-        return entity
+    return entity
 
 
 def _maybe_declare(entity, channel):
@@ -159,7 +159,7 @@ def _maybe_declare(entity, channel):
 
 
 def _imaybe_declare(entity, channel, **retry_policy):
-    _ensure_channel_is_bound(entity, channel)
+    entity = _ensure_channel_is_bound(entity, channel)
 
     if not entity.channel.connection:
         raise RecoverableConnectionError('channel disconnected')
