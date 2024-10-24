@@ -170,6 +170,14 @@ class test_Producer:
         timeout = p._channel.basic_publish.call_args[1]['timeout']
         assert timeout == 1
 
+    def test_publish_with_confirm_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), confirm_timeout=1)
+        confirm_timeout = p._channel.basic_publish.call_args[1]['confirm_timeout']
+        assert confirm_timeout == 1
+
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
         p.channel = Mock()
