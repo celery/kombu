@@ -95,6 +95,15 @@ class test_JSONEncoder:
         loaded_value = loads(dumps({'u': value}))
         assert loaded_value == {'u': "custom"}
 
+    def test_register_type_takes_priority(self):
+        class MyDecimal(Decimal):
+            pass
+
+        register_type(MyDecimal, "mydecimal", str, MyDecimal)
+        original = {'md': MyDecimal('3314132.13363235235324234123213213214134')}
+        loaded_value = loads(dumps(original))
+        assert original == loaded_value
+
     def test_register_type_with_new_type(self):
         # Guaranteed never before seen type
         @dataclass()
