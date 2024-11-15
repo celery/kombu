@@ -59,7 +59,7 @@ jobs:
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
 
-    - uses: codecov/codecov-action@v4
+    - uses: codecov/codecov-action@v5
       with:
         fail_ci_if_error: false # optional (default = false)
         token: ${{ secrets.CODECOV_TOKEN }}
