@@ -17,11 +17,11 @@ from queue import Empty
 from unittest.mock import Mock, patch
 
 import pytest
-import sqs_extended_client
 
 from kombu import Connection, Exchange, Queue, messaging
 
 boto3 = pytest.importorskip('boto3')
+sqs_extended_client = pytest.importorskip('sqs_extended_client')
 
 from botocore.exceptions import ClientError  # noqa
 
