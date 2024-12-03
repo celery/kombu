@@ -7,14 +7,17 @@ slightly.
 from __future__ import annotations
 
 import base64
+import json
 import os
 import random
 import string
 from datetime import datetime, timedelta
+from io import BytesIO
 from queue import Empty
 from unittest.mock import Mock, patch
 
 import pytest
+import sqs_extended_client
 
 from kombu import Connection, Exchange, Queue, messaging
 
@@ -1035,3 +1038,30 @@ class test_Channel:
         assert message == output_message.payload
         # It's not propagated to the properties
         assert 'message_attributes' not in output_message.properties
+
+    def test_message_to_python_with_sqs_extended_client(self):
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 's3://large-payload-bucket', 's3Key': 'payload.json'}
+        ]
+
+        # Get the messages now
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock(
+                get_object=Mock(
+                    return_value={'Body': BytesIO(json.dumps({"my_key": "Hello, World!"}).encode()), })
+            )
+            s3_mock.return_value = s3_client
+
+            result = self.channel._message_to_python(
+                {'Body': json.dumps(message), 'ReceiptHandle': 'handle'}, self.queue_name,
+                'test',
+            )
+
+        assert s3_client.get_object.called
+
+        # Make sure they're payload-style objects
+        assert 'properties' in result
+
+        # Data from s3 is loaded into the return payload
+        assert 'my_key' in result
