@@ -514,9 +514,8 @@ class Channel(virtual.Channel):
 
                 # The message body is under a wrapper class called StreamingBody
                 streaming_body = response["Body"]
-                payload = json.loads(
-                    self._optional_b64_decode(streaming_body.read())
-                )
+                body = self._optional_b64_decode(streaming_body.read())
+                payload = json.loads(body)
 
             try:
                 properties = payload['properties']
