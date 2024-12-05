@@ -1035,6 +1035,26 @@ class Connection:
 BrokerConnection = Connection
 
 
+class PooledConnection(Connection):
+    """Wraps :class:`kombu.Connection`.
+
+    This wrapper modifies :meth:`kombu.Connection.__exit__` to close the connection
+    in case any exception occurred while the context was active.
+    """
+
+    def __init__(self, pool, **kwargs):
+        self._pool = pool
+        super().__init__(**kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None and self._pool.limit:
+            self._pool.replace(self)
+        return super().__exit__(exc_type, exc_val, exc_tb)
+
+
 class ConnectionPool(Resource):
     """Pool of connections."""
 
@@ -1046,7 +1066,7 @@ class ConnectionPool(Resource):
         super().__init__(limit=limit)
 
     def new(self):
-        return self.connection.clone()
+        return PooledConnection(self, **dict(self.connection._info(resolve=False)))
 
     def release_resource(self, resource):
         try:
