@@ -4,20 +4,13 @@ import os
 import uuid
 
 import pytest
-
-import kombu
 from amqp.exceptions import NotFound
 
+import kombu
 from kombu.connection import ConnectionPool
 
-from .common import (
-    BaseExchangeTypes,
-    BaseFailover,
-    BaseMessage,
-    BasePriority,
-    BaseTimeToLive,
-    BasicFunctionality,
-)
+from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
+                     BasePriority, BaseTimeToLive, BasicFunctionality)
 
 
 def get_connection(hostname, port, vhost):
@@ -115,7 +108,7 @@ class test_PyAMQPConnectionPool:
 
         In case an exception occurs while the connection is in use, the pool should
         close the exception. In case the connection is not closed before releasing it
-        back to the pool, the connection would remain in an unsuable state, causing
+        back to the pool, the connection would remain in an unusable state, causing
         causing the next publish call to time out or block forever in case no
         timeout is specified.
         """
@@ -125,7 +118,7 @@ class test_PyAMQPConnectionPool:
             with pool.acquire(block=True) as connection:
                 producer = kombu.Producer(connection)
                 queue = kombu.Queue(
-                    "test-queue-{}".format(uuid.uuid4()), channel=connection
+                    f"test-queue-{uuid.uuid4()}", channel=connection
                 )
                 queue.declare()
                 producer.publish(
@@ -144,7 +137,7 @@ class test_PyAMQPConnectionPool:
             assert not connection.connected
             producer = kombu.Producer(connection)
             queue = kombu.Queue(
-                "test-queue-{}".format(uuid.uuid4()), channel=connection
+                f"test-queue-{uuid.uuid4()}", channel=connection
             )
             queue.declare()
             # In case the connection is broken, we should get a Timeout here
