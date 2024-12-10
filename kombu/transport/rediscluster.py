@@ -17,7 +17,7 @@ from .redis import (
     QoS as RedisQoS,
     Transport as RedisTransport,
 )
-from ..exceptions import VersionMismatch, GlobalPrefixNotSpport
+from ..exceptions import VersionMismatch, GlobalPrefixNotSupport
 from ..log import get_logger
 
 try:
@@ -218,7 +218,7 @@ class Channel(RedisChannel):
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
-            raise GlobalPrefixNotSpport('Redis cluster transport do not support global_keyprefix')
+            raise GlobalPrefixNotSupport('Redis cluster transport do not support global_keyprefix')
 
         return redis.RedisCluster
 
