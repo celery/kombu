@@ -18,7 +18,7 @@ __all__ = (
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
     'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
-    'InconsistencyError',
+    'InconsistencyError', 'GlobalPrefixNotSpport',
 )
 
 BaseExceptionType = TypeVar('BaseExceptionType', bound=BaseException)
@@ -76,6 +76,10 @@ class ChannelLimitExceeded(LimitExceeded):
 
 
 class VersionMismatch(KombuError):
+    """Library dependency version mismatch."""
+
+
+class GlobalPrefixNotSpport(KombuError):
     """Library dependency version mismatch."""
 
 

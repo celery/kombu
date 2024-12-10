@@ -1,13 +1,9 @@
 from __future__ import annotations
 
-import functools
 from collections import namedtuple
 from contextlib import contextmanager
 from queue import Empty
 from time import time
-
-import redis
-from rediscluster.pubsub import ClusterPubSub
 
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ
@@ -20,37 +16,23 @@ from .redis import (
     MultiChannelPoller,
     MutexHeld,
     QoS as RedisQoS,
-    Transport as RedisTransport, PrefixedRedisPubSub, GlobalKeyPrefixMixin,
+    Transport as RedisTransport,
 )
-from ..exceptions import VersionMismatch
+from ..exceptions import VersionMismatch, GlobalPrefixNotSpport
 from ..log import get_logger
 
 try:
-    import rediscluster
-    from rediscluster.connection import SSLClusterConnection, ClusterConnection, ClusterConnectionPool
+    import redis
+    from redis.cluster import ClusterPubSub
 except ImportError:
-    rediscluster = None
-    ClusterConnection = None
-    SSLClusterConnection = None
+    redis = None
 
 logger = get_logger('kombu.transport.rediscluster')
 crit, warning = logger.critical, logger.warning
 
-DEFAULT_PORT = 6379
-DEFAULT_DB = 0
-
-DEFAULT_HEALTH_CHECK_INTERVAL = 25
-
-error_classes_t = namedtuple('error_classes_t', (
-    'connection_errors', 'channel_errors',
-))
-
 
 @contextmanager
 def Mutex(client, name, expire):
-    """
-    https://redis.io/docs/latest/develop/use/patterns/distributed-locks/
-    """
     lock_id = uuid().encode('utf-8')
     acquired = client.set(name, lock_id, ex=expire, nx=True)
     try:
@@ -85,7 +67,7 @@ class QoS(RedisQoS):
 
     def restore_by_tag(self, tag, client=None, leftmost=False):
         with self.channel.conn_or_acquire(client) as client:
-            # Transaction support is disabled in redis-py-cluster.
+            # Transaction support is disabled in redis cluster.
             # Use pipelines to avoid extra network round-trips, not to ensure atomicity.
             p = client.hget(self.unacked_key, tag)
             with self.pipe_or_acquire() as pipe:
@@ -94,24 +76,6 @@ class QoS(RedisQoS):
                     M, EX, RK = loads(bytes_to_str(p))  # json is unicode
                     self.channel._do_restore_message(M, EX, RK, pipe, leftmost)
                 pipe.execute()
-
-
-class PrefixedRedisCluster(GlobalKeyPrefixMixin, rediscluster.RedisCluster):
-
-    def __init__(self, *args, **kwargs):
-        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
-        rediscluster.RedisCluster.__init__(self, *args, **kwargs)
-
-    def pubsub(self, **kwargs):
-        return PrefixedRedisClusterPubSub(
-            self.connection_pool,
-            global_keyprefix=self.global_keyprefix,
-            **kwargs,
-        )
-
-
-class PrefixedRedisClusterPubSub(PrefixedRedisPubSub, rediscluster.pubsub.ClusterPubSub):
-    pass
 
 
 class ClusterMultiChannelPoller(MultiChannelPoller):
@@ -159,10 +123,14 @@ class ClusterMultiChannelPoller(MultiChannelPoller):
         if self._chan_to_sock:
             return [conn for _, _, conn, _ in self._chan_to_sock]
 
-        return [
-            channel.client.connection_pool.get_connection_by_key(key, 'NOOP')
-            for key in channel.active_queues
-        ]
+        conns = []
+        for key in channel.active_queues:
+            slot = channel.client.keyslot(key)
+            node = channel.client.nodes_manager.get_node_from_slot(
+                slot, channel.client.read_from_replicas
+            )
+            conns.append(node.redis_connection.connection_pool.get_connection("_"))
+        return conns
 
     def on_readable(self, fileno):
         try:
@@ -183,26 +151,10 @@ class ClusterMultiChannelPoller(MultiChannelPoller):
 
 class Channel(RedisChannel):
     QoS = QoS
-    connection_class = ClusterConnection
-    connection_class_ssl = SSLClusterConnection
 
     min_priority = 0
     max_priority = 0
-    # Because the keys may be distributed in different slots and each slot may require different connections,
-    # we can not use the brpop command that supports multiple keys in the current framework
     priority_steps = [min_priority]
-
-    def _subscribe(self):
-        keys = [self._get_subscribe_topic(queue)
-                for queue in self.active_fanout_queues]
-        if not keys:
-            return
-        c = self.subclient
-        self._in_listen = True
-        if c.connection._sock is None:
-            c.connection.connect()
-        self._in_listen = c.connection
-        c.psubscribe(keys)
 
     def _brpop_start(self, timeout=1):
         queues = self._queue_cycle.consume(len(self.active_queues))
@@ -211,20 +163,20 @@ class Channel(RedisChannel):
         self._in_poll = True
 
         node_to_keys = {}
-        pool = self.client.connection_pool
         for key in queues:
-            node = self.client.connection_pool.get_node_by_slot(pool.nodes.keyslot(key))
-            node_to_keys.setdefault(node['name'], []).append(key)
+            slot = self.client.keyslot(key)
+            node = self.client.nodes_manager.get_node_from_slot(
+                slot, self.client.read_from_replicas
+            )
+            node_to_keys.setdefault(f'{node.host}:{node.port}', []).append(key)
 
         for chan, client, conn, cmd in self.connection.cycle._chan_to_sock:
             expected = (self, self.client, 'BRPOP')
-            keys = node_to_keys.get(conn.node['name'])
+            keys = node_to_keys.get(f'{conn.host}:{conn.port}')
 
             if keys and (chan, client, cmd) == expected:
                 for key in keys:
                     command_args = ['BRPOP', key, timeout]
-                    if self.global_keyprefix:
-                        command_args = self.client._prefix_args(command_args)
                     conn.send_command(*command_args)
 
     def _brpop_read(self, **options):
@@ -233,9 +185,7 @@ class Channel(RedisChannel):
             conn = options.pop('conn', None)
             if conn:
                 try:
-                    dest__item = self.client.parse_response(conn,
-                                                            'BRPOP',
-                                                            **options)
+                    dest__item = conn.read_response('BRPOP', **options)
                 except self.connection_errors:
                     conn.disconnect()
                     raise
@@ -251,54 +201,48 @@ class Channel(RedisChannel):
             self._in_poll = None
 
     def _create_client(self, asynchronous=False):
-        params = {'skip_full_coverage_check': True}
-        if asynchronous:
-            params['connection_pool'] = self.async_pool
-        else:
-            params['connection_pool'] = self.pool
+        params = self._connparams(asynchronous=asynchronous)
         return self.Client(**params)
 
-    def _get_pool(self, asynchronous=False):
-        params = self._connparams(asynchronous=asynchronous)
-        params['skip_full_coverage_check'] = True
-        params.pop('username', None)
-        return ClusterConnectionPool(**params)
+    def _connparams(self, asynchronous=False):
+        conninfo = self.connection.client
+        connparams = {
+            'host': conninfo.hostname or '127.0.0.1',
+            'port': conninfo.port or self.connection.default_port,
+            'username': conninfo.userid,
+            'password': conninfo.password,
+            'max_connections': self.max_connections,
+            'socket_timeout': self.socket_timeout,
+            'socket_connect_timeout': self.socket_connect_timeout,
+            'socket_keepalive': self.socket_keepalive,
+            'socket_keepalive_options': self.socket_keepalive_options,
+            'health_check_interval': self.health_check_interval,
+            'retry_on_timeout': self.retry_on_timeout,
+        }
+        return connparams
 
     def _get_client(self):
-        if redis.VERSION < (3, 0, 0):
-            # https://redis-py-cluster.readthedocs.io/en/master/
+        if redis.VERSION < (4, 1, 0):
             raise VersionMismatch(
-                'Redis cluster transport requires redis-py versions 3.0.0 or later. '
+                'Redis cluster transport requires redis-py versions 4.0.0 or later. '
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
-            return functools.partial(
-                PrefixedRedisCluster,
-                global_keyprefix=self.global_keyprefix,
-            )
+            raise GlobalPrefixNotSpport('Redis cluster transport do not support global_keyprefix')
 
-        return rediscluster.RedisCluster
-
-    def _poll_error(self, conn, type, **options):
-        if type == 'LISTEN':
-            self.subclient.parse_response()
-        else:
-            self.client.parse_response(conn, type)
+        return redis.RedisCluster
 
     def close(self):
         self._closing = True
         if self._in_poll:
             try:
-                conns = [conn for _, _, conn, _ in self.connection.cycle._chan_to_sock]
-                for conn in conns:
-                    self._brpop_read(**{'conn': conn})
+                for channel, conn in [(channel, conn) for channel, _, conn, _ in self.connection.cycle._chan_to_sock]:
+                    if channel == self:
+                        self._brpop_read(**{'conn': conn})
             except Empty:
                 pass
         if not self.closed:
-            # remove from channel poller.
             self.connection.cycle.discard(self)
-
-            # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
             if client is not None:
                 for queue in self._fanout_queues:
@@ -320,11 +264,5 @@ class Transport(RedisTransport):
     )
 
     def __init__(self, *args, **kwargs):
-        if rediscluster is None:
-            raise ImportError('dependency missing: redis-py-cluster')
-
         super().__init__(*args, **kwargs)
         self.cycle = ClusterMultiChannelPoller()
-
-    def driver_version(self):
-        return rediscluster.__version__
