@@ -156,6 +156,8 @@ class Channel(RedisChannel):
     max_priority = 0
     priority_steps = [min_priority]
 
+    _client = None
+
     def _brpop_start(self, timeout=1):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
@@ -201,8 +203,10 @@ class Channel(RedisChannel):
             self._in_poll = None
 
     def _create_client(self, asynchronous=False):
-        params = self._connparams(asynchronous=asynchronous)
-        return self.Client(**params)
+        if self._client is None:
+            params = self._connparams(asynchronous=asynchronous)
+            self._client = self.Client(**params)
+        return self._client
 
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
