@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections import namedtuple
 from contextlib import contextmanager
 from queue import Empty
 from time import time
@@ -83,7 +82,7 @@ class ClusterMultiChannelPoller(MultiChannelPoller):
     def _register(self, channel, client, conn, type):
         if (channel, client, conn, type) in self._chan_to_sock:
             self._unregister(channel, client, conn, type)
-        if conn._sock is None:  # not connected yet.
+        if conn._sock is None:
             conn.connect()
         sock = conn._sock
         self._fd_to_chan[sock.fileno()] = (channel, conn, type)
@@ -94,17 +93,15 @@ class ClusterMultiChannelPoller(MultiChannelPoller):
         self.poller.unregister(self._chan_to_sock[(channel, client, conn, type)])
 
     def _register_BRPOP(self, channel):
-        """Enable BRPOP mode for channel."""
         conns = self.get_conns_for_channel(channel)
 
         for conn in conns:
             ident = (channel, channel.client, conn, 'BRPOP')
-
             if (conn._sock is None or ident not in self._chan_to_sock):
                 channel._in_poll = False
                 self._register(*ident)
 
-        if not channel._in_poll:  # send BRPOP
+        if not channel._in_poll:
             channel._brpop_start()
 
     def _register_LISTEN(self, channel):
@@ -117,7 +114,7 @@ class ClusterMultiChannelPoller(MultiChannelPoller):
                 self._register(*ident)
 
         if not channel._in_listen:
-            channel._subscribe()  # send SUBSCRIBE
+            channel._subscribe()
 
     def get_conns_for_channel(self, channel):
         if self._chan_to_sock:
@@ -209,20 +206,9 @@ class Channel(RedisChannel):
         return self._client
 
     def _connparams(self, asynchronous=False):
-        conninfo = self.connection.client
-        connparams = {
-            'host': conninfo.hostname or '127.0.0.1',
-            'port': conninfo.port or self.connection.default_port,
-            'username': conninfo.userid,
-            'password': conninfo.password,
-            'max_connections': self.max_connections,
-            'socket_timeout': self.socket_timeout,
-            'socket_connect_timeout': self.socket_connect_timeout,
-            'socket_keepalive': self.socket_keepalive,
-            'socket_keepalive_options': self.socket_keepalive_options,
-            'health_check_interval': self.health_check_interval,
-            'retry_on_timeout': self.retry_on_timeout,
-        }
+        connparams = super()._connparams(asynchronous=asynchronous)
+        connparams.pop('db', None)
+        connparams.pop('connection_class', None)
         return connparams
 
     def _get_client(self):

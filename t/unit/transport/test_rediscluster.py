@@ -152,6 +152,22 @@ class test_Channel:
                 int(tag)
             assert len(tag) == 36
 
+    def test_ssl_argument__dict(self):
+        with patch('kombu.transport.rediscluster.Channel._create_client'):
+            ssl_params = {
+                'ssl_cert_reqs': 2,
+                'ssl_ca_certs': '/foo/ca.pem',
+                'ssl_certfile': '/foo/cert.crt',
+                'ssl_keyfile': '/foo/pkey.key'
+            }
+            with Connection('rediscluster://', ssl=ssl_params) as conn:
+                params = conn.default_channel._connparams()
+                assert params['ssl_cert_reqs'] == ssl_params['ssl_cert_reqs']
+                assert params['ssl_ca_certs'] == ssl_params['ssl_ca_certs']
+                assert params['ssl_certfile'] == ssl_params['ssl_certfile']
+                assert params['ssl_keyfile'] == ssl_params['ssl_keyfile']
+                assert params.get('ssl') is None
+
 
 class test_RedisCluster:
 
