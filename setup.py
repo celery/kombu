@@ -81,7 +81,7 @@ def readme():
 
 
 setup(
-    name='kombuzstest',
+    name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],

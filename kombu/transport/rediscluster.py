@@ -214,7 +214,7 @@ class Channel(RedisChannel):
     def _get_client(self):
         if redis.VERSION < (4, 1, 0):
             raise VersionMismatch(
-                'Redis cluster transport requires redis-py versions 4.0.0 or later. '
+                'Redis cluster transport requires redis-py versions 4.1.0 or later. '
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
