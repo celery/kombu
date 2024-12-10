@@ -9,16 +9,13 @@ from kombu.utils.eventio import ERR, READ
 from kombu.utils.json import loads
 from kombu.utils.uuid import uuid
 
-from . import virtual
-from .redis import (
-    Channel as RedisChannel,
-    MultiChannelPoller,
-    MutexHeld,
-    QoS as RedisQoS,
-    Transport as RedisTransport,
-)
-from ..exceptions import VersionMismatch, GlobalPrefixNotSupport
+from ..exceptions import GlobalPrefixNotSupport, VersionMismatch
 from ..log import get_logger
+from . import virtual
+from .redis import Channel as RedisChannel
+from .redis import MultiChannelPoller, MutexHeld
+from .redis import QoS as RedisQoS
+from .redis import Transport as RedisTransport
 
 try:
     import redis

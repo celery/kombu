@@ -6,7 +6,8 @@ from queue import Empty
 from unittest.mock import Mock, patch
 
 import pytest
-from kombu import Connection, Producer, Exchange, Queue, Consumer
+
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.transport import rediscluster
 
 pytest.importorskip('redis')
