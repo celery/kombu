@@ -18,7 +18,7 @@ __all__ = (
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
     'VersionMismatch', 'SerializerNotInstalled', 'ResourceError',
     'SerializationError', 'EncodeError', 'DecodeError', 'HttpError',
-    'InconsistencyError',
+    'InconsistencyError', 'GlobalPrefixNotSupport',
 )
 
 BaseExceptionType = TypeVar('BaseExceptionType', bound=BaseException)
@@ -77,6 +77,10 @@ class ChannelLimitExceeded(LimitExceeded):
 
 class VersionMismatch(KombuError):
     """Library dependency version mismatch."""
+
+
+class GlobalPrefixNotSupport(KombuError):
+    """Global prefix not support in redis cluster."""
 
 
 class SerializerNotInstalled(KombuError):
