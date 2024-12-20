@@ -276,7 +276,7 @@ class MultiChannelPoller(RedisMultiChannelPoller):
     def _unregister(self, channel, client, conn, type):
         self.poller.unregister(self._chan_to_sock[(channel, client, conn, type)])
 
-    def get_conns_for_channel(self, channel):
+    def _get_conns_for_channel(self, channel):
         conns = set()
         for queue in channel.active_queues:
             if (channel, queue) not in self._chan_active_queues_to_conn:
@@ -289,7 +289,7 @@ class MultiChannelPoller(RedisMultiChannelPoller):
         return conns
 
     def _register_BRPOP(self, channel):
-        conns = self.get_conns_for_channel(channel)
+        conns = self._get_conns_for_channel(channel)
 
         for conn in conns:
             ident = (channel, channel.client, conn, 'BRPOP')
