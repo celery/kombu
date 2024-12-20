@@ -50,26 +50,25 @@ from __future__ import annotations
 import functools
 from contextlib import contextmanager
 from queue import Empty
-from time import time, sleep
+from time import sleep, time
 
-from kombu.utils import uuid
-from redis.exceptions import RedisClusterException, MovedError, ClusterDownError, TryAgainError, AskError
+from redis.exceptions import (AskError, ClusterDownError, MovedError,
+                              RedisClusterException, TryAgainError)
 
 from kombu.exceptions import VersionMismatch
 from kombu.log import get_logger
+from kombu.utils import uuid
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ
 from kombu.utils.json import loads
 from kombu.utils.objects import cached_property
 
-from .redis import (
-    Channel as RedisChannel,
-    MultiChannelPoller as RedisMultiChannelPoller,
-    MutexHeld,
-    QoS as RedisQoS,
-    Transport as RedisTransport,
-    GlobalKeyPrefixMixin as RedisGlobalKeyPrefixMixin,
-)
+from .redis import Channel as RedisChannel
+from .redis import GlobalKeyPrefixMixin as RedisGlobalKeyPrefixMixin
+from .redis import MultiChannelPoller as RedisMultiChannelPoller
+from .redis import MutexHeld
+from .redis import QoS as RedisQoS
+from .redis import Transport as RedisTransport
 
 try:
     import redis
