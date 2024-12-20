@@ -6,7 +6,7 @@ Features
 * Supports Direct: Yes
 * Supports Topic: Yes
 * Supports Fanout: Yes
-* Supports Priority: Yes (if set hash_tag)
+* Supports Priority: Yes (If hash_tag is set)
 * Supports TTL: No
 
 Connection String
@@ -31,6 +31,8 @@ Transport Options
 * ``fanout_prefix``
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
+* ``hash_tag``: (str) Prefix keys(keyprefix_queue,keyprefix_fanout,unacked_key,unacked_index_key,unacked_mutex_key'
+*                     ,global_keyprefix) with the hashtag
   used by Kombu
 * ``socket_timeout``
 * ``socket_connect_timeout``
@@ -48,11 +50,10 @@ from __future__ import annotations
 import functools
 from contextlib import contextmanager
 from queue import Empty
-from time import time
-
-from redis.exceptions import RedisClusterException, MovedError
+from time import time, sleep
 
 from kombu.utils import uuid
+from redis.exceptions import RedisClusterException, MovedError, ClusterDownError, TryAgainError, AskError
 
 from kombu.exceptions import VersionMismatch
 from kombu.log import get_logger
@@ -81,6 +82,8 @@ crit, warning = logger.critical, logger.warning
 
 @contextmanager
 def Mutex(client, name, expire):
+    # The internal implementation of lock uses uuid as the key, so it cannot be used in cluster mode.
+    # Use setnx instead
     lock_id = uuid().encode('utf-8')
     acquired = client.set(name, lock_id, ex=expire, nx=True)
     try:
@@ -90,15 +93,22 @@ def Mutex(client, name, expire):
             raise MutexHeld()
     finally:
         if acquired:
-            if client.get(name) == lock_id:
-                # todo: add watch
-                client.delete(name)
+            with client.pipeline() as pipe:
+                try:
+                    pipe.watch(name)
+                    if client.get(name) == lock_id:
+                        pipe.multi()
+                        pipe.delete(name)
+                        pipe.execute()
+                        return
+                    pipe.unwatch()
+                except redis.exceptions.WatchError:
+                    pass
 
 
 class GlobalKeyPrefixMixin(RedisGlobalKeyPrefixMixin):
 
     def pipeline(self, transaction=False, shard_hint=None):
-        # todo: need test
         if shard_hint:
             raise RedisClusterException("shard_hint is deprecated in cluster mode")
         if transaction:
@@ -140,8 +150,6 @@ class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.cluster.ClusterPipeline)
 
 
 class PrefixedRedisPubSub(redis.cluster.ClusterPubSub):
-    """Redis pubsub client that takes global_keyprefix into consideration."""
-
     PUBSUB_COMMANDS = (
         "SUBSCRIBE",
         "UNSUBSCRIBE",
@@ -192,7 +200,8 @@ class QoS(RedisQoS):
         with self.channel.conn_or_acquire() as client:
             ceil = time() - self.visibility_timeout
             try:
-                with Mutex(client, self.unacked_mutex_key,
+                node = client.nodes_manager.get_node_from_slot(client.keyslot(self.unacked_mutex_key))
+                with Mutex(node.redis_connection, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
                     visible = client.zrevrangebyscore(
                         self.unacked_index_key, ceil, 0,
@@ -215,10 +224,9 @@ class QoS(RedisQoS):
         with self.channel.conn_or_acquire(client) as client:
             if self.channel.hash_tag:
                 # Redis doesn't support transaction, if keys are located on different slots/nodes.
-                # We must ensure all keys related to your transaction are stored on a single slot. We can use hash tag to do that.
+                # We must ensure all keys related to transaction are stored on a single slot. We can use hash tag to do that.
                 # Then we can take the node holding the slot as a single Redis instance, and run transaction on that node.
-                slot = client.keyslot(self.unacked_key)
-                node = client.nodes_manager.get_node_from_slot(slot)
+                node = client.nodes_manager.get_node_from_slot(client.keyslot(self.unacked_key))
                 node.redis_connection.transaction(restore_transaction, self.unacked_key)
             else:
                 # Without transactions, problems may occur
@@ -258,6 +266,7 @@ class MultiChannelPoller(RedisMultiChannelPoller):
         if (channel, client, conn, type) in self._chan_to_sock:
             self._unregister(channel, client, conn, type)
         if conn._sock is None:
+            # We closed the connection when exception occurred during `_brpop_read`
             conn.connect()
 
         sock = conn._sock
@@ -279,7 +288,8 @@ class MultiChannelPoller(RedisMultiChannelPoller):
         for queue in channel.active_queues:
             if (channel, queue) not in self._chan_active_queues_to_conn:
                 slot = channel.client.keyslot(queue)
-                node = channel.client.nodes_manager.get_node_from_slot(slot)
+                node = channel.client.nodes_manager.get_node_from_slot(slot, read_from_replicas=False)
+                # Different queues use different connections
                 conn = node.redis_connection.connection_pool.get_connection("_")
                 self._chan_active_queues_to_conn[(channel, queue)] = conn
             conns.add(self._chan_active_queues_to_conn[(channel, queue)])
@@ -308,7 +318,31 @@ class MultiChannelPoller(RedisMultiChannelPoller):
     def on_readable(self, fileno):
         chan, conn, type = self._fd_to_chan[fileno]
         if chan.qos.can_consume():
-            chan.handlers[type](**{'conn': conn})
+            try:
+                chan.handlers[type](**{'conn': conn})
+            except MovedError:
+                # When a key is moved, the connection previously used to access the key
+                # needs to be replaced with the new connection after the move.
+                # The connection will be rebuilt in the next loop.
+                self._unregister_connection(conn, fileno=fileno)
+                raise Empty()
+
+    def _unregister_connection(self, redis_connection, fileno=None):
+        if not fileno and redis_connection._sock:
+            fileno = redis_connection._sock.fileno()
+
+        self._fd_to_chan.pop(fileno, None)
+        for channel, client, conn, type in list(self._chan_to_sock.keys()):
+            if conn == redis_connection:
+                del self._chan_to_sock[(channel, client, conn, type)]
+
+        for channel, queue in list(self._chan_active_queues_to_conn.keys()):
+            if self._chan_active_queues_to_conn[(channel, queue)] == redis_connection:
+                del self._chan_active_queues_to_conn[(channel, queue)]
+        try:
+            self.poller.unregister(redis_connection._sock)
+        except (KeyError, ValueError):
+            pass
 
     def handle_event(self, fileno, event):
         if event & READ:
@@ -321,12 +355,11 @@ class MultiChannelPoller(RedisMultiChannelPoller):
 class Channel(RedisChannel):
     QoS = QoS
 
-    _client = None
+    _client: redis.RedisCluster = None
     _in_poll = False
     _in_poll_connections = set()
     _in_listen = False
 
-    # todo: comment more
     hash_tag = ''
     keyprefix_queue = '_kombu.binding.%s'
     keyprefix_fanout = '/{db}.'
@@ -344,6 +377,7 @@ class Channel(RedisChannel):
         options = connection.client.transport_options
         hash_tag = options.get('hash_tag', getattr(self, 'hash_tag'))
         if hash_tag:
+            # Prefix keys with the hashtag.
             keys = [
                 'keyprefix_queue',
                 'keyprefix_fanout',
@@ -356,7 +390,7 @@ class Channel(RedisChannel):
                 value = options.get(key, getattr(self, key))
                 options[key] = hash_tag + value
         else:
-            # priority_steps won't work without hash_tag
+            # The priority_steps won't work without hash_tag.
             options['priority_steps'] = [0]
 
         super().__init__(connection, *args, **kwargs)
@@ -396,8 +430,7 @@ class Channel(RedisChannel):
 
         with self.conn_or_acquire() as client:
             if self.hash_tag:
-                slot = client.keyslot(self.unacked_key)
-                node = client.nodes_manager.get_node_from_slot(slot)
+                node = client.nodes_manager.get_node_from_slot(client.keyslot(self.unacked_key))
                 node.redis_connection.transaction(restore_transaction, self.unacked_key)
             else:
                 # Without transactions, problems may occur
@@ -434,16 +467,33 @@ class Channel(RedisChannel):
                 self._in_poll_connections.add(conn)
 
     def _brpop_read(self, **options):
-        conn = options.pop('conn', None)
+        conn: redis.Connection = options.pop('conn', None)
         try:
             try:
                 dest__item = conn.read_response('BRPOP', **options)
-            except MovedError:
-                # todo: solve moved error
-                raise
             except self.connection_errors:
-                conn.disconnect()
+                if conn is not None:
+                    conn.disconnect()
+                # Remove the failed node from the startup nodes before we try
+                # to reinitialize the cluster
+                target_node = self.client.nodes_manager.startup_nodes.pop(f'{conn.host}:{conn.port}', None)
+                # Reset the cluster node's connection
+                target_node.redis_connection = None
+                self.client.nodes_manager.initialize()
                 raise
+            except MovedError:
+                self.client.nodes_manager.initialize()
+                raise
+            except ClusterDownError:
+                # ClusterDownError can occur during a failover and to get
+                # self-healed, we will try to reinitialize the cluster layout
+                # and retry executing the command
+                sleep(0.25)
+                self.client.nodes_manager.initialize()
+                raise Empty()
+            except (TryAgainError, AskError):
+                raise Empty()
+
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
@@ -454,6 +504,8 @@ class Channel(RedisChannel):
                 raise Empty()
         finally:
             self._in_poll_connections.discard(conn)
+            # To avoid inconsistencies between _in_poll and _in_poll_connections in abnormal situations,
+            # _in_poll is set to None after any connection being read.
             self._in_poll = None
 
     def _receive(self, **kwargs):
@@ -499,7 +551,7 @@ class Channel(RedisChannel):
 
     def _connparams(self, asynchronous=False):
         conn_params = super()._connparams(asynchronous=asynchronous)
-        # connection_class is not supported in redis.client.Redis
+        # connection_class and db is not supported in redis.client.Redis
         # connection_pool_class is only effective when the url parameter is not empty
         conn_params.pop('db', None)
         conn_params.pop('connection_class', None)
@@ -546,14 +598,6 @@ class Channel(RedisChannel):
             )
 
         return redis.cluster.RedisCluster
-
-    @property
-    def pool(self):
-        return None
-
-    @property
-    def async_pool(self):
-        return None
 
     @cached_property
     def subclient(self):
