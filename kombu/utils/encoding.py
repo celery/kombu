@@ -9,15 +9,14 @@ from __future__ import annotations
 
 import sys
 import traceback
-from typing import Any, Union, Literal, overload, TypeVar
-
+from typing import Any, Literal, TypeVar, overload
 
 T = TypeVar("T")
 
 #: safe_str takes encoding from this file by default.
 #: :func:`set_default_encoding_file` can used to set the
 #: default output file.
-default_encoding_file: Union[str, None] = None
+default_encoding_file: str | None = None
 
 
 def set_default_encoding_file(file: str) -> None:
@@ -71,7 +70,7 @@ def from_utf8(s: str, *args: Any, **kwargs: Any) -> str:
     return s
 
 
-def ensure_bytes(s: Union[str, bytes]) -> bytes:
+def ensure_bytes(s: str | bytes) -> bytes:
     """Ensure s is bytes, not str."""
     if not isinstance(s, bytes):
         return str_to_bytes(s)
