@@ -31,8 +31,8 @@ Transport Options
 * ``fanout_prefix``
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
-* ``hash_tag``: (str) Prefix keys(keyprefix_queue,keyprefix_fanout,unacked_key,unacked_index_key,unacked_mutex_key'
-*                     ,global_keyprefix) with the hashtag
+* ``hash_tag``: (str) Prefix keys(keyprefix_queue,keyprefix_fanout,unacked_key,
+*                     unacked_index_key,unacked_mutex_key,global_keyprefix) with the hashtag
   used by Kombu
 * ``socket_timeout``
 * ``socket_connect_timeout``
@@ -50,9 +50,9 @@ from __future__ import annotations
 import functools
 from contextlib import contextmanager
 from queue import Empty
-from time import sleep, time
+from time import time
 
-from redis.exceptions import (AskError, ClusterDownError, MovedError,
+from redis.exceptions import (AskError, MovedError,
                               RedisClusterException, TryAgainError)
 
 from kombu.exceptions import VersionMismatch
@@ -269,12 +269,6 @@ class MultiChannelPoller(RedisMultiChannelPoller):
             conn.connect()
 
         sock = conn._sock
-        if sock.fileno() in self._fd_to_chan:
-            raise Exception(
-                f'self._fd_to_chan exist {sock.fileno()} is {self._fd_to_chan[sock.fileno()]}, new is {(channel, conn, type)}')
-        if (channel, client, conn, type) in self._chan_to_sock:
-            raise Exception(
-                f'self._chan_to_sock exist {(channel, client, conn, type)} is {self._chan_to_sock[(channel, client, conn, type)]}, new is {sock}')
         self._fd_to_chan[sock.fileno()] = (channel, conn, type)
         self._chan_to_sock[(channel, client, conn, type)] = sock
         self.poller.register(sock, self.eventflags)
@@ -294,7 +288,7 @@ class MultiChannelPoller(RedisMultiChannelPoller):
             conns.add(self._chan_active_queues_to_conn[(channel, queue)])
         return conns
 
-    def _register_BRPOP(self, channel: Channel):
+    def _register_BRPOP(self, channel):
         conns = self.get_conns_for_channel(channel)
 
         for conn in conns:
@@ -354,7 +348,7 @@ class MultiChannelPoller(RedisMultiChannelPoller):
 class Channel(RedisChannel):
     QoS = QoS
 
-    _client: redis.RedisCluster = None
+    _client = None
     _in_poll = False
     _in_poll_connections = set()
     _in_listen = False
@@ -466,7 +460,7 @@ class Channel(RedisChannel):
                 self._in_poll_connections.add(conn)
 
     def _brpop_read(self, **options):
-        conn: redis.Connection = options.pop('conn', None)
+        conn = options.pop('conn', None)
         try:
             try:
                 dest__item = conn.read_response('BRPOP', **options)
@@ -481,15 +475,9 @@ class Channel(RedisChannel):
                 self.client.nodes_manager.initialize()
                 raise
             except MovedError:
+                # poller need to remove conn
                 self.client.nodes_manager.initialize()
                 raise
-            except ClusterDownError:
-                # ClusterDownError can occur during a failover and to get
-                # self-healed, we will try to reinitialize the cluster layout
-                # and retry executing the command
-                sleep(0.25)
-                self.client.nodes_manager.initialize()
-                raise Empty()
             except (TryAgainError, AskError):
                 raise Empty()
 
