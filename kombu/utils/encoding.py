@@ -45,8 +45,12 @@ else:
 
 @overload
 def str_to_bytes(s: str) -> bytes: ...
+
+
 @overload
 def str_to_bytes(s: T) -> T: ...
+
+
 def str_to_bytes(s: Any) -> Any:
     """Convert str to bytes."""
     if isinstance(s, str):
@@ -56,8 +60,12 @@ def str_to_bytes(s: Any) -> Any:
 
 @overload
 def bytes_to_str(s: bytes) -> str: ...
+
+
 @overload
 def bytes_to_str(s: T) -> T: ...
+
+
 def bytes_to_str(s: Any) -> Any:
     """Convert bytes to str."""
     if isinstance(s, bytes):
