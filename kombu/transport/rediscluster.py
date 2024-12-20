@@ -52,8 +52,8 @@ from contextlib import contextmanager
 from queue import Empty
 from time import time
 
-from redis.exceptions import (AskError, MovedError,
-                              RedisClusterException, TryAgainError)
+from redis.exceptions import (AskError, MovedError, RedisClusterException,
+                              TryAgainError)
 
 from kombu.exceptions import VersionMismatch
 from kombu.log import get_logger
