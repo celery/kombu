@@ -5,4 +5,4 @@ tox>=4.4.8
 sphinx2rst>=1.0
 bumpversion==0.6.0
 pydocstyle==6.3.0
-mypy==1.13.0
+mypy==1.14.0
