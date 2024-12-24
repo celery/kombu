@@ -55,24 +55,25 @@ from time import time
 from redis.exceptions import (AskError, MovedError, RedisClusterException,
                               TryAgainError)
 
-from kombu.transport import virtual
 from kombu.exceptions import VersionMismatch
 from kombu.log import get_logger
+from kombu.transport import virtual
 from kombu.transport.virtual.base import Channel as VirtualBaseChannel
 from kombu.utils import uuid
+from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ
 from kombu.utils.json import loads
 from kombu.utils.objects import cached_property
-from kombu.utils.compat import register_after_fork
 
-from .redis import Channel as RedisChannel, _after_fork_cleanup_channel
+from ..utils.scheduling import cycle_by_name
+from .redis import Channel as RedisChannel
 from .redis import GlobalKeyPrefixMixin as RedisGlobalKeyPrefixMixin
 from .redis import MultiChannelPoller as RedisMultiChannelPoller
 from .redis import MutexHeld
 from .redis import QoS as RedisQoS
 from .redis import Transport as RedisTransport
-from ..utils.scheduling import cycle_by_name
+from .redis import _after_fork_cleanup_channel
 
 try:
     import redis
