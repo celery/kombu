@@ -1087,11 +1087,6 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._closing = True
-        if self._in_poll:
-            try:
-                self._brpop_read()
-            except Empty:
-                pass
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
