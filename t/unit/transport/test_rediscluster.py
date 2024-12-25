@@ -10,7 +10,7 @@ from queue import Queue as _Queue
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
-from redis.exceptions import MovedError
+from redis.exceptions import MovedError, TryAgainError
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import VersionMismatch
@@ -117,6 +117,17 @@ class RedisCommandBase:
     def srem(self, key, *args):
         self.sets.pop(key, None)
 
+    def pipeline(self, *args, **kwargs):
+        pass
+
+    def transaction(self, func, *watches, **kwargs):
+        with self.pipeline() as pipe:
+            if watches:
+                pipe.watch(*watches)
+            func(pipe)
+            exec_value = pipe.execute()
+            return exec_value
+
 
 class RedisPipelineBase:
     def __init__(self, client):
@@ -169,11 +180,17 @@ class RedisConnection:
         self.host = host
         self.port = port
 
+    def disconnect(self):
+        pass
+
     def send_command(self, cmd, *args, **kwargs):
         self._sock.data.append((cmd, args))
 
     def read_response(self, *args, **kwargs):
-        cmd, queues = self._sock.data.pop()
+        try:
+            cmd, queues = self._sock.data.pop()
+        except IndexError:
+            raise Empty()
         queues = list(queues)
         self._sock.data = []
         if cmd == 'BRPOP':
@@ -247,10 +264,15 @@ DEFAULT_HOST = 'localhost'
 
 class NodesManager:
     def __init__(self):
-        self.nodes_cache = {0: ClusterNode()}
+        node = ClusterNode()
+        self.nodes_cache = {0: node}
+        self.startup_nodes = {f'{node.host}:{node.port}': node}
 
     def get_node_from_slot(self, slot, **kwargs):
         return self.nodes_cache.get(slot)
+
+    def initialize(self):
+        pass
 
 
 class ClusterNode:
@@ -474,6 +496,24 @@ class test_Channel:
         set.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_restore_by_tag(self):
+        channel = self.create_connection(transport_options={'hash_tag': '{tag}'}).channel()
+        qos = redis.QoS(channel)
+        _do_restore_message = channel._do_restore_message = Mock()
+        with patch('kombu.transport.rediscluster.loads') as loads:
+            loads.return_value = 'M', 'EX', 'RK'
+            qos.restore_by_tag('test', channel.client)
+            _do_restore_message.assert_called_with('M', 'EX', 'RK', ANY, False, key_prefix='{tag}')
+
+    def test_restore(self):
+        channel = self.create_connection(transport_options={'hash_tag': '{tag}'}).channel()
+        message = Mock()
+        _do_restore_message = channel._do_restore_message = Mock()
+        with patch('kombu.transport.rediscluster.loads') as loads:
+            loads.return_value = 'M', 'EX', 'RK'
+            channel._restore(message)
+            _do_restore_message.assert_called_with('M', 'EX', 'RK', ANY, False, key_prefix='{tag}')
+
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
         self.channel.queue_declare(queue='txconfanq')
@@ -491,9 +531,10 @@ class test_Channel:
         PrefixedRedis = redis.Channel._get_client(self.channel)
         assert isinstance(PrefixedRedis(startup_nodes=[ClusterNode()]), redis.PrefixedStrictRedis)
 
+    @patch("redis.cluster.RedisCluster.keyslot")
     @patch("redis.cluster.RedisCluster.execute_command")
     @patch("redis.cluster.NodesManager.initialize")
-    def test_global_keyprefix(self, mock_initialize, mock_execute_command):
+    def test_global_keyprefix(self, mock_initialize, mock_execute_command, mock_keyslot):
         with Connection(transport=Transport) as conn:
             client = redis.PrefixedStrictRedis(global_keyprefix='foo_', startup_nodes=[ClusterNode()])
 
@@ -508,6 +549,9 @@ class test_Channel:
                 'foo_/{db}.exchange',
                 dumps(body)
             )
+
+            client.keyslot('a')
+            mock_keyslot.assert_called_with('foo_a')
 
     @patch("redis.cluster.RedisCluster.execute_command")
     @patch("redis.cluster.NodesManager.initialize")
@@ -562,6 +606,121 @@ class test_Channel:
         finally:
             if Rv is not None:
                 R.VERSION = Rv
+
+    @patch("redis.cluster.RedisCluster.execute_command")
+    @patch('redis.cluster.NodesManager.initialize')
+    def test_prefixed_pipeline(self, mock_initialize, mock_execute_command):
+        client = redis.PrefixedStrictRedis(global_keyprefix='foo_', startup_nodes=[ClusterNode()])
+        pipeline = client.pipeline()
+        send_cluster_commands = pipeline.send_cluster_commands = Mock()
+        pipeline.set("a", "1")
+        pipeline.set("b", "2")
+        pipeline.execute()
+        assert send_cluster_commands.call_args[0][0][0].args == ('SET', 'foo_a', '1')
+        assert send_cluster_commands.call_args[0][0][1].args == ('SET', 'foo_b', '2')
+
+    def test_brpop_read_raises(self):
+        channel = self.create_connection().channel()
+        conn = RedisConnection()
+        read_response = conn.read_response = Mock()
+        initialize = channel.client.nodes_manager.initialize = Mock()
+        read_response.side_effect = KeyError('foo')
+
+        with pytest.raises(KeyError):
+            channel._brpop_read(conn=conn)
+
+        initialize.assert_called_with()
+        assert channel.client.nodes_manager.startup_nodes == {}
+
+        read_response.side_effect = TryAgainError('foo')
+
+        with pytest.raises(Empty):
+            channel._brpop_read(conn=conn)
+
+        read_response.side_effect = MovedError('1 0.0.0.0:0')
+
+        initialize.reset_mock()
+        with pytest.raises(MovedError):
+            channel._brpop_read(conn=conn)
+        initialize.assert_called_with()
+
+    def test_brpop_read_gives_None(self):
+        conn = RedisConnection()
+        read_response = conn.read_response = Mock()
+        read_response.return_value = None
+
+        with pytest.raises(redis.Empty):
+            self.channel._brpop_read(conn=conn)
+
+    def test_poll_error(self):
+        channel = self.create_connection().channel()
+        conn = RedisConnection()
+        with pytest.raises(Empty):
+            channel._poll_error(conn, 'BRPOP')
+
+        conn = RedisConnection()
+        conn._sock.data = [('BRPOP', ('test_Redis',))]
+        with pytest.raises(Empty):
+            channel._poll_error(conn, 'BRPOP')
+        assert conn._sock.data == []
+
+    def test_redis_on_disconnect_channel_only_if_was_registered(self):
+        """Test should check if the _on_disconnect method is called only
+           if the channel was registered into the poller."""
+        # given: mock pool and client
+        pool = Mock(name='pool')
+        client = Mock(
+            name='client',
+            ping=Mock(return_value=True)
+        )
+
+        # create RedisConnectionMock class
+        # for the possibility to run disconnect method
+        class RedisConnectionMock:
+            def disconnect(self, *args):
+                pass
+
+        # override Channel method with given mocks
+        class XChannel(Channel):
+            connection_class = RedisConnectionMock
+
+            def __init__(self, *args, **kwargs):
+                self._pool = pool
+                # counter to check if the method was called
+                self.on_disconect_count = 0
+                super().__init__(*args, **kwargs)
+
+            def _get_client(self):
+                return lambda *_, **__: client
+
+            def _on_connection_disconnect(self, connection):
+                # increment the counter when the method is called
+                self.on_disconect_count += 1
+
+        # create the channel
+        chan = XChannel(Mock(
+            _used_channel_ids=[],
+            channel_max=1,
+            channels=[],
+            client=Mock(
+                transport_options={},
+                hostname="127.0.0.1",
+                virtual_host=None)))
+        # create the _connparams with overridden connection_class
+        connparams = chan._connparams(asynchronous=True)
+        # create redis.Connection
+        assert connparams['connection_pool_class'].__name__ == 'ManagedConnectionPool'
+        redis_connection_pool = connparams['connection_pool_class']()
+        with patch('redis.connection.AbstractConnection.connect'):
+            redis_connection = redis_connection_pool.get_connection('-')
+            # the connection was added to the cycle
+            chan.connection.cycle.add.assert_called_once()
+            # the channel was registered
+            assert chan._registered
+            # than disconnect the Redis connection
+            redis_connection.disconnect()
+            # the on_disconnect counter should be incremented
+            assert chan.on_disconect_count == 1
 
 
 class test_Redis:
@@ -868,11 +1027,22 @@ class test_MultiChannelPoller:
 
     def test_on_readable(self):
         p = self.Poller()
-        channel, conn, _brpop_read, _receive = Mock(), Mock(), Mock(), Mock()
+        channel, conn, conn2, _brpop_read, _receive = Mock(), Mock(), Mock(), Mock(), Mock()
         channel.handlers = {'BRPOP': _brpop_read, 'LISTEN': _receive}
-        p._fd_to_chan = {0: (channel, conn, 'BRPOP')}
+        p._fd_to_chan = {0: (channel, conn, 'BRPOP'), 1: (channel, conn2, 'BRPOP')}
+        p._chan_to_sock = {(channel, channel.client, conn, 'BRPOP'): 0}
+
         p.on_readable(0)
         _brpop_read.assert_called_with(conn=conn)
+
+        _brpop_read.side_effect = MovedError('1 0.0.0.0:0')
+        conn._sock.fileno.return_value = 0
+        conn2._sock.fileno.return_value = 1
+        with pytest.raises(Empty):
+            p.on_readable(0)
+        assert p._fd_to_chan == {1: (channel, conn2, 'BRPOP')}
+        assert p._chan_to_sock == {}
+
         p._fd_to_chan = {0: (channel, conn, 'LISTEN')}
         p.on_readable(0)
         _receive.assert_called_with(conn=conn)
