@@ -4,6 +4,7 @@ import base64
 import copy
 import socket
 from collections import defaultdict
+from contextlib import contextmanager
 from itertools import count
 from queue import Empty
 from queue import Queue as _Queue
@@ -139,6 +140,9 @@ class RedisPipelineBase:
         return self.__dict__[key]
 
     def watch(self, key):
+        pass
+
+    def unwatch(self):
         pass
 
     def multi(self):
@@ -984,8 +988,7 @@ class test_MultiChannelPoller:
 class test_Mutex:
 
     def test_mutex(self):
-        import redis as _redis_py
-        client = _redis_py.client.Redis()
+        client = Redis()
         set = client.set = Mock()
 
         # Won
