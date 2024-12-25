@@ -86,8 +86,10 @@ crit, warning = logger.critical, logger.warning
 
 @contextmanager
 def Mutex(client, name, expire):
-    # The internal implementation of lock uses uuid as the key, so it cannot be used in cluster mode.
-    # Use setnx instead
+    """Acquire redis lock in non blocking way. Raise MutexHeld if not successful.
+
+    The internal implementation of lock uses uuid as the key, so it cannot be used in cluster mode. Use setnx instead
+    """
     lock_id = uuid().encode('utf-8')
     acquired = client.set(name, lock_id, ex=expire, nx=True)
     try:
@@ -111,6 +113,10 @@ def Mutex(client, name, expire):
 
 
 class GlobalKeyPrefixMixin(RedisGlobalKeyPrefixMixin):
+    """Mixin to provide common logic for global key prefixing.
+
+    copied from redis.cluster.RedisCluster.pipeline
+    """
 
     def pipeline(self, transaction=False, shard_hint=None):
         if shard_hint:
@@ -133,6 +139,7 @@ class GlobalKeyPrefixMixin(RedisGlobalKeyPrefixMixin):
 
 
 class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.RedisCluster):
+    """Returns a ``RedisCluster`` client that prefixes the keys it uses."""
 
     def __init__(self, *args, **kwargs):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
@@ -150,6 +157,7 @@ class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.RedisCluster):
 
 
 class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.cluster.ClusterPipeline):
+    """Custom Redis cluster pipeline that takes global_keyprefix into consideration."""
 
     def __init__(self, *args, **kwargs):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
@@ -157,6 +165,8 @@ class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.cluster.ClusterPipeline)
 
 
 class PrefixedRedisPubSub(redis.cluster.ClusterPubSub):
+    """Redis cluster pubsub client that takes global_keyprefix into consideration."""
+
     PUBSUB_COMMANDS = (
         "SUBSCRIBE",
         "UNSUBSCRIBE",
@@ -199,6 +209,16 @@ class PrefixedRedisPubSub(redis.cluster.ClusterPubSub):
 
 
 class QoS(RedisQoS):
+    """Redis cluster Ack Emulation.
+
+    Redis doesn't support transaction, if keys are located on different slots/nodes.
+    We must ensure all keys related to transaction are stored on a single slot.
+    We can use hash tag to do that.
+    Then we can take the node holding the slot as a single Redis instance, and run transaction on that node.
+
+    Because node.redis_connection(redis.client.Redis) is not override-able, global_prefix cannot
+    take effect in transaction. So we need to add prefix manually.
+    """
 
     def restore_visible(self, start=0, num=10, interval=10):
         self._vrestore_count += 1
@@ -230,14 +250,7 @@ class QoS(RedisQoS):
 
         with self.channel.conn_or_acquire(client) as client:
             if self.channel.hash_tag:
-                # Redis doesn't support transaction, if keys are located on different slots/nodes.
-                # We must ensure all keys related to transaction are stored on a single slot.
-                # We can use hash tag to do that.
-                # Then we can take the node holding the slot as a single Redis instance,
-                # and run transaction on that node.
                 node = client.nodes_manager.get_node_from_slot(client.keyslot(self.unacked_key))
-                # Because node.redis_connection(redis.client.Redis) is not override-able,
-                # global_prefix cannot take effect.
                 node.redis_connection.transaction(restore_transaction,
                                                   self.channel.global_keyprefix + self.unacked_key)
             else:
@@ -257,6 +270,10 @@ class QoS(RedisQoS):
 
 
 class MultiChannelPoller(RedisMultiChannelPoller):
+    """Async I/O poller for Redis cluster transport.
+
+    Add _chan_active_queues_to_conn to record queue to redis.Connection mapping
+    """
 
     def __init__(self):
         super().__init__()
@@ -366,6 +383,8 @@ class MultiChannelPoller(RedisMultiChannelPoller):
 
 
 class Channel(RedisChannel):
+    """Redis Cluster Channel."""
+
     QoS = QoS
 
     _client = None
@@ -647,6 +666,8 @@ class Channel(RedisChannel):
 
 
 class Transport(RedisTransport):
+    """Redis Cluster Transport."""
+
     Channel = Channel
 
     driver_type = 'rediscluster'
