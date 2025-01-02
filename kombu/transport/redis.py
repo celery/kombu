@@ -1028,9 +1028,10 @@ class Transport(virtual.Transport):
         if item:
             message, queue = item
             if not queue or queue not in self._callbacks:
-                raise KeyError(
+                logger.warning(
                     'Message for queue {0!r} without consumers: {1}'.format(
                         queue, message))
+                return
             self._callbacks[queue](message)
 
     def _get_errors(self):
