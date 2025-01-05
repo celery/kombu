@@ -76,7 +76,8 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
-    'sts_token_timeout': 900 # optional
+    'sts_token_timeout': 900, # optional
+    'sts_token_buffer_time': 0 # optional
     }
 
 Note that FIFO and standard queues must be named accordingly (the name of
@@ -91,6 +92,9 @@ AWS STS authentication is supported, by using sts_role_arn, and
 sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
+sts_token_buffer_time (seconds) is the time by which you want to refresh your token
+earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
+should be less than sts_token_timeout.
 
 
 
@@ -136,7 +140,7 @@ import base64
 import socket
 import string
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Empty
 
 from botocore.client import Config
@@ -777,10 +781,18 @@ class Channel(virtual.Channel):
                 return self._new_predefined_queue_client_with_sts_session(queue, region)
             return self._predefined_queue_clients[queue]
 
+    def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
+        credentials = self.generate_sts_session_token(role_arn, token_expiry_seconds)
+        if token_buffer_seconds and token_buffer_seconds < token_expiry_seconds:
+            credentials["Expiration"] -= timedelta(seconds=token_buffer_seconds)
+        return credentials
+
     def _new_predefined_queue_client_with_sts_session(self, queue, region):
-        sts_creds = self.generate_sts_session_token(
+        sts_creds = self.generate_sts_session_token_with_buffer(
             self.transport_options.get('sts_role_arn'),
-            self.transport_options.get('sts_token_timeout', 900))
+            self.transport_options.get('sts_token_timeout', 900),
+            self.transport_options.get('sts_token_buffer_time', 0),
+        )
         self.sts_expiration = sts_creds['Expiration']
         c = self._predefined_queue_clients[queue] = self.new_sqs_client(
             region=region,
