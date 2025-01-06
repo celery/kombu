@@ -285,12 +285,13 @@ class test_Channel:
         channel.subscriber.create_subscription.assert_called_once()
 
     def test_create_subscription_protobuf_compat(self):
+        from datetime import timedelta
         request = {
             'name': 'projects/my_project/subscriptions/kombu-1111-2222',
             'topic': 'projects/jether-fox/topics/reply.celery.pidbox',
             'ack_deadline_seconds': 240,
-            'expiration_policy': {'ttl': '86400s'},
-            'message_retention_duration': '86400s',
+            'expiration_policy': {'ttl': timedelta(seconds=86400)},
+            'message_retention_duration': timedelta(seconds=86400),
             'filter': 'attributes.routing_key="1111-2222"',
         }
         Subscription(request)
