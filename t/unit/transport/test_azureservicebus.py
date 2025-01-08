@@ -360,8 +360,9 @@ def test_custom_entity_name():
 
     # dashes allowed
     assert channel.entity_name('test-celery') == 'test-celery'
-    
-    # dots allowed (cf. https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules#microsoftservicebus)
+
+    # dots allowed
+    # cf. https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/resource-name-rules
     assert channel.entity_name('test.celery') == 'test.celery'
 
     # all other punctuations replaced by underscores
