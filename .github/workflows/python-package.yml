@@ -82,7 +82,19 @@ jobs:
                   'py-kafka'
               ]
               experimental: [false]
-              
+              include:
+                - python-version: pypy3.10
+                  toxenv: 'py-amqp'
+                  experimental: false
+                - python-version: pypy3.10
+                  toxenv: 'py-redis'
+                  experimental: false
+                - python-version: pypy3.10
+                  toxenv: 'py-mongodb'
+                  experimental: false
+                # - python-version: pypy3.10
+                #   toxenv: 'py-kafka'
+                #   experimental: true
 
       steps:
           -   name: Install apt packages
