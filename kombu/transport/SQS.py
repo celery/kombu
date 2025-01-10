@@ -792,6 +792,18 @@ class Channel(virtual.Channel):
             )
             return c
         else:  # STS token - ruse existing
+            if queue not in self._predefined_queue_clients:
+                sts_creds = self.generate_sts_session_token(
+                    self.transport_options.get('sts_role_arn'),
+                    self.transport_options.get('sts_token_timeout', 900))
+                self.sts_expiration = sts_creds['Expiration']
+                c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                    region=q.get('region', self.region),
+                    access_key_id=sts_creds['AccessKeyId'],
+                    secret_access_key=sts_creds['SecretAccessKey'],
+                    session_token=sts_creds['SessionToken'],
+                )
+                return c
             return self._predefined_queue_clients[queue]
 
     def generate_sts_session_token(self, role_arn, token_expiry_seconds):
