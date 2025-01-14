@@ -996,6 +996,34 @@ class test_Channel:
         # Assert
         mock_generate_sts_session_token.assert_not_called()
 
+    def test_sts_session_with_multiple_predefined_queues(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.return_value = {
+            'Expiration': datetime.utcnow() + timedelta(days=1),
+            'SessionToken': 123,
+            'AccessKeyId': 123,
+            'SecretAccessKey': 123
+        }
+
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue='queue-1')
+        sqs(queue='queue-2')
+
+        # Assert
+        mock_generate_sts_session_token.assert_called()
+        mock_new_sqs_client.assert_called()
+
     def test_message_attribute(self):
         message = 'my test message'
         self.producer.publish(message, message_attributes={
