@@ -8,6 +8,7 @@ import pytest
 import redis
 
 import kombu
+from kombu.asynchronous import Hub
 from kombu.transport.redis import Transport
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
@@ -222,3 +223,34 @@ def test_RedisConnectTimeout(monkeypatch):
         # note the host/port here is irrelevant because
         # connect will raise a socket.timeout
         kombu.Connection('redis://localhost:12345').connect()
+
+
+@pytest.mark.env('redis')
+def test_RedisEventLoopCleanup(connection):
+    """Disconnection removes the respective function in event loop."""
+    hub = Hub()
+
+    # register 1st connection with event loop
+    conn_1 = connection
+    chan_1 = conn_1.channel()
+    chan_1.basic_consume('test', False, None, 1)
+    conn_1.register_with_event_loop(hub)
+    assert len(hub.on_tick) == 1
+    first_on_tick = list(hub.on_tick)[0]
+
+    # register 2nd connection with event loop
+    conn_2 = get_connection(
+        hostname=os.environ.get('REDIS_HOST', 'localhost'),
+        port=os.environ.get('REDIS_6379_TCP', '6379'),
+        vhost=None,
+    )
+    conn_2.register_with_event_loop(hub)
+    assert len(hub.on_tick) == 2
+
+    hub.run_once()
+
+    # disconnect channel connection, expected event loop entry removed
+    chan_1.close()
+
+    assert len(hub.on_tick) == 1
+    assert list(hub.on_tick)[0] is not first_on_tick
