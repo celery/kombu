@@ -76,25 +76,29 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             **param_payload
         )
 
-    def make_request(self, operation_name, params, queue_url, verb, callback=None):
+    def make_request(self, operation_name, params, queue_url, verb, callback=None, protocol_params=None):
         """Override make_request to support different protocols.
 
-        botocore is soon going to change the default protocol of communicating
+        botocore has changed the default protocol of communicating
         with SQS backend from 'query' to 'json', so we need a special
         implementation of make_request for SQS. More information on this can
         be found in: https://github.com/celery/kombu/pull/1807.
+
+        protocol_params: Optional[dict[str, dict] of per-protocol additional parameters.
+            Supported for the SQS query to json protocol transition.
         """
         signer = self.sqs_connection._request_signer
 
         service_model = self.sqs_connection.meta.service_model
         protocol = service_model.protocol
+        all_params = (params or {}) | protocol_params.get(protocol, {})
 
         if protocol == 'query':
             request = self._create_query_request(
-                operation_name, params, queue_url, verb)
+                operation_name, all_params, queue_url, verb)
         elif protocol == 'json':
             request = self._create_json_request(
-                operation_name, params, queue_url)
+                operation_name, all_params, queue_url)
         else:
             raise Exception(f'Unsupported protocol: {protocol}.')
 
@@ -133,8 +137,12 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     def set_queue_attribute(self, queue, attribute, value, callback=None):
         return self.get_status(
             'SetQueueAttribute',
-            {'Attribute.Name': attribute, 'Attribute.Value': value},
+            {},
             queue.id, callback=callback,
+            protocol_params={
+                'json': {'Attributes': {attribute: value}},
+                'query': {'Attribute.Name': attribute, 'Attribute.Value': value},
+            },
         )
 
     def receive_message(
@@ -143,18 +151,20 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         callback=None
     ):
         params = {'MaxNumberOfMessages': number_messages}
+        proto_params = {'query': {}, 'json': {}}
+
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout
         if attributes:
-            attrs = {}
-            for idx, attr in enumerate(attributes):
-                attrs['AttributeName.' + str(idx + 1)] = attr
-            params.update(attrs)
+            proto_params['json'].update({'AttributeNames': list(attributes)})
+            proto_params['query'].update(_query_object_encode({'AttributeName': list(attributes)}))
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
+
         return self.get_list(
             'ReceiveMessage', params, [('Message', AsyncMessage)],
             queue_url, callback=callback, parent=queue,
+            protocol_params=proto_params,
         )
 
     def delete_message(self, queue, receipt_handle, callback=None):
@@ -163,16 +173,21 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         )
 
     def delete_message_batch(self, queue, messages, callback=None):
-        params = {}
-        for i, m in enumerate(messages):
-            prefix = f'DeleteMessageBatchRequestEntry.{i + 1}'
-            params.update({
-                f'{prefix}.Id': m.id,
-                f'{prefix}.ReceiptHandle': m.receipt_handle,
-            })
+        p_params = {
+            'json': {
+                'Entries': [{'Id': m.id, 'ReceiptHandle': m.receipt_handle} for m in messages],
+            },
+            'query': _query_object_encode({
+                'DeleteMessageBatchRequestEntry': [
+                    {'Id': m.id, 'ReceiptHandle': m.receipt_handle}
+                    for m in messages
+                ],
+            }),
+        }
+
         return self.get_object(
-            'DeleteMessageBatch', params, queue.id,
-            verb='POST', callback=callback,
+            'DeleteMessageBatch', {}, queue.id,
+            verb='POST', callback=callback, protocol_params=p_params,
         )
 
     def delete_message_from_handle(self, queue, receipt_handle,
@@ -216,17 +231,20 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         )
 
     def change_message_visibility_batch(self, queue, messages, callback=None):
-        params = {}
-        for i, t in enumerate(messages):
-            pre = f'ChangeMessageVisibilityBatchRequestEntry.{i + 1}'
-            params.update({
-                f'{pre}.Id': t[0].id,
-                f'{pre}.ReceiptHandle': t[0].receipt_handle,
-                f'{pre}.VisibilityTimeout': t[1],
-            })
+        entries = [
+            {'Id': t[0].id, 'ReceiptHandle': t[0].receipt_handle, 'VisibilityTimeout': t[1]}
+            for t in messages
+        ]
+
+        p_params = {
+            'json': {'Entries': entries},
+            'query': _query_object_encode({'ChangeMessageVisibilityBatchRequestEntry': entries}),
+        }
+
         return self.get_object(
-            'ChangeMessageVisibilityBatch', params, queue.id,
+            'ChangeMessageVisibilityBatch', {}, queue.id,
             verb='POST', callback=callback,
+            protocol_params=p_params,
         )
 
     def get_all_queues(self, prefix='', callback=None):
@@ -272,3 +290,22 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         return self.get_status(
             'RemovePermission', {'Label': label}, queue.id, callback=callback,
         )
+
+
+def _query_object_encode(items):
+    params = {}
+    _query_object_encode_part(params, '', items)
+    return {k: v for k, v in params.items()}
+
+
+def _query_object_encode_part(params, prefix, part):
+    dotted = f'{prefix}.' if prefix else prefix
+
+    if isinstance(part, (list, tuple)):
+        for i, item in enumerate(part):
+            _query_object_encode_part(params, f'{dotted}{i + 1}', item)
+    elif isinstance(part, dict):
+        for key, value in part.items():
+            _query_object_encode_part(params, f'{dotted}{key}', value)
+    else:
+        params[prefix] = str(part)

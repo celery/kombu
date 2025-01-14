@@ -4,7 +4,7 @@ import json
 from unittest.mock import MagicMock, Mock
 
 from kombu.asynchronous.aws.ext import AWSRequest, boto3
-from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
+from kombu.asynchronous.aws.sqs.connection import _query_object_encode, AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
@@ -97,7 +97,7 @@ class test_AsyncSQSConnection(AWSCase):
         method = 'POST'
         params = {
             'MaxNumberOfMessages': 10,
-            'AttributeName.1': 'ApproximateReceiveCount',
+            'AttributeNames': ['ApproximateReceiveCount'],
             'WaitTimeSeconds': 20
         }
         queue_url = f'{SQS_URL}/123456789012/celery-test'
@@ -137,14 +137,21 @@ class test_AsyncSQSConnection(AWSCase):
         operation = 'ReceiveMessage',
         params = {
             'MaxNumberOfMessages': 10,
-            'AttributeName.1': 'ApproximateReceiveCount',
+
             'WaitTimeSeconds': 20
+        }
+        pparams = {
+            'json': {'AttributeNames': ['ApproximateReceiveCount']},
+            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
         }
         queue_url = f'{SQS_URL}/123456789012/celery-test'
         verb = 'POST'
-        self.x.make_request(operation, params, queue_url, verb)
+
+        expect_params = params | {'AttributeName.1': 'ApproximateReceiveCount'}
+
+        self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_query_request.assert_called_with(
-            operation, params, queue_url, verb
+            operation, expect_params, queue_url, verb
         )
 
     def test_make_request__with_json_protocol(self):
@@ -159,14 +166,20 @@ class test_AsyncSQSConnection(AWSCase):
         operation = 'ReceiveMessage',
         params = {
             'MaxNumberOfMessages': 10,
-            'AttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': 20
         }
+        pparams = {
+            'json': {'AttributeNames': ['ApproximateReceiveCount']},
+            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+        }
+
         queue_url = f'{SQS_URL}/123456789012/celery-test'
         verb = 'POST'
-        self.x.make_request(operation, params, queue_url, verb)
+        expect_params = params | {'AttributeNames': ['ApproximateReceiveCount']}
+
+        self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_json_request.assert_called_with(
-            operation, params, queue_url
+            operation, expect_params, queue_url
         )
 
     def test_create_queue(self):
@@ -211,11 +224,12 @@ class test_AsyncSQSConnection(AWSCase):
             queue, 'Expires', '3600', callback=self.callback,
         )
         self.x.get_status.assert_called_with(
-            'SetQueueAttribute', {
-                'Attribute.Name': 'Expires',
-                'Attribute.Value': '3600',
+            'SetQueueAttribute',
+            {}, queue.id, callback=self.callback,
+            protocol_params={
+                'json': {'Attributes': {'Expires': '3600'}},
+                'query': {'Attribute.Name': 'Expires', 'Attribute.Value': '3600'},
             },
-            queue.id, callback=self.callback,
         )
 
     def test_receive_message(self):
@@ -229,11 +243,14 @@ class test_AsyncSQSConnection(AWSCase):
         self.x.get_list.assert_called_with(
             'ReceiveMessage', {
                 'MaxNumberOfMessages': 4,
-                'AttributeName.1': 'ApproximateReceiveCount'
             },
             [('Message', AsyncMessage)],
             'http://aws.com', callback=self.callback,
             parent=queue,
+            protocol_params={
+                'json': {'AttributeNames': ['ApproximateReceiveCount']},
+                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            },
         )
 
     def test_receive_message__with_visibility_timeout(self):
@@ -249,11 +266,14 @@ class test_AsyncSQSConnection(AWSCase):
             'ReceiveMessage', {
                 'MaxNumberOfMessages': 4,
                 'VisibilityTimeout': 3666,
-                'AttributeName.1': 'ApproximateReceiveCount',
             },
             [('Message', AsyncMessage)],
             'http://aws.com', callback=self.callback,
             parent=queue,
+            protocol_params={
+                'json': {'AttributeNames': ['ApproximateReceiveCount']},
+                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            },
         )
 
     def test_receive_message__with_wait_time_seconds(self):
@@ -269,11 +289,14 @@ class test_AsyncSQSConnection(AWSCase):
             'ReceiveMessage', {
                 'MaxNumberOfMessages': 4,
                 'WaitTimeSeconds': 303,
-                'AttributeName.1': 'ApproximateReceiveCount',
             },
             [('Message', AsyncMessage)],
             'http://aws.com', callback=self.callback,
             parent=queue,
+            protocol_params={
+                'json': {'AttributeNames': ['ApproximateReceiveCount']},
+                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            },
         )
 
     def test_receive_message__with_attributes(self):
@@ -287,13 +310,15 @@ class test_AsyncSQSConnection(AWSCase):
         )
         self.x.get_list.assert_called_with(
             'ReceiveMessage', {
-                'AttributeName.1': 'foo',
-                'AttributeName.2': 'bar',
                 'MaxNumberOfMessages': 4,
             },
             [('Message', AsyncMessage)],
             'http://aws.com', callback=self.callback,
             parent=queue,
+            protocol_params={
+                'json': {'AttributeNames': ['foo', 'bar']},
+                'query': {'AttributeName.1': 'foo', 'AttributeName.2': 'bar'},
+            },
         )
 
     def MockMessage(self, id=None, receipt_handle=None, body=None):
@@ -328,13 +353,17 @@ class test_AsyncSQSConnection(AWSCase):
                     self.MockMessage('2', 'r2')]
         self.x.delete_message_batch(queue, messages, callback=self.callback)
         self.x.get_object.assert_called_with(
-            'DeleteMessageBatch', {
-                'DeleteMessageBatchRequestEntry.1.Id': '1',
-                'DeleteMessageBatchRequestEntry.1.ReceiptHandle': 'r1',
-                'DeleteMessageBatchRequestEntry.2.Id': '2',
-                'DeleteMessageBatchRequestEntry.2.ReceiptHandle': 'r2',
-            },
+            'DeleteMessageBatch', {},
             queue.id, verb='POST', callback=self.callback,
+            protocol_params={
+                'json': {'Entries': [{'Id': '1', 'ReceiptHandle': 'r1'}, {'Id': '2', 'ReceiptHandle': 'r2'}]},
+                'query': {
+                    'DeleteMessageBatchRequestEntry.1.Id': '1',
+                    'DeleteMessageBatchRequestEntry.1.ReceiptHandle': 'r1',
+                    'DeleteMessageBatchRequestEntry.2.Id': '2',
+                    'DeleteMessageBatchRequestEntry.2.ReceiptHandle': 'r2',
+                },
+            },
         )
 
     def test_send_message(self):
@@ -398,19 +427,25 @@ class test_AsyncSQSConnection(AWSCase):
             queue, messages, callback=self.callback,
         )
 
-        def preamble(n):
-            return '.'.join(['ChangeMessageVisibilityBatchRequestEntry', n])
-
-        self.x.get_object.assert_called_with(
-            'ChangeMessageVisibilityBatch', {
-                preamble('1.Id'): '1',
-                preamble('1.ReceiptHandle'): 'r1',
-                preamble('1.VisibilityTimeout'): 303,
-                preamble('2.Id'): '2',
-                preamble('2.ReceiptHandle'): 'r2',
-                preamble('2.VisibilityTimeout'): 909,
-            },
+        self.x.get_object.assert_called_once_with(
+            'ChangeMessageVisibilityBatch', {},
             queue.id, verb='POST', callback=self.callback,
+            protocol_params={
+                'json': {
+                    'Entries': [
+                        {'Id': '1', 'ReceiptHandle': 'r1', 'VisibilityTimeout': 303},
+                        {'Id': '2', 'ReceiptHandle': 'r2', 'VisibilityTimeout': 909},
+                    ],
+                },
+                'query': {
+                    'ChangeMessageVisibilityBatchRequestEntry.1.Id': '1',
+                    'ChangeMessageVisibilityBatchRequestEntry.1.ReceiptHandle': 'r1',
+                    'ChangeMessageVisibilityBatchRequestEntry.1.VisibilityTimeout': '303',
+                    'ChangeMessageVisibilityBatchRequestEntry.2.Id': '2',
+                    'ChangeMessageVisibilityBatchRequestEntry.2.ReceiptHandle': 'r2',
+                    'ChangeMessageVisibilityBatchRequestEntry.2.VisibilityTimeout': '909',
+                },
+            },
         )
 
     def test_get_all_queues(self):
@@ -480,3 +515,20 @@ class test_AsyncSQSConnection(AWSCase):
             'RemovePermission', {'Label': 'label'}, queue.id,
             callback=self.callback,
         )
+
+    def test_query_protocol_encoding(self):
+        assert _query_object_encode({}) == {}
+
+        assert _query_object_encode({'Simple': 'String'}) == {'Simple': 'String'}
+
+        assert _query_object_encode({'NumbersToString': 123}) == {'NumbersToString': '123'}
+
+        assert _query_object_encode({'AttributeName': ['A', 'B']}) == {
+            'AttributeName.1': 'A',
+            'AttributeName.2': 'B',
+        }
+
+        assert _query_object_encode({'Grandparent': [{'Parent': {'Child': '1', 'Sibling': 2}}]}) == {
+            'Grandparent.1.Parent.Child': '1',
+            'Grandparent.1.Parent.Sibling': '2',
+        }
