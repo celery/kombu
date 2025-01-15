@@ -4,7 +4,8 @@ import json
 from unittest.mock import MagicMock, Mock
 
 from kombu.asynchronous.aws.ext import AWSRequest, boto3
-from kombu.asynchronous.aws.sqs.connection import _query_object_encode, AsyncSQSConnection
+from kombu.asynchronous.aws.sqs.connection import (AsyncSQSConnection,
+                                                   _query_object_encode)
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.asynchronous.aws.sqs.queue import AsyncQueue
 from kombu.utils.uuid import uuid
