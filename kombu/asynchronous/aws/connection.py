@@ -184,7 +184,8 @@ class AsyncAWSQueryConnection(AsyncConnection):
                          **http_client_params)
 
     def make_request(self, operation, params_, path, verb, callback=None, protocol_params=None):
-        params = params_.copy() | (protocol_params or {}).get('query', {})
+        params = params_.copy()
+        params.update((protocol_params or {}).get('query', {}))
         if operation:
             params['Action'] = operation
         signer = self.sqs_connection._request_signer

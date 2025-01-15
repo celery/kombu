@@ -158,7 +158,7 @@ class test_AsyncSQSConnection(AWSCase):
         queue_url = f'{SQS_URL}/123456789012/celery-test'
         verb = 'POST'
 
-        expect_params = params | {'AttributeName.1': 'ApproximateReceiveCount'}
+        expect_params = {**params, 'AttributeName.1': 'ApproximateReceiveCount'}
 
         self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_query_request.assert_called_with(
@@ -186,7 +186,7 @@ class test_AsyncSQSConnection(AWSCase):
 
         queue_url = f'{SQS_URL}/123456789012/celery-test'
         verb = 'POST'
-        expect_params = params | {'AttributeNames': ['ApproximateReceiveCount']}
+        expect_params = {**params, 'AttributeNames': ['ApproximateReceiveCount']}
 
         self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_json_request.assert_called_with(

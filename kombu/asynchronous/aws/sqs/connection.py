@@ -95,7 +95,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
 
         service_model = self.sqs_connection.meta.service_model
         protocol = service_model.protocol
-        all_params = (params or {}) | protocol_params.get(protocol, {})
+        all_params = {**(params or {}), **protocol_params.get(protocol, {})}
 
         if protocol == 'query':
             request = self._create_query_request(

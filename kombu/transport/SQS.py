@@ -810,10 +810,11 @@ class Channel(virtual.Channel):
                     "'predefined_queues'."
                 ).format(queue))
             q = self.predefined_queues[queue]
-            c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(
-                sqs_connection=self.sqs(queue=queue),
-                region=q.get('region', self.region),
-                fetch_message_attributes=self.fetch_message_attributes,
+            c = self._predefined_queue_async_clients[queue] = \
+                AsyncSQSConnection(
+                    sqs_connection=self.sqs(queue=queue),
+                    region=q.get('region', self.region),
+                    fetch_message_attributes=self.fetch_message_attributes,
             )
             return c
 
