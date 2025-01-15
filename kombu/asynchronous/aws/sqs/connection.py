@@ -88,7 +88,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         implementation of make_request for SQS. More information on this can
         be found in: https://github.com/celery/kombu/pull/1807.
 
-        protocol_params: Optional[dict[str, dict] of per-protocol additional parameters.
+        protocol_params: Optional[dict[str, dict]] of per-protocol additional parameters.
             Supported for the SQS query to json protocol transition.
         """
         signer = self.sqs_connection._request_signer
