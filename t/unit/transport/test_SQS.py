@@ -496,6 +496,11 @@ class test_Channel:
             'query': {'AttributeName.1': 'ApproximateReceiveCount'},
         }
 
+    def test_fetch_message_attributes(self):
+        self.connection.transport_options['fetch_message_attributes'] = ["Attribute1", "Attribute2"]
+        async_sqs_conn = self.channel.asynsqs(self.queue_name)
+        assert async_sqs_conn.fetch_message_attributes == ['Attribute1', 'Attribute2']
+
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
             return False

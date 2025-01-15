@@ -20,13 +20,17 @@ __all__ = ('AsyncSQSConnection',)
 class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
-    def __init__(self, sqs_connection, debug=0, region=None, **kwargs):
+    def __init__(self, sqs_connection, debug=0, region=None, fetch_message_attributes=None, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super().__init__(
             sqs_connection,
             region_name=region, debug=debug,
             **kwargs
+        )
+        self.fetch_message_attributes = (
+            fetch_message_attributes if fetch_message_attributes is not None
+            else ["ApproximateReceiveCount"]
         )
 
     def _create_query_request(self, operation, params, queue_url, method):
@@ -147,17 +151,18 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
 
     def receive_message(
         self, queue, queue_url, number_messages=1, visibility_timeout=None,
-        attributes=('ApproximateReceiveCount',), wait_time_seconds=None,
+        attributes=None, wait_time_seconds=None,
         callback=None
     ):
         params = {'MaxNumberOfMessages': number_messages}
         proto_params = {'query': {}, 'json': {}}
+        attrs = attributes if attributes is not None else self.fetch_message_attributes
 
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout
-        if attributes:
-            proto_params['json'].update({'AttributeNames': list(attributes)})
-            proto_params['query'].update(_query_object_encode({'AttributeName': list(attributes)}))
+        if attrs:
+            proto_params['json'].update({'AttributeNames': list(attrs)})
+            proto_params['query'].update(_query_object_encode({'AttributeName': list(attrs)}))
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
 

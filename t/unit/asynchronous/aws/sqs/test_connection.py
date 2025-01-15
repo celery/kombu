@@ -23,14 +23,14 @@ class test_AsyncSQSConnection(AWSCase):
             aws_secret_access_key='AAAA',
             region_name='us-west-2',
         )
-        sqs_client = session.client('sqs')
-        self.x = AsyncSQSConnection(sqs_client, 'ak', 'sk', http_client=Mock())
+        self.sqs_client = session.client('sqs')
+        self.x = AsyncSQSConnection(self.sqs_client, 'ak', 'sk', http_client=Mock())
         self.x.get_object = Mock(name='X.get_object')
         self.x.get_status = Mock(name='X.get_status')
         self.x.get_list = Mock(name='X.get_list')
         self.callback = PromiseMock(name='callback')
 
-        sqs_client.get_queue_url = MagicMock(return_value={
+        self.sqs_client.get_queue_url = MagicMock(return_value={
             'QueueUrl': 'http://aws.com'
         })
 
@@ -70,6 +70,17 @@ class test_AsyncSQSConnection(AWSCase):
         assert req1.data == req2.data
         assert req1.params == req2.params
         assert dict(req1.headers) == dict(req2.headers)
+
+    def test_fetch_attributes_on_construction(self):
+        """Verify default fetch_message_attributes can be set at construction."""
+        x = AsyncSQSConnection(
+            self.sqs_client, 'ak', 'sk', http_client=Mock(),
+            fetch_message_attributes=["AttributeOne"],
+        )
+        assert x.fetch_message_attributes == ["AttributeOne"]
+
+        # Default value for backwards compatibility
+        assert self.x.fetch_message_attributes == ["ApproximateReceiveCount"]
 
     def test_create_query_request(self):
         operation_name = 'ReceiveMessage',
@@ -318,6 +329,28 @@ class test_AsyncSQSConnection(AWSCase):
             protocol_params={
                 'json': {'AttributeNames': ['foo', 'bar']},
                 'query': {'AttributeName.1': 'foo', 'AttributeName.2': 'bar'},
+            },
+        )
+
+    def test_receive_message__with_fetch_attributes(self):
+        queue = Mock(name='queue')
+        self.x.fetch_message_attributes = ["DifferentAttribute1", "Another2"]
+        self.x.receive_message(
+            queue,
+            self.x.get_queue_url('queue'),
+            4,
+            callback=self.callback,
+        )
+        self.x.get_list.assert_called_with(
+            'ReceiveMessage', {
+                'MaxNumberOfMessages': 4,
+            },
+            [('Message', AsyncMessage)],
+            'http://aws.com', callback=self.callback,
+            parent=queue,
+            protocol_params={
+                'json': {'AttributeNames': ['DifferentAttribute1', 'Another2']},
+                'query': {'AttributeName.1': 'DifferentAttribute1', 'AttributeName.2': 'Another2'},
             },
         )
 
