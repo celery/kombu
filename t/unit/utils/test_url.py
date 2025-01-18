@@ -72,7 +72,6 @@ def test_ssl_parameters():
     assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
     assert kwargs['ssl']['ssl_check_hostname'] is False
 
-
     kombu.utils.url.ssl_available = False
 
     kwargs = parse_url(url + querystring)
