@@ -1,6 +1,6 @@
-====================================================
- Django Transport Model - ``kombu.transport.django``
-====================================================
+==============================================
+ Django Transport - ``kombu.transport.django``
+==============================================
 
 .. currentmodule:: kombu.transport.django
 
