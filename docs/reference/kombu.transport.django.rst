@@ -23,8 +23,8 @@
         :members:
         :undoc-members:
 
-Django Transport Models - ``kombu.transport.django.models``
-===========================================================
+Django Transport Migrations - ``kombu.transport.django.models``
+===============================================================
 
 .. currentmodule:: kombu.transport.django
 
