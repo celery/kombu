@@ -23,8 +23,8 @@
         :members:
         :undoc-members:
 
-SQLAlchemy Transport Model - ``kombu.transport.django.models``
-==============================================================
+Django Transport Model - ``kombu.transport.django.models``
+==========================================================
 
 .. currentmodule:: kombu.transport.django
 
