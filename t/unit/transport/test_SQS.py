@@ -367,6 +367,51 @@ class test_Channel:
         assert self.channel._optional_b64_decode(raw) == raw
         assert self.channel._optional_b64_decode(b"test123") == b"test123"
 
+    @patch('boto3.session.Session')
+    def test_new_s3_client_with_is_secure_false(self, mock_session):
+        self.channel.is_secure = False
+        self.channel.endpoint_url = None
+
+        self.channel.new_s3_client(
+            region='us-west-2',
+            access_key_id='test_access_key',
+            secret_access_key='test_secret_key'
+        )
+
+        # assert isinstance(client, boto3.client('s3').__class__)
+        mock_session.assert_called_once_with(
+            region_name='us-west-2',
+            aws_access_key_id='test_access_key',
+            aws_secret_access_key='test_secret_key',
+            aws_session_token=None
+        )
+        mock_session().client.assert_called_once_with(
+            's3', use_ssl=False
+        )
+
+    @patch('boto3.session.Session')
+    def test_new_s3_client_with_custom_endpoint(self, mock_session):
+        mock_client = Mock()
+        mock_session.return_value.client.return_value = mock_client
+
+        self.channel.is_secure = True
+        self.channel.endpoint_url = 'https://custom-endpoint.com'
+
+        result = self.channel.new_s3_client('us-west-2', 'access_key', 'secret_key')
+
+        mock_session.assert_called_once_with(
+            region_name='us-west-2',
+            aws_access_key_id='access_key',
+            aws_secret_access_key='secret_key',
+            aws_session_token=None
+        )
+        mock_session.return_value.client.assert_called_once_with(
+            's3',
+            use_ssl=True,
+            endpoint_url='https://custom-endpoint.com'
+        )
+        assert result == mock_client
+
     def test_messages_to_python(self):
         from kombu.asynchronous.aws.sqs.message import Message
 
