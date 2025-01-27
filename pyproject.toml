@@ -34,6 +34,8 @@ select = [
     "E", "W",
     # Unused noqa directive
     "RUF100",
+    # pep8-naming,
+    "N",
 ]
 ignore = [
     # Missing docstring in public method
@@ -52,6 +54,26 @@ ignore = [
     "E741",
     # Ambiguous class name
     "E742",
+    # Class name should use CapWords convention
+    "N801",
+    # Function name should be lowercase
+    "N802",
+    # Argument name should be lowercase
+    "N803",
+    # First argument of a class method should be named cls
+    "N804",
+    # First argument of a method should be named self
+    "N805",
+    # Variable in function should be lowercase
+    "N806",
+    # Lowercase imported as non-lowercase
+    "N812",
+    # Camelcase imported as lowercase
+    "N813",
+    # Exception name should be named with an Error suffix
+    "N818",
+    # Invalid module name
+    "N999",
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
