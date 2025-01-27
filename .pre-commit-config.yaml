@@ -45,5 +45,5 @@ repos:
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.1
     hooks:
-    -   id: mypy
+      - id: mypy
         pass_filenames: false
