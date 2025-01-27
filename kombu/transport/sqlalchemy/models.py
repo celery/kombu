@@ -4,8 +4,18 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,
-                        Sequence, SmallInteger, String, Text)
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Sequence,
+    SmallInteger,
+    String,
+    Text,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.schema import MetaData
 

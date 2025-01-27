@@ -7,8 +7,11 @@ import pytest
 
 from kombu.transport.native_delayed_delivery import (
     CELERY_DELAYED_DELIVERY_EXCHANGE,
-    bind_queue_to_native_delayed_delivery_exchange, calculate_routing_key,
-    declare_native_delayed_delivery_exchanges_and_queues, level_name)
+    bind_queue_to_native_delayed_delivery_exchange,
+    calculate_routing_key,
+    declare_native_delayed_delivery_exchanges_and_queues,
+    level_name,
+)
 
 
 class test_native_delayed_delivery_level_name:

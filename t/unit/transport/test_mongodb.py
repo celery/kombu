@@ -15,9 +15,10 @@ pymongo = pytest.importorskip('pymongo')
 # these are used to define real spec of the corresponding mocks,
 # to ensure called methods exist in real objects
 # pylint: disable=C0413
-from pymongo.collection import Collection  # isort:skip # noqa: E402
-from pymongo.database import Database  # isort:skip # noqa: E402
-from kombu.transport.mongodb import BroadcastCursor  # isort:skip # noqa: E402
+from pymongo.collection import Collection  # noqa: E402
+from pymongo.database import Database  # noqa: E402
+
+from kombu.transport.mongodb import BroadcastCursor  # noqa: E402
 
 
 def _create_mock_connection(url='', **kwargs):
@@ -91,7 +92,7 @@ class test_mongodb_uri_parsing:
         channel = _create_mock_connection(url).default_channel
         hostname, dbname, options = channel._parse_uri()
 
-        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'  # noqa
+        assert hostname == 'mongodb://mongodb1.example.com:27317,mongodb2.example.com:27017/?replicaSet=test_rs'
         assert options['replicaset'] == 'test_rs'
 
     def test_custom_database(self):

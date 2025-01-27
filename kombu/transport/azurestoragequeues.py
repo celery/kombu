@@ -70,8 +70,7 @@ except ImportError:  # pragma: no cover
     QueueServiceClient = None
 
 try:
-    from azure.identity import (DefaultAzureCredential,
-                                ManagedIdentityCredential)
+    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None

@@ -1,18 +1,22 @@
 from __future__ import annotations
 
+from _socket import timeout as socket_timeout
 from concurrent.futures import Future
 from datetime import datetime
 from queue import Empty
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from _socket import timeout as socket_timeout
-from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+from google.api_core.exceptions import AlreadyExists, DeadlineExceeded, PermissionDenied
 from google.pubsub_v1.types.pubsub import Subscription
 
-from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
-                                      Transport, UnackedIds)
+from kombu.transport.gcpubsub import (
+    AtomicCounter,
+    Channel,
+    QueueDescriptor,
+    Transport,
+    UnackedIds,
+)
 
 
 class test_UnackedIds:

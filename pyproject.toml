@@ -20,3 +20,82 @@ omit = [
     "*/pypy/*",
     "*kombu/utils/debug.py",
 ]
+
+[tool.ruff]
+target-version = "py38"
+line-length = 117
+
+[tool.ruff.lint]
+select = [
+    # isort
+    "I", 
+    # pyflakes
+    "F", 
+    # pycodestyle
+    "E", "W",
+    # Unused noqa directive
+    "RUF100",
+    # pep8-naming,
+    "N",
+    # pyupgrade,
+    "UP",
+]
+ignore = [
+    # Missing docstring in public method
+    "D102",
+    # Missing docstring in public function
+    "D104",
+    # Missing docstring in magic method
+    "D105",
+    # Missing docstring in __init__
+    "D107",
+    # First line of docstring should be in imperative mood
+    "D401",
+    # No blank lines allowed between a section header and its content
+    "D412",
+    # Ambiguous variable name
+    "E741",
+    # Ambiguous class name
+    "E742",
+    # Class name should use CapWords convention
+    "N801",
+    # Function name should be lowercase
+    "N802",
+    # Argument name should be lowercase
+    "N803",
+    # First argument of a class method should be named cls
+    "N804",
+    # First argument of a method should be named self
+    "N805",
+    # Variable in function should be lowercase
+    "N806",
+    # Lowercase imported as non-lowercase
+    "N812",
+    # Camelcase imported as lowercase
+    "N813",
+    # Exception name should be named with an Error suffix
+    "N818",
+    # Invalid module name
+    "N999",
+    # Use instead of for type annotation
+    "UP006",
+    # Replace aliased errors with OSError
+    "UP024",
+    # Use implicit references for positional format fields
+    "UP030",
+    # Use format specifiers instead of percent format
+    "UP031",
+    # Use f-string instead of format call
+    "UP032",
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"t/**/*.py" = ["D"]
+"setup.py" = ["D"]
+"examples/**/*.py" = ["D"]
+"docs/**/*.py" = ["D"]
+"extra/**/*.py" = ["D"]
+
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

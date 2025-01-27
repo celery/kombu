@@ -30,10 +30,6 @@ jobs:
             python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: pip install --upgrade pip wheel tox tox-docker
-      - name: Run flake8
-        run: tox -v -e flake8 -- -v
-      - name: Run pydocstyle
-        run: tox -v -e pydocstyle -- -v
       - name: Run apicheck
         run: tox -v -e apicheck -- -v
       - name: Run mypy

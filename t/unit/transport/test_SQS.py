@@ -20,9 +20,9 @@ from kombu import Connection, Exchange, Queue, messaging
 
 boto3 = pytest.importorskip('boto3')
 
-from botocore.exceptions import ClientError  # noqa
+from botocore.exceptions import ClientError  # noqa: E402
 
-from kombu.transport import SQS  # noqa
+from kombu.transport import SQS  # noqa: E402
 
 SQS_Channel_sqs = SQS.Channel.sqs
 

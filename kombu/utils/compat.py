@@ -106,7 +106,6 @@ def maybe_fileno(f):
 @contextmanager
 def nested(*managers):  # pragma: no cover
     """Nest context managers."""
-    # flake8: noqa
     exits = []
     vars = []
     exc = (None, None, None)
@@ -118,7 +117,7 @@ def nested(*managers):  # pragma: no cover
                 vars.append(enter())
                 exits.append(exit)
             yield vars
-        except:
+        except: # noqa: E722
             exc = sys.exc_info()
         finally:
             while exits:
@@ -126,7 +125,7 @@ def nested(*managers):  # pragma: no cover
                 try:
                     if exit(*exc):
                         exc = (None, None, None)
-                except:
+                except: # noqa: E722
                     exc = sys.exc_info()
             if exc != (None, None, None):
                 # Don't rely on sys.exc_info() still containing

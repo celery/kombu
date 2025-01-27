@@ -6,8 +6,7 @@ import pytest
 
 import kombu
 
-from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
-                     BasicFunctionality)
+from .common import BaseExchangeTypes, BaseMessage, BasePriority, BasicFunctionality
 
 
 def get_connection(hostname, port, vhost):

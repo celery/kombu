@@ -64,14 +64,17 @@ from typing import Any
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
-                              ServiceBusReceiveMode, ServiceBusReceiver,
-                              ServiceBusSender)
+from azure.servicebus import (
+    ServiceBusClient,
+    ServiceBusMessage,
+    ServiceBusReceiveMode,
+    ServiceBusReceiver,
+    ServiceBusSender,
+)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
-    from azure.identity import (DefaultAzureCredential,
-                                ManagedIdentityCredential)
+    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None
@@ -475,7 +478,7 @@ class Transport(virtual.Transport):
         if not all([namespace, credential]):
             raise ValueError(
                 'Need a URI like '
-                'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} ' # noqa
+                'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} '
                 'or the azure Endpoint connection string'
             )
 
