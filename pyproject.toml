@@ -22,6 +22,7 @@ omit = [
 ]
 
 [tool.ruff]
+target-version = "py38"
 line-length = 117
 
 [tool.ruff.lint]
@@ -36,6 +37,8 @@ select = [
     "RUF100",
     # pep8-naming,
     "N",
+    # pyupgrade,
+    "UP",
 ]
 ignore = [
     # Missing docstring in public method
@@ -74,6 +77,16 @@ ignore = [
     "N818",
     # Invalid module name
     "N999",
+    # Use instead of for type annotation
+    "UP006",
+    # Replace aliased errors with OSError
+    "UP024",
+    # Use implicit references for positional format fields
+    "UP030",
+    # Use format specifiers instead of percent format
+    "UP031",
+    # Use f-string instead of format call
+    "UP032",
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]

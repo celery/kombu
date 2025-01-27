@@ -1,7 +1,5 @@
 """Text Utilities."""
 
-# flake8: noqa
-
 
 from __future__ import annotations
 
@@ -75,7 +73,7 @@ def version_string_as_tuple(version: str) -> version_info_t:
     pattern = r'^(\d+)'  # catching the major version (mandatory)
     pattern += r'(?:\.(\d+))?'  # optionally catching the minor version
     pattern += r'(?:\.(\d+))?'  # optionally catching the micro version
-    pattern += r'(?:\.*([a-zA-Z+-][\da-zA-Z+-]*))?'  # optionally catching the release level (starting with a letter, + or -) after a dot
+    pattern += r'(?:\.*([a-zA-Z+-][\da-zA-Z+-]*))?'  # optionally catching the release level (starting with a letter, + or -) after a dot # noqa: E501
     pattern += r'(?:\.(.*))?'  # optionally catching the serial number after a dot
 
     # applying the regex pattern to the input version string
