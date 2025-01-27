@@ -22,7 +22,7 @@ repos:
       - id: yesqa
 
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.3.0
+    rev: v2.4.0
     hooks:
       - id: codespell # See pyproject.toml for args
         args: [--toml, pyproject.toml, --write-changes]
