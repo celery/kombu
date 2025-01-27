@@ -21,8 +21,44 @@ omit = [
     "*kombu/utils/debug.py",
 ]
 
+[tool.ruff]
+line-length = 117
+
 [tool.ruff.lint]
-select = ["I"]
+select = [
+    # isort
+    "I", 
+    # pyflakes
+    "F", 
+    # pycodestyle
+    "E", "W",
+]
+ignore = [
+    # Missing docstring in public method
+    "D102",
+    # Missing docstring in public function
+    "D104",
+    # Missing docstring in magic method
+    "D105",
+    # Missing docstring in __init__
+    "D107",
+    # First line of docstring should be in imperative mood
+    "D401",
+    # No blank lines allowed between a section header and its content
+    "D412",
+    # Ambiguous variable name
+    "E741",
+    # Ambiguous class name
+    "E742",
+]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"t/**/*.py" = ["D"]
+"setup.py" = ["D"]
+"examples/**/*.py" = ["D"]
+"docs/**/*.py" = ["D"]
+"extra/**/*.py" = ["D"]
+
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
