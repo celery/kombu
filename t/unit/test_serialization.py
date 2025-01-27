@@ -9,13 +9,23 @@ import pytest
 
 import t.skip
 from kombu.exceptions import ContentDisallowed, DecodeError, EncodeError
-from kombu.serialization import (SerializerNotInstalled,
-                                 disable_insecure_serializers, dumps,
-                                 enable_insecure_serializers, loads, pickle,
-                                 pickle_protocol, prepare_accept_content,
-                                 raw_encode, register, register_msgpack,
-                                 register_pickle, register_yaml, registry,
-                                 unregister)
+from kombu.serialization import (
+    SerializerNotInstalled,
+    disable_insecure_serializers,
+    dumps,
+    enable_insecure_serializers,
+    loads,
+    pickle,
+    pickle_protocol,
+    prepare_accept_content,
+    raw_encode,
+    register,
+    register_msgpack,
+    register_pickle,
+    register_yaml,
+    registry,
+    unregister,
+)
 from kombu.utils.encoding import str_to_bytes
 
 # For content_encoding tests

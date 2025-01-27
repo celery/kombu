@@ -8,10 +8,12 @@ import pytest
 from vine.abstract import Thenable
 
 from kombu.asynchronous import http
-from kombu.asynchronous.aws.connection import (AsyncAWSQueryConnection,
-                                               AsyncConnection,
-                                               AsyncHTTPResponse,
-                                               AsyncHTTPSConnection)
+from kombu.asynchronous.aws.connection import (
+    AsyncAWSQueryConnection,
+    AsyncConnection,
+    AsyncHTTPResponse,
+    AsyncHTTPSConnection,
+)
 from kombu.asynchronous.aws.ext import boto3
 from kombu.exceptions import HttpError
 from t.mocks import PromiseMock

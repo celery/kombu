@@ -9,8 +9,14 @@ from amqp.exceptions import NotFound
 import kombu
 from kombu.connection import ConnectionPool
 
-from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
-                     BasePriority, BaseTimeToLive, BasicFunctionality)
+from .common import (
+    BaseExchangeTypes,
+    BaseFailover,
+    BaseMessage,
+    BasePriority,
+    BaseTimeToLive,
+    BasicFunctionality,
+)
 
 
 def get_connection(hostname, port, vhost):

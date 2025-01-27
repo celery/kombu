@@ -111,9 +111,8 @@ except ImportError:  # pragma: no cover
     qpidtoollibs = None
 
 try:
-    from qpid.messaging.exceptions import ConnectionError
+    from qpid.messaging.exceptions import ConnectionError, NotFound, SessionClosed
     from qpid.messaging.exceptions import Empty as QpidEmpty
-    from qpid.messaging.exceptions import NotFound, SessionClosed
 except ImportError:  # pragma: no cover
     ConnectionError = None
     NotFound = None

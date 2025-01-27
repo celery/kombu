@@ -7,8 +7,7 @@ import pytest
 import urllib3
 
 import t.skip
-from kombu.asynchronous.http.urllib3_client import (Urllib3Client,
-                                                    _get_pool_key_parts)
+from kombu.asynchronous.http.urllib3_client import Urllib3Client, _get_pool_key_parts
 
 
 @t.skip.if_pypy

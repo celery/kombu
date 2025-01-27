@@ -12,8 +12,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from kombu.utils.encoding import str_to_bytes
-from kombu.utils.json import (_register_default_types, dumps, loads,
-                              register_type)
+from kombu.utils.json import _register_default_types, dumps, loads, register_type
 
 if sys.version_info >= (3, 9):
     from zoneinfo import ZoneInfo

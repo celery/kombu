@@ -4,8 +4,14 @@ import logging
 import sys
 from unittest.mock import ANY, Mock, patch
 
-from kombu.log import (Log, LogMixin, get_logger, get_loglevel, safeify_format,
-                       setup_logging)
+from kombu.log import (
+    Log,
+    LogMixin,
+    get_logger,
+    get_loglevel,
+    safeify_format,
+    setup_logging,
+)
 
 
 class test_get_logger:

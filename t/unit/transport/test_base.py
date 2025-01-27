@@ -6,8 +6,12 @@ import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.message import Message
-from kombu.transport.base import (Management, StdChannel, Transport,
-                                  to_rabbitmq_queue_arguments)
+from kombu.transport.base import (
+    Management,
+    StdChannel,
+    Transport,
+    to_rabbitmq_queue_arguments,
+)
 
 
 @pytest.mark.parametrize('args,input,expected', [
