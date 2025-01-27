@@ -9,8 +9,13 @@ from vine import promise
 from kombu.asynchronous import ERR, READ, WRITE, Hub
 from kombu.asynchronous import hub as _hub
 from kombu.asynchronous.debug import _rcb, callback_for, repr_flag
-from kombu.asynchronous.hub import (Stop, _dummy_context, _raise_stop_error,
-                                    get_event_loop, set_event_loop)
+from kombu.asynchronous.hub import (
+    Stop,
+    _dummy_context,
+    _raise_stop_error,
+    get_event_loop,
+    set_event_loop,
+)
 from kombu.asynchronous.semaphore import DummyLock, LaxBoundedSemaphore
 
 

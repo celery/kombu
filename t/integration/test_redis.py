@@ -10,8 +10,7 @@ import redis
 import kombu
 from kombu.transport.redis import Transport
 
-from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
-                     BasicFunctionality)
+from .common import BaseExchangeTypes, BaseMessage, BasePriority, BasicFunctionality
 
 
 def get_connection(

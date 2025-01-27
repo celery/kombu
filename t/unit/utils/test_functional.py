@@ -7,10 +7,20 @@ from unittest.mock import Mock
 import pytest
 
 from kombu.utils import functional as utils
-from kombu.utils.functional import (ChannelPromise, LRUCache, accepts_argument,
-                                    fxrange, fxrangemax, lazy, maybe_evaluate,
-                                    maybe_list, memoize, reprcall, reprkwargs,
-                                    retry_over_time)
+from kombu.utils.functional import (
+    ChannelPromise,
+    LRUCache,
+    accepts_argument,
+    fxrange,
+    fxrangemax,
+    lazy,
+    maybe_evaluate,
+    maybe_list,
+    memoize,
+    reprcall,
+    reprkwargs,
+    retry_over_time,
+)
 
 
 class test_ChannelPromise:

@@ -20,3 +20,9 @@ omit = [
     "*/pypy/*",
     "*kombu/utils/debug.py",
 ]
+
+[tool.ruff.lint]
+select = ["I"]
+
+[tool.ruff.lint.isort]
+required-imports = ["from __future__ import annotations"]

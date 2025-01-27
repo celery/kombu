@@ -17,8 +17,7 @@ import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
 
 try:
-    from azure.identity import (DefaultAzureCredential,
-                                ManagedIdentityCredential)
+    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None

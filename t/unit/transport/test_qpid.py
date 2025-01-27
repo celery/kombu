@@ -13,9 +13,16 @@ from unittest.mock import Mock, call, patch
 
 import pytest
 
-from kombu.transport.qpid import (AuthenticationFailure, Channel, Connection,
-                                  ConnectionError, Message, NotFound, QoS,
-                                  Transport)
+from kombu.transport.qpid import (
+    AuthenticationFailure,
+    Channel,
+    Connection,
+    ConnectionError,
+    Message,
+    NotFound,
+    QoS,
+    Transport,
+)
 from kombu.transport.virtual import Base64
 
 QPID_MODULE = 'kombu.transport.qpid'

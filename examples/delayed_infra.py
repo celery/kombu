@@ -3,8 +3,11 @@ from __future__ import annotations
 from examples.experimental.async_consume import queue
 from kombu import Connection, Exchange, Queue
 from kombu.transport.native_delayed_delivery import (
-    bind_queue_to_native_delayed_delivery_exchange, calculate_routing_key,
-    declare_native_delayed_delivery_exchanges_and_queues, level_name)
+    bind_queue_to_native_delayed_delivery_exchange,
+    calculate_routing_key,
+    declare_native_delayed_delivery_exchanges_and_queues,
+    level_name,
+)
 
 with Connection('amqp://guest:guest@localhost:5672//') as connection:
     declare_native_delayed_delivery_exchanges_and_queues(connection, 'quorum')
