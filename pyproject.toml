@@ -32,6 +32,8 @@ select = [
     "F", 
     # pycodestyle
     "E", "W",
+    # Unused noqa directive
+    "RUF100",
 ]
 ignore = [
     # Missing docstring in public method
