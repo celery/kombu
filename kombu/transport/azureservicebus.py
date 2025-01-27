@@ -478,7 +478,7 @@ class Transport(virtual.Transport):
         if not all([namespace, credential]):
             raise ValueError(
                 'Need a URI like '
-                'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} ' # noqa
+                'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} '
                 'or the azure Endpoint connection string'
             )
 

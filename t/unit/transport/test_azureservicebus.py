@@ -12,9 +12,9 @@ import pytest
 from kombu import Connection, Exchange, Queue, messaging
 
 pytest.importorskip('azure.servicebus')
-import azure.core.exceptions  # noqa
-import azure.servicebus.exceptions  # noqa
-from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
+import azure.core.exceptions
+import azure.servicebus.exceptions
+from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode
 
 try:
     from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
@@ -22,7 +22,7 @@ except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None
 
-from kombu.transport import azureservicebus  # noqa
+from kombu.transport import azureservicebus
 
 
 class ASBQueue:
@@ -104,16 +104,16 @@ URL_NOCREDS = 'azureservicebus://'
 URL_CREDS_SAS = 'azureservicebus://policyname:ke/y@hostname'
 URL_CREDS_SAS_FQ = 'azureservicebus://policyname:ke/y@hostname.servicebus.windows.net'
 URL_CREDS_DA = 'azureservicebus://DefaultAzureCredential@hostname'
-URL_CREDS_DA_FQ = 'azureservicebus://DefaultAzureCredential@hostname.servicebus.windows.net' # noqa
+URL_CREDS_DA_FQ = 'azureservicebus://DefaultAzureCredential@hostname.servicebus.windows.net'
 URL_CREDS_MI = 'azureservicebus://ManagedIdentityCredential@hostname'
-URL_CREDS_MI_FQ = 'azureservicebus://ManagedIdentityCredential@hostname.servicebus.windows.net' # noqa
+URL_CREDS_MI_FQ = 'azureservicebus://ManagedIdentityCredential@hostname.servicebus.windows.net'
 
 
 def test_queue_service_nocredentials():
     conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
     with pytest.raises(ValueError) as exc:
         conn.channel()
-        assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'   # noqa
+        assert exc == 'Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}'
 
 
 def test_queue_service_sas():
@@ -237,13 +237,13 @@ MockQueue = namedtuple(
 
 @pytest.fixture(autouse=True)
 def sbac_class_patch():
-    with patch('kombu.transport.azureservicebus.ServiceBusAdministrationClient') as sbac: # noqa
+    with patch('kombu.transport.azureservicebus.ServiceBusAdministrationClient') as sbac:
         yield sbac
 
 
 @pytest.fixture(autouse=True)
 def sbc_class_patch():
-    with patch('kombu.transport.azureservicebus.ServiceBusClient') as sbc: # noqa
+    with patch('kombu.transport.azureservicebus.ServiceBusClient') as sbc:
         yield sbc
 
 

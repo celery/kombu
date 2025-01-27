@@ -922,7 +922,7 @@ class Transport(virtual.Transport):
         )
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
-    """  # noqa: E501
+    """
 
     Channel = Channel
 

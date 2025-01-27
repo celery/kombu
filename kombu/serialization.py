@@ -369,10 +369,10 @@ def register_msgpack():
         if msgpack.version >= (0, 4):
             from msgpack import packb, unpackb
 
-            def pack(s):  # noqa
+            def pack(s):
                 return packb(s, use_bin_type=True)
 
-            def unpack(s):  # noqa
+            def unpack(s):
                 return unpackb(s, raw=False)
         else:
             def version_mismatch(*args, **kwargs):

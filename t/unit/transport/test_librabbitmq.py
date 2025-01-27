@@ -6,7 +6,7 @@ import pytest
 
 pytest.importorskip('librabbitmq')
 
-from kombu.transport import librabbitmq  # noqa
+from kombu.transport import librabbitmq
 
 
 class test_Message:

@@ -8,14 +8,14 @@ from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
 from kombu import Connection
 
 pytest.importorskip('azure.storage.queue')
-from kombu.transport import azurestoragequeues  # noqa
+from kombu.transport import azurestoragequeues
 
 URL_NOCREDS = 'azurestoragequeues://'
-URL_CREDS = 'azurestoragequeues://sas/key%@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/' # noqa
-AZURITE_CREDS = 'azurestoragequeues://Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==@http://localhost:10001/devstoreaccount1'  # noqa
-AZURITE_CREDS_DOCKER_COMPOSE = 'azurestoragequeues://Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==@http://azurite:10001/devstoreaccount1'  # noqa
-DEFAULT_AZURE_URL_CREDS = 'azurestoragequeues://DefaultAzureCredential@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/' # noqa
-MANAGED_IDENTITY_URL_CREDS = 'azurestoragequeues://ManagedIdentityCredential@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/' # noqa
+URL_CREDS = 'azurestoragequeues://sas/key%@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/'
+AZURITE_CREDS = 'azurestoragequeues://Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==@http://localhost:10001/devstoreaccount1'
+AZURITE_CREDS_DOCKER_COMPOSE = 'azurestoragequeues://Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==@http://azurite:10001/devstoreaccount1'
+DEFAULT_AZURE_URL_CREDS = 'azurestoragequeues://DefaultAzureCredential@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/'
+MANAGED_IDENTITY_URL_CREDS = 'azurestoragequeues://ManagedIdentityCredential@https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/'
 
 
 def test_queue_service_nocredentials():
@@ -35,7 +35,7 @@ def test_queue_service():
 
         # Check the SAS token "sas/key%" has been parsed from the url correctly
         assert channel._credential == 'sas/key%'
-        assert channel._url == 'https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/' # noqa
+        assert channel._url == 'https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/'
 
 
 @pytest.mark.parametrize(
@@ -52,9 +52,9 @@ def test_queue_service_works_for_azurite(creds, hostname):
 
         assert channel._credential == {
             'account_name': 'devstoreaccount1',
-            'account_key': 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='  # noqa
+            'account_key': 'Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=='
         }
-        assert channel._url == f'http://{hostname}:10001/devstoreaccount1' # noqa
+        assert channel._url == f'http://{hostname}:10001/devstoreaccount1'
 
 
 def test_queue_service_works_for_default_azure_credentials():

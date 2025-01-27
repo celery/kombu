@@ -414,7 +414,7 @@ class Consumer:
             self.revive(self.channel)
 
     @property
-    def queues(self):  # noqa
+    def queues(self): # noqa: F811
         return list(self._queues.values())
 
     @queues.setter

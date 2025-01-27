@@ -35,19 +35,21 @@ if STATICA_HACK:  # pragma: no cover
     # This is never executed, but tricks static analyzers (PyDev, PyCharm,
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
-    from kombu.common import eventloop, uuid  # noqa
-    from kombu.connection import BrokerConnection, Connection  # noqa
-    from kombu.entity import Exchange, Queue, binding  # noqa
-    from kombu.message import Message  # noqa
-    from kombu.messaging import Consumer, Producer  # noqa
-    from kombu.pools import connections, producers  # noqa
-    from kombu.serialization import disable_insecure_serializers  # noqa
-    from kombu.serialization import enable_insecure_serializers  # noqa
-    from kombu.utils.url import parse_url  # noqa
+    from kombu.common import eventloop, uuid  # noqa: F401
+    from kombu.connection import BrokerConnection, Connection  # noqa: F401
+    from kombu.entity import Exchange, Queue, binding  # noqa: F401
+    from kombu.message import Message  # noqa: F401
+    from kombu.messaging import Consumer, Producer  # noqa: F401
+    from kombu.pools import connections, producers  # noqa: F401
+    from kombu.serialization import (
+        disable_insecure_serializers,  # noqa: F401
+        enable_insecure_serializers,  # noqa: F401
+    )
+    from kombu.utils.url import parse_url  # noqa: F401
 
 # Lazy loading.
 # - See werkzeug/__init__.py for the rationale behind this.
-from types import ModuleType  # noqa
+from types import ModuleType  ## noqa: E402
 
 all_by_module = {
     'kombu.connection': ['Connection', 'BrokerConnection'],

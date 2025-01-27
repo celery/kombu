@@ -76,7 +76,7 @@ eventio.poll = _poll
 pytest.importorskip('redis')
 
 # must import after poller patch, pep8 complains
-from kombu.transport import redis  # noqa
+from kombu.transport import redis # noqa: E402,I001
 
 
 class ResponseError(Exception):

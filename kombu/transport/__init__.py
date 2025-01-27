@@ -10,7 +10,7 @@ def supports_librabbitmq() -> bool | None:
     """Return true if :pypi:`librabbitmq` can be used."""
     if _detect_environment() == 'default':
         try:
-            import librabbitmq  # noqa
+            import librabbitmq  # noqa: F401
         except ImportError:  # pragma: no cover
             pass
         else:                # pragma: no cover
