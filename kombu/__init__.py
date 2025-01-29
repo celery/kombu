@@ -6,7 +6,7 @@ import os
 import re
 import sys
 from collections import namedtuple
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 __version__ = '5.5.0rc2'
 __author__ = 'Ask Solem'
@@ -29,9 +29,7 @@ VERSION = version_info = version_info_t(
 del _temp
 del re
 
-STATICA_HACK = True
-globals()['kcah_acitats'[::-1].upper()] = False
-if STATICA_HACK:  # pragma: no cover
+if TYPE_CHECKING:
     # This is never executed, but tricks static analyzers (PyDev, PyCharm,
     # pylint, etc.) into knowing the types of these symbols, and what
     # they contain.
