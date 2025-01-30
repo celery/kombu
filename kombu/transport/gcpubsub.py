@@ -46,10 +46,10 @@ import threading
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
                                 wait)
 from contextlib import suppress
+from datetime import timedelta
 from os import getpid
 from queue import Empty
 from threading import Lock
-from datetime import timedelta
 from time import monotonic, sleep
 from uuid import NAMESPACE_OID, uuid3
 
