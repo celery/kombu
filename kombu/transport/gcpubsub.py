@@ -49,6 +49,7 @@ from contextlib import suppress
 from os import getpid
 from queue import Empty
 from threading import Lock
+from datetime import timedelta
 from time import monotonic, sleep
 from uuid import NAMESPACE_OID, uuid3
 
@@ -318,7 +319,7 @@ class Channel(virtual.Channel):
                     "topic": topic_path,
                     'ack_deadline_seconds': self.ack_deadline_seconds,
                     'expiration_policy': {
-                        'ttl': f'{self.expiration_seconds}s'
+                        'ttl': timedelta(seconds=self.expiration_seconds)
                     },
                     'message_retention_duration': f'{msg_retention}s',
                     **(filter_args or {}),
