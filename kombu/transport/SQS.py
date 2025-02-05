@@ -766,33 +766,29 @@ class Channel(virtual.Channel):
         return c
 
     def _handle_sts_session(self, queue, q):
+        region = q.get('region', self.region)
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
-            sts_creds = self.generate_sts_session_token(
-                self.transport_options.get('sts_role_arn'),
-                self.transport_options.get('sts_token_timeout', 900))
-            self.sts_expiration = sts_creds['Expiration']
-            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                region=q.get('region', self.region),
-                access_key_id=sts_creds['AccessKeyId'],
-                secret_access_key=sts_creds['SecretAccessKey'],
-                session_token=sts_creds['SessionToken'],
-            )
-            return c
+            return self._new_predefined_queue_client_with_sts_session(queue, region)
         # STS token - refresh if expired
         elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():
-            sts_creds = self.generate_sts_session_token(
-                self.transport_options.get('sts_role_arn'),
-                self.transport_options.get('sts_token_timeout', 900))
-            self.sts_expiration = sts_creds['Expiration']
-            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                region=q.get('region', self.region),
-                access_key_id=sts_creds['AccessKeyId'],
-                secret_access_key=sts_creds['SecretAccessKey'],
-                session_token=sts_creds['SessionToken'],
-            )
-            return c
+            return self._new_predefined_queue_client_with_sts_session(queue, region)
         else:  # STS token - ruse existing
+            if queue not in self._predefined_queue_clients:
+                return self._new_predefined_queue_client_with_sts_session(queue, region)
             return self._predefined_queue_clients[queue]
+
+    def _new_predefined_queue_client_with_sts_session(self, queue, region):
+        sts_creds = self.generate_sts_session_token(
+            self.transport_options.get('sts_role_arn'),
+            self.transport_options.get('sts_token_timeout', 900))
+        self.sts_expiration = sts_creds['Expiration']
+        c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+            region=region,
+            access_key_id=sts_creds['AccessKeyId'],
+            secret_access_key=sts_creds['SecretAccessKey'],
+            session_token=sts_creds['SessionToken'],
+        )
+        return c
 
     def generate_sts_session_token(self, role_arn, token_expiry_seconds):
         sts_client = boto3.client('sts')
