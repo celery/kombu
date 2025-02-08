@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import os
 import socket
+import ssl
+import traceback
 from time import sleep
 
 import pytest
 import redis
+from redis import RedisError
 
 import kombu
 from kombu.transport.redis import Transport
@@ -222,3 +225,24 @@ def test_RedisConnectTimeout(monkeypatch):
         # note the host/port here is irrelevant because
         # connect will raise a socket.timeout
         kombu.Connection('redis://localhost:12345').connect()
+
+
+@pytest.mark.env('redis')
+def test_RedisConnection_check_hostname(monkeypatch):
+    # simulate a connection timeout for a new connection
+    def connect_check_certificate(self):
+        if self.check_hostname:
+            raise OSError("check_hostname=True")
+        raise socket.timeout("check_hostname=False")
+    monkeypatch.setattr(
+        redis.connection.SSLConnection, "_connect", connect_check_certificate)
+
+    # ensure the timeout raises a TimeoutError
+    with pytest.raises(redis.exceptions.TimeoutError):
+        # note the host/port here is irrelevant because
+        # connect will raise a socket.timeout, not a CertificateError
+        kombu.Connection('rediss://localhost:12345?ssl_check_hostname=false').connect()
+    with pytest.raises(redis.exceptions.ConnectionError):
+        # note the host/port here is irrelevant because
+        # connect will raise a CertificateError due to hostname mismatch
+        kombu.Connection('rediss://localhost:12345?ssl_check_hostname=true').connect()
