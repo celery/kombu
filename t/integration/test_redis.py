@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import os
 import socket
-import ssl
-import traceback
 from time import sleep
 
 import pytest
