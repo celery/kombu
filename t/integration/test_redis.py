@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import os
 import socket
-import ssl
-import traceback
 from time import sleep
 
 import pytest
 import redis
-from redis import RedisError
 
 import kombu
 from kombu.transport.redis import Transport
