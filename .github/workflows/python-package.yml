@@ -85,13 +85,13 @@ jobs:
               include:
                 - python-version: pypy3.10
                   toxenv: 'py-amqp'
-                  experimental: true
+                  experimental: false
                 - python-version: pypy3.10
                   toxenv: 'py-redis'
-                  experimental: true
+                  experimental: false
                 - python-version: pypy3.10
                   toxenv: 'py-mongodb'
-                  experimental: true
+                  experimental: false
                 # - python-version: pypy3.10
                 #   toxenv: 'py-kafka'
                 #   experimental: true
