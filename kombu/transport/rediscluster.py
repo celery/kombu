@@ -80,7 +80,7 @@ try:
 except ImportError:
     redis = None
 
-logger = get_logger('kombu.transport.rediscluster')
+logger = get_logger(__name__)
 crit, warning = logger.critical, logger.warning
 
 
