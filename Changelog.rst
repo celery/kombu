@@ -4,6 +4,52 @@
  Change history
 ================
 
+.. _version-5.5.0rc3:
+
+5.5.0rc3
+========
+:release-date: 20 Feb, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump pytest-cov from 5.0.0 to 6.0.0 (#2183)
+- Add documentation for debug logs environment variables (#2186)
+- Add documentation for py-amqp transport options (#2187)
+- Bump codecov/codecov-action from 4 to 5 (#2189)
+- Update pytest to 8.3.4 (#2196)
+- Update redis requirement from !=4.5.5,!=5.0.2,<=5.2.0,>=4.5.2 to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.1 (#2203)
+- Close connections in case of an exception (#2201)
+- Bump pytest-freezer from 0.4.8 to 0.4.9 (#2205)
+- Bump mypy from 1.13.0 to 1.14.0 (#2211)
+- fix(sqs): don't crash on multiple predefined queues with aws sts session (#2224)
+- Bump mypy from 1.14.0 to 1.14.1 (#2215)
+- Bump tzdata from 2024.2 to 2025.1 (#2230)
+- fix: interpret the ssl_check_hostname as a boolean (#2229)
+- Revert "Resolving TypeError, during version unpacking " (#2225)
+- Bump flake8 from 7.1.1 to 7.1.2 (#2244)
+- Prepare for (pre) release: v5.5.0rc3 (#2247)
+
 .. _version-5.5.0rc2:
 
 5.5.0rc2
