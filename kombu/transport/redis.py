@@ -1002,7 +1002,7 @@ class Channel(virtual.Channel):
                 if item:
                     self._maybe_update_queues_expire(client)
                     return loads(bytes_to_str(item))
-                
+
             self._maybe_update_queues_expire(client)
             raise Empty()
 
@@ -1059,10 +1059,10 @@ class Channel(virtual.Channel):
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))
-    
+
     def _maybe_update_queues_expire(self, queue):
         """Update expiration on queue keys.
-        
+
         For each queue, set expiration time in milliseconds.
         Will only be set if x-expires argument was provided when creating the queue.
         """
@@ -1074,12 +1074,12 @@ class Channel(virtual.Channel):
                 for pri in self.priority_steps:
                     pipe = pipe.pexpire(self._q_for_pri(queue, pri), self._expires)
                 pipe.execute()
-    
+
     def _get_queue_expire(self, args):
         """Get expiration header named `x-expires` of queue definition.
-        
+
         Returns expiration time in milliseconds or None if not set.
-        
+
         Arguments:
             args (dict): Queue arguments dictionary
         """
