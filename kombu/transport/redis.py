@@ -1081,7 +1081,7 @@ class Channel(virtual.Channel):
         Returns expiration time in milliseconds or None if not set.
 
         Arguments:
-        ----------
+        ---------
             args (dict): Queue arguments dictionary
         """
         try:
