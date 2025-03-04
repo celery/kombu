@@ -32,12 +32,12 @@ def get_default_encoding_file() -> str | None:
 
 if sys.platform.startswith('java'):  # pragma: no cover
 
-    def default_encoding(file: object = None) -> Literal['utf-8']:
+    def default_encoding(file: Any = None) -> Literal['utf-8']:
         """Get default encoding."""
         return 'utf-8'
 else:
 
-    def default_encoding(file: object = None) -> str:
+    def default_encoding(file: Any = None) -> str:
         """Get default encoding."""
         file = file or get_default_encoding_file()
         return getattr(file, 'encoding', None) or sys.getfilesystemencoding()
@@ -91,7 +91,7 @@ def default_encode(obj: T) -> T:
 
 
 def safe_str(
-    s: object,
+    s: Any,
     errors: str = 'replace',
 ) -> str:
     """Safe form of str(), void of unicode errors."""
@@ -102,7 +102,7 @@ def safe_str(
 
 
 def _safe_str(
-    s: object,
+    s: Any,
     errors: str = 'replace',
     file: Any = None
 ) -> str:
@@ -116,7 +116,7 @@ def _safe_str(
 
 
 def safe_repr(
-    o: object,
+    o: Any,
     errors: str = 'replace',
 ) -> str:
     """Safe form of repr, void of Unicode errors."""
