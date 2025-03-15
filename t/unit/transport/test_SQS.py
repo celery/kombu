@@ -486,20 +486,12 @@ class test_Channel:
         assert get_list_args[0] == 'ReceiveMessage'
         assert get_list_args[1] == {
             'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
+            'AttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': self.channel.wait_time_seconds,
         }
         assert get_list_args[3] == \
             self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
-        assert get_list_kwargs['protocol_params'] == {
-            'json': {'AttributeNames': ['ApproximateReceiveCount']},
-            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
-        }
-
-    def test_fetch_message_attributes(self):
-        self.connection.transport_options['fetch_message_attributes'] = ["Attribute1", "Attribute2"]
-        async_sqs_conn = self.channel.asynsqs(self.queue_name)
-        assert async_sqs_conn.fetch_message_attributes == ['Attribute1', 'Attribute2']
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():

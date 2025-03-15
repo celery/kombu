@@ -813,8 +813,7 @@ class Channel(virtual.Channel):
             c = self._predefined_queue_async_clients[queue] = \
                 AsyncSQSConnection(
                     sqs_connection=self.sqs(queue=queue),
-                    region=q.get('region', self.region),
-                    fetch_message_attributes=self.fetch_message_attributes,
+                    region=q.get('region', self.region)
             )
             return c
 
@@ -823,8 +822,7 @@ class Channel(virtual.Channel):
 
         c = self._asynsqs = AsyncSQSConnection(
             sqs_connection=self.sqs(queue=queue),
-            region=self.region,
-            fetch_message_attributes=self.fetch_message_attributes,
+            region=self.region
         )
         return c
 
@@ -895,10 +893,6 @@ class Channel(virtual.Channel):
     def sqs_base64_encoding(self):
         return self.transport_options.get('sqs_base64_encoding', True)
 
-    @cached_property
-    def fetch_message_attributes(self):
-        return self.transport_options.get('fetch_message_attributes')
-
 
 class Transport(virtual.Transport):
     """SQS Transport.
@@ -928,24 +922,6 @@ class Transport(virtual.Transport):
         )
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
-
-    The ``ApproximateReceiveCount`` message attribute is fetched by this
-    transport by default. Requested message attributes can be changed by
-    setting ``fetch_message_attributes`` in the transport options.
-
-    .. code-block:: python
-
-        from kombu.transport.SQS import Transport
-
-        transport = Transport(
-            ...,
-            transport_options={
-                'fetch_message_attributes': ["All"],
-            }
-        )
-
-    .. _Message Attributes: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html#SQS-ReceiveMessage-request-AttributeNames
-
     """  # noqa: E501
 
     Channel = Channel

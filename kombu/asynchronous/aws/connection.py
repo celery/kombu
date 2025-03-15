@@ -183,9 +183,8 @@ class AsyncAWSQueryConnection(AsyncConnection):
         super().__init__(sqs_connection, http_client,
                          **http_client_params)
 
-    def make_request(self, operation, params_, path, verb, callback=None, protocol_params=None):
+    def make_request(self, operation, params_, path, verb, callback=None):
         params = params_.copy()
-        params.update((protocol_params or {}).get('query', {}))
         if operation:
             params['Action'] = operation
         signer = self.sqs_connection._request_signer
@@ -204,33 +203,29 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
         return self._mexe(prepared_request, callback=callback)
 
-    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None,
-                 protocol_params=None):
+    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_list_ready, callback, parent or self, markers,
                 operation
             ),
-            protocol_params=protocol_params,
         )
 
-    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None, protocol_params=None):
+    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_obj_ready, callback, parent or self, operation
             ),
-            protocol_params=protocol_params,
         )
 
-    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None, protocol_params=None):
+    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_status_ready, callback, parent or self, operation
             ),
-            protocol_params=protocol_params,
         )
 
     def _on_list_ready(self, parent, markers, operation, response):
