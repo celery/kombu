@@ -4,7 +4,7 @@ Only relevant for RabbitMQ.
 """
 from __future__ import annotations
 
-from kombu import Connection, Exchange, Queue
+from kombu import Connection, Exchange, Queue, binding
 from kombu.log import get_logger
 
 logger = get_logger(__name__)
@@ -80,18 +80,30 @@ def bind_queue_to_native_delayed_delivery_exchange(connection: Connection, queue
     """Binds a queue to the native delayed delivery exchange."""
     channel = connection.channel()
     queue = queue.bind(channel)
-    exchange: Exchange = queue.exchange.bind(channel)
 
-    if exchange.type == 'direct':
-        logger.warn(f"Exchange {exchange.name} is a direct exchange "
-                    f"and native delayed delivery do not support direct exchanges.\n"
-                    f"ETA tasks published to this exchange will block the worker until the ETA arrives.")
-        return
+    bindings: set[binding] = set()
 
-    routing_key = queue.routing_key if queue.routing_key.startswith(
-        '#') else f"#.{queue.routing_key}"
-    exchange.bind_to(CELERY_DELAYED_DELIVERY_EXCHANGE, routing_key=routing_key)
-    queue.bind_to(exchange.name, routing_key=routing_key)
+    if queue.exchange:
+        bindings.add(binding(
+            queue.exchange,
+            routing_key=queue.routing_key,
+            arguments=queue.binding_arguments
+        ))
+    elif queue.bindings:
+        bindings = queue.bindings
+
+    for binding_entry in bindings:
+        exchange: Exchange = binding_entry.exchange.bind(channel)
+        if exchange.type == 'direct':
+            logger.warn(f"Exchange {exchange.name} is a direct exchange "
+                        f"and native delayed delivery do not support direct exchanges.\n"
+                        f"ETA tasks published to this exchange will block the worker until the ETA arrives.")
+            continue
+
+        routing_key = binding_entry.routing_key if binding_entry.routing_key.startswith(
+            '#') else f"#.{binding_entry.routing_key}"
+        exchange.bind_to(CELERY_DELAYED_DELIVERY_EXCHANGE, routing_key=routing_key)
+        queue.bind_to(exchange.name, routing_key=routing_key)
 
 
 def calculate_routing_key(countdown: int, routing_key: str) -> str:
