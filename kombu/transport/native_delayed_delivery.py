@@ -77,7 +77,24 @@ def declare_native_delayed_delivery_exchanges_and_queues(connection: Connection,
 
 
 def bind_queue_to_native_delayed_delivery_exchange(connection: Connection, queue: Queue) -> None:
-    """Binds a queue to the native delayed delivery exchange."""
+    """Bind a queue to the native delayed delivery exchange.
+
+    When a message arrives at the delivery exchange, it must be forwarded to
+    the original exchange and queue. To accomplish this, the function retrieves
+    the exchange or binding objects associated with the queue and binds them to
+    the delivery exchange.
+
+
+    :param connection: The connection object used to create and manage the channel.
+    :type connection: Connection
+    :param queue: The queue to be bound to the native delayed delivery exchange.
+    :type queue: Queue
+
+    Warning:
+    -------
+        If a direct exchange is detected, a warning will be logged because
+        native delayed delivery does not support direct exchanges.
+    """
     channel = connection.channel()
     queue = queue.bind(channel)
 
