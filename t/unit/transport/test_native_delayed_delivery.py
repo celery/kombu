@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -66,6 +66,37 @@ class test_bind_queue_to_native_delayed_delivery_exchange:
         queue_mock.bind().bind_to.assert_called_once_with(
             'foo',
             routing_key="#.foo"
+        )
+
+    def test_bind_to_topic_exchange_with_multiple_routing_keys(self):
+        queue_mock = Mock()
+        queue_mock.bind().exchange = None
+
+        binding1 = Mock()
+        binding1.exchange.bind().type = 'topic'
+        binding1.exchange.bind().name = 'exchange1'
+        binding1.routing_key = 'test1'
+
+        binding2 = Mock()
+        binding2.exchange.bind().type = 'topic'
+        binding2.exchange.bind().name = 'exchange2'
+        binding2.routing_key = 'test2'
+        queue_mock.bind().bindings = [binding1, binding2]
+
+        bind_queue_to_native_delayed_delivery_exchange(Mock(), queue_mock)
+
+        queue_mock.bind().bind_to.assert_has_calls([
+            call('exchange1', routing_key='#.test1'),
+            call('exchange2', routing_key='#.test2')
+        ], any_order=True)
+
+        queue_mock.bind().bindings[0].exchange.bind().bind_to.assert_called_once_with(
+            CELERY_DELAYED_DELIVERY_EXCHANGE,
+            routing_key="#.test1"
+        )
+        queue_mock.bind().bindings[1].exchange.bind().bind_to.assert_called_once_with(
+            CELERY_DELAYED_DELIVERY_EXCHANGE,
+            routing_key="#.test2"
         )
 
     def test_bind_to_topic_exchange_with_wildcard_routing_key(self):
