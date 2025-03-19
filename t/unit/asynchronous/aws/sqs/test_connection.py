@@ -98,10 +98,12 @@ class test_AsyncSQSConnection(AWSCase):
             url=queue_url,
             method=verb,
             data={
-                'Action': (operation_name),
+                'Action': operation_name,
                 **params
             },
-            headers={},
+            headers={
+                'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+            },
         ))
 
     def test_create_json_request(self):
