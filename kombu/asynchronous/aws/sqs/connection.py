@@ -39,15 +39,16 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             params['Action'] = operation
 
         # defaults for non-get
-        param_payload = {'data': params, "headers": {}}
+        param_payload = {'data': params}
+        headers = {}
         if method.lower() == 'get':
             # query-based opts
             param_payload = {'params': params}
 
         if method.lower() == 'post':
-            param_payload["headers"]['Content-Type'] = 'application/x-www-form-urlencoded'
+            headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=utf-8'
 
-        return AWSRequest(method=method, url=queue_url, **param_payload)
+        return AWSRequest(method=method, url=queue_url, headers=headers, **param_payload)
 
     def _create_json_request(self, operation, params, queue_url):
         params = params.copy()
