@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from unittest import mock
 from unittest.mock import MagicMock, Mock
 
 from kombu.asynchronous.aws.ext import AWSRequest, boto3
@@ -83,14 +84,49 @@ class test_AsyncSQSConnection(AWSCase):
         # Default value for backwards compatibility
         assert self.x.fetch_message_attributes == ["ApproximateReceiveCount"]
 
+    def test_create_query_request_get(self):
+        # Query Protocol GET call per
+        # https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-making-api-requests-xml.html
+        operation_name = 'CreateQueue'
+        params = {
+            'DefaultVisibilityTimeout': 40,
+            'QueueName': 'celery-test',
+            'Version': '2012-11-05',
+        }
+        verb = 'GET'
+        req = self.x._create_query_request(operation_name, params, SQS_URL, verb)
+        self.assert_requests_equal(req, AWSRequest(
+            url=SQS_URL,
+            method=verb,
+            data=None,
+            params={
+                'Action': operation_name,
+                **params
+            },
+            headers={},
+        ))
+
+        prepared = req.prepare()  # without signing for test
+
+        assert prepared.method == 'GET'
+        assert prepared.url ==  (
+            'https://sqs.us-west-2.amazonaws.com/?'
+            'DefaultVisibilityTimeout=40'
+            '&QueueName=celery-test'
+            '&Version=2012-11-05'
+            '&Action=CreateQueue'
+        )
+        assert prepared.headers == {}
+        assert prepared.body is None
+
     def test_create_query_request(self):
-        operation_name = 'ReceiveMessage',
+        operation_name = 'ReceiveMessage'
         params = {
             'MaxNumberOfMessages': 10,
             'AttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': 20
         }
-        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        queue_url = f'{SQS_URL}123456789012/celery-test'
         verb = 'POST'
         req = self.x._create_query_request(operation_name, params, queue_url,
                                            verb)
@@ -106,6 +142,21 @@ class test_AsyncSQSConnection(AWSCase):
             },
         ))
 
+        prepared = req.prepare()  # without signing for test
+
+        assert prepared.method == 'POST'
+        assert prepared.url == queue_url
+        assert prepared.headers == {
+            'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
+            'Content-Length': mock.ANY,
+        }
+        assert prepared.body == (
+            'MaxNumberOfMessages=10'
+            '&AttributeName.1=ApproximateReceiveCount'
+            '&WaitTimeSeconds=20'
+            '&Action=ReceiveMessage'
+        )
+
     def test_create_json_request(self):
         operation_name = 'ReceiveMessage'
         method = 'POST'
@@ -114,7 +165,7 @@ class test_AsyncSQSConnection(AWSCase):
             'AttributeNames': ['ApproximateReceiveCount'],
             'WaitTimeSeconds': 20
         }
-        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        queue_url = f'{SQS_URL}123456789012/celery-test'
 
         self.x.sqs_connection = Mock()
         self.x.sqs_connection._request_signer = Mock()
@@ -139,6 +190,21 @@ class test_AsyncSQSConnection(AWSCase):
             },
         ))
 
+        prepared = req.prepare()  # without signing for test
+        assert prepared.method == 'POST'
+        assert prepared.url == SQS_URL
+        assert prepared.headers == {
+            'Content-Type': 'application/x-amz-json-1.0',
+            'X-Amz-Target': 'sqs.ReceiveMessage',
+            'Content-Length': mock.ANY,
+        }
+        assert json.loads(prepared.body) == {
+            'MaxNumberOfMessages': 10,
+            'AttributeNames': ['ApproximateReceiveCount'],
+            'WaitTimeSeconds': 20,
+            'QueueUrl': queue_url,
+        }
+
     def test_make_request__with_query_protocol(self):
         # Do the necessary mocking.
         self.x.sqs_connection = Mock()
@@ -151,14 +217,13 @@ class test_AsyncSQSConnection(AWSCase):
         operation = 'ReceiveMessage',
         params = {
             'MaxNumberOfMessages': 10,
-
             'WaitTimeSeconds': 20
         }
         pparams = {
             'json': {'AttributeNames': ['ApproximateReceiveCount']},
             'query': {'AttributeName.1': 'ApproximateReceiveCount'},
         }
-        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        queue_url = f'{SQS_URL}123456789012/celery-test'
         verb = 'POST'
 
         expect_params = {**params, 'AttributeName.1': 'ApproximateReceiveCount'}
@@ -187,7 +252,7 @@ class test_AsyncSQSConnection(AWSCase):
             'query': {'AttributeName.1': 'ApproximateReceiveCount'},
         }
 
-        queue_url = f'{SQS_URL}/123456789012/celery-test'
+        queue_url = f'{SQS_URL}123456789012/celery-test'
         verb = 'POST'
         expect_params = {**params, 'AttributeNames': ['ApproximateReceiveCount']}
 
