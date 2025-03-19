@@ -73,7 +73,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         headers['X-Amz-Target'] = target
 
         param_payload = {
-            'data': json.dumps(params),
+            'data': json.dumps(params).encode(),
             'headers': headers
         }
 

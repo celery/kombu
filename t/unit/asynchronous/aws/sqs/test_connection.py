@@ -109,7 +109,7 @@ class test_AsyncSQSConnection(AWSCase):
         prepared = req.prepare()  # without signing for test
 
         assert prepared.method == 'GET'
-        assert prepared.url ==  (
+        assert prepared.url == (
             'https://sqs.us-west-2.amazonaws.com/?'
             'DefaultVisibilityTimeout=40'
             '&QueueName=celery-test'
@@ -183,7 +183,7 @@ class test_AsyncSQSConnection(AWSCase):
             data=json.dumps({
                 **params,
                 "QueueUrl": queue_url
-            }),
+            }).encode(),
             headers={
                 'Content-Type': 'application/x-amz-json-1.0',
                 'X-Amz-Target': f'sqs.{operation_name}'
