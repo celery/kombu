@@ -1338,6 +1338,68 @@ class test_Channel:
                 ('HDEL', 'foo_unacked', 'test-tag')
             ]
 
+    def test_get_queue_expire_valid_string(self):
+        """Test _get_queue_expire with valid string value."""
+        args = {"arguments": {"x-expires": "5000"}}
+        result = self.channel._get_queue_expire(args)
+        assert result == 5000
+
+    def test_get_queue_expire_valid_int(self):
+        """Test _get_queue_expire with valid integer value."""
+        args = {"arguments": {"x-expires": 5000}}
+        result = self.channel._get_queue_expire(args)
+        assert result == 5000
+
+    def test_get_queue_expire_missing_arguments(self):
+        """Test _get_queue_expire with empty args dictionary."""
+        args = {}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_missing_x_expires(self):
+        """Test _get_queue_expire with missing x-expires key."""
+        args = {"arguments": {}}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_non_numeric(self):
+        """Test _get_queue_expire with non-numeric value."""
+        args = {"arguments": {"x-expires": "invalid"}}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_none(self):
+        """Test _get_queue_expire with None args."""
+        result = self.channel._get_queue_expire(None)
+        assert result is None
+
+    def test_maybe_update_queues_expire(self):
+        with Connection(transport=Transport) as conn:
+            channel = conn.channel()
+            channel._expires = 5000
+
+            client_mock = Mock()
+            client_mock.__enter__ = lambda self: client_mock
+            client_mock.__exit__ = lambda self, *args: None
+
+            pipeline_mock = Mock()
+            pipeline_mock.__enter__ = lambda self: pipeline_mock
+            pipeline_mock.__exit__ = lambda self, *args: None
+
+            client_mock.pipeline.return_value = pipeline_mock
+
+            channel.conn_or_acquire = Mock(return_value=client_mock)
+
+            channel._maybe_update_queues_expire('test_queue')
+
+            expected_calls = [
+                call.pexpire('test_queue', 5000)
+            ]
+
+            actual_calls = pipeline_mock.method_calls
+
+            for expected_call in expected_calls:
+                assert expected_call in actual_calls
 
 class test_Redis:
 
