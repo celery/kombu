@@ -1401,6 +1401,7 @@ class test_Channel:
             for expected_call in expected_calls:
                 assert expected_call in actual_calls
 
+
 class test_Redis:
 
     def setup_method(self):
