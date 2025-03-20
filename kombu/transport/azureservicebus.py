@@ -85,7 +85,6 @@ from . import virtual
 # dots are replaced by dash, all other punctuation replaced by underscore.
 PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_', '.', '-'}
 CHARS_REPLACE_TABLE = {
-    ord('.'): ord('-'),
     **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE}
 }
 
