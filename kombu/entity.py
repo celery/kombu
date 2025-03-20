@@ -468,8 +468,8 @@ class Queue(MaybeChannelBound):
 
             See https://www.rabbitmq.com/ttl.html#queue-ttl
 
-            **RabbitMQ extension**: Only available when using RabbitMQ.
-
+            **RabbitMQ extension**: Available when using RabbitMQ.
+            **Redis extension**: Available when using Redis.
         message_ttl (float): Message time to live in seconds.
 
             This setting controls how long messages can stay in the queue
