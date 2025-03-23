@@ -7,7 +7,8 @@ Features
 * Supports Topic: Yes
 * Supports Fanout: Yes
 * Supports Priority: Yes
-* Supports TTL: No
+* Supports Queue TTL: Yes
+* Supports Message TTL: No
 
 Connection String
 =================
