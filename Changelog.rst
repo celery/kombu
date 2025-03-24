@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-5.5.1:
+
+5.5.1
+=====
+:release-date: 24 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update trove classifier with missing python 3.13 (#2262)
+- Fix native_delayed_delivery for queue with explicit bindings (#2263)
+- SQS: Fix Query Protocol Content-Type header (#2266)
+- SQS: More Protocol Tests (#2267)
+- Prepare for release: v5.5.1 (#2270)
+
 .. _version-5.5.0:
 
 5.5.0
