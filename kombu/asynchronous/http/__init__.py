@@ -9,6 +9,13 @@ __all__ = ('Client', 'Headers', 'Response', 'Request', 'get_client')
 
 def Client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
     """Create new HTTP client."""
+    try:
+        import pycurl
+        from .curl import CurlClient
+        return CurlClient(hub, **kwargs)
+    except ImportError:
+        pass
+    # fall back scenario
     from .urllib3_client import Urllib3Client
     return Urllib3Client(hub, **kwargs)
 
