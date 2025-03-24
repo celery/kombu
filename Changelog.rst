@@ -18,7 +18,7 @@ What's Changed
 - Fix native_delayed_delivery for queue with explicit bindings (#2263)
 - SQS: Fix Query Protocol Content-Type header (#2266)
 - SQS: More Protocol Tests (#2267)
-- Prepare for release: v5.5.1 (#2268)
+- Prepare for release: v5.5.1 (#2270)
 
 .. _version-5.5.0:
 
