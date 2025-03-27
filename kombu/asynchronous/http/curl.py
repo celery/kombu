@@ -252,7 +252,11 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            body = request.body.encode('utf-8') if request.body else b''
+            if not request.body:
+                body = b''
+            else:
+                body = request.body if isinstance(request.body, bytes) else request.body.encode('utf-8')
+
             reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':
@@ -260,6 +264,7 @@ class CurlClient(BaseClient):
                 def ioctl(cmd):
                     if cmd == _pycurl.IOCMD_RESTARTREAD:
                         reqbuffer.seek(0)
+
                 setopt(_pycurl.IOCTLFUNCTION, ioctl)
                 setopt(_pycurl.POSTFIELDSIZE, len(body))
             else:
