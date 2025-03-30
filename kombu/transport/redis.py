@@ -1001,10 +1001,10 @@ class Channel(virtual.Channel):
             for pri in self.priority_steps:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
-                    self._maybe_update_queues_expire(client)
+                    self._maybe_update_queues_expire(queue)
                     return loads(bytes_to_str(item))
 
-            self._maybe_update_queues_expire(client)
+            self._maybe_update_queues_expire(queue)
             raise Empty()
 
     def _size(self, queue):
