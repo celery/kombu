@@ -1072,7 +1072,7 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for priority in self.priority_steps:
-                    pipe = pipe.pexpire(self._q_for_pri(queue, priority), expires)
+                    pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
                 pipe.execute()
 
     def _get_queue_expire(self, args):
