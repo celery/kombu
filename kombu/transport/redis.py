@@ -695,7 +695,7 @@ class Channel(virtual.Channel):
     _async_pool = None
     _pool = None
 
-    _expires = None
+    _expires = {}
 
     from_transport_options = (
         virtual.Channel.from_transport_options +
