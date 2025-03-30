@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-5.5.2:
+
+5.5.2
+=====
+:release-date: 31 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump tzdata from 2025.1 to 2025.2 (#2268)
+- Downgrad kafka version to make the CI green again (#2271)
+- Attempt to fix retry loop in `maybe_declare()` when broken connection (#2275)
+- Prepare for release: v5.5.2 (#2278)
+
 .. _version-5.5.1:
 
 5.5.1
