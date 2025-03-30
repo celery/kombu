@@ -1066,7 +1066,7 @@ class Channel(virtual.Channel):
         For each queue, set expiration time in milliseconds.
         Will only be set if x-expires argument was provided when creating the queue.
         """
-        if not self._expires:
+        if not self._expires or queue not in self._expires:
             return
 
         with self.conn_or_acquire() as client:
