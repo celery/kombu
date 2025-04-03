@@ -6,3 +6,4 @@ sphinx2rst>=1.0
 bumpversion==0.6.0
 pydocstyle==6.3.0
 mypy==1.14.1
+types-pycurl>=7.43.0.5; sys_platform != 'win32' and platform_python_implementation=="CPython"
