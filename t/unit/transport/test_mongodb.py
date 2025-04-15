@@ -116,6 +116,18 @@ class test_mongodb_uri_parsing:
         hostname, dbname, options = channel._parse_uri()
         assert options['readpreference'] == 'nearest'
 
+    def test_normalizes_params_from_uri_only_once(self):
+        channel = _create_mock_connection('mongodb://localhost/?serverselectiontimeoutms=1000').default_channel
+
+        def server_info(self):
+            return {'version': '3.6.0-rc'}
+
+        with patch.object(pymongo.MongoClient, 'server_info', server_info):
+            database = channel._open()
+
+        client_options = database.client.options
+        assert client_options.server_selection_timeout == 1.0
+
 
 class BaseMongoDBChannelCase:
 
