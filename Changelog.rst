@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-5.5.3:
+
+5.5.3
+=====
+:release-date: 16 Apr, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Fix error of double normalization options from URI in mongodb transport (#2282)
+- Move use of typing_extensions into TYPE_CHECKING block (#2283)
+- Do not pin package tzdata anymore (#2274)
+- Typo in pools's documentation (#2285)
+- Prepare for release: v5.5.3 (#2288)
+
 .. _version-5.5.2:
 
 5.5.2
