@@ -1376,7 +1376,7 @@ class test_Channel:
     def test_maybe_update_queues_expire(self):
         with Connection(transport=Transport) as conn:
             channel = conn.channel()
-            channel._expires = 5000
+            channel._expires = {'test_queue': 5000}
 
             client_mock = Mock()
             client_mock.__enter__ = lambda self: client_mock
