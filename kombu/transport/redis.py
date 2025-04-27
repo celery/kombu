@@ -1047,7 +1047,9 @@ class Channel(virtual.Channel):
         if auto_delete:
             self.auto_delete_queues.add(queue)
 
-        self._expires[queue] = self._get_queue_expire(kwargs)
+        expire = self._get_queue_expire(kwargs)
+        if expire is not None:
+            self._expires[queue] = expire
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
