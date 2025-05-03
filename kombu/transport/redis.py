@@ -59,11 +59,11 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from importlib.metadata import version
 from queue import Empty
 from time import time
-from packaging.version import Version
-from importlib.metadata import version
 
+from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
