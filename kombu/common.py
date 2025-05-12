@@ -135,7 +135,9 @@ def _maybe_declare(entity, channel):
 
     _ensure_channel_is_bound(entity, channel)
 
-    if channel is None:
+    if channel is None or channel.connection is None:
+        # If this was called from the `ensure()` method then the channel could have been invalidated
+        # and the correct channel was re-bound to the entity by calling the `entity.revive()` method.
         if not entity.is_bound:
             raise ChannelError(
                 f"channel is None and entity {entity} not bound.")
