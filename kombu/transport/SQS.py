@@ -76,8 +76,8 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
-    'sts_token_timeout': 900, # optional
-    'sts_token_buffer_time': 0 # optional
+    'sts_token_timeout': 900, # optional, added in 5.7.0
+    'sts_token_buffer_time': 0 # optional, added in 5.7.0
     }
 
 Note that FIFO and standard queues must be named accordingly (the name of
@@ -92,9 +92,11 @@ AWS STS authentication is supported, by using sts_role_arn, and
 sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
-sts_token_buffer_time (seconds) is the time by which you want to refresh your token
-earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
-should be less than sts_token_timeout.
+
+.. versionadded:: 5.7.0
+    sts_token_buffer_time (seconds) is the time by which you want to refresh your token
+    earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
+    should be less than sts_token_timeout.
 
 
 
