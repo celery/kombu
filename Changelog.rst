@@ -4,6 +4,191 @@
  Change history
 ================
 
+.. _version-5.5.3:
+
+5.5.3
+=====
+:release-date: 16 Apr, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Fix error of double normalization options from URI in mongodb transport (#2282)
+- Move use of typing_extensions into TYPE_CHECKING block (#2283)
+- Do not pin package tzdata anymore (#2274)
+- Typo in pools's documentation (#2285)
+- Prepare for release: v5.5.3 (#2288)
+
+.. _version-5.5.2:
+
+5.5.2
+=====
+:release-date: 31 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump tzdata from 2025.1 to 2025.2 (#2268)
+- Downgrad kafka version to make the CI green again (#2271)
+- Attempt to fix retry loop in `maybe_declare()` when broken connection (#2275)
+- Prepare for release: v5.5.2 (#2278)
+
+.. _version-5.5.1:
+
+5.5.1
+=====
+:release-date: 24 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update trove classifier with missing python 3.13 (#2262)
+- Fix native_delayed_delivery for queue with explicit bindings (#2263)
+- SQS: Fix Query Protocol Content-Type header (#2266)
+- SQS: More Protocol Tests (#2267)
+- Prepare for release: v5.5.1 (#2270)
+
+.. _version-5.5.0:
+
+5.5.0
+=====
+:release-date: 13 Mar, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Pin tzdata to latest version 2024.2 (#2121)
+- Refactored CI (#2122)
+- Added unit tests to "tox -e parallel" environment (#2123)
+- Improve pre-commit checks and fix all new lint errors (#2124)
+- Removed codecov flags (#2126)
+- Pin pre-commit to latest version 3.8.0 (#2125)
+- Limit redis-py <5.1.0 (#2132)
+- Removed "on push" from the linter GitHub Actions workflow (#2133)
+- Bump pymongo from 4.9.1 to 4.10.0 (#2130)
+- Update pymongo to 4.10.1 (#2136)
+- fix(pytest): skip file-lock test on Windows (#2138)
+- Apply errback and callback when retry occurs (#2129)
+- Pin pre-commit to latest version 4.0.0 (Python 3.9+) (#2140)
+- Pin pre-commit to latest version 4.0.1 (#2144)
+- Add native delayed delivery API to kombu (#2128)
+- Add support for Google Pub/Sub as transport broker (#2147)
+- Update the transport options according to the retry policy (#2148)
+- Feature: urllib3 instead of curl (#2134)
+- Update mypy to 1.12.0 (#2149)
+- Prepare for (pre) release: v5.5.0rc1 (#2150)
+- Added missing changelog highlight for Google Pub/Sub (#2151)
+- Bump grpcio from 1.66.2 to 1.67.0 (#2158)
+- Fix: restrict google-cloud-pubsub version (#2160)
+- Update mypy to 1.12.1 (#2164)
+- Added a unit test that proves timeout is used when retry policy is specified (#2166)
+- Fix regression from #2148 (#2165)
+- Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2 (#2168)
+- Revert "Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2" (#2169)
+- Update mypy to 1.13.0 (#2172)
+- Fix: restrict google protobuf version (#2175)
+- Add support for Python 3.13 (#2052)
+- Apply retry policy to maybe_declare() (#2174)
+- Pin redis to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.0 (#2178)
+- Added confirm_timeout argument to publish() (#2167)
+- Prepare for (pre) release: v5.5.0rc2 (#2181)
+- Bump pytest-cov from 5.0.0 to 6.0.0 (#2183)
+- Add documentation for debug logs environment variables (#2186)
+- Add documentation for py-amqp transport options (#2187)
+- Bump codecov/codecov-action from 4 to 5 (#2189)
+- Update pytest to 8.3.4 (#2196)
+- Update redis requirement from !=4.5.5,!=5.0.2,<=5.2.0,>=4.5.2 to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.1 (#2203)
+- Close connections in case of an exception (#2201)
+- Bump pytest-freezer from 0.4.8 to 0.4.9 (#2205)
+- Bump mypy from 1.13.0 to 1.14.0 (#2211)
+- fix(sqs): don't crash on multiple predefined queues with aws sts session (#2224)
+- Bump mypy from 1.14.0 to 1.14.1 (#2215)
+- Bump tzdata from 2024.2 to 2025.1 (#2230)
+- fix: interpret the ssl_check_hostname as a boolean (#2229)
+- Revert "Resolving TypeError, during version unpacking " (#2225)
+- Bump flake8 from 7.1.1 to 7.1.2 (#2244)
+- Prepare for (pre) release: v5.5.0rc3 (#2247)
+- Bump pytest from 8.3.4 to 8.3.5 (#2253)
+- Update delayed_infra example for better clarity (#2252)
+- SQS: Support Async JSON SQS Protocol & Message Attributes (#2226)
+- Prepare for release: v5.5.0 (#2255)
+
+Changes since 5.5.0rc3
+----------------------
+
+- Bump pytest from 8.3.4 to 8.3.5 (#2253)
+- Update delayed_infra example for better clarity (#2252)
+- SQS: Support Async JSON SQS Protocol & Message Attributes (#2226)
+
+.. _version-5.5.0rc3:
+
+5.5.0rc3
+========
+:release-date: 20 Feb, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump pytest-cov from 5.0.0 to 6.0.0 (#2183)
+- Add documentation for debug logs environment variables (#2186)
+- Add documentation for py-amqp transport options (#2187)
+- Bump codecov/codecov-action from 4 to 5 (#2189)
+- Update pytest to 8.3.4 (#2196)
+- Update redis requirement from !=4.5.5,!=5.0.2,<=5.2.0,>=4.5.2 to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.1 (#2203)
+- Close connections in case of an exception (#2201)
+- Bump pytest-freezer from 0.4.8 to 0.4.9 (#2205)
+- Bump mypy from 1.13.0 to 1.14.0 (#2211)
+- fix(sqs): don't crash on multiple predefined queues with aws sts session (#2224)
+- Bump mypy from 1.14.0 to 1.14.1 (#2215)
+- Bump tzdata from 2024.2 to 2025.1 (#2230)
+- fix: interpret the ssl_check_hostname as a boolean (#2229)
+- Revert "Resolving TypeError, during version unpacking " (#2225)
+- Bump flake8 from 7.1.1 to 7.1.2 (#2244)
+- Prepare for (pre) release: v5.5.0rc3 (#2247)
+
 .. _version-5.5.0rc2:
 
 5.5.0rc2

@@ -4,10 +4,11 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.5.0rc2
+:Version: 5.5.3
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
+:DeepWiki: |deepwiki|
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
 
 About
@@ -350,8 +351,15 @@ file in the top distribution directory for the full license text.
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
      :alt: Support Python implementations.
      :target: https://pypi.org/project/kombu/
+
 .. |downloads| image:: https://pepy.tech/badge/kombu
     :target: https://pepy.tech/project/kombu
+
+.. |deepwiki| image:: https://devin.ai/assets/deepwiki-badge.png
+    :alt: Ask http://DeepWiki.com
+    :target: https://deepwiki.com/celery/kombu
+    :width: 125px
+
 
 kombu as part of the Tidelift Subscription
 =======

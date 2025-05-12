@@ -486,12 +486,20 @@ class test_Channel:
         assert get_list_args[0] == 'ReceiveMessage'
         assert get_list_args[1] == {
             'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
-            'AttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': self.channel.wait_time_seconds,
         }
         assert get_list_args[3] == \
             self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
+        assert get_list_kwargs['protocol_params'] == {
+            'json': {'AttributeNames': ['ApproximateReceiveCount']},
+            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+        }
+
+    def test_fetch_message_attributes(self):
+        self.connection.transport_options['fetch_message_attributes'] = ["Attribute1", "Attribute2"]
+        async_sqs_conn = self.channel.asynsqs(self.queue_name)
+        assert async_sqs_conn.fetch_message_attributes == ['Attribute1', 'Attribute2']
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
@@ -995,6 +1003,34 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_not_called()
+
+    def test_sts_session_with_multiple_predefined_queues(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.return_value = {
+            'Expiration': datetime.utcnow() + timedelta(days=1),
+            'SessionToken': 123,
+            'AccessKeyId': 123,
+            'SecretAccessKey': 123
+        }
+
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue='queue-1')
+        sqs(queue='queue-2')
+
+        # Assert
+        mock_generate_sts_session_token.assert_called()
+        mock_new_sqs_client.assert_called()
 
     def test_message_attribute(self):
         message = 'my test message'
