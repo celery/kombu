@@ -4,6 +4,8 @@ import json
 from unittest import mock
 from unittest.mock import MagicMock, Mock
 
+import pytest
+
 from kombu.asynchronous.aws.ext import AWSRequest, boto3
 from kombu.asynchronous.aws.sqs.connection import (AsyncSQSConnection,
                                                    _query_object_encode)
@@ -73,16 +75,39 @@ class test_AsyncSQSConnection(AWSCase):
         assert req1.params == req2.params
         assert dict(req1.headers) == dict(req2.headers)
 
-    def test_fetch_attributes_on_construction(self):
+    @pytest.mark.parametrize('input,expected', [
+        (
+            None,
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+        ),
+        (
+            {'sys_attr_names': None},
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+        ),
+        (
+            {'bad_key': None},
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+        ),
+        (
+            {'bad_key': 'SQS_Val', 'msg_attr_names': 'Another_SQS_Val'},
+            {
+                'message_system_attribute_names': ["ApproximateReceiveCount"],
+                'message_attribute_names': 'Another_SQS_Val'}
+        ),
+    ])
+    def test_async_connection_sets_default_attributes_on_construction(self, input, expected):
         """Verify default fetch_message_attributes can be set at construction."""
         x = AsyncSQSConnection(
-            self.sqs_client, 'ak', 'sk', http_client=Mock(),
-            fetch_message_attributes=["AttributeOne"],
+            self.sqs_client, 0, 'sk', http_client=Mock(),
+            message_system_attribute_names=input.get('sys_attr_names') if input else None,
+            message_attribute_names=input.get('msg_attr_names') if input else None,
         )
-        assert x.fetch_message_attributes == ["AttributeOne"]
+        assert x.message_system_attribute_names == expected['message_system_attribute_names']
+        assert x.message_attribute_names == expected['message_attribute_names']
 
         # Default value for backwards compatibility
-        assert self.x.fetch_message_attributes == ["ApproximateReceiveCount"]
+        assert self.x.message_system_attribute_names == ["ApproximateReceiveCount"]
+        assert self.x.message_attribute_names is None
 
     def test_create_query_request_get(self):
         # Query Protocol GET call per
@@ -123,7 +148,7 @@ class test_AsyncSQSConnection(AWSCase):
         operation_name = 'ReceiveMessage'
         params = {
             'MaxNumberOfMessages': 10,
-            'AttributeName.1': 'ApproximateReceiveCount',
+            'MessageSystemAttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': 20
         }
         queue_url = f'{SQS_URL}123456789012/celery-test'
@@ -152,7 +177,7 @@ class test_AsyncSQSConnection(AWSCase):
         }
         assert prepared.body == (
             'MaxNumberOfMessages=10'
-            '&AttributeName.1=ApproximateReceiveCount'
+            '&MessageSystemAttributeName.1=ApproximateReceiveCount'
             '&WaitTimeSeconds=20'
             '&Action=ReceiveMessage'
         )
@@ -162,7 +187,7 @@ class test_AsyncSQSConnection(AWSCase):
         method = 'POST'
         params = {
             'MaxNumberOfMessages': 10,
-            'AttributeNames': ['ApproximateReceiveCount'],
+            'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
             'WaitTimeSeconds': 20
         }
         queue_url = f'{SQS_URL}123456789012/celery-test'
@@ -200,7 +225,7 @@ class test_AsyncSQSConnection(AWSCase):
         }
         assert json.loads(prepared.body) == {
             'MaxNumberOfMessages': 10,
-            'AttributeNames': ['ApproximateReceiveCount'],
+            'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
             'WaitTimeSeconds': 20,
             'QueueUrl': queue_url,
         }
@@ -220,13 +245,13 @@ class test_AsyncSQSConnection(AWSCase):
             'WaitTimeSeconds': 20
         }
         pparams = {
-            'json': {'AttributeNames': ['ApproximateReceiveCount']},
-            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+            'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
         queue_url = f'{SQS_URL}123456789012/celery-test'
         verb = 'POST'
 
-        expect_params = {**params, 'AttributeName.1': 'ApproximateReceiveCount'}
+        expect_params = {**params, 'MessageSystemAttributeName.1': 'ApproximateReceiveCount'}
 
         self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_query_request.assert_called_with(
@@ -248,13 +273,13 @@ class test_AsyncSQSConnection(AWSCase):
             'WaitTimeSeconds': 20
         }
         pparams = {
-            'json': {'AttributeNames': ['ApproximateReceiveCount']},
-            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+            'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
 
         queue_url = f'{SQS_URL}123456789012/celery-test'
         verb = 'POST'
-        expect_params = {**params, 'AttributeNames': ['ApproximateReceiveCount']}
+        expect_params = {**params, 'MessageSystemAttributeNames': ['ApproximateReceiveCount']}
 
         self.x.make_request(operation, params, queue_url, verb, protocol_params=pparams)
         self.x._create_json_request.assert_called_with(
@@ -327,8 +352,8 @@ class test_AsyncSQSConnection(AWSCase):
             'http://aws.com', callback=self.callback,
             parent=queue,
             protocol_params={
-                'json': {'AttributeNames': ['ApproximateReceiveCount']},
-                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+                'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+                'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
             },
         )
 
@@ -350,8 +375,8 @@ class test_AsyncSQSConnection(AWSCase):
             'http://aws.com', callback=self.callback,
             parent=queue,
             protocol_params={
-                'json': {'AttributeNames': ['ApproximateReceiveCount']},
-                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+                'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+                'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
             },
         )
 
@@ -373,8 +398,8 @@ class test_AsyncSQSConnection(AWSCase):
             'http://aws.com', callback=self.callback,
             parent=queue,
             protocol_params={
-                'json': {'AttributeNames': ['ApproximateReceiveCount']},
-                'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+                'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+                'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
             },
         )
 
@@ -395,30 +420,75 @@ class test_AsyncSQSConnection(AWSCase):
             'http://aws.com', callback=self.callback,
             parent=queue,
             protocol_params={
-                'json': {'AttributeNames': ['foo', 'bar']},
-                'query': {'AttributeName.1': 'foo', 'AttributeName.2': 'bar'},
+                'json': {'MessageSystemAttributeNames': ['foo', 'bar']},
+                'query': {'MessageSystemAttributeName.1': 'foo', 'MessageSystemAttributeName.2': 'bar'},
             },
         )
 
-    def test_receive_message__with_fetch_attributes(self):
-        queue = Mock(name='queue')
-        self.x.fetch_message_attributes = ["DifferentAttribute1", "Another2"]
+    @pytest.mark.parametrize(
+        "msg_system_attribute_names, msg_attribute_names, expected_query, expected_json",
+        [
+            (
+                ["DifferentAttribute1", "Another2"],
+                None,
+                {"MessageSystemAttributeName.1": "DifferentAttribute1", "MessageSystemAttributeName.2": "Another2"},
+                {"MessageSystemAttributeNames": ["DifferentAttribute1", "Another2"]},
+            ),
+            (
+                ["DifferentAttribute1", "Another2"],
+                ["SQSExtraAttr"],
+                {
+                    "MessageSystemAttributeName.1": "DifferentAttribute1",
+                    "MessageSystemAttributeName.2": "Another2",
+                    "MessageAttributeNames.1": "SQSExtraAttr",
+                },
+                {
+                    "MessageSystemAttributeNames": ["DifferentAttribute1", "Another2"],
+                    "MessageAttributeNames": ["SQSExtraAttr"],
+                },
+            ),
+            (
+                None,
+                ["SQSExtraAttr"],
+                {
+                    "MessageSystemAttributeName.1": "ApproximateReceiveCount",
+                    "MessageAttributeNames.1": "SQSExtraAttr"
+                },
+                {
+                    "MessageSystemAttributeNames": ["ApproximateReceiveCount"],
+                    "MessageAttributeNames": ["SQSExtraAttr"]
+                },
+            ),
+        ]
+    )
+    def test_receive_message__with_fetch_attributes(
+        self, msg_system_attribute_names, msg_attribute_names, expected_query, expected_json
+    ):
+        queue = Mock(name="queue")
+
+        # only overwrite if provided
+        if msg_system_attribute_names is not None:
+            self.x.message_system_attribute_names = msg_system_attribute_names
+        if msg_attribute_names is not None:
+            self.x.message_attribute_names = msg_attribute_names
+
         self.x.receive_message(
             queue,
             self.x.get_queue_url('queue'),
             4,
             callback=self.callback,
         )
+
         self.x.get_list.assert_called_with(
-            'ReceiveMessage', {
-                'MaxNumberOfMessages': 4,
-            },
-            [('Message', AsyncMessage)],
-            'http://aws.com', callback=self.callback,
+            "ReceiveMessage",
+            {"MaxNumberOfMessages": 4},
+            [("Message", AsyncMessage)],
+            "http://aws.com",
+            callback=self.callback,
             parent=queue,
             protocol_params={
-                'json': {'AttributeNames': ['DifferentAttribute1', 'Another2']},
-                'query': {'AttributeName.1': 'DifferentAttribute1', 'AttributeName.2': 'Another2'},
+                "query": expected_query,
+                "json": expected_json,
             },
         )
 
@@ -627,6 +697,11 @@ class test_AsyncSQSConnection(AWSCase):
         assert _query_object_encode({'AttributeName': ['A', 'B']}) == {
             'AttributeName.1': 'A',
             'AttributeName.2': 'B',
+        }
+
+        assert _query_object_encode({'MessageSystemAttributeName': ['A', 'B']}) == {
+            'MessageSystemAttributeName.1': 'A',
+            'MessageSystemAttributeName.2': 'B',
         }
 
         assert _query_object_encode({'Grandparent': [{'Parent': {'Child': '1', 'Sibling': 2}}]}) == {
