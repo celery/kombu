@@ -546,15 +546,13 @@ class Channel(virtual.Channel):
         max_number_of_messages: int = 1,
         wait_time_seconds: int | None = None
     ):
-        """
-        Unified receive_message wrapper for SQS (boto3.client.SQS) with full attribute support.
+        """Unified receive_message wrapper for SQS (boto3.client.SQS) with full attribute support.
 
         :param queue: The queue as a string
         :param max_number_of_messages: Int of max number of messages to receive.
         :param wait_time_seconds: Int of sqs wait time in seconds.
         :return: SQS client recieve_message
         """
-
         q_url: str = self._new_queue(queue)
         client = self.sqs(queue=queue)
 
@@ -947,14 +945,13 @@ class Channel(virtual.Channel):
 
     @property
     def get_message_attributes(self) -> dict[str, Any]:
-        """
-        Get the message attributes to be fetched from SQS.
-        Ensures 'ApproximateReceiveCount' is included in system attributes if list is provided.
+        """Get the message attributes to be fetched from SQS.
 
+        Ensures 'ApproximateReceiveCount' is included in system attributes if list is provided.
         - The number of retries is managed by SQS /
             (specifically by the ``ApproximateReceiveCount`` message attribute)
         - See: class QoS(virtual.QoS):
-                    (method) def extract_task_name_and_number_of_retries
+            (method) def extract_task_name_and_number_of_retries
 
         :return: A dictionary with SQS message attribute fetch config.
         """
@@ -989,8 +986,11 @@ class Channel(virtual.Channel):
 
         return {
             'MessageAttributeNames': sorted(message_attrs) if message_attrs else None,
-            'MessageSystemAttributeNames': sorted(message_system_attrs) if message_system_attrs else ['ApproximateReceiveCount'],
+            'MessageSystemAttributeNames': (
+                sorted(message_system_attrs) if message_system_attrs else ['ApproximateReceiveCount']
+            )
         }
+
 
 class Transport(virtual.Transport):
     """SQS Transport.

@@ -431,7 +431,7 @@ class test_Channel:
             'S3MessageBodyKey': '(the-test-bucket-name)the-test-key-body',
             'python_test_attr': 'python_test_attr_value'
         }
-        attributes = {"SenderId": "AIDAEXAMPLE123ABC","SentTimestamp": "1638368280000"}
+        attributes = {"SenderId": "AIDAEXAMPLE123ABC", "SentTimestamp": "1638368280000"}
         self.sqs_conn_mock.send_message(
             q_url,
             MessageBody=body,
