@@ -52,15 +52,9 @@ try:
     import nats.aio.errors
     import nats.errors
     from nats.aio.client import Client
-    from nats.js.api import (
-        AckPolicy,
-        ConsumerConfig,
-        DeliverPolicy,
-        DiscardPolicy,
-        RetentionPolicy,
-        StorageType,
-        StreamConfig,
-    )
+    from nats.js.api import (AckPolicy, ConsumerConfig, DeliverPolicy,
+                             DiscardPolicy, RetentionPolicy, StorageType,
+                             StreamConfig)
     from nats.js.client import JetStreamContext
     from nats.js.errors import NotFoundError
 
