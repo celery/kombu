@@ -1,11 +1,21 @@
 from __future__ import annotations
 
+import sys
 from pprint import pformat
 
 from kombu import Connection, Consumer, Exchange, Queue, eventloop
 
+LOCAL_SERVER = "localhost"
+DEMO_SERVER = "demo.nats.io"
+
+server = LOCAL_SERVER
+use_demo_server = len(sys.argv) > 1 and sys.argv[1] == "--demo"
+if use_demo_server:
+    server = DEMO_SERVER
+
+
 exchange = Exchange("exchange", "direct", durable=False)
-msg_queue = Queue("queue", exchange=exchange, routing_key="messages")
+msg_queue = Queue("kombu_demo", exchange=exchange, routing_key="messages")
 
 
 def pretty(obj):
@@ -19,7 +29,7 @@ def process_msg(body, message):
     message.ack()
 
 
-with Connection("nats://localhost:4222") as connection:
+with Connection(f"nats://{server}:4222") as connection:
     with Consumer(connection, msg_queue, callbacks=[process_msg]) as consumer:
         for msg in eventloop(connection):
             pass
