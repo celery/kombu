@@ -118,13 +118,24 @@ class SQSClientMock:
                                    'MessageAttributes': MessageAttributes})
                 break
 
-    def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1,
-                        WaitTimeSeconds=10):
+    def receive_message(
+        self,
+        QueueUrl=None,
+        MaxNumberOfMessages=1,
+        WaitTimeSeconds=10,
+        MessageAttributeNames=None,
+        MessageSystemAttributeNames=None
+    ):
         self._receive_messages_calls += 1
         for q in self._queues.values():
             if q.url == QueueUrl:
                 msgs = q.messages[:MaxNumberOfMessages]
                 q.messages = q.messages[MaxNumberOfMessages:]
+                for msg in msgs:
+                    msg['Attributes'] = {
+                        "SenderId": "AIDAEXAMPLE123ABC",
+                        "SentTimestamp": "1638368280000"
+                    }
                 return {'Messages': msgs} if msgs else {}
 
     def get_queue_attributes(self, QueueUrl=None, AttributeNames=None):
@@ -412,6 +423,42 @@ class test_Channel:
         for p in json_payloads:
             assert 'properties' in p
 
+    @pytest.mark.parametrize('body', ['', 'This is the body as a string'])
+    def test_messages_to_python_body_as_a_string(self, body):
+        from kombu.asynchronous.aws.sqs.message import Message
+        q_url = self.channel._new_queue(self.queue_name)
+        msg_attributes = {
+            'S3MessageBodyKey': '(the-test-bucket-name)the-test-key-body',
+            'python_test_attr': 'python_test_attr_value'
+        }
+        attributes = {"SenderId": "AIDAEXAMPLE123ABC","SentTimestamp": "1638368280000"}
+        self.sqs_conn_mock.send_message(
+            q_url,
+            MessageBody=body,
+            MessageAttributes=msg_attributes
+        )
+
+        received_messages = []
+        for m in self.sqs_conn_mock.receive_message(
+            QueueUrl=q_url,
+            MaxNumberOfMessages=1
+        )['Messages']:
+            m['Body'] = Message(body=m['Body']).decode()
+            received_messages.append(m)
+
+        formatted_messages = self.channel._messages_to_python(
+            received_messages,
+            self.queue_name
+        )
+
+        for msg in formatted_messages:
+            delivery_info = msg['properties']['delivery_info']
+
+            assert msg['body'] == body
+            assert delivery_info['sqs_message']['Body'] == body
+            assert delivery_info['sqs_message']['Attributes'] == attributes
+            assert delivery_info['sqs_message']['MessageAttributes'] == msg_attributes
+
     def test_put_and_get(self):
         message = 'my test message'
         self.producer.publish(message)
@@ -492,14 +539,92 @@ class test_Channel:
             self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
         assert get_list_kwargs['protocol_params'] == {
-            'json': {'AttributeNames': ['ApproximateReceiveCount']},
-            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+            'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
+            'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
 
-    def test_fetch_message_attributes(self):
-        self.connection.transport_options['fetch_message_attributes'] = ["Attribute1", "Attribute2"]
+    @pytest.mark.parametrize('fetch_attributes,expected', [
+        # as a list for backwards compatibility
+        (
+            None,
+            {'message_system_attribute_names': ['ApproximateReceiveCount'], 'message_attribute_names': None}
+        ),
+        (
+            [],
+            {'message_system_attribute_names': ['ApproximateReceiveCount'], 'message_attribute_names': None}
+        ),
+        (
+            ['ALL'],
+            {'message_system_attribute_names': ['ALL'], 'message_attribute_names': None}
+        ),
+        (
+            ['SenderId', 'SentTimestamp'],
+            {
+                'message_system_attribute_names': ['SenderId', 'ApproximateReceiveCount', 'SentTimestamp'],
+                'message_attribute_names': None
+            }
+        ),
+        # As a dict using only System Attributes
+        (
+            {'MessageSystemAttributeNames': ['All']},
+            {
+                'message_system_attribute_names': ['ALL'],
+                'message_attribute_names': None
+            }
+        ),
+        (
+            {'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp']},
+            {
+                'message_system_attribute_names': ['SenderId', 'ApproximateReceiveCount', 'SentTimestamp'],
+                'message_attribute_names': None
+            }
+        ),
+        (
+            {'MessageSystemAttributeNames_BAD_KEY': ['That', 'This']},
+            {
+                'message_system_attribute_names': ['ApproximateReceiveCount'],
+                'message_attribute_names': None
+            }
+        ),
+        # As a dict using only Message Attributes
+        (
+            {'MessageAttributeNames': ['All']},
+            {
+                'message_system_attribute_names': ['ApproximateReceiveCount'],
+                'message_attribute_names': ["ALL"]
+            }
+        ),
+        (
+            {'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
+            {
+                'message_system_attribute_names': ['ApproximateReceiveCount'],
+                'message_attribute_names': ['CustomProp', 'CustomProp2']
+            }
+        ),
+        (
+            {'MessageAttributeNames_BAD_KEY': ['That', 'This']},
+            {
+                'message_system_attribute_names': ['ApproximateReceiveCount'],
+                'message_attribute_names': None
+            }
+        ),
+        # all together now...
+        (
+            {
+                'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
+            {
+                'message_system_attribute_names': ['SenderId', 'SentTimestamp', 'ApproximateReceiveCount'],
+                'message_attribute_names': ['CustomProp', 'CustomProp2']
+            }
+        ),
+    ])
+    @pytest.mark.usefixtures('hub')
+    def test_fetch_message_attributes(self, fetch_attributes, expected):
+        self.connection.transport_options['fetch_message_attributes'] = fetch_attributes
         async_sqs_conn = self.channel.asynsqs(self.queue_name)
-        assert async_sqs_conn.fetch_message_attributes == ['Attribute1', 'Attribute2']
+        assert async_sqs_conn.message_system_attribute_names == sorted(expected['message_system_attribute_names'])
+        assert async_sqs_conn.message_attribute_names == expected['message_attribute_names']
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():

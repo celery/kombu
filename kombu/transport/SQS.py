@@ -131,6 +131,7 @@ Features
 
 
 from __future__ import annotations
+from typing import Any
 
 import base64
 import socket
@@ -490,7 +491,11 @@ class Channel(virtual.Channel):
 
     def _message_to_python(self, message, queue_name, q_url):
         body = self._optional_b64_decode(message['Body'].encode())
-        payload = loads(bytes_to_str(body))
+        try:
+            payload = loads(bytes_to_str(body))
+        except (KeyError, ValueError, TypeError):
+            # body can be a string (Ex. sent by sqs_extended_client for node.js)
+            payload = {}
         if queue_name in self._noack_queues:
             q_url = self._new_queue(queue_name)
             self.asynsqs(queue=queue_name).delete_message(
@@ -535,6 +540,39 @@ class Channel(virtual.Channel):
         q_url = self._new_queue(queue)
         return [self._message_to_python(m, queue, q_url) for m in messages]
 
+    def _receive_message(
+        self,
+        queue: str,
+        max_number_of_messages: int = 1,
+        wait_time_seconds: int | None = None
+    ):
+        """
+        Unified receive_message wrapper for SQS (boto3.client.SQS) with full attribute support.
+
+        :param queue: The queue as a string
+        :param max_number_of_messages: Int of max number of messages to receive.
+        :param wait_time_seconds: Int of sqs wait time in seconds.
+        :return: SQS client recieve_message
+        """
+
+        q_url: str = self._new_queue(queue)
+        client = self.sqs(queue=queue)
+
+        message_system_attribute_names = self.get_message_attributes.get(
+            'MessageSystemAttributeNames')
+        message_attribute_names = self.get_message_attributes.get(
+            'MessageAttributeNames')
+
+        params: dict[str, Any] = {
+            'QueueUrl': q_url,
+            'MaxNumberOfMessages': max_number_of_messages,
+            'WaitTimeSeconds': wait_time_seconds or self.wait_time_seconds,
+            'MessageAttributeNames': message_attribute_names,
+            'MessageSystemAttributeNames': message_system_attribute_names
+        }
+
+        return client.receive_message(**params)
+
     def _get_bulk(self, queue,
                   max_if_unlimited=SQS_MAX_MESSAGES, callback=None):
         """Try to retrieve multiple messages off ``queue``.
@@ -567,10 +605,11 @@ class Channel(virtual.Channel):
         # Note: ignoring max_messages for SQS with boto3
         max_count = self._get_message_estimate()
         if max_count:
-            q_url = self._new_queue(queue)
-            resp = self.sqs(queue=queue).receive_message(
-                QueueUrl=q_url, MaxNumberOfMessages=max_count,
-                WaitTimeSeconds=self.wait_time_seconds)
+            resp = self._receive_message(
+                queue=queue,
+                wait_time_seconds=self.wait_time_seconds,
+                max_number_of_messages=max_count
+                )
             if resp.get('Messages'):
                 for m in resp['Messages']:
                     m['Body'] = AsyncMessage(body=m['Body']).decode()
@@ -581,10 +620,11 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         """Try to retrieve a single message off ``queue``."""
-        q_url = self._new_queue(queue)
-        resp = self.sqs(queue=queue).receive_message(
-            QueueUrl=q_url, MaxNumberOfMessages=1,
-            WaitTimeSeconds=self.wait_time_seconds)
+        resp = self._receive_message(
+            queue=queue,
+            wait_time_seconds=self.wait_time_seconds,
+            max_number_of_messages=1
+            )
         if resp.get('Messages'):
             body = AsyncMessage(body=resp['Messages'][0]['Body']).decode()
             resp['Messages'][0]['Body'] = body
@@ -610,8 +650,7 @@ class Channel(virtual.Channel):
             max_if_unlimited,
         )
 
-    def _get_bulk_async(self, queue,
-                        max_if_unlimited=SQS_MAX_MESSAGES, callback=None):
+    def _get_bulk_async(self, queue, callback=None):
         maxcount = self._get_message_estimate()
         if maxcount:
             return self._get_async(queue, maxcount, callback=callback)
@@ -800,6 +839,11 @@ class Channel(virtual.Channel):
         return sts_policy['Credentials']
 
     def asynsqs(self, queue=None):
+        message_system_attribute_names = self.get_message_attributes.get(
+            'MessageSystemAttributeNames')
+        message_attribute_names = self.get_message_attributes.get(
+            'MessageAttributeNames')
+
         if queue is not None and self.predefined_queues:
             if queue in self._predefined_queue_async_clients and \
                not hasattr(self, 'sts_expiration'):
@@ -814,7 +858,8 @@ class Channel(virtual.Channel):
                 AsyncSQSConnection(
                     sqs_connection=self.sqs(queue=queue),
                     region=q.get('region', self.region),
-                    fetch_message_attributes=self.fetch_message_attributes,
+                    message_system_attribute_names=message_system_attribute_names,
+                    message_attribute_names=message_attribute_names
             )
             return c
 
@@ -824,7 +869,8 @@ class Channel(virtual.Channel):
         c = self._asynsqs = AsyncSQSConnection(
             sqs_connection=self.sqs(queue=queue),
             region=self.region,
-            fetch_message_attributes=self.fetch_message_attributes,
+            message_system_attribute_names=message_system_attribute_names,
+            message_attribute_names=message_attribute_names
         )
         return c
 
@@ -887,7 +933,7 @@ class Channel(virtual.Channel):
             )
 
     @cached_property
-    def wait_time_seconds(self):
+    def wait_time_seconds(self) -> int:
         return self.transport_options.get('wait_time_seconds',
                                           self.default_wait_time_seconds)
 
@@ -899,6 +945,52 @@ class Channel(virtual.Channel):
     def fetch_message_attributes(self):
         return self.transport_options.get('fetch_message_attributes')
 
+    @property
+    def get_message_attributes(self) -> dict[str, Any]:
+        """
+        Get the message attributes to be fetched from SQS.
+        Ensures 'ApproximateReceiveCount' is included in system attributes if list is provided.
+
+        - The number of retries is managed by SQS /
+            (specifically by the ``ApproximateReceiveCount`` message attribute)
+        - See: class QoS(virtual.QoS):
+                    (method) def extract_task_name_and_number_of_retries
+
+        :return: A dictionary with SQS message attribute fetch config.
+        """
+        fetch = self.fetch_message_attributes
+        message_system_attrs = None
+        message_attrs = None
+
+        if fetch is None:
+            return {
+                'MessageAttributeNames': None,
+                'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+            }
+
+        if isinstance(fetch, list):
+            message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in fetch] else (
+                list(set(fetch + ['ApproximateReceiveCount']))
+            )
+
+        elif isinstance(fetch, dict):
+            system = fetch.get('MessageSystemAttributeNames', [])
+            attrs = fetch.get('MessageAttributeNames', None)
+
+            if isinstance(system, list):
+                message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in system] else (
+                    list(set(system + ['ApproximateReceiveCount']))
+                )
+
+            if isinstance(attrs, list) and attrs:
+                message_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in attrs] else (
+                    list(set(attrs))
+                )
+
+        return {
+            'MessageAttributeNames': sorted(message_attrs) if message_attrs else None,
+            'MessageSystemAttributeNames': sorted(message_system_attrs) if message_system_attrs else ['ApproximateReceiveCount'],
+        }
 
 class Transport(virtual.Transport):
     """SQS Transport.
@@ -940,10 +1032,19 @@ class Transport(virtual.Transport):
         transport = Transport(
             ...,
             transport_options={
-                'fetch_message_attributes': ["All"],
+                'fetch_message_attributes': ["All"],  # Get all of the MessageSystemAttributeNames (formerly AttributeNames)
             }
         )
-
+        # Preffered - A dict specifying system and custom message attributes
+        transport = Transport(
+            ...,
+            transport_options={
+                'fetch_message_attributes': {
+                    'MessageSystemAttributeNames': ["SenderId", "SentTimestamp"],
+                    'MessageAttributeNames': ['S3MessageBodyKey']
+                },
+            }
+        )
     .. _Message Attributes: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html#SQS-ReceiveMessage-request-AttributeNames
 
     """  # noqa: E501
