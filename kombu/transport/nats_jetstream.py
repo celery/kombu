@@ -191,7 +191,6 @@ class Channel(virtual.Channel):
 
         stream_config = StreamConfig(
             name=stream_name,
-            # subjects=[f"{queue}.>"],
             subjects=[queue],
             retention=RetentionPolicy.WORK_QUEUE,
             max_consumers=-1,
@@ -227,7 +226,6 @@ class Channel(virtual.Channel):
             durable_name=consumer_name,
             deliver_policy=DeliverPolicy.ALL,
             ack_policy=AckPolicy.EXPLICIT,
-            # filter_subject=f"{queue}.>",
             filter_subject=queue,
         )
 
@@ -242,7 +240,6 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Put a message on a queue."""
         self._ensure_stream(queue)
-        # subject = f"{queue}.{message.get('id', '')}"
         subject = queue
         self._event_loop.run_until_complete(
             self._js.publish(subject, str_to_bytes(dumps(message)))
@@ -256,7 +253,6 @@ class Channel(virtual.Channel):
         try:
             pull_sub = self._event_loop.run_until_complete(
                 self._js.pull_subscribe(
-                    # f"{queue}.>",
                     queue,
                     self._get_consumer_name(queue),
                     stream=self._get_stream_name(queue),
