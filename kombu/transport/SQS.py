@@ -131,7 +131,6 @@ Features
 
 
 from __future__ import annotations
-from typing import Any
 
 import base64
 import socket
@@ -139,6 +138,7 @@ import string
 import uuid
 from datetime import datetime
 from queue import Empty
+from typing import Any
 
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -1035,7 +1035,7 @@ class Transport(virtual.Transport):
                 'fetch_message_attributes': ["All"],  # Get all of the MessageSystemAttributeNames (formerly AttributeNames)
             }
         )
-        # Preffered - A dict specifying system and custom message attributes
+        # Preferred - A dict specifying system and custom message attributes
         transport = Transport(
             ...,
             transport_options={
