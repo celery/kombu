@@ -78,21 +78,21 @@ class test_AsyncSQSConnection(AWSCase):
     @pytest.mark.parametrize('input,expected', [
         (
             None,
-            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': []}
         ),
         (
             {'sys_attr_names': None},
-            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': []}
         ),
         (
             {'bad_key': None},
-            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': None}
+            {'message_system_attribute_names': ["ApproximateReceiveCount"], 'message_attribute_names': []}
         ),
         (
             {'bad_key': 'SQS_Val', 'msg_attr_names': 'Another_SQS_Val'},
             {
                 'message_system_attribute_names': ["ApproximateReceiveCount"],
-                'message_attribute_names': 'Another_SQS_Val'}
+                'message_attribute_names': ['Another_SQS_Val']}
         ),
     ])
     def test_async_connection_sets_default_attributes_on_construction(self, input, expected):
@@ -107,7 +107,7 @@ class test_AsyncSQSConnection(AWSCase):
 
         # Default value for backwards compatibility
         assert self.x.message_system_attribute_names == ["ApproximateReceiveCount"]
-        assert self.x.message_attribute_names is None
+        assert self.x.message_attribute_names == []
 
     def test_create_query_request_get(self):
         # Query Protocol GET call per

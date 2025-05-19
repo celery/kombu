@@ -39,3 +39,5 @@ env
 .coverage.*
 control/
 .env
+.hypothesis/*
+junit.xml

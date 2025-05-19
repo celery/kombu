@@ -39,7 +39,10 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         self.message_system_attribute_names = (
             message_system_attribute_names if message_system_attribute_names else ["ApproximateReceiveCount"]
         )
-        self.message_attribute_names = message_attribute_names
+        self.message_attribute_names = (
+            [message_attribute_names] if isinstance(message_attribute_names, str)
+            else (message_attribute_names or [])
+        )
 
     def _create_query_request(self, operation, params, queue_url, method):
         params = params.copy()
