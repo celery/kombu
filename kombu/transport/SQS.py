@@ -784,8 +784,12 @@ class Channel(virtual.Channel):
             return self._predefined_queue_clients[queue]
 
     def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
+        """
+        Generate STS session credentials with an optional expiration buffer.
+        The buffer is only applied if it is less than `token_expiry_seconds` to prevent an expired token.
+        """
         credentials = self.generate_sts_session_token(role_arn, token_expiry_seconds)
-        if token_buffer_seconds and token_buffer_seconds < token_expiry_seconds:
+        if token_buffer_seconds and 0 < token_buffer_seconds < token_expiry_seconds:
             credentials["Expiration"] -= timedelta(seconds=token_buffer_seconds)
         return credentials
 
