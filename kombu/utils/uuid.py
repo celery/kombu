@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from typing import Callable
-from uuid import UUID, uuid4, uuid7
+from uuid import UUID, uuid4
 
 
 def uuid(_uuid: Callable[[], UUID] = uuid4) -> str:
