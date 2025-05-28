@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from uuid import uuid4
 from typing import Literal
+from uuid import uuid4
 
 try:
     # Python 3.11 or later
