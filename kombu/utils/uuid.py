@@ -12,7 +12,7 @@ except ImportError:
         """Fallback to UUID4 if UUID7 is not available."""
         return uuid4()
 
-def generate_uuid(version: Literal[4, 7] = 7) -> str:
+def uuid(version: Literal[4, 7] = 7) -> str:
     """Generate a unique ID based on the specified UUID version (4 or 7).
     
     Parameters
