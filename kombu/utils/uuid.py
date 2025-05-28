@@ -1,22 +1,34 @@
-"""UUID utilities."""
 from __future__ import annotations
 
-from typing import Callable
+from uuid import uuid4
+from typing import Literal
 
 try:
     # Python 3.11 or later
-    from uuid import UUID
+    from uuid import uuid7
 except ImportError:
     # Fallback for older Python versions
-    from uuid import UUID, uuid4
+    def uuid7():
+        """Fallback to UUID4 if UUID7 is not available."""
+        return uuid4()
 
-
-
-def uuid(_uuid: Callable[[], UUID] = uuid4) -> str:
-    """Generate unique id in UUID4 format.
-
-    See Also
-    --------
-        For now this is provided by :func:`uuid.uuid4`.
+def generate_uuid(version: Literal[4, 7] = 7) -> str:
+    """Generate a unique ID based on the specified UUID version (4 or 7).
+    
+    Parameters
+    ----------
+    version : Literal[4, 7]
+        The UUID version to use for generating the unique ID. Defaults to 7.
+        If UUID7 is unavailable, it falls back to UUID4 regardless of the input.
+    
+    Returns
+    -------
+    str
+        A string representation of the generated UUID.
     """
-    return str(_uuid())
+    if version == 7 and 'uuid7' in globals():
+        return str(uuid7())
+    elif version == 4:
+        return str(uuid4())
+    else:
+        raise ValueError("Invalid UUID version. Please choose either 4 or 7.")
