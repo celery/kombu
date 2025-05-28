@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 from typing import Callable
+
 try:
     # Python 3.11 or later
-    from uuid import UUID, uuid7
+    from uuid import UUID
 except ImportError:
     # Fallback for older Python versions
     from uuid import UUID, uuid4
