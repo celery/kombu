@@ -2,7 +2,13 @@
 from __future__ import annotations
 
 from typing import Callable
-from uuid import UUID, uuid4
+try:
+    # Python 3.11 or later
+    from uuid import UUID, uuid7
+except ImportError:
+    # Fallback for older Python versions
+    from uuid import UUID, uuid4
+
 
 
 def uuid(_uuid: Callable[[], UUID] = uuid4) -> str:
