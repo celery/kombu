@@ -159,9 +159,6 @@ class Urllib3Client(BaseClient):
         try:
             pool = self._get_pool(request)
 
-            # Set timeout
-            timeout = Timeout(connect=20.0, read=20.0)
-
             # Execute the request
             response = pool.request(
                 method=request.method,
@@ -171,7 +168,6 @@ class Urllib3Client(BaseClient):
                 preload_content=True,  # We want to preload content for compatibility
                 redirect=request.follow_redirects,
                 retries=False,  # Handle redirects manually to match pycurl behavior
-                timeout=timeout,
             )
 
             # Process response
