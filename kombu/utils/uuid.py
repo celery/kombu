@@ -26,7 +26,7 @@ def uuid(version: Literal[4, 7] = 7) -> str:
     str
         A string representation of the generated UUID.
     """
-    if version == 7 and 'uuid7' in globals():
+    if version == 7:
         return str(uuid7())
     elif version == 4:
         return str(uuid4())
