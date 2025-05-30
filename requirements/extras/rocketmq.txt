@@ -1,0 +1,1 @@
+rocketmq-python-client>=5.0.6
