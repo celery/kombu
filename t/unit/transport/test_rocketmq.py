@@ -2,25 +2,27 @@ from __future__ import annotations
 
 from queue import Empty
 from typing import cast
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from rocketmq import (ClientConfiguration, FilterExpression, Producer,
+                      SimpleConsumer)
+from rocketmq.grpc_protocol import FilterType
 
 import kombu.transport.virtual
 from kombu import Connection
+from kombu.transport import rocketmq
+from kombu.transport.rocketmq import (ACK_ENDPOINTS_KEY, ACK_HANDLE_KEY,
+                                      ACK_MESSAGE_ID_KEY, ACK_TOPIC_KEY,
+                                      AMQP_QUEUE_KEY, DEFAULT_GROUP_FMT,
+                                      DELIVERY_ATTEMPT_KEY,
+                                      GLOBAL_PRODUCER_KEY, MAX_BATCH_COUNT,
+                                      ConsumerConfig, _ack_rocketmq_message,
+                                      _message_to_rocketmq_ack_message,
+                                      _queue_to_topic)
 from kombu.utils.encoding import str_to_bytes
 from kombu.utils.json import dumps
 from kombu.utils.uuid import uuid
-
-from kombu.transport import rocketmq
-from kombu.transport.rocketmq import _message_to_rocketmq_ack_message, DEFAULT_GROUP_FMT, ConsumerConfig, \
-    GLOBAL_PRODUCER_KEY, MAX_BATCH_COUNT, ACK_ENDPOINTS_KEY, ACK_MESSAGE_ID_KEY, ACK_TOPIC_KEY, ACK_HANDLE_KEY, \
-    DELIVERY_ATTEMPT_KEY, AMQP_QUEUE_KEY, _ack_rocketmq_message, _queue_to_topic
-
-from rocketmq import SimpleConsumer, Producer, ClientConfiguration
-from rocketmq.grpc_protocol import FilterType
-from rocketmq import FilterExpression
-
 
 AK = 'ak'
 SK = 'sk'

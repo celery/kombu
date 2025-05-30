@@ -42,7 +42,7 @@ Connection string has the following format:
 
 Concept
 =================
-As a plugable transport, it uses RocketMQ to abstract certain AMQP
+As a pluggable transport, it uses RocketMQ to abstract certain AMQP
 semantics with the trade-offs and limitations.
 
 In RocketMQ, the two core concepts most closely related to publishing and consuming
@@ -101,24 +101,26 @@ Connection Example
 """
 
 from __future__ import annotations
+
 import string
 import threading
-from queue import Empty
 from dataclasses import dataclass
+from queue import Empty
 
 from kombu.connection import Connection
 from kombu.exceptions import KombuError
 from kombu.log import get_logger
 from kombu.transport import virtual
 from kombu.utils import scheduling
-from kombu.utils.encoding import str_to_bytes, safe_str
+from kombu.utils.encoding import safe_str, str_to_bytes
 from kombu.utils.functional import retry_over_time
 from kombu.utils.json import dumps, loads
 
 try:
     import rocketmq
-    from rocketmq import (Producer, Message as RocketmqMessage, SimpleConsumer,
-                          ClientConfiguration, Credentials, FilterExpression)
+    from rocketmq import ClientConfiguration, Credentials, FilterExpression
+    from rocketmq import Message as RocketmqMessage
+    from rocketmq import Producer, SimpleConsumer
     from rocketmq.grpc_protocol import FilterType
     from rocketmq.v5.util import Misc
     DEFAULT_FILTER_EXP = FilterExpression.TAG_EXPRESSION_SUB_ALL
