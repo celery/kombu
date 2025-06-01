@@ -4,6 +4,27 @@
  Change history
 ================
 
+.. _version-5.5.4:
+
+5.5.4
+=====
+:release-date: 01 June, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- chore: add Codecov test analytics (#2290)
+- Added DeepWiki to README (#2295)
+- redis.connection.ConnectionPool API change: get_connection does not accept arguments (#2294)
+- Update mongodb.txt to match celery version (#2297)
+- Update ubuntu version as per blacksmiths update (#2301)
+- Resolve logger warnings (#2302)
+- Fixed lint error from `kombu/transport/native_delayed_delivery.py` (#2308)
+- Prepare for release: v5.5.4 (#2309)
+
+.. _version-5.5.2:
+
 .. _version-5.5.3:
 
 5.5.3
