@@ -138,6 +138,7 @@ class test_Channel:
     consumer: MagicMock
     producer: MagicMock
 
+    @pytest.mark.filterwarnings("ignore::BytesWarning")
     def test_get(self):
         queue = 'new-queue'
         self.channel.basic_consume(queue, True, None, 'cg1')
@@ -153,6 +154,7 @@ class test_Channel:
         self.channel._get(queue)
         self.consumer.ack.assert_called_once()  # auto ack
 
+    @pytest.mark.filterwarnings("ignore::BytesWarning")
     def test_get_bulk(self):
 
         def callback(message):
@@ -169,6 +171,7 @@ class test_Channel:
         assert self.consumer.ack.call_count == 2
         assert not self.channel.qos._not_yet_acked
 
+    @pytest.mark.filterwarnings("ignore::BytesWarning")
     def test_put_fanout(self):
         self.channel.exchange_declare('exchange', 'fanout')
         self.channel.queue_declare('queue1')

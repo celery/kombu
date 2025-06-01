@@ -226,7 +226,7 @@ class QoS(virtual.QoS):
         :raises KombuError: if operation fails after 2 attempts
         """
         if delivery_tag not in self._not_yet_acked:
-            logger.warn(f'ack message not found. {delivery_tag}')
+            logger.warning(f'ack message not found. {delivery_tag}')
             return
         message = self._not_yet_acked.pop(delivery_tag)
         rocketmq_message = _message_to_rocketmq_ack_message(message)
