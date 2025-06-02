@@ -270,7 +270,7 @@ class Mailbox:
                        channel=None, producer=None, **opts):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
-                            delivery_mode='persistent',
+                            delivery_mode='transient',
                             durable=True)
         with self.producer_or_acquire(producer, chan) as producer:
             try:
@@ -396,13 +396,13 @@ class Mailbox:
         return Exchange(self.exchange_fmt % namespace,
                         type=type,
                         durable=True,
-                        delivery_mode='persistent')
+                        delivery_mode='transient')
 
     def _get_reply_exchange(self, namespace):
         return Exchange(self.reply_exchange_fmt % namespace,
                         type='direct',
                         durable=True,
-                        delivery_mode='persistent')
+                        delivery_mode='transient')
 
     @property
     def oid(self):
