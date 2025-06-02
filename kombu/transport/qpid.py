@@ -588,7 +588,7 @@ class Channel(base.StdChannel):
         else:
             return False
 
-    def queue_declare(self, queue, passive=False, durable=False,
+    def queue_declare(self, queue, passive=False, durable=True,
                       exclusive=False, auto_delete=True, nowait=False,
                       arguments=None):
         """Create a new queue specified by name.
@@ -708,7 +708,7 @@ class Channel(base.StdChannel):
                 return
             self._delete(queue)
 
-    def exchange_declare(self, exchange='', type='direct', durable=False,
+    def exchange_declare(self, exchange='', type='direct', durable=True,
                          **kwargs):
         """Create a new exchange.
 

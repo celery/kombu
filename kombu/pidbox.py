@@ -236,7 +236,7 @@ class Mailbox:
             f'{oid}.{self.reply_exchange.name}',
             exchange=self.reply_exchange,
             routing_key=oid,
-            durable=False,
+            durable=True,
             auto_delete=True,
             expires=self.reply_queue_expires,
             message_ttl=self.reply_queue_ttl,
@@ -250,7 +250,7 @@ class Mailbox:
         return Queue(
             f'{hostname}.{self.namespace}.pidbox',
             exchange=self.exchange,
-            durable=False,
+            durable=True,
             auto_delete=True,
             expires=self.queue_expires,
             message_ttl=self.queue_ttl,
@@ -270,8 +270,8 @@ class Mailbox:
                        channel=None, producer=None, **opts):
         chan = channel or self.connection.default_channel
         exchange = Exchange(exchange, exchange_type='direct',
-                            delivery_mode='transient',
-                            durable=False)
+                            delivery_mode='persistent',
+                            durable=True)
         with self.producer_or_acquire(producer, chan) as producer:
             try:
                 producer.publish(
@@ -395,14 +395,14 @@ class Mailbox:
     def _get_exchange(self, namespace, type):
         return Exchange(self.exchange_fmt % namespace,
                         type=type,
-                        durable=False,
-                        delivery_mode='transient')
+                        durable=True,
+                        delivery_mode='persistent')
 
     def _get_reply_exchange(self, namespace):
         return Exchange(self.reply_exchange_fmt % namespace,
                         type='direct',
-                        durable=False,
-                        delivery_mode='transient')
+                        durable=True,
+                        delivery_mode='persistent')
 
     @property
     def oid(self):
