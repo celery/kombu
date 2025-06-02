@@ -22,6 +22,11 @@ except ImportError:
     get_response = _void()
     get_cert_path = _void()
 
+try:
+    import sqs_extended_client
+except ImportError:
+    sqs_extended_client = None
+
 
 __all__ = (
     'exceptions', 'AWSRequest', 'get_response', 'get_cert_path',
