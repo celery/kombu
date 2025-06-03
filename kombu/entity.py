@@ -138,7 +138,7 @@ class Exchange(MaybeChannelBound):
 
     name = ''
     type = 'direct'
-    durable = False
+    durable = True
     auto_delete = False
     passive = False
     delivery_mode = None
@@ -546,7 +546,7 @@ class Queue(MaybeChannelBound):
     exchange = Exchange('')
     routing_key = ''
 
-    durable = False
+    durable = True
     exclusive = False
     auto_delete = False
     no_ack = False
