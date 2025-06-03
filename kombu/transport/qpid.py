@@ -436,7 +436,7 @@ class Channel(base.StdChannel):
             rx.close()
         return message
 
-    def _put(self, routing_key, message, exchange=None, durable=True,
+    def _put(self, routing_key, message, exchange=None, durable=False,
              **kwargs):
         """Synchronously send a single message onto a queue or exchange.
 
@@ -588,7 +588,7 @@ class Channel(base.StdChannel):
         else:
             return False
 
-    def queue_declare(self, queue, passive=False, durable=True,
+    def queue_declare(self, queue, passive=False, durable=False,
                       exclusive=False, auto_delete=True, nowait=False,
                       arguments=None):
         """Create a new queue specified by name.
@@ -708,7 +708,7 @@ class Channel(base.StdChannel):
                 return
             self._delete(queue)
 
-    def exchange_declare(self, exchange='', type='direct', durable=True,
+    def exchange_declare(self, exchange='', type='direct', durable=False,
                          **kwargs):
         """Create a new exchange.
 
