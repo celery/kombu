@@ -180,6 +180,7 @@ class Urllib3Client(BaseClient):
                 effective_url=response.geturl() if hasattr(response, 'geturl') else request.url,
                 error=None
             )
+            response.release_conn()
         except Exception as e:
             # Handle any errors
             response_obj = self.Response(
