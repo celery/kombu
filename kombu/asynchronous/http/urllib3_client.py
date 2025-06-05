@@ -1,4 +1,4 @@
-"""HTTP Client using urllib3"""
+"""HTTP Client using urllib3."""
 
 from __future__ import annotations
 
@@ -133,7 +133,7 @@ class Urllib3Client(BaseClient):
         self._process_queue()
 
     def _execute_request(self, request):
-        """Execute a single request using urllib3"""
+        """Execute a single request using urllib3."""
         # Prepare headers
         headers = dict(request.headers)
         headers.update(
