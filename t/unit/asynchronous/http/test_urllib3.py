@@ -1,7 +1,8 @@
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, call
-from io import BytesIO
-import threading
 
 from kombu.asynchronous.http.urllib3_client import Urllib3Client
 from kombu.asynchronous.hub import Hub
