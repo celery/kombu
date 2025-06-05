@@ -5,7 +5,6 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kombu.asynchronous.http.urllib3_client import Urllib3Client
-from kombu.asynchronous.hub import Hub
 
 
 class test_Urllib3Client:
@@ -212,7 +211,7 @@ class test_Urllib3Client:
         # Mock _execute_request to avoid actual execution
         with patch.object(client, '_execute_request'):
             # Add multiple requests but patch _process_queue to control behavior
-            original_process_queue = client._process_queue
+            # original_process_queue = client._process_queue
 
             def controlled_process_queue():
                 # Custom queue processing logic for testing
