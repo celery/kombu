@@ -12,7 +12,7 @@ try:
 except ImportError:  # pragma: no cover
     urllib3 = None
 else:
-    from urllib3.util import Timeout, Url, make_headers
+    from urllib3.util import Url, make_headers
 
 from kombu.asynchronous.hub import Hub, get_event_loop
 from kombu.exceptions import HttpError
