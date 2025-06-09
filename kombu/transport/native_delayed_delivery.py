@@ -112,9 +112,9 @@ def bind_queue_to_native_delayed_delivery_exchange(connection: Connection, queue
     for binding_entry in bindings:
         exchange: Exchange = binding_entry.exchange.bind(channel)
         if exchange.type == 'direct':
-            logger.warn(f"Exchange {exchange.name} is a direct exchange "
-                        f"and native delayed delivery do not support direct exchanges.\n"
-                        f"ETA tasks published to this exchange will block the worker until the ETA arrives.")
+            logger.warning(f"Exchange {exchange.name} is a direct exchange "
+                           f"and native delayed delivery do not support direct exchanges.\n"
+                           f"ETA tasks published to this exchange will block the worker until the ETA arrives.")
             continue
 
         routing_key = binding_entry.routing_key if binding_entry.routing_key.startswith(
