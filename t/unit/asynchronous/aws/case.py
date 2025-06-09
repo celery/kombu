@@ -5,7 +5,7 @@ import pytest
 import t.skip
 
 pytest.importorskip('boto3')
-pytest.importorskip('urllib3')
+pytest.importorskip('pycurl')
 
 
 @t.skip.if_pypy
