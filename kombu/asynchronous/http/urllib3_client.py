@@ -1,200 +1,188 @@
+"""HTTP Client using urllib3."""
+
 from __future__ import annotations
 
+import threading
 from collections import deque
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
-import urllib3
+try:
+    import urllib3
+except ImportError:  # pragma: no cover
+    urllib3 = None
+else:
+    from urllib3.util import Url, make_headers
 
 from kombu.asynchronous.hub import Hub, get_event_loop
 from kombu.exceptions import HttpError
 
-from .base import BaseClient, Request
+from .base import BaseClient
 
 __all__ = ('Urllib3Client',)
-
-from ...utils.encoding import bytes_to_str
 
 DEFAULT_USER_AGENT = 'Mozilla/5.0 (compatible; urllib3)'
 EXTRA_METHODS = frozenset(['DELETE', 'OPTIONS', 'PATCH'])
 
 
-def _get_pool_key_parts(request: Request) -> list[str]:
-    _pool_key_parts = []
-
-    if request.network_interface:
-        _pool_key_parts.append(f"interface={request.network_interface}")
-
-    if request.validate_cert:
-        _pool_key_parts.append("validate_cert=True")
-    else:
-        _pool_key_parts.append("validate_cert=False")
-
-    if request.ca_certs:
-        _pool_key_parts.append(f"ca_certs={request.ca_certs}")
-
-    if request.client_cert:
-        _pool_key_parts.append(f"client_cert={request.client_cert}")
-
-    if request.client_key:
-        _pool_key_parts.append(f"client_key={request.client_key}")
-
-    return _pool_key_parts
-
-
 class Urllib3Client(BaseClient):
-    """Urllib3 HTTP Client."""
-
-    _pools = {}
+    """Urllib3 HTTP Client (using urllib3 with thread pool)."""
 
     def __init__(self, hub: Hub | None = None, max_clients: int = 10):
+        if urllib3 is None:
+            raise ImportError('The urllib3 client requires the urllib3 library.')
         hub = hub or get_event_loop()
         super().__init__(hub)
         self.max_clients = max_clients
+
+        # Thread pool for concurrent requests
+        self._executor = ThreadPoolExecutor(max_workers=max_clients)
         self._pending = deque()
+        self._active_requests = {}  # Track active requests
+        self._request_lock = threading.RLock()  # Thread safety
+
         self._timeout_check_tref = self.hub.call_repeatedly(
             1.0, self._timeout_check,
         )
 
-    def pools_close(self):
-        for pool in self._pools.values():
-            pool.close()
-        self._pools.clear()
-
     def close(self):
+        """Close the client and all connection pools."""
         self._timeout_check_tref.cancel()
-        self.pools_close()
+        self._executor.shutdown(wait=False)
 
     def add_request(self, request):
-        self._pending.append(request)
+        """Add a request to the pending queue."""
+        with self._request_lock:
+            self._pending.append(request)
         self._process_queue()
         return request
 
-    def get_pool(self, request: Request):
-        _pool_key_parts = _get_pool_key_parts(request=request)
-
-        _proxy_url = None
-        proxy_headers = None
-        if request.proxy_host:
-            _proxy_url = urllib3.util.Url(
-                scheme=None,
-                host=request.proxy_host,
-                port=request.proxy_port,
-            )
-            if request.proxy_username:
-                proxy_headers = urllib3.make_headers(
-                    proxy_basic_auth=(
-                        f"{request.proxy_username}"
-                        f":{request.proxy_password}"
-                    )
-                )
-            else:
-                proxy_headers = None
-
-            _proxy_url = _proxy_url.url
-
-            _pool_key_parts.append(f"proxy={_proxy_url}")
-            if proxy_headers:
-                _pool_key_parts.append(f"proxy_headers={str(proxy_headers)}")
-
-        _pool_key = "|".join(_pool_key_parts)
-        if _pool_key in self._pools:
-            return self._pools[_pool_key]
-
-        # create new pool
-        if _proxy_url:
-            _pool = urllib3.ProxyManager(
-                proxy_url=_proxy_url,
-                num_pools=self.max_clients,
-                proxy_headers=proxy_headers
-            )
-        else:
-            _pool = urllib3.PoolManager(num_pools=self.max_clients)
+    def _get_pool(self, request):
+        """Get or create a connection pool for the request."""
+        # Prepare connection kwargs
+        conn_kwargs = {}
 
         # Network Interface
         if request.network_interface:
-            _pool.connection_pool_kw['source_address'] = (
-                request.network_interface,
-                0
-            )
+            conn_kwargs['source_address'] = (request.network_interface, 0)
 
         # SSL Verification
-        if request.validate_cert:
-            _pool.connection_pool_kw['cert_reqs'] = 'CERT_REQUIRED'
-        else:
-            _pool.connection_pool_kw['cert_reqs'] = 'CERT_NONE'
+        conn_kwargs['cert_reqs'] = 'CERT_REQUIRED' if request.validate_cert else 'CERT_NONE'
 
         # CA Certificates
         if request.ca_certs is not None:
-            _pool.connection_pool_kw['ca_certs'] = request.ca_certs
+            conn_kwargs['ca_certs'] = request.ca_certs
         elif request.validate_cert is True:
             try:
-                from certifi import where
-                _pool.connection_pool_kw['ca_certs'] = where()
+                import certifi
+                conn_kwargs['ca_certs'] = certifi.where()
             except ImportError:
                 pass
 
         # Client Certificates
         if request.client_cert is not None:
-            _pool.connection_pool_kw['cert_file'] = request.client_cert
+            conn_kwargs['cert_file'] = request.client_cert
         if request.client_key is not None:
-            _pool.connection_pool_kw['key_file'] = request.client_key
+            conn_kwargs['key_file'] = request.client_key
 
-        self._pools[_pool_key] = _pool
+        # Handle proxy configuration
+        if request.proxy_host:
+            conn_kwargs['_proxy'] = Url(
+                scheme=None,
+                host=request.proxy_host,
+                port=request.proxy_port,
+            ).url
 
-        return _pool
+            if request.proxy_username:
+                conn_kwargs['_proxy_headers'] = make_headers(
+                    proxy_basic_auth=f"{request.proxy_username}:{request.proxy_password or ''}"
+                )
+
+        pool = urllib3.connection_from_url(request.url, **conn_kwargs)
+        return pool
 
     def _timeout_check(self):
-        self._process_pending_requests()
+        """Check for timeouts and process pending requests."""
+        self._process_queue()
 
-    def _process_pending_requests(self):
-        while self._pending:
-            request = self._pending.popleft()
-            self._process_request(request)
+    def _process_queue(self):
+        """Process the request queue in a thread-safe manner."""
+        with self._request_lock:
+            # Only process if we have pending requests and available capacity
+            if not self._pending or len(self._active_requests) >= self.max_clients:
+                return
 
-    def _process_request(self, request: Request):
+            # Process as many pending requests as we have capacity for
+            while self._pending and len(self._active_requests) < self.max_clients:
+                request = self._pending.popleft()
+                request_id = id(request)
+                self._active_requests[request_id] = request
+                # Submit the request to the thread pool
+                future = self._executor.submit(self._execute_request, request)
+                future.add_done_callback(
+                    lambda f, req_id=request_id: self._request_complete(req_id)
+                )
+
+    def _request_complete(self, request_id):
+        """Mark a request as complete and process the next pending request."""
+        with self._request_lock:
+            if request_id in self._active_requests:
+                del self._active_requests[request_id]
+
+        # Process more requests if available
+        self._process_queue()
+
+    def _execute_request(self, request):
+        """Execute a single request using urllib3."""
         # Prepare headers
-        headers = request.headers
-        headers.setdefault(
-            'User-Agent',
-            bytes_to_str(request.user_agent or DEFAULT_USER_AGENT)
-        )
-        headers.setdefault(
-            'Accept-Encoding',
-            'gzip,deflate' if request.use_gzip else 'none'
+        headers = dict(request.headers)
+        headers.update(
+            make_headers(
+                user_agent=request.user_agent or DEFAULT_USER_AGENT,
+                accept_encoding=request.use_gzip,
+            )
         )
 
         # Authentication
         if request.auth_username is not None:
-            headers.update(
-                urllib3.util.make_headers(
-                    basic_auth=(
-                        f"{request.auth_username}"
-                        f":{request.auth_password or ''}"
-                    )
-                )
+            auth_header = make_headers(
+                basic_auth=f"{request.auth_username}:{request.auth_password or ''}"
             )
+            headers.update(auth_header)
+
+        # Process request body
+        body = None
+        if request.method in ('POST', 'PUT') and request.body:
+            body = request.body if isinstance(request.body, bytes) else request.body.encode('utf-8')
 
         # Make the request using urllib3
         try:
-            _pool = self.get_pool(request=request)
-            response = _pool.request(
-                request.method,
-                request.url,
+            pool = self._get_pool(request)
+
+            # Execute the request
+            response = pool.request(
+                method=request.method,
+                url=request.url,
                 headers=headers,
-                body=request.body,
-                preload_content=False,
+                body=body,
+                preload_content=True,  # We want to preload content for compatibility
                 redirect=request.follow_redirects,
+                retries=False,  # Handle redirects manually to match pycurl behavior
             )
+
+            # Process response
             buffer = BytesIO(response.data)
             response_obj = self.Response(
                 request=request,
                 code=response.status,
                 headers=response.headers,
                 buffer=buffer,
-                effective_url=response.geturl(),
+                effective_url=response.geturl() if hasattr(response, 'geturl') else request.url,
                 error=None
             )
-        except urllib3.exceptions.HTTPError as e:
+            response.release_conn()
+        except Exception as e:
+            # Handle any errors
             response_obj = self.Response(
                 request=request,
                 code=599,
@@ -204,16 +192,13 @@ class Urllib3Client(BaseClient):
                 error=HttpError(599, str(e))
             )
 
+        # Notify request completion
         request.on_ready(response_obj)
 
-    def _process_queue(self):
-        self._process_pending_requests()
-
     def on_readable(self, fd):
+        """Compatibility method for the event loop."""
         pass
 
     def on_writable(self, fd):
-        pass
-
-    def _setup_request(self, curl, request, buffer, headers):
+        """Compatibility method for the event loop."""
         pass
