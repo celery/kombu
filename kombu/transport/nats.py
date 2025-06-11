@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import asyncio
 from queue import Empty
-from typing import TYPE_CHECKING
 
 from kombu.transport import virtual
 from kombu.utils import cached_property
@@ -51,19 +50,19 @@ try:
     import nats.aio.client
     import nats.aio.errors
     import nats.errors
+    import nats.js.errors
     from nats.aio.client import Client
     from nats.js.api import (AckPolicy, ConsumerConfig, DeliverPolicy,
                              DiscardPolicy, RetentionPolicy, StorageType,
                              StreamConfig)
     from nats.js.client import JetStreamContext
-    from nats.js.errors import NotFoundError
 
     NATS_CONNECTION_ERRORS = (
         nats.aio.errors.ErrConnectionClosed,
         nats.aio.errors.ErrTimeout,
         nats.aio.errors.ErrNoServers,
     )
-    NATS_CHANNEL_ERRORS = (NotFoundError,)
+    NATS_CHANNEL_ERRORS = (nats.js.errors.NotFoundError,)
 
 except ImportError:
     Client = None
@@ -75,6 +74,17 @@ logger = get_logger(__name__)
 
 DEFAULT_PORT = 4222
 DEFAULT_HOST = "localhost"
+
+_event_loop: asyncio.AbstractEventLoop | None = None
+
+
+def get_event_loop() -> asyncio.AbstractEventLoop:
+    """Get or create the global event loop."""
+    global _event_loop
+    if _event_loop is None:
+        _event_loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(_event_loop)
+    return _event_loop
 
 
 class Message(virtual.Message):
@@ -137,10 +147,6 @@ class Channel(virtual.Channel):
     default_wait_time_seconds = 5
     default_connection_wait_time_seconds = 5
 
-    if TYPE_CHECKING:
-        _nats_client: Client
-        _js: JetStreamContext
-
     def __init__(self, *args, **kwargs):
         if Client is None:
             raise ImportError("nats-py is not installed")
@@ -152,11 +158,8 @@ class Channel(virtual.Channel):
 
         logger.debug("Host: %s Port: %s", host, port)
 
-        self._event_loop = asyncio.new_event_loop()
-
-        self._nats_client = None
-        self._js = None
-
+        self._nats_client: Client | None = None
+        self._js: JetStreamContext | None = None
         self._streams = set()
 
         # Evaluate connection
@@ -176,13 +179,25 @@ class Channel(virtual.Channel):
         if stream_name in self._streams:
             return
 
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
+
+        # First try to get stream info with a shorter timeout
         try:
-            self._event_loop.run_until_complete(self._js.stream_info(stream_name))
+            loop = get_event_loop()
+            loop.run_until_complete(
+                asyncio.wait_for(
+                    self._js.stream_info(stream_name),
+                    timeout=1.0  # Use a shorter timeout for the check
+                )
+            )
             self._streams.add(stream_name)
             return
-        except NotFoundError:
+        except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
+            # Stream doesn't exist or timed out, we'll create it
             pass
 
+        # Create the stream with a longer timeout
         stream_config = StreamConfig(
             name=stream_name,
             subjects=[queue],
@@ -203,16 +218,36 @@ class Channel(virtual.Channel):
         # Update with user-provided config
         user_cfg = self.options.get("stream_config") or {}
 
-        self._event_loop.run_until_complete(
-            self._js.add_stream(stream_config, **user_cfg)
-        )
-        self._streams.add(stream_name)
+        try:
+            loop = get_event_loop()
+            loop.run_until_complete(
+                asyncio.wait_for(
+                    self._js.add_stream(stream_config, **user_cfg),
+                    timeout=5.0  # Use a longer timeout for creation
+                )
+            )
+            self._streams.add(stream_name)
+        except nats.errors.TimeoutError:
+            # If we timeout creating the stream, check if it was actually created
+            try:
+                loop.run_until_complete(
+                    asyncio.wait_for(
+                        self._js.stream_info(stream_name),
+                        timeout=1.0
+                    )
+                )
+                self._streams.add(stream_name)
+            except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
+                raise RuntimeError(f"Failed to create stream {stream_name}")
 
     def _ensure_consumer(self, queue):
         """Ensure a consumer exists for the queue."""
         consumer_name = self._get_consumer_name(queue)
         if consumer_name in self._consumers:
             return
+
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
 
         name = self._get_stream_name(queue)
 
@@ -226,16 +261,36 @@ class Channel(virtual.Channel):
         # Update with user-provided config
         user_cfg = self.options.get("consumer_config") or {}
 
-        self._event_loop.run_until_complete(
-            self._js.add_consumer(name, consumer_config, **user_cfg)
-        )
-        self._consumers.add(consumer_name)
+        try:
+            loop = get_event_loop()
+            loop.run_until_complete(
+                asyncio.wait_for(
+                    self._js.add_consumer(name, consumer_config, **user_cfg),
+                    timeout=5.0  # Use a longer timeout for consumer creation
+                )
+            )
+            self._consumers.add(consumer_name)
+        except nats.errors.TimeoutError:
+            # If we timeout creating the consumer, check if it was actually created
+            try:
+                loop.run_until_complete(
+                    asyncio.wait_for(
+                        self._js.consumer_info(name, consumer_name),
+                        timeout=1.0
+                    )
+                )
+                self._consumers.add(consumer_name)
+            except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
+                raise RuntimeError(f"Failed to create consumer {consumer_name} for stream {name}")
 
     def _put(self, queue, message, **kwargs):
         """Put a message on a queue."""
         self._ensure_stream(queue)
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
+
         subject = queue
-        self._event_loop.run_until_complete(
+        get_event_loop().run_until_complete(
             self._js.publish(subject, str_to_bytes(dumps(message)))
         )
 
@@ -244,15 +299,18 @@ class Channel(virtual.Channel):
         self._ensure_stream(queue)
         self._ensure_consumer(queue)
 
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
+
         try:
-            pull_sub = self._event_loop.run_until_complete(
+            pull_sub = get_event_loop().run_until_complete(
                 self._js.pull_subscribe(
                     queue,
                     self._get_consumer_name(queue),
                     stream=self._get_stream_name(queue),
                 )
             )
-            msg = self._event_loop.run_until_complete(
+            msg = get_event_loop().run_until_complete(
                 pull_sub.fetch(1, timeout=self.wait_time_seconds)
             )[0]
 
@@ -270,20 +328,26 @@ class Channel(virtual.Channel):
         """Delete a queue."""
         stream_name = self._get_stream_name(queue)
         if stream_name in self._streams:
+            if self._js is None:
+                raise RuntimeError("JetStream context not initialized")
+
             try:
-                self._event_loop.run_until_complete(self._js.delete_stream(stream_name))
+                get_event_loop().run_until_complete(self._js.delete_stream(stream_name))
                 self._streams.remove(stream_name)
-            except NotFoundError:
+            except (nats.js.errors.NotFoundError):
                 pass
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
+
         try:
-            info = self._event_loop.run_until_complete(
+            info = get_event_loop().run_until_complete(
                 self._js.stream_info(self._get_stream_name(queue))
             )
             return info.state.messages
-        except NotFoundError:
+        except nats.js.errors.NotFoundError:
             return 0
 
     def _new_queue(self, queue, **kwargs):
@@ -293,19 +357,25 @@ class Channel(virtual.Channel):
 
     def _has_queue(self, queue, **kwargs):
         """Check if a queue exists."""
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
+
         try:
-            self._event_loop.run_until_complete(
+            get_event_loop().run_until_complete(
                 self._js.stream_info(self._get_stream_name(queue))
             )
             return True
-        except NotFoundError:
+        except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
             return False
 
     def _open(self):
         """Open a new connection to NATS."""
         if self._nats_client is None:
             self._nats_client = Client()
-            self._event_loop.run_until_complete(
+            if self._nats_client is None:
+                raise RuntimeError("Failed to create NATS client")
+
+            get_event_loop().run_until_complete(
                 self._nats_client.connect(
                     f"nats://{self.conninfo.hostname}:{self.conninfo.port or DEFAULT_PORT}",
                     user=self.conninfo.userid,
@@ -351,26 +421,30 @@ class Channel(virtual.Channel):
     def close(self):
         """Close the channel."""
         if self._nats_client is not None:
-            self._event_loop.run_until_complete(self._nats_client.drain())
-            self._event_loop.run_until_complete(self._nats_client.close())
+            loop = get_event_loop()
+            loop.run_until_complete(self._nats_client.drain())
+            loop.run_until_complete(self._nats_client.close())
             self._nats_client = None
             self._js = None
 
-        pending = asyncio.all_tasks(loop=self._event_loop)
-        group = asyncio.gather(*pending)
-        if not group.done():
-            self._event_loop.run_until_complete(group)
-
-        self._event_loop.close()
+        # Cancel any pending tasks
+        loop = get_event_loop()
+        for task in asyncio.all_tasks(loop):
+            if not task.done():
+                task.cancel()
+                try:
+                    loop.run_until_complete(task)
+                except asyncio.CancelledError:
+                    pass
 
     def ack_msg(self, msg):
-        self._event_loop.run_until_complete(msg.nats_ack())
+        get_event_loop().run_until_complete(msg.nats_ack())
 
     def nak_msg(self, msg):
-        self._event_loop.run_until_complete(msg.nats_nak())
+        get_event_loop().run_until_complete(msg.nats_nak())
 
     def term_msg(self, msg):
-        self._event_loop.run_until_complete(msg.nats_term())
+        get_event_loop().run_until_complete(msg.nats_term())
 
 
 class Transport(virtual.Transport):
@@ -390,7 +464,6 @@ class Transport(virtual.Transport):
         if Client is None:
             raise ImportError("nats-py is not installed")
         super().__init__(client, **kwargs)
-        self._event_loop = asyncio.new_event_loop()
 
     def drain_events(self, connection, **kwargs):
         return super().drain_events(connection, **kwargs)
@@ -416,8 +489,9 @@ class Transport(virtual.Transport):
 
         client = Client()
         try:
-            self._event_loop.run_until_complete(client.connect(f"nats://{host}:{port}"))
-            self._event_loop.run_until_complete(client.close())
+            loop = get_event_loop()
+            loop.run_until_complete(client.connect(f"nats://{host}:{port}"))
+            loop.run_until_complete(client.close())
             return True
         except ValueError:
             pass
