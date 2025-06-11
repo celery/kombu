@@ -209,6 +209,7 @@ class Channel(virtual.Channel):
         return count
 
     def _size(self, queue):
+        return 42 # avoid huge query on huge table
         return self._query_all(queue).count()
 
     def _declarative_cls(self, name, base, ns):
