@@ -188,7 +188,7 @@ class Channel(virtual.Channel):
             subjects=[queue],
             retention=RetentionPolicy.WORK_QUEUE,
             max_consumers=-1,
-            max_msgs_per_subject=1,
+            max_msgs_per_subject=-1,
             max_msgs=-1,
             max_bytes=-1,
             max_age=0,
