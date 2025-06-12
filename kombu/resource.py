@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import os
 from contextlib import nullcontext
-from queue import Empty
-from queue import LifoQueue
+from queue import Empty, LifoQueue
 
 from . import exceptions
 from .utils.compat import register_after_fork
