@@ -34,6 +34,14 @@ up to 'prefetch_count' messages from queueA and work on them all before
 moving on to queueB.  If queueB is empty, it will wait up until
 'polling_interval' expires before moving back and checking on queueA.
 
+Message Attributes
+-----------------
+https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.
+
 Other Features supported by this transport
 ==========================================
 Predefined Queues
@@ -119,7 +127,7 @@ Features
 * Supports Fanout: Yes
 * Supports Priority: No
 * Supports TTL: No
-"""  # noqa: E501
+"""
 
 
 from __future__ import annotations
@@ -182,6 +190,10 @@ class AccessDeniedQueueException(Exception):
     This may occur if the permissions are not correctly set or the
     credentials are invalid.
     """
+
+
+class DoesNotExistQueueException(Exception):
+    """The specified queue doesn't exist."""
 
 
 class QoS(virtual.QoS):
@@ -350,15 +362,8 @@ class Channel(virtual.Channel):
     def canonical_queue_name(self, queue_name):
         return self.entity_name(self.queue_name_prefix + queue_name)
 
-    def _new_queue(self, queue, **kwargs):
-        """Ensure a queue with given name exists in SQS.
-
-        Arguments:
-        ---------
-            queue (str): the AMQP queue name
-        Returns
-            str: the SQS queue URL
-        """
+    def _resolve_queue_url(self, queue):
+        """Try to retrieve the SQS queue URL for a given queue name."""
         # Translate to SQS name for consistency with initial
         # _queue_cache population.
         sqs_qname = self.canonical_queue_name(queue)
@@ -378,6 +383,23 @@ class Channel(virtual.Channel):
                     "defined in 'predefined_queues'."
                 ).format(sqs_qname))
 
+            raise DoesNotExistQueueException(
+                f"Queue with name '{sqs_qname}' doesn't exist in SQS"
+            )
+
+    def _new_queue(self, queue, **kwargs):
+        """Ensure a queue with given name exists in SQS.
+
+        Arguments:
+        ---------
+            queue (str): the AMQP queue name
+        Returns
+            str: the SQS queue URL
+        """
+        try:
+            return self._resolve_queue_url(queue)
+        except DoesNotExistQueueException:
+            sqs_qname = self.canonical_queue_name(queue)
             attributes = {'VisibilityTimeout': str(self.visibility_timeout)}
             if sqs_qname.endswith('.fifo'):
                 attributes['FifoQueue'] = 'true'
@@ -406,19 +428,22 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-        super()._delete(queue)
+
+        q_url = self._resolve_queue_url(queue)
+        self.sqs().delete_queue(
+            QueueUrl=q_url,
+        )
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
-        if self.sqs_base64_encoding:
-            body = AsyncMessage().encode(dumps(message))
-        else:
-            body = dumps(message)
-        kwargs = {'QueueUrl': q_url, 'MessageBody': body}
-
+        kwargs = {'QueueUrl': q_url}
         if 'properties' in message:
+            if 'message_attributes' in message['properties']:
+                # we don't want to want to have the attribute in the body
+                kwargs['MessageAttributes'] = \
+                    message['properties'].pop('message_attributes')
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' in message['properties']:
                     kwargs['MessageGroupId'] = \
@@ -434,6 +459,13 @@ class Channel(virtual.Channel):
                 if "DelaySeconds" in message['properties']:
                     kwargs['DelaySeconds'] = \
                         message['properties']['DelaySeconds']
+
+        if self.sqs_base64_encoding:
+            body = AsyncMessage().encode(dumps(message))
+        else:
+            body = dumps(message)
+        kwargs['MessageBody'] = body
+
         c = self.sqs(queue=self.canonical_queue_name(queue))
         if message.get('redelivered'):
             c.change_message_visibility(
@@ -734,33 +766,29 @@ class Channel(virtual.Channel):
         return c
 
     def _handle_sts_session(self, queue, q):
+        region = q.get('region', self.region)
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
-            sts_creds = self.generate_sts_session_token(
-                self.transport_options.get('sts_role_arn'),
-                self.transport_options.get('sts_token_timeout', 900))
-            self.sts_expiration = sts_creds['Expiration']
-            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                region=q.get('region', self.region),
-                access_key_id=sts_creds['AccessKeyId'],
-                secret_access_key=sts_creds['SecretAccessKey'],
-                session_token=sts_creds['SessionToken'],
-            )
-            return c
+            return self._new_predefined_queue_client_with_sts_session(queue, region)
         # STS token - refresh if expired
         elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():
-            sts_creds = self.generate_sts_session_token(
-                self.transport_options.get('sts_role_arn'),
-                self.transport_options.get('sts_token_timeout', 900))
-            self.sts_expiration = sts_creds['Expiration']
-            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
-                region=q.get('region', self.region),
-                access_key_id=sts_creds['AccessKeyId'],
-                secret_access_key=sts_creds['SecretAccessKey'],
-                session_token=sts_creds['SessionToken'],
-            )
-            return c
+            return self._new_predefined_queue_client_with_sts_session(queue, region)
         else:  # STS token - ruse existing
+            if queue not in self._predefined_queue_clients:
+                return self._new_predefined_queue_client_with_sts_session(queue, region)
             return self._predefined_queue_clients[queue]
+
+    def _new_predefined_queue_client_with_sts_session(self, queue, region):
+        sts_creds = self.generate_sts_session_token(
+            self.transport_options.get('sts_role_arn'),
+            self.transport_options.get('sts_token_timeout', 900))
+        self.sts_expiration = sts_creds['Expiration']
+        c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+            region=region,
+            access_key_id=sts_creds['AccessKeyId'],
+            secret_access_key=sts_creds['SecretAccessKey'],
+            session_token=sts_creds['SessionToken'],
+        )
+        return c
 
     def generate_sts_session_token(self, role_arn, token_expiry_seconds):
         sts_client = boto3.client('sts')
@@ -785,7 +813,8 @@ class Channel(virtual.Channel):
             c = self._predefined_queue_async_clients[queue] = \
                 AsyncSQSConnection(
                     sqs_connection=self.sqs(queue=queue),
-                    region=q.get('region', self.region)
+                    region=q.get('region', self.region),
+                    fetch_message_attributes=self.fetch_message_attributes,
             )
             return c
 
@@ -794,7 +823,8 @@ class Channel(virtual.Channel):
 
         c = self._asynsqs = AsyncSQSConnection(
             sqs_connection=self.sqs(queue=queue),
-            region=self.region
+            region=self.region,
+            fetch_message_attributes=self.fetch_message_attributes,
         )
         return c
 
@@ -865,6 +895,10 @@ class Channel(virtual.Channel):
     def sqs_base64_encoding(self):
         return self.transport_options.get('sqs_base64_encoding', True)
 
+    @cached_property
+    def fetch_message_attributes(self):
+        return self.transport_options.get('fetch_message_attributes')
+
 
 class Transport(virtual.Transport):
     """SQS Transport.
@@ -894,6 +928,24 @@ class Transport(virtual.Transport):
         )
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
+
+    The ``ApproximateReceiveCount`` message attribute is fetched by this
+    transport by default. Requested message attributes can be changed by
+    setting ``fetch_message_attributes`` in the transport options.
+
+    .. code-block:: python
+
+        from kombu.transport.SQS import Transport
+
+        transport = Transport(
+            ...,
+            transport_options={
+                'fetch_message_attributes': ["All"],
+            }
+        )
+
+    .. _Message Attributes: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html#SQS-ReceiveMessage-request-AttributeNames
+
     """  # noqa: E501
 
     Channel = Channel

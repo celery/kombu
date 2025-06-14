@@ -11,7 +11,7 @@ from kombu.log import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger
-    from typing import Any, Callable, Dict, List, Optional
+    from typing import Any, Callable
 
     from kombu.transport.base import Transport
 
@@ -19,8 +19,8 @@ __all__ = ('setup_logging', 'Logwrapped')
 
 
 def setup_logging(
-    loglevel: Optional[int] = logging.DEBUG,
-    loggers: Optional[List[str]] = None
+    loglevel: int | None = logging.DEBUG,
+    loggers: list[str] | None = None
 ) -> None:
     """Setup logging to stdout."""
     loggers = ['kombu.connection', 'kombu.channel'] if not loggers else loggers
@@ -38,8 +38,8 @@ class Logwrapped:
     def __init__(
         self,
         instance: Transport,
-        logger: Optional[Logger] = None,
-        ident: Optional[str] = None
+        logger: Logger | None = None,
+        ident: str | None = None
     ):
         self.instance = instance
         self.logger = get_logger(logger)
@@ -52,7 +52,7 @@ class Logwrapped:
             return meth
 
         @wraps(meth)
-        def __wrapped(*args: List[Any], **kwargs: Dict[str, Any]) -> Callable:
+        def __wrapped(*args: list[Any], **kwargs: dict[str, Any]) -> Callable:
             info = ''
             if self.ident:
                 info += self.ident.format(self.instance)
@@ -73,5 +73,5 @@ class Logwrapped:
     def __repr__(self) -> str:
         return repr(self.instance)
 
-    def __dir__(self) -> List[str]:
+    def __dir__(self) -> list[str]:
         return dir(self.instance)

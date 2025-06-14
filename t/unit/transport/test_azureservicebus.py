@@ -103,7 +103,7 @@ class ASBMgmtMock:
 
 URL_NOCREDS = 'azureservicebus://'
 URL_CREDS_SAS = 'azureservicebus://policyname:ke/y@hostname'
-URL_CREDS_SAS_FQ = 'azureservicebus://policyname:ke/y@hostname.servicebus.windows.net'  # noqa
+URL_CREDS_SAS_FQ = 'azureservicebus://policyname:ke/y@hostname.servicebus.windows.net'
 URL_CREDS_DA = 'azureservicebus://DefaultAzureCredential@hostname'
 URL_CREDS_DA_FQ = 'azureservicebus://DefaultAzureCredential@hostname.servicebus.windows.net' # noqa
 URL_CREDS_MI = 'azureservicebus://ManagedIdentityCredential@hostname'
@@ -118,7 +118,7 @@ def test_queue_service_nocredentials():
 
 
 def test_queue_service_sas():
-    # Test gettings queue service without credentials
+    # Test getting queue service without credentials
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     with patch('kombu.transport.azureservicebus.ServiceBusClient') as m:
         channel = conn.channel()

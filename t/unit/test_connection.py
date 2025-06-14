@@ -163,7 +163,7 @@ class test_Connection:
         conn._ensure_connection = Mock()
 
         conn.connect()
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -182,7 +182,7 @@ class test_Connection:
 
         conn.connect()
         # connect() is ignoring transport options
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -752,6 +752,42 @@ class test_Connection:
                 conn.default_channel
             assert conn._establish_connection.call_count == 2
 
+    def test_connection_timeout_with_errback(self):
+        errback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'errback': errback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        errback.assert_called()
+
+    def test_connection_timeout_with_callback(self):
+        callback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'callback': callback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        callback.assert_called()
+
 
 class test_Connection_with_transport_options:
 
@@ -1008,6 +1044,43 @@ class test_ConnectionPool(ResourceCase):
         P = self.create_resource(10)
         with P.acquire_channel() as (conn, channel):
             assert channel is conn.default_channel
+
+    def test_exception_during_connection_use(self):
+        """Tests that connections retrieved from a pool are replaced.
+
+        In case of an exception during usage of an exception, it is required that the
+        connection is 'replaced' (effectively closing the connection) before releasing
+        it back into the pool. This ensures that reconnecting to the broker is required
+        before the next usage.
+        """
+        P = self.create_resource(1)
+
+        # Raising an exception during a network call should cause the cause the
+        # connection to be replaced.
+        with pytest.raises(IOError):
+            with P.acquire() as connection:
+                connection.connect()
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        # Acquiring the same connection from the pool yields a disconnected Connection
+        # object.
+        with P.acquire() as connection:
+            assert not connection.connected
+
+        # acquire_channel automatically reconnects
+        with pytest.raises(IOError):
+            with P.acquire_channel() as (connection, _):
+                # The Connection object should still be connected
+                assert connection.connected
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        with P.acquire() as connection:
+            # The connection should be closed
+            assert not connection.connected
 
 
 class test_ChannelPool(ResourceCase):

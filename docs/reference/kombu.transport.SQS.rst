@@ -63,3 +63,11 @@ The above policy:
 +-----------------------------------------+--------------------------------------------+
 | ``6th attempt``                         | 640 seconds                                |
 +-----------------------------------------+--------------------------------------------+
+
+
+Message Attributes
+------------------------
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.

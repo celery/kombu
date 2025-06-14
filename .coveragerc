@@ -9,7 +9,7 @@ omit =
     */python?.?/*
     */site-packages/*
     */pypy/*
-    *kombu/async/http/curl.py
+    *kombu/async/http/urllib3_client.py
     *kombu/five.py
     *kombu/transport/mongodb.py
     *kombu/transport/filesystem.py

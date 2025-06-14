@@ -59,7 +59,7 @@ from __future__ import annotations
 
 import string
 from queue import Empty
-from typing import Any, Dict, Set
+from typing import Any
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
@@ -122,8 +122,8 @@ class Channel(virtual.Channel):
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
     domain_format: str = 'kombu%(vhost)s'
-    _queue_cache: Dict[str, SendReceive] = {}
-    _noack_queues: Set[str] = set()
+    _queue_cache: dict[str, SendReceive] = {}
+    _noack_queues: set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -141,8 +141,13 @@ class Channel(virtual.Channel):
         self._namespace, self._credential = Transport.parse_uri(
             self.conninfo.hostname)
 
-        if (isinstance(self._credential, DefaultAzureCredential) or
-                isinstance(self._credential, ManagedIdentityCredential)):
+        if (
+            DefaultAzureCredential is not None
+            and isinstance(self._credential, DefaultAzureCredential)
+        ) or (
+            ManagedIdentityCredential is not None
+            and isinstance(self._credential, ManagedIdentityCredential)
+        ):
             return None
 
         if ":" in self._credential:

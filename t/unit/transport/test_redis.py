@@ -392,11 +392,11 @@ class test_Channel:
         # the connection was added to the cycle
         conn.transport.cycle.add.assert_called_once()
         assert len(conn.transport.channels) == 1
-        # the channel was flaged as registered into poller
+        # the channel was flagged as registered into poller
         assert chan._registered
 
     def test_redis_on_disconnect_channel_only_if_was_registered(self):
-        """Test shoud check if the _on_disconnect method is called only
+        """Test should check if the _on_disconnect method is called only
            if the channel was registered into the poller."""
         # given: mock pool and client
         pool = Mock(name='pool')
@@ -437,7 +437,7 @@ class test_Channel:
                 transport_options={},
                 hostname="127.0.0.1",
                 virtual_host=None)))
-        # create the _connparams with overriden connection_class
+        # create the _connparams with overridden connection_class
         connparams = chan._connparams(asynchronous=True)
         # create redis.Connection
         redis_connection = connparams['connection_class']()
@@ -498,7 +498,7 @@ class test_Channel:
                     transport_options={},
                     hostname="127.0.0.1",
                     virtual_host=None)))
-            # create the _connparams with overriden connection_class
+            # create the _connparams with overridden connection_class
             connparams = chan._connparams(asynchronous=True)
             # create redis.Connection
             redis_connection = connparams['connection_class']()
@@ -1326,11 +1326,16 @@ class test_Channel:
 
             channel.qos.restore_by_tag('test-tag')
             assert mock_execute_command is not None
-            assert mock_execute_command.mock_calls == [
-                call('WATCH', 'foo_unacked'),
-                call('HGET', 'foo_unacked', 'test-tag'),
-                call('ZREM', 'foo_unacked_index', 'test-tag'),
-                call('HDEL', 'foo_unacked', 'test-tag')
+            # https://github.com/redis/redis-py/pull/3038 (redis>=5.1.0a1)
+            # adds keyword argument `keys` to redis client.
+            # To be compatible with all supported redis versions,
+            # take into account only `call.args`.
+            call_args = [call.args for call in mock_execute_command.mock_calls]
+            assert call_args == [
+                ('WATCH', 'foo_unacked'),
+                ('HGET', 'foo_unacked', 'test-tag'),
+                ('ZREM', 'foo_unacked_index', 'test-tag'),
+                ('HDEL', 'foo_unacked', 'test-tag')
             ]
 
 

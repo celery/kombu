@@ -36,3 +36,6 @@ venv/
 env
 .eggs
 .python-version
+.coverage.*
+control/
+.env

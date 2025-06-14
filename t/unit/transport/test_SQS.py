@@ -107,13 +107,15 @@ class SQSClientMock:
     def get_queue_url(self, QueueName=None):
         return self._queues[QueueName]
 
-    def send_message(self, QueueUrl=None, MessageBody=None):
+    def send_message(self, QueueUrl=None, MessageBody=None,
+                     MessageAttributes=None):
         for q in self._queues.values():
             if q.url == QueueUrl:
                 handle = ''.join(random.choice(string.ascii_lowercase) for
                                  x in range(10))
                 q.messages.append({'Body': MessageBody,
-                                   'ReceiptHandle': handle})
+                                   'ReceiptHandle': handle,
+                                   'MessageAttributes': MessageAttributes})
                 break
 
     def receive_message(self, QueueUrl=None, MaxNumberOfMessages=1,
@@ -134,6 +136,16 @@ class SQSClientMock:
         for q in self._queues.values():
             if q.url == QueueUrl:
                 q.messages = []
+
+    def delete_queue(self, QueueUrl=None):
+        queue_name = None
+        for key, val in self._queues.items():
+            if val.url == QueueUrl:
+                queue_name = key
+                break
+        if queue_name is None:
+            raise Exception(f"Queue url {QueueUrl} not found")
+        del self._queues[queue_name]
 
 
 class test_Channel:
@@ -260,6 +272,11 @@ class test_Channel:
             'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
 
+    def test_resolve_queue_url(self):
+        queue_name = 'unittest_queue'
+        assert self.sqs_conn_mock._queues[queue_name].url == \
+            self.channel._resolve_queue_url(queue_name)
+
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
         self.channel._new_queue(queue_name)
@@ -314,6 +331,7 @@ class test_Channel:
         self.channel._new_queue(queue_name)
         self.channel._delete(queue_name)
         assert queue_name not in self.channel._queue_cache
+        assert queue_name not in self.sqs_conn_mock._queues
 
     def test_get_from_sqs(self):
         # Test getting a single message
@@ -340,7 +358,7 @@ class test_Channel:
 
     def test_optional_b64_decode(self):
         raw = b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",' \
-              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'     # noqa
+              b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
         b64_enc = base64.b64encode(raw)
         assert self.channel._optional_b64_decode(b64_enc) == raw
         assert self.channel._optional_b64_decode(raw) == raw
@@ -470,12 +488,20 @@ class test_Channel:
         assert get_list_args[0] == 'ReceiveMessage'
         assert get_list_args[1] == {
             'MaxNumberOfMessages': SQS.SQS_MAX_MESSAGES,
-            'AttributeName.1': 'ApproximateReceiveCount',
             'WaitTimeSeconds': self.channel.wait_time_seconds,
         }
         assert get_list_args[3] == \
-               self.channel.sqs().get_queue_url(self.queue_name).url
+            self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
+        assert get_list_kwargs['protocol_params'] == {
+            'json': {'AttributeNames': ['ApproximateReceiveCount']},
+            'query': {'AttributeName.1': 'ApproximateReceiveCount'},
+        }
+
+    def test_fetch_message_attributes(self):
+        self.connection.transport_options['fetch_message_attributes'] = ["Attribute1", "Attribute2"]
+        async_sqs_conn = self.channel.asynsqs(self.queue_name)
+        assert async_sqs_conn.fetch_message_attributes == ['Attribute1', 'Attribute2']
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
@@ -979,3 +1005,43 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_not_called()
+
+    def test_sts_session_with_multiple_predefined_queues(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn'
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+        mock_generate_sts_session_token.return_value = {
+            'Expiration': datetime.utcnow() + timedelta(days=1),
+            'SessionToken': 123,
+            'AccessKeyId': 123,
+            'SecretAccessKey': 123
+        }
+
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue='queue-1')
+        sqs(queue='queue-2')
+
+        # Assert
+        mock_generate_sts_session_token.assert_called()
+        mock_new_sqs_client.assert_called()
+
+    def test_message_attribute(self):
+        message = 'my test message'
+        self.producer.publish(message, message_attributes={
+            'Attribute1': {'DataType': 'String',
+                           'StringValue': 'STRING_VALUE'}
+        }
+        )
+        output_message = self.queue(self.channel).get()
+        assert message == output_message.payload
+        # It's not propagated to the properties
+        assert 'message_attributes' not in output_message.properties

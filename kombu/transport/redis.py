@@ -59,9 +59,11 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from importlib.metadata import version
 from queue import Empty
 from time import time
 
+from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -79,8 +81,10 @@ from . import virtual
 
 try:
     import redis
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
     from redis import sentinel
@@ -89,7 +93,7 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
-crit, warn = logger.critical, logger.warn
+crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -356,7 +360,7 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        # TODO: Remove this once we solely on Redis-py 3.0.0+
         if redis.VERSION[0] >= 3:
             # Redis-py changed the format of zadd args in v3.0.0
             zadd_args = [{delivery_tag: time()}]
@@ -511,7 +515,10 @@ class MultiChannelPoller:
 
     def _client_registered(self, channel, client, cmd):
         if getattr(client, 'connection', None) is None:
-            client.connection = client.connection_pool.get_connection('_')
+            if _REDIS_GET_CONNECTION_WITHOUT_ARGS:
+                client.connection = client.connection_pool.get_connection()
+            else:
+                client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
@@ -747,7 +754,7 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
-        # and set to true after sucessfuly added channel to the poll.
+        # and set to true after successfully added channel to the poll.
         self._registered = True
 
         # copy errors, in case channel closed but threads still
@@ -939,8 +946,8 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
-                        warn('Cannot process event on channel %r: %s',
-                             channel, repr(payload)[:4096], exc_info=1)
+                        warning('Cannot process event on channel %r: %s',
+                                channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
                     self.connection._deliver(

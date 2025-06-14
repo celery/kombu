@@ -64,6 +64,20 @@ resources:
     with Connection() as connection:
         # work with connection
 
+.. _debug-logs:
+
+Debug Logs
+==========
+
+Kombu exposes multiple environment variables that control debug logging for connection and channel logs.
+This is useful for situations where you want to debug Kombu or contribute to the project.
+
+If ``KOMBU_LOG_CONNECTION`` is set to 1, debug logs are enabled for connections.
+
+If ``KOMBU_LOG_CHANNEL`` is set to 1, debug logs are enabled for channels.
+
+If ``KOMBU_LOG_DEBUG`` is set to 1, debug logs are enabled for both connections and channels.
+
 .. _connection-urls:
 
 Celery with SQS
@@ -234,3 +248,12 @@ Transport Comparison
          ``supports_fanout`` transport option.
 
 .. [#f3] AMQP Message priority support depends on broker implementation.
+
+Transport Options
+=================
+
+py-amqp
+~~~~~~~
+
+:read_timeout: Timeout for reading data from RabbitMQ.
+:write_timeout: Timeout for writing data to RabbitMQ.

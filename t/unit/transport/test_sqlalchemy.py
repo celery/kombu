@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from kombu import Connection
+from kombu.exceptions import OperationalError
 
 pytest.importorskip('sqlalchemy')
 
@@ -24,7 +25,17 @@ class test_SqlAlchemy:
                 Connection(url).connect()
 
     def test_simple_queueing(self):
-        conn = Connection('sqlalchemy+sqlite:///:memory:')
+        conn = Connection(
+            'sqlalchemy+sqlite:///:memory:',
+            transport_options={
+                "callback": Mock(),
+                "errback": Mock(),
+                "max_retries": 20,
+                "interval_start": 1,
+                "interval_step": 2,
+                "interval_max": 30,
+                "retry_errors": (OperationalError,)
+            })
         conn.connect()
         try:
             channel = conn.channel()

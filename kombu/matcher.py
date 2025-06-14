@@ -89,7 +89,7 @@ registry = MatcherRegistry()
 
     :param data: The data that should be matched. Must be string.
     :param pattern: The pattern that should be applied. Must be string.
-    :keyword matcher: An optional string representing the mathcing
+    :keyword matcher: An optional string representing the matching
         method (for example, `glob` or `pcre`).
 
         If :const:`None` (default), then `glob` will be used.
@@ -108,7 +108,7 @@ match = registry.match
 .. function:: register(name, matcher):
     Register a new matching method.
 
-    :param name: A convenient name for the mathing method.
+    :param name: A convenient name for the matching method.
     :param matcher: A method that will be passed data and pattern.
 """
 register = registry.register
