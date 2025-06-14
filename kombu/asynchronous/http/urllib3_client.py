@@ -1,4 +1,3 @@
-"""Urllib3Client module for Kombu."""
 from __future__ import annotations
 
 from collections import deque
