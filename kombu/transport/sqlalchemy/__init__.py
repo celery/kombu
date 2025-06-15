@@ -57,7 +57,7 @@ import threading
 from json import dumps, loads
 from queue import Empty
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
@@ -209,7 +209,12 @@ class Channel(virtual.Channel):
         return count
 
     def _size(self, queue):
-        return self._query_all(queue).count()
+        obj = self._get_or_create(queue)
+        return (
+            self.session.query(self.message_cls)
+            .filter(self.message_cls.queue_id == obj.id)
+            .count()
+        )
 
     def _declarative_cls(self, name, base, ns):
         if name not in class_registry:
