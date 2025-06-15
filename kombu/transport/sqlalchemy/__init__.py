@@ -211,9 +211,9 @@ class Channel(virtual.Channel):
     def _size(self, queue):
         obj = self._get_or_create(queue)
         return (
-            self.session.query(func.count(self.message_cls.id))
+            self.session.query(self.message_cls)
             .filter(self.message_cls.queue_id == obj.id)
-            .scalar()
+            .count()
         )
 
     def _declarative_cls(self, name, base, ns):
