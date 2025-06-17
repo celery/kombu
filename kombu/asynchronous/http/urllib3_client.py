@@ -180,9 +180,18 @@ class Urllib3Client(BaseClient):
                 effective_url=response.geturl() if hasattr(response, 'geturl') else request.url,
                 error=None
             )
-            response.release_conn()
+        except urllib3.exceptions.HTTPError as e:
+            # Handle HTTPError specifically
+            response_obj = self.Response(
+                request=request,
+                code=599,
+                headers={},
+                buffer=None,
+                effective_url=None,
+                error=HttpError(599, str(e))
+            )
         except Exception as e:
-            # Handle any errors
+            # Handle any other errors
             response_obj = self.Response(
                 request=request,
                 code=599,
