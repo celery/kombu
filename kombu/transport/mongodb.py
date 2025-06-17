@@ -305,7 +305,9 @@ class Channel(virtual.Channel):
 
         port = client.port if client.port else self.default_port
 
-        parsed = uri_parser.parse_uri(hostname, port)
+        # We disable validating and normalization parameters here,
+        # because pymongo will validate and normalize parameters later in __init__ of MongoClient
+        parsed = uri_parser.parse_uri(hostname, port, validate=False)
 
         dbname = parsed['database'] or client.virtual_host
 
