@@ -6,7 +6,6 @@ try:
     import boto3
     from botocore import exceptions
     from botocore.awsrequest import AWSRequest
-    from botocore.httpsession import get_cert_path
     from botocore.response import get_response
 except ImportError:
     boto3 = None
@@ -20,9 +19,8 @@ except ImportError:
     exceptions.BotoCoreError = BotoCoreError
     AWSRequest = _void()
     get_response = _void()
-    get_cert_path = _void()
 
 
 __all__ = (
-    'exceptions', 'AWSRequest', 'get_response', 'get_cert_path',
+    'exceptions', 'AWSRequest', 'get_response'
 )
