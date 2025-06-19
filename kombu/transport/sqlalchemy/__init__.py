@@ -57,7 +57,7 @@ import threading
 from json import dumps, loads
 from queue import Empty
 
-from sqlalchemy import create_engine, func, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
