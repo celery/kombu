@@ -117,7 +117,6 @@ setup(
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3 :: Only',
