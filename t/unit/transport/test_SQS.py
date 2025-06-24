@@ -312,6 +312,8 @@ class test_Channel:
 
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('sqs-creation-attributes', None)
 
     def test_new_queue_with_tags(self):
         self.connection.transport_options['sqs-queue-tags'] = {
@@ -330,6 +332,8 @@ class test_Channel:
 
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('sqs-queue-tags', None)
 
     def test_botocore_config_override(self):
         expected_connect_timeout = 5
