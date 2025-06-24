@@ -23,11 +23,7 @@ except ImportError:
     get_response = _void()
 
     def get_cert_path() -> str:
-        """
-        Return the path to the certificate file.
-        Raises:
-            NotImplementedError: If boto3 or botocore is not installed.
-        """
+        """Raises NotImplementedError if boto3 or botocore is not installed."""
         raise NotImplementedError(
             "get_cert_path is unavailable because boto3 or botocore is not installed."
         )
