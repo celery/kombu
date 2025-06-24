@@ -20,7 +20,10 @@ except ImportError:
     exceptions.BotoCoreError = BotoCoreError
     AWSRequest = _void()
     get_response = _void()
-    get_cert_path = _void()
+    def get_cert_path():
+        raise NotImplementedError(
+            "get_cert_path is unavailable because boto3 or botocore is not installed."
+        )
 
 
 __all__ = (
