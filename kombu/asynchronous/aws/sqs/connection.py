@@ -20,7 +20,15 @@ __all__ = ('AsyncSQSConnection',)
 class AsyncSQSConnection(AsyncAWSQueryConnection):
     """Async SQS Connection."""
 
-    def __init__(self, sqs_connection, debug=0, region=None, fetch_message_attributes=None, **kwargs):
+    def __init__(
+        self,
+        sqs_connection,
+        debug=0,
+        region=None,
+        message_system_attribute_names=None,
+        message_attribute_names=None,
+        **kwargs
+    ):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
         super().__init__(
@@ -28,9 +36,12 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
             region_name=region, debug=debug,
             **kwargs
         )
-        self.fetch_message_attributes = (
-            fetch_message_attributes if fetch_message_attributes is not None
-            else ["ApproximateReceiveCount"]
+        self.message_system_attribute_names = (
+            message_system_attribute_names if message_system_attribute_names else ["ApproximateReceiveCount"]
+        )
+        self.message_attribute_names = (
+            [message_attribute_names] if isinstance(message_attribute_names, str)
+            else (message_attribute_names or [])
         )
 
     def _create_query_request(self, operation, params, queue_url, method):
@@ -160,13 +171,17 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     ):
         params = {'MaxNumberOfMessages': number_messages}
         proto_params = {'query': {}, 'json': {}}
-        attrs = attributes if attributes is not None else self.fetch_message_attributes
+        attrs = attributes if attributes is not None else self.message_system_attribute_names
+        msg_attr_names = self.message_attribute_names if self.message_attribute_names else None
 
         if visibility_timeout:
             params['VisibilityTimeout'] = visibility_timeout
         if attrs:
-            proto_params['json'].update({'AttributeNames': list(attrs)})
-            proto_params['query'].update(_query_object_encode({'AttributeName': list(attrs)}))
+            proto_params['json'].update({'MessageSystemAttributeNames': list(attrs)})
+            proto_params['query'].update(_query_object_encode({'MessageSystemAttributeName': list(attrs)}))
+        if msg_attr_names:
+            proto_params['json'].update({'MessageAttributeNames': list(msg_attr_names)})
+            proto_params['query'].update(_query_object_encode({'MessageAttributeNames': list(msg_attr_names)}))
         if wait_time_seconds is not None:
             params['WaitTimeSeconds'] = wait_time_seconds
 
