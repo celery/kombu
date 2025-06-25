@@ -425,7 +425,7 @@ class Channel(virtual.Channel):
             self.transport_options.get('sqs-creation-attributes') or {},
         )
 
-        queue_tags = self.transport_options.get('sqs-queue-tags')
+        queue_tags = self.transport_options.get('queue_tags')
 
         create_params = {
             'QueueName': queue_name,
@@ -1094,7 +1094,7 @@ class Transport(virtual.Transport):
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
 
     Queue tags can be applied to SQS queues during creation by passing an
-    ``sqs-queue-tags`` key in transport_options. ``sqs-queue-tags`` must be
+    ``queue_tags`` key in transport_options. ``queue_tags`` must be
     a dict of tag key-value pairs.
 
     .. code-block:: python
@@ -1104,7 +1104,7 @@ class Transport(virtual.Transport):
         transport = Transport(
             ...,
             transport_options={
-                'sqs-queue-tags': {
+                'queue_tags': {
                     'Environment': 'production',
                     'Team': 'backend',
                 },
