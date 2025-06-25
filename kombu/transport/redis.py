@@ -59,9 +59,11 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from importlib.metadata import version
 from queue import Empty
 from time import time
 
+from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -79,8 +81,10 @@ from . import virtual
 
 try:
     import redis
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
     from redis import sentinel
@@ -511,7 +515,10 @@ class MultiChannelPoller:
 
     def _client_registered(self, channel, client, cmd):
         if getattr(client, 'connection', None) is None:
-            client.connection = client.connection_pool.get_connection('_')
+            if _REDIS_GET_CONNECTION_WITHOUT_ARGS:
+                client.connection = client.connection_pool.get_connection()
+            else:
+                client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 

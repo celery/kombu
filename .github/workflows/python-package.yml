@@ -34,12 +34,12 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
-        os: ["blacksmith-4vcpu-ubuntu-2204"]
+        os: ["blacksmith-4vcpu-ubuntu-2404"]
 
     steps:
     - name: Install apt packages
       if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
-      run: sudo apt-get update && sudo apt-get install libssl-dev
+      run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: useblacksmith/setup-python@v6
@@ -59,6 +59,12 @@ jobs:
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
 
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }} # Run even if tests fail
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
     - uses: codecov/codecov-action@v5
       with:
         fail_ci_if_error: false # optional (default = false)
@@ -70,7 +76,7 @@ jobs:
       - Unit
       if: needs.Unit.result == 'success'
 
-      runs-on: blacksmith-4vcpu-ubuntu-2204
+      runs-on: blacksmith-4vcpu-ubuntu-2404
       strategy:
           fail-fast: false
           matrix:
@@ -98,7 +104,7 @@ jobs:
 
       steps:
           -   name: Install apt packages
-              run: sudo apt-get update && sudo apt-get install libssl-dev
+              run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
 
           -   uses: actions/checkout@v4
           -   name: Set up Python ${{ matrix.python-version }}
