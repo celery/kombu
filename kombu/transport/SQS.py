@@ -93,7 +93,7 @@ sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
 
-.. versionadded:: 5.7.0
+.. versionadded:: 5.6.0
     sts_token_buffer_time (seconds) is the time by which you want to refresh your token
     earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
     should be less than sts_token_timeout.
