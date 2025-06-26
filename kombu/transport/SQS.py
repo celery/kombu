@@ -1093,6 +1093,7 @@ class Transport(virtual.Transport):
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
 
+    .. versionadded:: 5.6
     Queue tags can be applied to SQS queues during creation by passing an
     ``queue_tags`` key in transport_options. ``queue_tags`` must be
     a dict of tag key-value pairs.
