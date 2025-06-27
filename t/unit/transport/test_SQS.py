@@ -60,10 +60,11 @@ class SQSMessageMock:
 class QueueMock:
     """ Hold information about a queue. """
 
-    def __init__(self, url, creation_attributes=None):
+    def __init__(self, url, creation_attributes=None, tags=None):
         self.url = url
         # arguments of boto3.sqs.create_queue
         self.creation_attributes = creation_attributes
+        self.tags = tags
         self.attributes = {'ApproximateNumberOfMessages': '0'}
 
         self.messages = []
@@ -91,10 +92,11 @@ class SQSClientMock:
                 return q
         raise Exception(f"Queue url {url} not found")
 
-    def create_queue(self, QueueName=None, Attributes=None):
+    def create_queue(self, QueueName=None, Attributes=None, tags=None):
         q = self._queues[QueueName] = QueueMock(
             'https://sqs.us-east-1.amazonaws.com/xxx/' + QueueName,
             Attributes,
+            tags,
         )
         return {'QueueUrl': q.url}
 
@@ -310,6 +312,28 @@ class test_Channel:
 
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('sqs-creation-attributes', None)
+
+    def test_new_queue_with_tags(self):
+        self.connection.transport_options['queue_tags'] = {
+            'Environment': 'test',
+            'Team': 'backend',
+        }
+        queue_name = 'new_tagged_queue'
+        self.channel._new_queue(queue_name)
+
+        assert queue_name in self.sqs_conn_mock._queues.keys()
+        queue = self.sqs_conn_mock._queues[queue_name]
+
+        assert queue.tags is not None
+        assert queue.tags['Environment'] == 'test'
+        assert queue.tags['Team'] == 'backend'
+
+        # For cleanup purposes, delete the queue and the queue file
+        self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('queue_tags', None)
 
     def test_botocore_config_override(self):
         expected_connect_timeout = 5
