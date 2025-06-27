@@ -425,10 +425,17 @@ class Channel(virtual.Channel):
             self.transport_options.get('sqs-creation-attributes') or {},
         )
 
-        return self.sqs(queue=queue_name).create_queue(
-            QueueName=queue_name,
-            Attributes=attributes,
-        )
+        queue_tags = self.transport_options.get('queue_tags')
+
+        create_params = {
+            'QueueName': queue_name,
+            'Attributes': attributes,
+        }
+
+        if queue_tags:
+            create_params['tags'] = queue_tags
+
+        return self.sqs(queue=queue_name).create_queue(**create_params)
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
@@ -1085,6 +1092,25 @@ class Transport(virtual.Transport):
         )
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
+
+    .. versionadded:: 5.6
+    Queue tags can be applied to SQS queues during creation by passing an
+    ``queue_tags`` key in transport_options. ``queue_tags`` must be
+    a dict of tag key-value pairs.
+
+    .. code-block:: python
+
+        from kombu.transport.SQS import Transport
+
+        transport = Transport(
+            ...,
+            transport_options={
+                'queue_tags': {
+                    'Environment': 'production',
+                    'Team': 'backend',
+                },
+            }
+        )
 
     The ``ApproximateReceiveCount`` message attribute is fetched by this
     transport by default. Requested message attributes can be changed by
