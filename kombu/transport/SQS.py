@@ -76,7 +76,7 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
-    'sts_token_timeout': 900, # optional, added in 5.6.0
+    'sts_token_timeout': 900, # optional
     'sts_token_buffer_time': 0, # optional, added in 5.6.0
     }
 
