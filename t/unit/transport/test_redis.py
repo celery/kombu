@@ -100,7 +100,7 @@ class FakeRedisConnection(fakeredis.FakeConnection):
 
     def __init__(self, client, server, **kwargs):
         kwargs['parser_class'] = DummyParser
-        super(fakeredis.FakeConnection, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         if client is None:
             client = _get_fake_redis_client()
         self.client = client
