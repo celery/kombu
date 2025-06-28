@@ -164,7 +164,7 @@ class FakeRedisClient(fakeredis.FakeStrictRedis):
         self.connection = FakeRedisConnection(self, server)
         self.response_callbacks = dict()
 
-    def __del__(self, key=None):
+    def delete_key(self, key=None):
         if key:
             self.delete(key)
 
