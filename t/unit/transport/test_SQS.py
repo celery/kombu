@@ -1223,6 +1223,43 @@ class test_Channel:
         # Assert
         mock_generate_sts_session_token.assert_called_once()
 
+    def test_sts_new_session_with_buffer_time(self):
+        # Arrange
+        sts_token_timeout = 900
+        sts_token_buffer_time = 60
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn',
+            'sts_token_timeout': sts_token_timeout,
+            'sts_token_buffer_time': sts_token_buffer_time,
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+
+        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': expiration_time,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
+
     def test_sts_session_expired(self):
         # Arrange
         connection = Connection(transport=SQS.Transport, transport_options={
@@ -1252,6 +1289,44 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_expired_with_buffer_time(self):
+        # Arrange
+        sts_token_timeout = 900
+        sts_token_buffer_time = 60
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn',
+            'sts_token_timeout': sts_token_timeout,
+            'sts_token_buffer_time': sts_token_buffer_time,
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+
+        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': expiration_time,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
 
     def test_sts_session_not_expired(self):
         # Arrange
