@@ -616,7 +616,9 @@ class test_Channel:
             'properties': {'delivery_tag': 'test_message_id'}
         }
         self.channel._put(self.producer.routing_key, message)
-        self.sqs_conn_mock.change_message_visibility.assert_called_once()
+        self.sqs_conn_mock.change_message_visibility.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/unittest',
+            ReceiptHandle='test_message_id', VisibilityTimeout=10)
 
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
