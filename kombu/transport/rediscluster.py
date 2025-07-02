@@ -444,6 +444,7 @@ class Channel(RedisChannel):
             client.disconnect_connection_pools()
             client.close()
         self._client = None
+        self._in_poll_connections.clear()
 
     def _on_connection_disconnect(self, connection):
         if self._in_poll is not None and connection in self._in_poll_connections:
