@@ -687,7 +687,7 @@ class test_Channel:
             def __init__(self, *args, **kwargs):
                 self._pool = pool
                 # counter to check if the method was called
-                self.on_disconect_count = 0
+                self.on_disconnect_count = 0
                 super().__init__(*args, **kwargs)
 
             def _get_client(self):
