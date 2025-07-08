@@ -565,6 +565,7 @@ class Connection:
                         self._debug('ensure retry policy error: %r',
                                     exc, exc_info=1)
                     except conn_errors as exc:
+                        self.maybe_switch_next()  # select next host
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
                             # recoverable/irrecoverable errors, so we propagate
