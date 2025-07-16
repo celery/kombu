@@ -79,7 +79,7 @@ def version_string_as_tuple(version: str) -> version_info_t:
     pattern += r'(?:\.(.*))?'  # optionally catching the serial number after a dot
 
     # applying the regex pattern to the input version string
-    match = re.match(pattern, version)
+    match = re.fullmatch(pattern, version)
 
     if not match:
         raise ValueError(f"Invalid version string: {version}")
