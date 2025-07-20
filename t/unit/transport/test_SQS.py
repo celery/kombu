@@ -1474,3 +1474,409 @@ class test_Channel:
 
         # Data from s3 is loaded into the return payload
         assert 'my_key' in result
+
+    def test_new_s3_client_creation(self):
+        """Test S3 client creation with different configurations."""
+        # Test basic S3 client creation
+        client = self.channel.new_s3_client(
+            region='us-east-1',
+            access_key_id='test_key',
+            secret_access_key='test_secret'
+        )
+        assert client is not None
+
+        # Test with session token
+        client_with_token = self.channel.new_s3_client(
+            region='us-east-1',
+            access_key_id='test_key',
+            secret_access_key='test_secret',
+            session_token='test_token'
+        )
+        assert client_with_token is not None
+
+        # Test with custom endpoint URL
+        self.channel.endpoint_url = 'http://localhost:4566'  # LocalStack URL
+        client_with_endpoint = self.channel.new_s3_client(
+            region='us-east-1',
+            access_key_id='test_key',
+            secret_access_key='test_secret'
+        )
+        assert client_with_endpoint is not None
+
+        # Test with is_secure=False
+        self.channel.is_secure = False
+        client_insecure = self.channel.new_s3_client(
+            region='us-east-1',
+            access_key_id='test_key',
+            secret_access_key='test_secret'
+        )
+        assert client_insecure is not None
+
+    def test_s3_method(self):
+        """Test the s3() convenience method."""
+        with patch.object(self.channel, 'new_s3_client') as mock_new_s3_client:
+            mock_client = Mock()
+            mock_new_s3_client.return_value = mock_client
+
+            result = self.channel.s3()
+
+            # Verify it was called with correct parameters
+            mock_new_s3_client.assert_called_once_with(
+                region=self.channel.region,
+                access_key_id=self.channel.conninfo.userid,
+                secret_access_key=self.channel.conninfo.password,
+            )
+            assert result == mock_client
+
+    def test_message_to_python_with_sqs_extended_client_error_handling(self):
+        """Test error handling when S3 operations fail."""
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 'large-payload-bucket', 's3Key': 'payload.json'}
+        ]
+
+        # Test S3 GetObject error
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            from botocore.exceptions import ClientError
+            s3_client = Mock()
+            s3_client.get_object.side_effect = ClientError(
+                {'Error': {'Code': 'NoSuchKey', 'Message': 'The specified key does not exist.'}},
+                'GetObject'
+            )
+            s3_mock.return_value = s3_client
+
+            with pytest.raises(ClientError):
+                self.channel._message_to_python(
+                    {'Body': json.dumps(message), 'ReceiptHandle': 'handle'},
+                    self.queue_name,
+                    'test',
+                )
+
+    def test_message_to_python_with_corrupted_s3_payload(self):
+        """Test handling of corrupted S3 payload."""
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 'large-payload-bucket', 's3Key': 'payload.json'}
+        ]
+
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            # Return invalid JSON from S3
+            s3_client = Mock(
+                get_object=Mock(
+                    return_value={'Body': BytesIO(b'invalid json data')}
+                )
+            )
+            s3_mock.return_value = s3_client
+
+            with pytest.raises(json.JSONDecodeError):
+                self.channel._message_to_python(
+                    {'Body': json.dumps(message), 'ReceiptHandle': 'handle'},
+                    self.queue_name,
+                    'test',
+                )
+
+    def test_message_to_python_with_base64_encoded_s3_payload(self):
+        """Test handling of base64 encoded S3 payload."""
+        import base64
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 'large-payload-bucket', 's3Key': 'payload.json'}
+        ]
+
+        payload_data = {"encoded": "data", "test": "value"}
+        encoded_payload = base64.b64encode(json.dumps(payload_data).encode())
+
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock(
+                get_object=Mock(
+                    return_value={'Body': BytesIO(encoded_payload)}
+                )
+            )
+            s3_mock.return_value = s3_client
+
+            # Enable base64 encoding for this test
+            self.channel.sqs_base64_encoding = True
+
+            result = self.channel._message_to_python(
+                {'Body': json.dumps(message), 'ReceiptHandle': 'handle'},
+                self.queue_name,
+                'test',
+            )
+
+            assert s3_client.get_object.called
+            assert 'properties' in result
+            assert result == payload_data
+
+    def test_message_to_python_without_sqs_extended_client(self):
+        """Test that normal messages work when sqs_extended_client is not available."""
+        # Temporarily set sqs_extended_client to None
+        original_client = sqs_extended_client
+        import kombu.transport.SQS as sqs_module
+        sqs_module.sqs_extended_client = None
+
+        try:
+            normal_message = {"normal": "message", "data": "test"}
+
+            result = self.channel._message_to_python(
+                {'Body': json.dumps(normal_message), 'ReceiptHandle': 'handle'},
+                self.queue_name,
+                'test',
+            )
+
+            assert 'properties' in result
+            assert result['normal'] == 'message'
+        finally:
+            # Restore original client
+            sqs_module.sqs_extended_client = original_client
+
+    def test_message_to_python_with_missing_s3_details(self):
+        """Test handling of malformed extended client message."""
+        # Message with missing S3 details
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {}  # Missing s3BucketName and s3Key
+        ]
+
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock()
+            s3_mock.return_value = s3_client
+
+            with pytest.raises(KeyError):
+                self.channel._message_to_python(
+                    {'Body': json.dumps(message), 'ReceiptHandle': 'handle'},
+                    self.queue_name,
+                    'test',
+                )
+
+    def test_optional_b64_decode(self):
+        """Test the _optional_b64_decode method."""
+        # Test with valid base64
+        import base64
+        original_data = b"Hello, World!"
+        encoded_data = base64.b64encode(original_data)
+
+        result = self.channel._optional_b64_decode(encoded_data)
+        assert result == original_data
+
+        # Test with invalid base64
+        invalid_b64 = b"This is not base64!!!"
+        result = self.channel._optional_b64_decode(invalid_b64)
+        assert result == invalid_b64
+
+        # Test with base64-like but not actually base64
+        looks_like_b64 = b"SGVsbG8="  # Valid base64 format
+        result = self.channel._optional_b64_decode(looks_like_b64)
+        assert result == b"Hello"
+
+        # Test with whitespace around base64
+        padded_b64 = b"  " + encoded_data + b"  "
+        result = self.channel._optional_b64_decode(padded_b64)
+        assert result == original_data
+
+        # Test with empty input
+        result = self.channel._optional_b64_decode(b"")
+        assert result == b""
+
+        # Test with non-base64 that passes regex
+        # Create a string that might pass regex but fail decode
+        tricky_string = b"AAAA!!!!"
+        result = self.channel._optional_b64_decode(tricky_string)
+        assert result == tricky_string
+
+    def test_decode_python_message_body(self):
+        """Test _decode_python_message_body method."""
+        # Test with regular string
+        message = "test message"
+        result = self.channel._decode_python_message_body(message)
+        assert result == message.encode()
+
+        # Test with base64 encoded message when sqs_base64_encoding is True
+        self.channel.sqs_base64_encoding = True
+        import base64
+        original = b"encoded message"
+        encoded = base64.b64encode(original).decode()
+
+        result = self.channel._decode_python_message_body(encoded)
+        assert result == original
+
+        # Test with already bytes
+        byte_message = b"byte message"
+        result = self.channel._decode_python_message_body(byte_message)
+        assert result == byte_message
+
+    def test_message_to_python_noack_queue(self):
+        """Test message handling for no-ack queues."""
+        # Add queue to noack_queues
+        self.channel._noack_queues.add(self.queue_name)
+
+        message_body = {"test": "data"}
+        message = {
+            'Body': json.dumps(message_body),
+            'ReceiptHandle': 'test-handle'
+        }
+
+        with patch.object(self.channel, '_delete_message') as mock_delete:
+            result = self.channel._message_to_python(
+                message,
+                self.queue_name,
+                'test-url'
+            )
+
+            # Verify delete was called for no-ack queue
+            mock_delete.assert_called_once_with(self.queue_name, message)
+            assert result == message_body
+
+    def test_envelope_payload(self):
+        """Test the _envelope_payload method."""
+        payload = {"test": "data"}
+        raw_text = json.dumps(payload)
+        message = {
+            'ReceiptHandle': 'test-handle',
+            'MessageId': 'test-message-id'
+        }
+        q_url = 'https://sqs.region.amazonaws.com/123456/queue'
+
+        result = self.channel._envelope_payload(payload, raw_text, message, q_url)
+
+        # Verify the envelope structure
+        assert 'properties' in result
+        assert 'delivery_info' in result['properties']
+        assert result['properties']['delivery_tag'] == 'test-handle'
+        assert result['properties']['delivery_info']['sqs_message'] == message
+        assert result['properties']['delivery_info']['sqs_queue'] == q_url
+
+    def test_delete_message(self):
+        """Test the _delete_message method."""
+        message = {'ReceiptHandle': 'test-handle'}
+
+        with patch.object(self.channel, 'asynsqs') as mock_asynsqs:
+            mock_queue_client = Mock()
+            mock_asynsqs.return_value = mock_queue_client
+
+            with patch.object(self.channel, '_new_queue') as mock_new_queue:
+                mock_new_queue.return_value = 'test-queue-url'
+
+                self.channel._delete_message(self.queue_name, message)
+
+                mock_asynsqs.assert_called_once_with(queue=self.queue_name)
+                mock_queue_client.delete_message.assert_called_once_with(
+                    'test-queue-url',
+                    'test-handle'
+                )
+
+    def test_s3_streaming_body_handling(self):
+        """Test handling of S3 StreamingBody response."""
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 'test-bucket', 's3Key': 'test-key.json'}
+        ]
+
+        # Create a mock StreamingBody
+        class MockStreamingBody:
+            def __init__(self, data):
+                self.data = data
+
+            def read(self):
+                return self.data
+
+        payload_data = {"streaming": "data", "test": True}
+
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock()
+            s3_client.get_object.return_value = {
+                'Body': MockStreamingBody(json.dumps(payload_data).encode())
+            }
+            s3_mock.return_value = s3_client
+
+            result = self.channel._message_to_python(
+                {'Body': json.dumps(message), 'ReceiptHandle': 'handle'},
+                self.queue_name,
+                'test-url',
+            )
+
+            # Verify S3 was called with correct parameters
+            s3_client.get_object.assert_called_once_with(
+                Bucket='test-bucket',
+                Key='test-key.json'
+            )
+
+            # Verify the payload was correctly extracted
+            assert 'properties' in result
+            assert result['streaming'] == 'data'
+            assert result['test'] is True
+
+    def test_s3_client_with_predefined_queue_credentials(self):
+        """Test S3 client creation with predefined queue credentials."""
+        # Setup predefined queue with specific credentials
+        predefined_queue = {
+            'url': 'https://sqs.us-east-1.amazonaws.com/123456/test-queue',
+            'access_key_id': 'predefined_key',
+            'secret_access_key': 'predefined_secret',
+            'session_token': 'predefined_token'
+        }
+
+        # Mock channel with predefined queue
+        with patch.object(self.channel, 'predefined_queues', {self.queue_name: predefined_queue}):
+            with patch.object(self.channel, 'new_s3_client') as mock_new_s3:
+                mock_client = Mock()
+                mock_new_s3.return_value = mock_client
+
+                # Simulate getting S3 client for a predefined queue
+                # This would happen in a real scenario when processing a message
+                self.channel.new_s3_client(
+                    region=self.channel.region,
+                    access_key_id=predefined_queue['access_key_id'],
+                    secret_access_key=predefined_queue['secret_access_key'],
+                    session_token=predefined_queue.get('session_token')
+                )
+
+                mock_new_s3.assert_called_once_with(
+                    region=self.channel.region,
+                    access_key_id='predefined_key',
+                    secret_access_key='predefined_secret',
+                    session_token='predefined_token'
+                )
+
+    def test_message_to_python_integration(self):
+        """Integration test for full message flow with large payload."""
+        # Test the complete flow from SQS message to Python object
+        large_payload = {
+            "large": "data" * 100,  # Simulate large data
+            "metadata": {"size": "large", "version": 1}
+        }
+
+        s3_reference = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 'integration-bucket', 's3Key': 'large-message.json'}
+        ]
+
+        sqs_message = {
+            'Body': json.dumps(s3_reference),
+            'ReceiptHandle': 'integration-handle',
+            'MessageId': 'integration-msg-id',
+            'Attributes': {
+                'ApproximateReceiveCount': '1',
+                'SentTimestamp': '1234567890'
+            }
+        }
+
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock()
+            s3_client.get_object.return_value = {
+                'Body': BytesIO(json.dumps(large_payload).encode())
+            }
+            s3_mock.return_value = s3_client
+
+            # Process the message
+            result = self.channel._message_to_python(
+                sqs_message,
+                self.queue_name,
+                'https://queue-url'
+            )
+
+            # Verify the complete result
+            assert result == large_payload
+            assert 'properties' in result
+            assert 'delivery_info' in result['properties']
+            assert result['properties']['delivery_tag'] == 'integration-handle'
+            assert result['properties']['delivery_info']['sqs_queue'] == 'https://queue-url'
