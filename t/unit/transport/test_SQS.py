@@ -7,10 +7,12 @@ slightly.
 from __future__ import annotations
 
 import base64
+import json
 import os
 import random
 import string
 from datetime import datetime, timedelta
+from io import BytesIO
 from queue import Empty
 from unittest.mock import Mock, patch
 
@@ -19,6 +21,7 @@ import pytest
 from kombu import Connection, Exchange, Queue, messaging
 
 boto3 = pytest.importorskip('boto3')
+sqs_extended_client = pytest.importorskip('sqs_extended_client')
 
 from botocore.exceptions import ClientError  # noqa
 
@@ -508,6 +511,51 @@ class test_Channel:
             assert di.get("foo") == "bar"
 
         assert result["properties"]["delivery_tag"] == message["ReceiptHandle"]
+
+    @patch('boto3.session.Session')
+    def test_new_s3_client_with_is_secure_false(self, mock_session):
+        self.channel.is_secure = False
+        self.channel.endpoint_url = None
+
+        self.channel.new_s3_client(
+            region='us-west-2',
+            access_key_id='test_access_key',
+            secret_access_key='test_secret_key'
+        )
+
+        # assert isinstance(client, boto3.client('s3').__class__)
+        mock_session.assert_called_once_with(
+            region_name='us-west-2',
+            aws_access_key_id='test_access_key',
+            aws_secret_access_key='test_secret_key',
+            aws_session_token=None
+        )
+        mock_session().client.assert_called_once_with(
+            's3', use_ssl=False
+        )
+
+    @patch('boto3.session.Session')
+    def test_new_s3_client_with_custom_endpoint(self, mock_session):
+        mock_client = Mock()
+        mock_session.return_value.client.return_value = mock_client
+
+        self.channel.is_secure = True
+        self.channel.endpoint_url = 'https://custom-endpoint.com'
+
+        result = self.channel.new_s3_client('us-west-2', 'access_key', 'secret_key')
+
+        mock_session.assert_called_once_with(
+            region_name='us-west-2',
+            aws_access_key_id='access_key',
+            aws_secret_access_key='secret_key',
+            aws_session_token=None
+        )
+        mock_session.return_value.client.assert_called_once_with(
+            's3',
+            use_ssl=True,
+            endpoint_url='https://custom-endpoint.com'
+        )
+        assert result == mock_client
 
     def test_messages_to_python(self):
         from kombu.asynchronous.aws.sqs.message import Message
@@ -1399,3 +1447,30 @@ class test_Channel:
         assert message == output_message.payload
         # It's not propagated to the properties
         assert 'message_attributes' not in output_message.properties
+
+    def test_message_to_python_with_sqs_extended_client(self):
+        message = [
+            sqs_extended_client.client.MESSAGE_POINTER_CLASS,
+            {'s3BucketName': 's3://large-payload-bucket', 's3Key': 'payload.json'}
+        ]
+
+        # Get the messages now
+        with patch('kombu.transport.SQS.Channel.s3') as s3_mock:
+            s3_client = Mock(
+                get_object=Mock(
+                    return_value={'Body': BytesIO(json.dumps({"my_key": "Hello, World!"}).encode()), })
+            )
+            s3_mock.return_value = s3_client
+
+            result = self.channel._message_to_python(
+                {'Body': json.dumps(message), 'ReceiptHandle': 'handle'}, self.queue_name,
+                'test',
+            )
+
+        assert s3_client.get_object.called
+
+        # Make sure they're payload-style objects
+        assert 'properties' in result
+
+        # Data from s3 is loaded into the return payload
+        assert 'my_key' in result
