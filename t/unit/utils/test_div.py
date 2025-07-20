@@ -1,8 +1,7 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import pickle
-
-from io import StringIO, BytesIO
+from io import BytesIO, StringIO
 
 from kombu.utils.div import emergency_dump_state
 

@@ -1,21 +1,110 @@
-"""File-system Transport.
+"""File-system Transport module for kombu.
 
-Transport using the file-system as the message store.
+Transport using the file-system as the message store. Messages written to the
+queue are stored in `data_folder_in` directory and
+messages read from the queue are read from `data_folder_out` directory. Both
+directories must be created manually. Simple example:
+
+* Producer:
+
+.. code-block:: python
+
+    import kombu
+
+    conn = kombu.Connection(
+        'filesystem://', transport_options={
+            'data_folder_in': 'data_in', 'data_folder_out': 'data_out'
+        }
+    )
+    conn.connect()
+
+    test_queue = kombu.Queue('test', routing_key='test')
+
+    with conn as conn:
+        with conn.default_channel as channel:
+            producer = kombu.Producer(channel)
+            producer.publish(
+                        {'hello': 'world'},
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='pickle'
+            )
+
+* Consumer:
+
+.. code-block:: python
+
+    import kombu
+
+    conn = kombu.Connection(
+        'filesystem://', transport_options={
+            'data_folder_in': 'data_out', 'data_folder_out': 'data_in'
+        }
+    )
+    conn.connect()
+
+    def callback(body, message):
+        print(body, message)
+        message.ack()
+
+    test_queue = kombu.Queue('test', routing_key='test')
+
+    with conn as conn:
+        with conn.default_channel as channel:
+            consumer = kombu.Consumer(
+                conn, [test_queue], accept=['pickle']
+            )
+            consumer.register_callback(callback)
+            with consumer:
+                conn.drain_events(timeout=1)
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: No
+* Supports TTL: No
+
+Connection String
+=================
+Connection string is in the following format:
+
+.. code-block::
+
+    filesystem://
+
+Transport Options
+=================
+* ``data_folder_in`` - directory where are messages stored when written
+  to queue.
+* ``data_folder_out`` - directory from which are messages read when read from
+  queue.
+* ``store_processed`` - if set to True, all processed messages are backed up to
+  ``processed_folder``.
+* ``processed_folder`` - directory where are backed up processed files.
+* ``control_folder`` - directory where are exchange-queue table stored.
 """
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import os
 import shutil
-import uuid
 import tempfile
+import uuid
+from collections import namedtuple
+from pathlib import Path
+from queue import Empty
+from time import monotonic
 
-from . import virtual
 from kombu.exceptions import ChannelError
-from kombu.five import Empty, monotonic
+from kombu.transport import virtual
 from kombu.utils.encoding import bytes_to_str, str_to_bytes
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
-
 
 VERSION = (1, 0, 0)
 __version__ = '.'.join(map(str, VERSION))
@@ -23,14 +112,14 @@ __version__ = '.'.join(map(str, VERSION))
 # needs win32all to work on Windows
 if os.name == 'nt':
 
+    import pywintypes
     import win32con
     import win32file
-    import pywintypes
 
     LOCK_EX = win32con.LOCKFILE_EXCLUSIVE_LOCK
     # 0 is the default
-    LOCK_SH = 0                                     # noqa
-    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY    # noqa
+    LOCK_SH = 0
+    LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     __overlapped = pywintypes.OVERLAPPED()
 
     def lock(file, flags):
@@ -43,39 +132,92 @@ if os.name == 'nt':
         hfile = win32file._get_osfhandle(file.fileno())
         win32file.UnlockFileEx(hfile, 0, 0xffff0000, __overlapped)
 
+
 elif os.name == 'posix':
 
     import fcntl
-    from fcntl import LOCK_EX, LOCK_SH, LOCK_NB     # noqa
+    from fcntl import LOCK_EX, LOCK_SH
 
-    def lock(file, flags):  # noqa
+    def lock(file, flags):
         """Create file lock."""
         fcntl.flock(file.fileno(), flags)
 
-    def unlock(file):       # noqa
+    def unlock(file):
         """Remove file lock."""
         fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+
+
 else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
 
 
+exchange_queue_t = namedtuple("exchange_queue_t",
+                              ["routing_key", "pattern", "queue"])
+
+
 class Channel(virtual.Channel):
     """Filesystem Channel."""
 
+    supports_fanout = True
+
+    def get_table(self, exchange):
+        file = self.control_folder / f"{exchange}.exchange"
+        try:
+            f_obj = file.open("r")
+            try:
+                lock(f_obj, LOCK_SH)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                return [exchange_queue_t(*q) for q in exchange_table]
+            finally:
+                unlock(f_obj)
+                f_obj.close()
+        except FileNotFoundError:
+            return []
+        except OSError:
+            raise ChannelError(f"Cannot open {file}")
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        file = self.control_folder / f"{exchange}.exchange"
+        self.control_folder.mkdir(exist_ok=True)
+        queue_val = exchange_queue_t(routing_key or "", pattern or "",
+                                     queue or "")
+        try:
+            if file.exists():
+                f_obj = file.open("rb+", buffering=0)
+                lock(f_obj, LOCK_EX)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                queues = [exchange_queue_t(*q) for q in exchange_table]
+                if queue_val not in queues:
+                    queues.insert(0, queue_val)
+                    f_obj.seek(0)
+                    f_obj.write(str_to_bytes(dumps(queues)))
+            else:
+                f_obj = file.open("wb", buffering=0)
+                lock(f_obj, LOCK_EX)
+                queues = [queue_val]
+                f_obj.write(str_to_bytes(dumps(queues)))
+        finally:
+            unlock(f_obj)
+            f_obj.close()
+
+    def _put_fanout(self, exchange, payload, routing_key, **kwargs):
+        for q in self.get_table(exchange):
+            self._put(q.queue, payload, **kwargs)
+
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
-        filename = '%s_%s.%s.msg' % (int(round(monotonic() * 1000)),
-                                     uuid.uuid4(), queue)
+        filename = '{}_{}.{}.msg'.format(int(round(monotonic() * 1000)),
+                                         uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
         try:
-            f = open(filename, 'wb')
+            f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
-        except (IOError, OSError):
+        except OSError:
             raise ChannelError(
-                'Cannot add file {0!r} to directory'.format(filename))
+                f'Cannot add file {filename!r} to directory')
         finally:
             unlock(f)
             f.close()
@@ -101,8 +243,9 @@ class Channel(virtual.Channel):
                 # move the file to the tmp/processed folder
                 shutil.move(os.path.join(self.data_folder_in, filename),
                             processed_folder)
-            except IOError:
-                pass  # file could be locked, or removed in meantime so ignore
+            except OSError:
+                # file could be locked, or removed in meantime so ignore
+                continue
 
             filename = os.path.join(processed_folder, filename)
             try:
@@ -111,9 +254,9 @@ class Channel(virtual.Channel):
                 f.close()
                 if not self.store_processed:
                     os.remove(filename)
-            except (IOError, OSError):
+            except OSError:
                 raise ChannelError(
-                    'Cannot read file {0!r} from queue.'.format(filename))
+                    f'Cannot read file {filename!r} from queue.')
 
             return loads(bytes_to_str(payload))
 
@@ -148,7 +291,7 @@ class Channel(virtual.Channel):
         """Return the number of messages in `queue` as an :class:`int`."""
         count = 0
 
-        queue_find = '.{0}.msg'.format(queue)
+        queue_find = f'.{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
@@ -181,15 +324,29 @@ class Channel(virtual.Channel):
     def processed_folder(self):
         return self.transport_options.get('processed_folder', 'processed')
 
+    @property
+    def control_folder(self):
+        return Path(self.transport_options.get('control_folder', 'control'))
+
 
 class Transport(virtual.Transport):
     """Filesystem Transport."""
 
-    Channel = Channel
+    implements = virtual.Transport.implements.extend(
+        asynchronous=False,
+        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+    )
 
+    Channel = Channel
+    # filesystem backend state is global.
+    global_state = virtual.BrokerState()
     default_port = 0
     driver_type = 'filesystem'
     driver_name = 'filesystem'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def driver_version(self):
         return 'N/A'

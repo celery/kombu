@@ -6,7 +6,8 @@ You can use `simple_receive.py` (or `complete_receive.py`) to receive the
 message sent.
 
 """
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import eventlet
 
@@ -37,5 +38,6 @@ def wait_many(timeout=1):
                 else:
                     message.ack()
                     print(message.payload)
+
 
 eventlet.spawn(wait_many).wait()

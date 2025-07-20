@@ -9,7 +9,7 @@
 Basics
 ======
 
-The :class:`Consumer` takes a connection (or channel) and a list of queues to
+The :class:`~kombu.messaging.Consumer` takes a connection (or channel) and a list of queues to
 consume from. Several consumers can be mixed to consume from different
 channels, as they all bind to the same connection, and ``drain_events`` will
 drain events from all channels on that connection.
@@ -22,30 +22,93 @@ drain events from all channels on that connection.
 
     .. code-block:: python
 
-        Consumer(conn, accept=['json', 'pickle', 'msgpack', 'yaml'])
+        >>> Consumer(conn, accept=['json', 'pickle', 'msgpack', 'yaml'])
 
-
-Draining events from a single consumer:
-
-.. code-block:: python
-
-    with Consumer(connection, queues, accept=['json']):
-        connection.drain_events(timeout=1)
-
-
-Draining events from several consumers:
+You can create a consumer using a Connection. This consumer is consuming from a single queue with name `'queue'`:
 
 .. code-block:: python
 
-    from kombu.utils.compat import nested
+    >>> queue = Queue('queue', routing_key='queue')
+    >>> consumer = connection.Consumer(queue)
 
-    with connection.channel(), connection.channel() as (channel1, channel2):
-        with nested(Consumer(channel1, queues1, accept=['json']),
-                    Consumer(channel2, queues2, accept=['json'])):
-            connection.drain_events(timeout=1)
+You can also instantiate Consumer directly, it takes a channel or a connection as an argument. This consumer also
+consumes from single queue with name `'queue'`:
 
+.. code-block:: python
 
-Or using :class:`~kombu.mixins.ConsumerMixin`:
+    >>> queue = Queue('queue', routing_key='queue')
+    >>> with Connection('amqp://') as conn:
+    ...     with conn.channel() as channel:
+    ...         consumer = Consumer(channel, queue)
+
+A consumer needs to specify a handler for received data. This handler is specified in the form of a callback. The callback function is called
+by kombu every time a new message is received. The callback is called with two parameters: ``body``, containing deserialized
+data sent by a producer, and a :class:`~kombu.message.Message` instance ``message``. The user is responsible for acknowledging messages when manual
+acknowledgement is set.
+
+.. code-block:: python
+
+    >>> def callback(body, message):
+    ...     print(body)
+    ...     message.ack()
+
+    >>> consumer.register_callback(callback)
+
+Draining events from a single consumer
+--------------------------------------
+
+The method ``drain_events`` blocks indefinitely by default. This example sets the timeout to 1 second:
+ 
+.. code-block:: python
+
+    >>> with consumer:
+    ...     connection.drain_events(timeout=1)
+
+Draining events from several consumers
+--------------------------------------
+
+Each consumer has its own list of queues. Each consumer accepts data in `'json'` format:
+
+.. code-block:: python
+
+    >>> from kombu.utils.compat import nested
+
+    >>> queues1 = [Queue('queue11', routing_key='queue11'),
+                   Queue('queue12', routing_key='queue12')]
+    >>> queues2 = [Queue('queue21', routing_key='queue21'),
+                   Queue('queue22', routing_key='queue22')]
+    >>> with connection.channel(), connection.channel() as (channel1, channel2):
+    ...     with nested(Consumer(channel1, queues1, accept=['json']),
+    ...                 Consumer(channel2, queues2, accept=['json'])):
+    ...         connection.drain_events(timeout=1)
+
+The full example will look as follows:
+
+.. code-block:: python
+
+    from kombu import Connection, Consumer, Queue
+
+    def callback(body, message):
+        print('RECEIVED MESSAGE: {0!r}'.format(body))
+        message.ack()
+
+    queue1 = Queue('queue1', routing_key='queue1')
+    queue2 = Queue('queue2', routing_key='queue2')
+
+    with Connection('amqp://') as conn:
+        with conn.channel() as channel:
+            consumer = Consumer(conn, [queue1, queue2], accept=['json'])
+            consumer.register_callback(callback)
+            with consumer:
+                conn.drain_events(timeout=1)
+
+Consumer mixin classes
+======================
+
+Kombu provides predefined mixin classes in module :py:mod:`~kombu.mixins`. It contains two classes:
+:class:`~kombu.mixins.ConsumerMixin` for creating consumers and :class:`~kombu.mixins.ConsumerProducerMixin`
+for creating consumers supporting also publishing messages. Consumers can be created just by subclassing
+mixin class and overriding some of the methods:
 
 .. code-block:: python
 
@@ -58,7 +121,7 @@ Or using :class:`~kombu.mixins.ConsumerMixin`:
 
         def get_consumers(self, Consumer, channel):
             return [
-                Consumer(queues, callbacks=[self.on_message], accept=['json']),
+                Consumer(channel, callbacks=[self.on_message], accept=['json']),
             ]
 
         def on_message(self, body, message):
@@ -90,14 +153,14 @@ and with multiple channels again:
                              callbacks=[self.on_special_message],
                              accept=['json'])]
 
-        def on_consumer_end(self, connection, default_channel):
+        def on_consume_end(self, connection, default_channel):
             if self.channel2:
                 self.channel2.close()
 
     C(connection).run()
 
 
-There's also a :class:`~kombu.mixins.ConsumerProducerMixin` for consumers
+The main use of :class:`~kombu.mixins.ConsumerProducerMixin` is to create consumers
 that need to also publish messages on a separate connection (e.g. sending rpc
 replies, streaming results):
 

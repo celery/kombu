@@ -1,15 +1,14 @@
 """Scheduling Utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 from itertools import count
 
-from kombu.five import python_2_unicode_compatible
-
 from .imports import symbol_by_name
 
-__all__ = [
+__all__ = (
     'FairCycle', 'priority_cycle', 'round_robin_cycle', 'sorted_cycle',
-]
+)
 
 CYCLE_ALIASES = {
     'priority': 'kombu.utils.scheduling:priority_cycle',
@@ -18,14 +17,14 @@ CYCLE_ALIASES = {
 }
 
 
-@python_2_unicode_compatible
-class FairCycle(object):
+class FairCycle:
     """Cycle between resources.
 
     Consume from a set of resources, where each resource gets
     an equal chance to be consumed from.
 
     Arguments:
+    ---------
         fun (Callable): Callback to call.
         resources (Sequence[Any]): List of resources.
         predicate (type): Exception predicate.
@@ -55,13 +54,12 @@ class FairCycle(object):
             try:
                 return self.fun(resource, callback, **kwargs)
             except self.predicate:
-                # reraise when retries exchausted.
+                # reraise when retries exhausted.
                 if tried >= len(self.resources) - 1:
                     raise
 
     def close(self):
         """Close cycle."""
-        pass
 
     def __repr__(self):
         """``repr(cycle)``."""
@@ -69,7 +67,7 @@ class FairCycle(object):
             self=self, size=len(self.resources))
 
 
-class round_robin_cycle(object):
+class round_robin_cycle:
     """Iterator that cycles between items in round-robin."""
 
     def __init__(self, it=None):
@@ -98,7 +96,6 @@ class priority_cycle(round_robin_cycle):
 
     def rotate(self, last_used):
         """Unused in this implementation."""
-        pass
 
 
 class sorted_cycle(priority_cycle):

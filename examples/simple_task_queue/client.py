@@ -1,4 +1,4 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 from kombu.pools import producers
 
@@ -23,8 +23,10 @@ def send_as_task(connection, fun, args=(), kwargs={}, priority='mid'):
                          declare=[task_exchange],
                          routing_key=routing_key)
 
+
 if __name__ == '__main__':
     from kombu import Connection
+
     from .tasks import hello_task
 
     connection = Connection('amqp://guest:guest@localhost:5672//')

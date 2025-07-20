@@ -1,20 +1,21 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import io
-import pytest
-import sys
+import socket
 import warnings
+from array import array
+from time import monotonic
+from unittest.mock import MagicMock, Mock, patch
 
-from case import MagicMock, Mock, patch
+import pytest
 
 from kombu import Connection
 from kombu.compression import compress
-from kombu.exceptions import ResourceError, ChannelError
+from kombu.exceptions import ChannelError, ResourceError
 from kombu.transport import virtual
 from kombu.utils.uuid import uuid
 
-PY3 = sys.version_info[0] == 3
-PRINT_FQDN = 'builtins.print' if PY3 else '__builtin__.print'
+PRINT_FQDN = 'builtins.print'
 
 
 def client(**kwargs):
@@ -35,10 +36,10 @@ def test_BrokerState():
 
 class test_QoS:
 
-    def setup(self):
+    def setup_method(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
 
-    def teardown(self):
+    def teardown_method(self):
         self.q._on_collect.cancel()
 
     def test_constructor(self):
@@ -117,7 +118,7 @@ class test_Message:
         if message.errors:
             message._reraise_error()
 
-        assert message.body == 'the quick brown fox...'.encode('utf-8')
+        assert message.body == b'the quick brown fox...'
         assert message.delivery_tag, tag
 
     def test_create_no_body(self):
@@ -133,7 +134,7 @@ class test_Message:
         tag = data['properties']['delivery_tag'] = uuid()
         message = c.message_to_python(data)
         dict_ = message.serializable()
-        assert dict_['body'] == 'the quick brown fox...'.encode('utf-8')
+        assert dict_['body'] == b'the quick brown fox...'
         assert dict_['properties']['delivery_tag'] == tag
         assert 'compression' not in dict_['headers']
 
@@ -173,20 +174,26 @@ class test_AbstractChannel:
 
 class test_Channel:
 
-    def setup(self):
+    def setup_method(self):
         self.channel = client().channel()
 
-    def teardown(self):
+    def teardown_method(self):
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
-    def test_exceeds_channel_max(self):
-        c = client()
-        t = c.transport
-        avail = t._avail_channel_ids = Mock(name='_avail_channel_ids')
-        avail.pop.side_effect = IndexError()
+    def test_get_free_channel_id(self):
+        conn = client()
+        channel = conn.channel()
+        assert channel.channel_id == 1
+        assert channel._get_free_channel_id() == 2
+
+    def test_get_free_channel_id__exceeds_channel_max(self):
+        conn = client()
+        conn.transport.channel_max = 2
+        channel = conn.channel()
+        channel._get_free_channel_id()
         with pytest.raises(ResourceError):
-            virtual.Channel(t)
+            channel._get_free_channel_id()
 
     def test_exchange_bind_interface(self):
         with pytest.raises(NotImplementedError):
@@ -343,7 +350,7 @@ class test_Channel:
 
         r1 = c.message_to_python(c.basic_get(n))
         assert r1
-        assert r1.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r1.body == b'nthex quick brown fox...'
         assert c.basic_get(n) is None
 
         consumer_tag = uuid()
@@ -353,7 +360,7 @@ class test_Channel:
         assert n + '2' in c._active_queues
         c.drain_events()
         r2 = c.message_to_python(messages[-1])
-        assert r2.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r2.body == b'nthex quick brown fox...'
         assert r2.delivery_info['exchange'] == n
         assert r2.delivery_info['routing_key'] == n
         with pytest.raises(virtual.Empty):
@@ -363,7 +370,7 @@ class test_Channel:
         c._restore(r2)
         r3 = c.message_to_python(c.basic_get(n))
         assert r3
-        assert r3.body == 'nthex quick brown fox...'.encode('utf-8')
+        assert r3.body == b'nthex quick brown fox...'
         assert c.basic_get(n) is None
 
     def test_basic_ack(self):
@@ -457,9 +464,8 @@ class test_Channel:
             assert 'could not be delivered' in log[0].message.args[0]
 
     def test_context(self):
-        x = self.channel.__enter__()
-        assert x is self.channel
-        x.__exit__()
+        with self.channel as x:
+            assert x is self.channel
         assert x.closed
 
     def test_cycle_property(self):
@@ -549,12 +555,26 @@ class test_Channel:
 
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.transport = client().transport
 
+    def test_state_is_transport_specific(self):
+        # Tests that each Transport of Connection instance
+        # has own state attribute
+        conn1 = client()
+        conn2 = client()
+        assert conn1.transport.state != conn2.transport.state
+
     def test_custom_polling_interval(self):
-        x = client(transport_options=dict(polling_interval=32.3))
+        x = client(transport_options={'polling_interval': 32.3})
         assert x.transport.polling_interval == 32.3
+
+    def test_timeout_over_polling_interval(self):
+        x = client(transport_options=dict(polling_interval=60))
+        start = monotonic()
+        with pytest.raises(socket.timeout):
+            x.transport.drain_events(x, timeout=.5)
+            assert monotonic() - start < 60
 
     def test_close_connection(self):
         c1 = self.transport.create_channel(self.transport)
@@ -562,8 +582,25 @@ class test_Transport:
         assert len(self.transport.channels) == 2
         self.transport.close_connection(self.transport)
         assert not self.transport.channels
-        del(c1)  # so pyflakes doesn't complain
-        del(c2)
+        del c1  # so pyflakes doesn't complain
+        del c2
+
+    def test_create_channel(self):
+        """Ensure create_channel can create channels successfully."""
+        assert self.transport.channels == []
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport.channels == [created_channel]
+
+    def test_close_channel(self):
+        """Ensure close_channel actually removes the channel and updates
+        _used_channel_ids.
+        """
+        assert self.transport._used_channel_ids == array('H')
+        created_channel = self.transport.create_channel(self.transport)
+        assert self.transport._used_channel_ids == array('H', (1,))
+        self.transport.close_channel(created_channel)
+        assert self.transport.channels == []
+        assert self.transport._used_channel_ids == array('H')
 
     def test_drain_channel(self):
         channel = self.transport.create_channel(self.transport)

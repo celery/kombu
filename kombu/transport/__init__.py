@@ -1,12 +1,12 @@
 """Built-in transports."""
-from __future__ import absolute_import, unicode_literals
 
-from kombu.five import string_t
+from __future__ import annotations
+
 from kombu.utils.compat import _detect_environment
 from kombu.utils.imports import symbol_by_name
 
 
-def supports_librabbitmq():
+def supports_librabbitmq() -> bool | None:
     """Return true if :pypi:`librabbitmq` can be used."""
     if _detect_environment() == 'default':
         try:
@@ -15,6 +15,7 @@ def supports_librabbitmq():
             pass
         else:                # pragma: no cover
             return True
+    return None
 
 
 TRANSPORT_ALIASES = {
@@ -22,8 +23,11 @@ TRANSPORT_ALIASES = {
     'amqps': 'kombu.transport.pyamqp:SSLTransport',
     'pyamqp': 'kombu.transport.pyamqp:Transport',
     'librabbitmq': 'kombu.transport.librabbitmq:Transport',
+    'confluentkafka': 'kombu.transport.confluentkafka:Transport',
+    'kafka': 'kombu.transport.confluentkafka:Transport',
     'memory': 'kombu.transport.memory:Transport',
     'redis': 'kombu.transport.redis:Transport',
+    'rediss': 'kombu.transport.redis:Transport',
     'SQS': 'kombu.transport.SQS:Transport',
     'sqs': 'kombu.transport.SQS:Transport',
     'mongodb': 'kombu.transport.mongodb:Transport',
@@ -37,20 +41,25 @@ TRANSPORT_ALIASES = {
     'sentinel': 'kombu.transport.redis:SentinelTransport',
     'consul': 'kombu.transport.consul:Transport',
     'etcd': 'kombu.transport.etcd:Transport',
+    'azurestoragequeues': 'kombu.transport.azurestoragequeues:Transport',
+    'azureservicebus': 'kombu.transport.azureservicebus:Transport',
+    'pyro': 'kombu.transport.pyro:Transport',
+    'gcpubsub': 'kombu.transport.gcpubsub:Transport',
 }
 
 _transport_cache = {}
 
 
-def resolve_transport(transport=None):
+def resolve_transport(transport: str | None = None) -> str | None:
     """Get transport by name.
 
     Arguments:
+    ---------
         transport (Union[str, type]): This can be either
             an actual transport class, or the fully qualified
             path to a transport class, or the alias of a transport.
     """
-    if isinstance(transport, string_t):
+    if isinstance(transport, str):
         try:
             transport = TRANSPORT_ALIASES[transport]
         except KeyError:
@@ -59,9 +68,9 @@ def resolve_transport(transport=None):
                 alt = fmatch_best(transport, TRANSPORT_ALIASES)
                 if alt:
                     raise KeyError(
-                        'No such transport: {0}.  Did you mean {1}?'.format(
+                        'No such transport: {}.  Did you mean {}?'.format(
                             transport, alt))
-                raise KeyError('No such transport: {0}'.format(transport))
+                raise KeyError(f'No such transport: {transport}')
         else:
             if callable(transport):
                 transport = transport()
@@ -69,7 +78,7 @@ def resolve_transport(transport=None):
     return transport
 
 
-def get_transport_cls(transport=None):
+def get_transport_cls(transport: str | None = None) -> str | None:
     """Get transport class by name.
 
     The transport string is the full path to a transport class, e.g.::

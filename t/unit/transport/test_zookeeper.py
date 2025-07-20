@@ -1,21 +1,22 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import pytest
-from case import skip
+
 from kombu import Connection
 from kombu.transport import zookeeper
 
+pytest.importorskip('kazoo')
 
-@skip.unless_module('kazoo')
+
 class test_Channel:
-    def setup(self):
+    def setup_method(self):
         self.connection = self.create_connection()
         self.channel = self.connection.default_channel
 
     def create_connection(self, **kwargs):
         return Connection(transport=zookeeper.Transport, **kwargs)
 
-    def teardown(self):
+    def teardown_method(self):
         self.connection.close()
 
     def test_put_puts_bytes_to_queue(self):

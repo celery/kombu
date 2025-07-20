@@ -1,6 +1,6 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
-from case import Mock, patch
+from unittest.mock import Mock, patch
 
 from kombu import transport
 

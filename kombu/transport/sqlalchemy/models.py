@@ -1,20 +1,26 @@
 """Kombu transport using SQLAlchemy as the message store."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import (Column, Integer, String, Text, DateTime,
-                        Sequence, Boolean, ForeignKey, SmallInteger)
-from sqlalchemy.ext.declarative import declarative_base, declared_attr
-from sqlalchemy.orm import relation
+from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,
+                        Sequence, SmallInteger, String, Text)
+from sqlalchemy.orm import relationship
 from sqlalchemy.schema import MetaData
+
+try:
+    from sqlalchemy.orm import declarative_base, declared_attr
+except ImportError:
+    # TODO: Remove this once we drop support for SQLAlchemy < 1.4.
+    from sqlalchemy.ext.declarative import declarative_base, declared_attr
 
 class_registry = {}
 metadata = MetaData()
 ModelBase = declarative_base(metadata=metadata, class_registry=class_registry)
 
 
-class Queue(object):
+class Queue:
     """The queue class."""
 
     __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
@@ -27,17 +33,20 @@ class Queue(object):
         self.name = name
 
     def __str__(self):
-        return '<Queue({self.name})>'.format(self=self)
+        return f'<Queue({self.name})>'
 
     @declared_attr
     def messages(cls):
-        return relation('Message', backref='queue', lazy='noload')
+        return relationship('Message', backref='queue', lazy='noload')
 
 
-class Message(object):
+class Message:
     """The message class."""
 
-    __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
+    __table_args__ = (
+        Index('ix_kombu_message_timestamp_id', 'timestamp', 'id'),
+        {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
+    )
 
     id = Column(Integer, Sequence('message_id_sequence'),
                 primary_key=True, autoincrement=True)

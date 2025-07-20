@@ -1,13 +1,14 @@
 """Import related utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import importlib
 import sys
 
-from kombu.five import reraise, string_t
+from kombu.exceptions import reraise
 
 
-def symbol_by_name(name, aliases={}, imp=None, package=None,
+def symbol_by_name(name, aliases=None, imp=None, package=None,
                    sep='.', default=None, **kwargs):
     """Get symbol by qualified name.
 
@@ -27,7 +28,8 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
     If `aliases` is provided, a dict containing short name/long name
     mappings, the name is looked up in the aliases first.
 
-    Examples:
+    Examples
+    --------
         >>> symbol_by_name('celery.concurrency.processes.TaskPool')
         <class 'celery.concurrency.processes.TaskPool'>
 
@@ -40,10 +42,11 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
         >>> symbol_by_name(TaskPool) is TaskPool
         True
     """
+    aliases = {} if not aliases else aliases
     if imp is None:
         imp = importlib.import_module
 
-    if not isinstance(name, string_t):
+    if not isinstance(name, str):
         return name                                 # already a class
 
     name = aliases.get(name) or name
@@ -56,7 +59,7 @@ def symbol_by_name(name, aliases={}, imp=None, package=None,
             module = imp(module_name, package=package, **kwargs)
         except ValueError as exc:
             reraise(ValueError,
-                    ValueError("Couldn't import {0!r}: {1}".format(name, exc)),
+                    ValueError(f"Couldn't import {name!r}: {exc}"),
                     sys.exc_info()[2])
         return getattr(module, cls_name) if cls_name else module
     except (ImportError, AttributeError):

@@ -2,12 +2,13 @@
  kombu - Messaging library for Python
 ========================================
 
-|build-status| |coverage| |license| |wheel| |pyversion| |pyimp|
+|build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 4.0.2
-:Web: http://kombu.me/
-:Download: http://pypi.python.org/pypi/kombu/
+:Version: 5.5.4
+:Documentation: https://kombu.readthedocs.io/
+:Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
+:DeepWiki: |deepwiki|
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
 
 About
@@ -29,19 +30,11 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_, `librabbitmq`_, or `qpid-python`_ libraries.
-
-    * High performance AMQP transport written in C - when using `librabbitmq`_
-
-      This is automatically enabled if librabbitmq is installed:
-
-      ::
-
-        $ pip install librabbitmq
+    * AMQP transport using the `py-amqp`_, or `qpid-python`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -64,18 +57,19 @@ and the `Wikipedia article about AMQP`_.
 
 .. _`RabbitMQ`: https://www.rabbitmq.com/
 .. _`AMQP`: https://amqp.org
-.. _`py-amqp`: https://pypi.python.org/pypi/amqp/
-.. _`qpid-python`: https://pypi.python.org/pypi/qpid-python/
+.. _`py-amqp`: https://pypi.org/project/amqp/
+.. _`qpid-python`: https://pypi.org/project/qpid-python/
 .. _`Redis`: https://redis.io
 .. _`Amazon SQS`: https://aws.amazon.com/sqs/
 .. _`Zookeeper`: https://zookeeper.apache.org/
-.. _`Rabbits and warrens`: http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
+.. _`Rabbits and warrens`: http://web.archive.org/web/20160323134044/http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
 .. _`amqplib`: https://barryp.org/software/py-amqplib/
 .. _`Wikipedia article about AMQP`: https://en.wikipedia.org/wiki/AMQP
-.. _`carrot`: https://pypi.python.org/pypi/carrot/
-.. _`librabbitmq`: https://pypi.python.org/pypi/librabbitmq
-.. _`Pyro`: https://pythonhosting.org/Pyro4
+.. _`carrot`: https://pypi.org/project/carrot/
+.. _`librabbitmq`: https://pypi.org/project/librabbitmq/
+.. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`MongoDB`: https://www.mongodb.com/
 
 .. _transport-comparison:
 
@@ -100,6 +94,8 @@ Transport Comparison
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 
@@ -132,7 +128,7 @@ Quick overview
     video_queue = Queue('video', exchange=media_exchange, routing_key='video')
 
     def process_media(body, message):
-        print body
+        print(body)
         message.ack()
 
     # connections
@@ -173,7 +169,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
@@ -308,9 +304,9 @@ Getting Help
 Mailing list
 ------------
 
-Join the `carrot-users`_ mailing list.
+Join the `celery-users`_ mailing list.
 
-.. _`carrot-users`: https://groups.google.com/group/carrot-users/
+.. _`kombu forum`: https://github.com/celery/kombu/discussions
 
 Bug tracker
 ===========
@@ -333,12 +329,12 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
+.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/ci.yaml/badge.svg
     :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
+    :target: https://github.com/celery/kombu/actions/workflows/ci.yml
 
-.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
-    :target: https://codecov.io/github/celery/kombu?branch=master
+.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=main
+    :target: https://codecov.io/github/celery/kombu?branch=main
 
 .. |license| image:: https://img.shields.io/pypi/l/kombu.svg
     :alt: BSD License
@@ -346,14 +342,29 @@ file in the top distribution directory for the full license text.
 
 .. |wheel| image:: https://img.shields.io/pypi/wheel/kombu.svg
     :alt: Kombu can be installed via wheel
-    :target: https://pypi.python.org/pypi/kombu/
+    :target: https://pypi.org/project/kombu/
 
 .. |pyversion| image:: https://img.shields.io/pypi/pyversions/kombu.svg
     :alt: Supported Python versions.
-    :target: https://pypi.python.org/pypi/kombu/
+    :target: https://pypi.org/project/kombu/
 
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
-    :alt: Support Python implementations.
-    :target: https://pypi.python.org/pypi/kombu/
+     :alt: Support Python implementations.
+     :target: https://pypi.org/project/kombu/
+
+.. |downloads| image:: https://pepy.tech/badge/kombu
+    :target: https://pepy.tech/project/kombu
+
+.. |deepwiki| image:: https://devin.ai/assets/deepwiki-badge.png
+    :alt: Ask http://DeepWiki.com
+    :target: https://deepwiki.com/celery/kombu
+    :width: 125px
+
+
+kombu as part of the Tidelift Subscription
+=======
+
+The maintainers of kombu and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/pypi-kombu?utm_source=pypi-kombu&utm_medium=referral&utm_campaign=readme&utm_term=repo)
+
 --
 

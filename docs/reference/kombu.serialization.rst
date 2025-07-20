@@ -1,6 +1,6 @@
-========================================
- Message Serialization - ``kombu``
-========================================
+================================================
+ Message Serialization - ``kombu.serialization``
+================================================
 
 .. currentmodule:: kombu.serialization
 
@@ -30,9 +30,9 @@
     Serialization
     -------------
 
-    .. autofunction:: encode
+    .. autofunction:: dumps
 
-    .. autofunction:: decode
+    .. autofunction:: loads
 
     .. autofunction:: raw_encode
 
@@ -40,12 +40,11 @@
     --------
 
     .. autofunction:: register
+    .. autofunction:: unregister
 
     .. autodata:: registry
 
-.. _`cjson`: http://pypi.python.org/pypi/python-cjson/
-.. _`simplejson`: http://code.google.com/p/simplejson/
-.. _`Python 2.6+`: http://docs.python.org/library/json.html
-.. _`PyYAML`: http://pyyaml.org/
-.. _`msgpack`: http://msgpack.sourceforge.net/
-.. _`msgpack-python`: http://pypi.python.org/pypi/msgpack-python/
+.. _`Python 2.7+`: https://docs.python.org/library/json.html
+.. _`PyYAML`: https://pyyaml.org/
+.. _`msgpack`: https://msgpack.org/
+.. _`msgpack-python`: https://pypi.org/project/msgpack-python/

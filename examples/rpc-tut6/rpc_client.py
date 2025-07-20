@@ -1,10 +1,11 @@
-#!/usr/bin/env python
-from __future__ import absolute_import, unicode_literals
+#!/usr/bin/env python3
 
-from kombu import Connection, Producer, Consumer, Queue, uuid
+from __future__ import annotations
+
+from kombu import Connection, Consumer, Producer, Queue, uuid
 
 
-class FibonacciRpcClient(object):
+class FibonacciRpcClient:
 
     def __init__(self, connection):
         self.connection = connection
@@ -39,7 +40,7 @@ def main(broker_url):
     fibonacci_rpc = FibonacciRpcClient(connection)
     print(' [x] Requesting fib(30)')
     response = fibonacci_rpc.call(30)
-    print(' [.] Got {0!r}'.format(response))
+    print(f' [.] Got {response!r}')
 
 
 if __name__ == '__main__':

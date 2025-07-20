@@ -1,27 +1,33 @@
 """Base transport interface."""
-from __future__ import absolute_import, unicode_literals
+# flake8: noqa
+
+
+from __future__ import annotations
 
 import errno
 import socket
+from typing import TYPE_CHECKING
 
 from amqp.exceptions import RecoverableConnectionError
 
 from kombu.exceptions import ChannelError, ConnectionError
-from kombu.five import items
 from kombu.message import Message
 from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
 from kombu.utils.time import maybe_s_to_ms
 
-__all__ = ['Message', 'StdChannel', 'Management', 'Transport']
+if TYPE_CHECKING:
+    from types import TracebackType
 
-RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
+__all__ = ('Message', 'StdChannel', 'Management', 'Transport')
+
+RABBITMQ_QUEUE_ARGUMENTS = {
     'expires': ('x-expires', maybe_s_to_ms),
     'message_ttl': ('x-message-ttl', maybe_s_to_ms),
     'max_length': ('x-max-length', int),
     'max_length_bytes': ('x-max-length-bytes', int),
     'max_priority': ('x-max-priority', int),
-}
+}  # type: Mapping[str, Tuple[str, Callable]]
 
 
 def to_rabbitmq_queue_arguments(arguments, **options):
@@ -48,12 +54,13 @@ def to_rabbitmq_queue_arguments(arguments, **options):
         max_priority (int): Max priority steps for queue.
             This will be converted to ``x-max-priority`` int.
 
-    Returns:
+    Returns
+    -------
         Dict: RabbitMQ compatible queue arguments.
     """
     prepared = dictfilter(dict(
         _to_rabbitmq_queue_argument(key, value)
-        for key, value in items(options)
+        for key, value in options.items()
     ))
     return dict(arguments, **prepared) if prepared else arguments
 
@@ -70,7 +77,7 @@ def _LeftBlank(obj, method):
             obj.__class__, method))
 
 
-class StdChannel(object):
+class StdChannel:
     """Standard channel base class."""
 
     no_ack_consumers = None
@@ -89,11 +96,11 @@ class StdChannel(object):
     def after_reply_message_received(self, queue):
         """Callback called after RPC reply received.
 
-        Notes:
+        Notes
+        -----
            Reply queue semantics: can be used to delete the queue
            after transient reply message received.
         """
-        pass
 
     def prepare_queue_arguments(self, arguments, **kwargs):
         return arguments
@@ -101,11 +108,16 @@ class StdChannel(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
 
-class Management(object):
+class Management:
     """AMQP Management API (incomplete)."""
 
     def __init__(self, transport):
@@ -132,13 +144,13 @@ class Implements(dict):
 
 
 default_transport_capabilities = Implements(
-    async=False,
+    asynchronous=False,
     exchange_type=frozenset(['direct', 'topic', 'fanout', 'headers']),
     heartbeats=False,
 )
 
 
-class Transport(object):
+class Transport:
     """Base class for transports."""
 
     Management = Management
@@ -235,6 +247,10 @@ class Transport(object):
             reader = self.__reader = self._make_reader(connection)
         reader(loop)
 
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        """Customise the display format of the URI."""
+        raise NotImplementedError()
+
     @property
     def default_connection_params(self):
         return {}
@@ -252,4 +268,4 @@ class Transport(object):
 
     @property
     def supports_ev(self):
-        return self.implements.async
+        return self.implements.asynchronous

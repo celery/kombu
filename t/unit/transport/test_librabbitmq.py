@@ -1,23 +1,15 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
 
 import pytest
 
-from case import Mock, patch, skip
+pytest.importorskip('librabbitmq')
 
-try:
-    import librabbitmq
-except ImportError:
-    librabbitmq = None  # noqa
-else:
-    from kombu.transport import librabbitmq  # noqa
+from kombu.transport import librabbitmq  # noqa
 
 
-@skip.unless_module('librabbitmq')
-class lrmqCase:
-    pass
-
-
-class test_Message(lrmqCase):
+class test_Message:
 
     def test_init(self):
         chan = Mock(name='channel')
@@ -29,7 +21,7 @@ class test_Message(lrmqCase):
         assert message.properties['prop'] == 42
 
 
-class test_Channel(lrmqCase):
+class test_Channel:
 
     def test_prepare_message(self):
         conn = Mock(name='connection')
@@ -59,9 +51,9 @@ class test_Channel(lrmqCase):
         assert body3 == body
 
 
-class test_Transport(lrmqCase):
+class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.client = Mock(name='client')
         self.T = librabbitmq.Transport(self.client)
 
@@ -124,6 +116,18 @@ class test_Transport(lrmqCase):
             close.side_effect = OSError()
             self.T._collect(conn)
             close.assert_called_with(conn.fileno())
+
+    def test_collect__with_fileno_raising_value_error(self):
+        conn = Mock(name='connection')
+        conn.channels = {1: Mock(name='chan1'), 2: Mock(name='chan2')}
+        with patch('os.close') as close:
+            self.T.client = self.client
+            conn.fileno.side_effect = ValueError("Socket not connected")
+            self.T._collect(conn)
+            close.assert_not_called()
+        conn.fileno.assert_called_with()
+        assert self.client.drain_events is None
+        assert self.T.client is None
 
     def test_register_with_event_loop(self):
         conn = Mock(name='conn')

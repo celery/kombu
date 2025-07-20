@@ -1,11 +1,11 @@
 """Exchange and Queue declarations."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import numbers
 
 from .abstract import MaybeChannelBound, Object
 from .exceptions import ContentDisallowed
-from .five import python_2_unicode_compatible, string_t
 from .serialization import prepare_accept_content
 
 TRANSIENT_DELIVERY_MODE = 1
@@ -13,35 +13,36 @@ PERSISTENT_DELIVERY_MODE = 2
 DELIVERY_MODES = {'transient': TRANSIENT_DELIVERY_MODE,
                   'persistent': PERSISTENT_DELIVERY_MODE}
 
-__all__ = ['Exchange', 'Queue', 'binding', 'maybe_delivery_mode']
+__all__ = ('Exchange', 'Queue', 'binding', 'maybe_delivery_mode')
 
 INTERNAL_EXCHANGE_PREFIX = ('amq.',)
 
 
 def _reprstr(s):
     s = repr(s)
-    if isinstance(s, string_t) and s.startswith("u'"):
+    if isinstance(s, str) and s.startswith("u'"):
         return s[2:-1]
     return s[1:-1]
 
 
 def pretty_bindings(bindings):
-    return '[{0}]'.format(', '.join(map(str, bindings)))
+    return '[{}]'.format(', '.join(map(str, bindings)))
 
 
 def maybe_delivery_mode(
-        v, modes=DELIVERY_MODES, default=PERSISTENT_DELIVERY_MODE):
+        v, modes=None, default=PERSISTENT_DELIVERY_MODE):
     """Get delivery mode by name (or none if undefined)."""
+    modes = DELIVERY_MODES if not modes else modes
     if v:
         return v if isinstance(v, numbers.Integral) else modes[v]
     return default
 
 
-@python_2_unicode_compatible
 class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
     Arguments:
+    ---------
         name (str): See :attr:`name`.
         type (str): See :attr:`type`.
         channel (kombu.Connection, ChannelT): See :attr:`channel`.
@@ -51,7 +52,8 @@ class Exchange(MaybeChannelBound):
         arguments (Dict): See :attr:`arguments`.
         no_declare (bool): See :attr:`no_declare`
 
-    Attributes:
+    Attributes
+    ----------
         name (str): Name of the exchange.
             Default is no name (the default exchange).
 
@@ -154,13 +156,13 @@ class Exchange(MaybeChannelBound):
     )
 
     def __init__(self, name='', type='', channel=None, **kwargs):
-        super(Exchange, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
         self.type = type or self.type
         self.maybe_bind(channel)
 
     def __hash__(self):
-        return hash('E|%s' % (self.name,))
+        return hash(f'E|{self.name}')
 
     def _can_declare(self):
         return not self.no_declare and (
@@ -190,6 +192,7 @@ class Exchange(MaybeChannelBound):
         """Bind the exchange to another exchange.
 
         Arguments:
+        ---------
             nowait (bool): If set the server will not respond, and the call
                 will not block waiting for a response.
                 Default is :const:`False`.
@@ -221,6 +224,7 @@ class Exchange(MaybeChannelBound):
         """Create message instance to be sent with :meth:`publish`.
 
         Arguments:
+        ---------
             body (Any): Message body.
 
             delivery_mode (bool): Set custom delivery mode.
@@ -244,9 +248,11 @@ class Exchange(MaybeChannelBound):
 
             headers (Dict): Message headers.
         """
-        # XXX This method is unused by kombu itself AFAICT [ask].
         properties = {} if properties is None else properties
         properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
+        if (isinstance(body, str) and
+                properties.get('content_encoding', None)) is None:
+            kwargs['content_encoding'] = 'utf-8'
         return self.channel.prepare_message(
             body,
             properties=properties,
@@ -257,13 +263,14 @@ class Exchange(MaybeChannelBound):
         """Publish message.
 
         Arguments:
+        ---------
             message (Union[kombu.Message, str, bytes]):
                 Message to publish.
             routing_key (str): Message routing key.
             mandatory (bool): Currently not supported.
             immediate (bool): Currently not supported.
         """
-        if isinstance(message, string_t):
+        if isinstance(message, str):
             message = self.Message(message)
         exchange = exchange or self.name
         return self.channel.basic_publish(
@@ -278,6 +285,7 @@ class Exchange(MaybeChannelBound):
         """Delete the exchange declaration on server.
 
         Arguments:
+        ---------
             if_unused (bool): Delete only if the exchange has no bindings.
                 Default is :const:`False`.
             nowait (bool): If set the server will not respond, and a
@@ -307,7 +315,7 @@ class Exchange(MaybeChannelBound):
         return self._repr_entity(self)
 
     def __str__(self):
-        return 'Exchange {0}({1})'.format(
+        return 'Exchange {}({})'.format(
             _reprstr(self.name) or repr(''), self.type,
         )
 
@@ -316,11 +324,11 @@ class Exchange(MaybeChannelBound):
         return not self.auto_delete
 
 
-@python_2_unicode_compatible
 class binding(Object):
     """Represents a queue or exchange binding.
 
     Arguments:
+    ---------
         exchange (Exchange): Exchange to bind to.
         routing_key (str): Routing key used as binding key.
         arguments (Dict): Arguments for bind operation.
@@ -363,19 +371,19 @@ class binding(Object):
                            channel=channel)
 
     def __repr__(self):
-        return '<binding: {0}>'.format(self)
+        return f'<binding: {self}>'
 
     def __str__(self):
-        return '{0}->{1}'.format(
+        return '{}->{}'.format(
             _reprstr(self.exchange.name), _reprstr(self.routing_key),
         )
 
 
-@python_2_unicode_compatible
 class Queue(MaybeChannelBound):
     """A Queue declaration.
 
     Arguments:
+    ---------
         name (str): See :attr:`name`.
         exchange (Exchange, str): See :attr:`exchange`.
         routing_key (str): See :attr:`routing_key`.
@@ -394,7 +402,8 @@ class Queue(MaybeChannelBound):
         max_length_bytes (int): See :attr:`max_length_bytes`.
         max_priority (int): See :attr:`max_priority`.
 
-    Attributes:
+    Attributes
+    ----------
         name (str): Name of the queue.
             Default is no name (default queue destination).
 
@@ -519,7 +528,7 @@ class Queue(MaybeChannelBound):
 
         alias (str): Unused in Kombu, but applications can take advantage
             of this,  for example to give alternate names to queues with
-            utomatically generated queue names.
+            automatically generated queue names.
 
         on_declared (Callable): Optional callback to be applied when the
             queue has been declared (the ``queue_declare`` operation is
@@ -566,9 +575,12 @@ class Queue(MaybeChannelBound):
     def __init__(self, name='', exchange=None, routing_key='',
                  channel=None, bindings=None, on_declared=None,
                  **kwargs):
-        super(Queue, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.name = name or self.name
-        self.exchange = exchange or self.exchange
+        if isinstance(exchange, str):
+            self.exchange = Exchange(exchange)
+        elif isinstance(exchange, Exchange):
+            self.exchange = exchange
         self.routing_key = routing_key or self.routing_key
         self.bindings = set(bindings or [])
         self.on_declared = on_declared
@@ -586,12 +598,12 @@ class Queue(MaybeChannelBound):
 
     def bind(self, channel):
         on_declared = self.on_declared
-        bound = super(Queue, self).bind(channel)
+        bound = super().bind(channel)
         bound.on_declared = on_declared
         return bound
 
     def __hash__(self):
-        return hash('Q|%s' % (self.name,))
+        return hash(f'Q|{self.name}')
 
     def when_bound(self):
         if self.exchange:
@@ -628,6 +640,7 @@ class Queue(MaybeChannelBound):
         """Declare queue on the server.
 
         Arguments:
+        ---------
             nowait (bool): Do not wait for a reply.
             passive (bool): If set, the server will not create the queue.
                 The client can use this to check whether a queue exists
@@ -684,11 +697,13 @@ class Queue(MaybeChannelBound):
         specific types of applications where synchronous functionality
         is more important than performance.
 
-        Returns:
+        Returns
+        -------
             ~kombu.Message: if a message was available,
                 or :const:`None` otherwise.
 
         Arguments:
+        ---------
             no_ack (bool): If enabled the broker will
                 automatically ack messages.
             accept (Set[str]): Custom list of accepted content types.
@@ -710,13 +725,14 @@ class Queue(MaybeChannelBound):
                                         nowait=nowait) or 0
 
     def consume(self, consumer_tag='', callback=None,
-                no_ack=None, nowait=False):
+                no_ack=None, nowait=False, on_cancel=None):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
         until the client cancels them.
 
         Arguments:
+        ---------
             consumer_tag (str): Unique identifier for the consumer.
                 The consumer tag is local to a connection, so two clients
                 can use the same consumer tags. If this field is empty
@@ -728,6 +744,9 @@ class Queue(MaybeChannelBound):
             nowait (bool): Do not wait for a reply.
 
             callback (Callable): callback called for each delivered message.
+
+            on_cancel (Callable): callback called on cancel notify received
+                from broker.
         """
         if no_ack is None:
             no_ack = self.no_ack
@@ -737,7 +756,9 @@ class Queue(MaybeChannelBound):
             consumer_tag=consumer_tag or '',
             callback=callback,
             nowait=nowait,
-            arguments=self.consumer_arguments)
+            arguments=self.consumer_arguments,
+            on_cancel=on_cancel,
+        )
 
     def cancel(self, consumer_tag):
         """Cancel a consumer by consumer tag."""
@@ -747,6 +768,7 @@ class Queue(MaybeChannelBound):
         """Delete the queue.
 
         Arguments:
+        ---------
             if_unused (bool): If set, the server will only delete the queue
                 if it has no consumers. A channel error will be raised
                 if the queue has consumers.
@@ -807,7 +829,11 @@ class Queue(MaybeChannelBound):
 
     @property
     def can_cache_declaration(self):
-        return not self.auto_delete
+        if self.queue_arguments:
+            expiring_queue = "x-expires" in self.queue_arguments
+        else:
+            expiring_queue = False
+        return not expiring_queue and not self.auto_delete
 
     @classmethod
     def from_dict(cls, queue, **options):
@@ -855,7 +881,7 @@ class Queue(MaybeChannelBound):
                      bindings=bindings)
 
     def as_dict(self, recurse=False):
-        res = super(Queue, self).as_dict(recurse)
+        res = super().as_dict(recurse)
         if not recurse:
             return res
         bindings = res.get('bindings')

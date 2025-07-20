@@ -1,22 +1,12 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
+from __future__ import annotations
+
 import os
 import re
 import sys
-import codecs
 
 import setuptools
-import setuptools.command.test
-
-from distutils.command.install import INSTALL_SCHEMES
-
-if sys.version_info < (2, 7):
-    raise Exception('Kombu 4.0 requires Python 2.7 or higher.')
-
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup  # noqa
+from setuptools import setup
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
@@ -30,6 +20,7 @@ def add_default(m):
 
 def add_doc(m):
     return (('doc', m.groups()[0]),)
+
 
 pats = {re_meta: add_default, re_doc: add_doc}
 here = os.path.abspath(os.path.dirname(__file__))
@@ -45,13 +36,9 @@ try:
                 meta.update(handler(m))
 finally:
     meta_fh.close()
-# --
 
-data_files = []
-root_dir = os.path.dirname(__file__)
-if root_dir != '':
-    os.chdir(root_dir)
-src_dir = 'kombu'
+
+# --
 
 
 def fullsplit(path, result=None):
@@ -65,73 +52,49 @@ def fullsplit(path, result=None):
     return fullsplit(head, [tail] + result)
 
 
-for scheme in list(INSTALL_SCHEMES.values()):
-    scheme['data'] = scheme['purelib']
-
-for dirpath, dirnames, filenames in os.walk(src_dir):
-    # Ignore dirnames that start with '.'
-    for i, dirname in enumerate(dirnames):
-        if dirname.startswith('.'):
-            del dirnames[i]
-    for filename in filenames:
-        if not filename.endswith('.py'):
-            data_files.append(
-                [dirpath, [os.path.join(dirpath, f) for f in filenames]],
-            )
-
-if os.path.exists('README.rst'):
-    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
-else:
-    long_description = 'See https://pypi.python.org/pypi/kombu'
+# if os.path.exists('README.rst'):
+#    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
+# else:
+#    long_description = 'See https://pypi.org/project/kombu/'
 
 # -*- Installation Requires -*-
 py_version = sys.version_info
-is_jython = sys.platform.startswith('java')
 is_pypy = hasattr(sys, 'pypy_version_info')
 
 
-def strip_comments(l):
-    return l.split('#', 1)[0].strip()
+def strip_comments(line):
+    return line.split('#', 1)[0].strip()
 
 
 def reqs(*f):
-    return [
-        r for r in (
-            strip_comments(l) for l in open(
-                os.path.join(os.getcwd(), 'requirements', *f)).readlines()
-        ) if r]
+    with open(os.path.join(os.getcwd(), "requirements", *f)) as reqs_file:
+        return [r for r in (strip_comments(line) for line in reqs_file) if r]
 
 
 def extras(*p):
     return reqs('extras', *p)
 
 
-class pytest(setuptools.command.test.test):
-    user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
+def readme():
+    with open('README.rst') as f:
+        return f.read()
 
-    def initialize_options(self):
-        setuptools.command.test.test.initialize_options(self)
-        self.pytest_args = []
-
-    def run_tests(self):
-        import pytest
-        sys.exit(pytest.main(self.pytest_args))
 
 setup(
     name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],
-    long_description=long_description,
     keywords='messaging message amqp rabbitmq redis actor producer consumer',
     author=meta['author'],
     author_email=meta['contact'],
     url=meta['homepage'],
+    project_urls={
+        'Source': 'https://github.com/celery/kombu'
+    },
     platforms=['any'],
-    data_files=data_files,
-    zip_safe=False,
-    license='BSD',
-    cmdclass={'test': pytest},
+    license='BSD-3-Clause',
+    python_requires=">=3.8",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
@@ -140,28 +103,32 @@ setup(
         'redis': extras('redis.txt'),
         'mongodb': extras('mongodb.txt'),
         'sqs': extras('sqs.txt'),
+        'gcpubsub': extras('gcpubsub.txt'),
         'zookeeper': extras('zookeeper.txt'),
         'sqlalchemy': extras('sqlalchemy.txt'),
         'librabbitmq': extras('librabbitmq.txt'),
         'pyro': extras('pyro.txt'),
         'slmq': extras('slmq.txt'),
+        'azurestoragequeues': extras('azurestoragequeues.txt'),
+        'azureservicebus': extras('azureservicebus.txt'),
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
+        'confluentkafka': extras('confluentkafka.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 2',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
-        'Programming Language :: Python :: Implementation :: Jython',
         'Intended Audience :: Developers',
         'Topic :: Communications',
         'Topic :: System :: Distributed Computing',

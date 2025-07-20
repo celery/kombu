@@ -1,37 +1,57 @@
 """URL Utilities."""
-from __future__ import absolute_import, unicode_literals
+# flake8: noqa
 
-from collections import Mapping
+
+from __future__ import annotations
+
+from collections.abc import Mapping
 from functools import partial
+from typing import NamedTuple
+from urllib.parse import parse_qsl, quote, unquote, urlparse
 
 try:
-    from urllib.parse import parse_qsl, quote, unquote, urlparse
-except ImportError:
-    from urllib import quote, unquote                  # noqa
-    from urlparse import urlparse, parse_qsl    # noqa
+    import ssl
+    ssl_available = True
+except ImportError:  # pragma: no cover
+    ssl_available = False
 
-from kombu.five import bytes_if_py2, string_t
+from ..log import get_logger
 
-from .compat import NamedTuple
+safequote = partial(quote, safe='')
+logger = get_logger(__name__)
 
-safequote = partial(quote, safe=bytes_if_py2(''))
+class urlparts(NamedTuple):
+    """Named tuple representing parts of the URL."""
 
-
-urlparts = NamedTuple('urlparts', [
-    ('scheme', str),
-    ('hostname', str),
-    ('port', int),
-    ('username', str),
-    ('password', str),
-    ('path', str),
-    ('query', Mapping),
-])
+    scheme: str
+    hostname: str
+    port: int
+    username: str
+    password: str
+    path: str
+    query: Mapping
 
 
 def parse_url(url):
     # type: (str) -> Dict
     """Parse URL into mapping of components."""
     scheme, host, port, user, password, path, query = _parse_url(url)
+    if query:
+        keys = [key for key in query.keys() if key.startswith('ssl_')]
+        for key in keys:
+            if key == "ssl_check_hostname":
+                query[key] = query[key].lower() != 'false'
+            elif key == 'ssl_cert_reqs':
+                query[key] = parse_ssl_cert_reqs(query[key])
+                if query[key] is None:
+                    logger.warning('Defaulting to insecure SSL behaviour.')
+
+            if 'ssl' not in query:
+                query['ssl'] = {}
+
+            query['ssl'][key] = query[key]
+            del query[key]
+
     return dict(transport=scheme, hostname=host,
                 port=port, userid=user,
                 password=password, virtual_host=path, **query)
@@ -55,14 +75,16 @@ def url_to_parts(url):
         unquote(path or '') or None,
         dict(parse_qsl(parts.query)),
     )
-_parse_url = url_to_parts  # noqa
+
+
+_parse_url = url_to_parts
 
 
 def as_url(scheme, host=None, port=None, user=None, password=None,
            path=None, query=None, sanitize=False, mask='**'):
     # type: (str, str, int, str, str, str, str, bool, str) -> str
     """Generate URL from component parts."""
-    parts = ['{0}://'.format(scheme)]
+    parts = [f'{scheme}://']
     if user or password:
         if user:
             parts.append(safequote(user))
@@ -88,6 +110,23 @@ def sanitize_url(url, mask='**'):
 def maybe_sanitize_url(url, mask='**'):
     # type: (Any, str) -> Any
     """Sanitize url, or do nothing if url undefined."""
-    if isinstance(url, string_t) and '://' in url:
+    if isinstance(url, str) and '://' in url:
         return sanitize_url(url, mask)
     return url
+
+
+def parse_ssl_cert_reqs(query_value):
+    # type: (str) -> Any
+    """Given the query parameter for ssl_cert_reqs, return the SSL constant or None."""
+    if ssl_available:
+        query_value_to_constant = {
+            'CERT_REQUIRED': ssl.CERT_REQUIRED,
+            'CERT_OPTIONAL': ssl.CERT_OPTIONAL,
+            'CERT_NONE': ssl.CERT_NONE,
+            'required': ssl.CERT_REQUIRED,
+            'optional': ssl.CERT_OPTIONAL,
+            'none': ssl.CERT_NONE,
+        }
+        return query_value_to_constant[query_value]
+    else:
+        return None

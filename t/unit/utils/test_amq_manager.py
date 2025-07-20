@@ -1,21 +1,21 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import patch
 
 import pytest
-
-from case import mock, patch
 
 from kombu import Connection
 
 
 class test_get_manager:
 
-    @mock.mask_modules('pyrabbit')
-    def test_without_pyrabbit(self):
+    @pytest.mark.masked_modules('pyrabbit')
+    def test_without_pyrabbit(self, mask_modules):
         with pytest.raises(ImportError):
             Connection('amqp://').get_manager()
 
-    @mock.module_exists('pyrabbit')
-    def test_with_pyrabbit(self):
+    @pytest.mark.ensured_modules('pyrabbit')
+    def test_with_pyrabbit(self, module_exists):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://').get_manager()
             assert manager is not None
@@ -23,8 +23,8 @@ class test_get_manager:
                 'localhost:15672', 'guest', 'guest',
             )
 
-    @mock.module_exists('pyrabbit')
-    def test_transport_options(self):
+    @pytest.mark.ensured_modules('pyrabbit')
+    def test_transport_options(self, module_exists):
         with patch('pyrabbit.Client', create=True) as Client:
             manager = Connection('amqp://', transport_options={
                 'manager_hostname': 'admin.mq.vandelay.com',

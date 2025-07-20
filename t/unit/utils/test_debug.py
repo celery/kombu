@@ -1,10 +1,8 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import logging
+from unittest.mock import Mock, patch
 
-from case import Mock, patch
-
-from kombu.five import bytes_if_py2
 from kombu.utils.debug import Logwrapped, setup_logging
 
 
@@ -32,12 +30,12 @@ class test_Logwrapped:
             assert W.instance is not None
             assert W.logger is logger
 
-            W.instance.__repr__ = lambda s: bytes_if_py2('foo')
+            W.instance.__repr__ = lambda s: 'foo'
             assert repr(W) == 'foo'
             W.instance.some_attr = 303
             assert W.some_attr == 303
 
-            W.instance.some_method.__name__ = bytes_if_py2('some_method')
+            W.instance.some_method.__name__ = 'some_method'
             W.some_method(1, 2, kw=1)
             W.instance.some_method.assert_called_with(1, 2, kw=1)
 

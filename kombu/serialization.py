@@ -1,28 +1,21 @@
 """Serialization utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import codecs
 import os
+import pickle
 import sys
-
-import pickle as pypickle
-try:
-    import cPickle as cpickle
-except ImportError:  # pragma: no cover
-    cpickle = None  # noqa
-
 from collections import namedtuple
 from contextlib import contextmanager
 from io import BytesIO
 
-from .exceptions import (
-    ContentDisallowed, DecodeError, EncodeError, SerializerNotInstalled
-)
-from .five import reraise, text_t
+from .exceptions import (ContentDisallowed, DecodeError, EncodeError,
+                         SerializerNotInstalled, reraise)
 from .utils.compat import entrypoints
-from .utils.encoding import bytes_to_str, str_to_bytes, bytes_t
+from .utils.encoding import bytes_to_str, str_to_bytes
 
-__all__ = ['pickle', 'loads', 'dumps', 'register', 'unregister']
+__all__ = ('pickle', 'loads', 'dumps', 'register', 'unregister')
 SKIP_DECODE = frozenset(['binary', 'ascii-8bit'])
 TRUSTED_CONTENT = frozenset(['application/data', 'application/text'])
 
@@ -33,12 +26,10 @@ if sys.platform.startswith('java'):  # pragma: no cover
 else:
     _decode = codecs.decode
 
-pickle = cpickle or pypickle
 pickle_load = pickle.load
 
-#: Kombu requires Python 2.5 or later so we use protocol 2 by default.
-#: There's a new protocol (3) but this is only supported by Python 3.
-pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 2))
+#: We have to use protocol 4 until we drop support for Python 3.6 and 3.7.
+pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 4))
 
 codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
@@ -60,10 +51,10 @@ def pickle_loads(s, load=pickle_load):
 
 
 def parenthesize_alias(first, second):
-    return '%s (%s)' % (first, second) if first else second
+    return f'{first} ({second})' if first else second
 
 
-class SerializerRegistry(object):
+class SerializerRegistry:
     """The registry keeps track of serialization methods."""
 
     def __init__(self):
@@ -81,6 +72,7 @@ class SerializerRegistry(object):
         """Register a new encoder/decoder.
 
         Arguments:
+        ---------
             name (str): A convenience name for the serialization method.
 
             encoder (callable): A method that will be passed a python data
@@ -123,9 +115,11 @@ class SerializerRegistry(object):
         """Unregister registered encoder/decoder.
 
         Arguments:
+        ---------
             name (str): Registered serialization method name.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If a serializer by that name
                 cannot be found.
         """
@@ -137,17 +131,19 @@ class SerializerRegistry(object):
             self.name_to_type.pop(name, None)
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder/decoder installed for {0}'.format(name))
+                f'No encoder/decoder installed for {name}')
 
     def _set_default_serializer(self, name):
         """Set the default serialization method used by this library.
 
         Arguments:
+        ---------
             name (str): The name of the registered serialization method.
                 For example, `json` (default), `pickle`, `yaml`, `msgpack`,
                 or any custom methods registered using :meth:`register`.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
         """
@@ -156,7 +152,7 @@ class SerializerRegistry(object):
              self._default_encode) = self._encoders[name]
         except KeyError:
             raise SerializerNotInstalled(
-                'No encoder installed for {0}'.format(name))
+                f'No encoder installed for {name}')
 
     def dumps(self, data, serializer=None):
         """Encode data.
@@ -165,6 +161,7 @@ class SerializerRegistry(object):
         as an AMQP message body.
 
         Arguments:
+        ---------
             data (List, Dict, str): The message data to send.
 
             serializer (str): An optional string representing
@@ -180,12 +177,14 @@ class SerializerRegistry(object):
                 serialization method will be used even if a :class:`str`
                 or :class:`unicode` object is passed in.
 
-        Returns:
+        Returns
+        -------
             Tuple[str, str, str]: A three-item tuple containing the
             content type (e.g., `application/json`), content encoding, (e.g.,
             `utf-8`) and a string containing the serialized data.
 
-        Raises:
+        Raises
+        ------
             SerializerNotInstalled: If the serialization method
                 requested is not available.
         """
@@ -193,18 +192,18 @@ class SerializerRegistry(object):
             return raw_encode(data)
         if serializer and not self._encoders.get(serializer):
             raise SerializerNotInstalled(
-                'No encoder installed for {0}'.format(serializer))
+                f'No encoder installed for {serializer}')
 
         # If a raw string was sent, assume binary encoding
         # (it's likely either ASCII or a raw binary file, and a character
         # set of 'binary' will encompass both, even if not ideal.
-        if not serializer and isinstance(data, bytes_t):
+        if not serializer and isinstance(data, bytes):
             # In Python 3+, this would be "bytes"; allow binary data to be
             # sent as a message without getting encoder errors
             return 'application/data', 'binary', data
 
         # For Unicode objects, force it into a string
-        if not serializer and isinstance(data, text_t):
+        if not serializer and isinstance(data, str):
             with _reraise_errors(EncodeError, exclude=()):
                 payload = data.encode('utf-8')
             return 'text/plain', 'utf-8', payload
@@ -229,6 +228,7 @@ class SerializerRegistry(object):
         based on `content_type`.
 
         Arguments:
+        ---------
             data (bytes, buffer, str): The message data to deserialize.
 
             content_type (str): The content-type of the data.
@@ -239,10 +239,12 @@ class SerializerRegistry(object):
 
             accept (Set): List of content-types to accept.
 
-        Raises:
+        Raises
+        ------
             ContentDisallowed: If the content-type is not accepted.
 
-        Returns:
+        Returns
+        -------
             Any: The unserialized data.
         """
         content_type = (bytes_to_str(content_type) if content_type
@@ -262,14 +264,14 @@ class SerializerRegistry(object):
                 with _reraise_errors(DecodeError):
                     return decode(data)
             if content_encoding not in SKIP_DECODE and \
-                    not isinstance(data, text_t):
+                    not isinstance(data, str):
                 with _reraise_errors(DecodeError):
                     return _decode(data, content_encoding)
         return data
 
     def _for_untrusted_content(self, ctype, why):
         return ContentDisallowed(
-            'Refusing to deserialize {0} content of type {1}'.format(
+            'Refusing to deserialize {} content of type {}'.format(
                 why,
                 parenthesize_alias(self.type_to_name.get(ctype, ctype), ctype),
             ),
@@ -288,7 +290,7 @@ def raw_encode(data):
     """Special case serializer."""
     content_type = 'application/data'
     payload = data
-    if isinstance(payload, text_t):
+    if isinstance(payload, str):
         content_encoding = 'utf-8'
         with _reraise_errors(EncodeError, exclude=()):
             payload = payload.encode(content_encoding)
@@ -331,13 +333,8 @@ def register_yaml():
         registry.register('yaml', None, not_available, 'application/x-yaml')
 
 
-if sys.version_info[0] == 3:  # pragma: no cover
-
-    def unpickle(s):
-        return pickle_loads(str_to_bytes(s))
-
-else:
-    unpickle = pickle_loads  # noqa
+def unpickle(s):
+    return pickle_loads(str_to_bytes(s))
 
 
 def register_pickle():
@@ -357,7 +354,8 @@ def register_pickle():
 def register_msgpack():
     """Register msgpack serializer.
 
-    See Also:
+    See Also
+    --------
         https://msgpack.org/.
     """
     pack = unpack = None
@@ -366,11 +364,11 @@ def register_msgpack():
         if msgpack.version >= (0, 4):
             from msgpack import packb, unpackb
 
-            def pack(s):
+            def pack(s):  # noqa
                 return packb(s, use_bin_type=True)
 
-            def unpack(s):
-                return unpackb(s, encoding='utf-8')
+            def unpack(s):  # noqa
+                return unpackb(s, raw=False)
         else:
             def version_mismatch(*args, **kwargs):
                 raise SerializerNotInstalled(
@@ -398,45 +396,40 @@ register_msgpack()
 # Default serializer is 'json'
 registry._set_default_serializer('json')
 
-
-_setupfuns = {
-    'json': register_json,
-    'pickle': register_pickle,
-    'yaml': register_yaml,
-    'msgpack': register_msgpack,
-    'application/json': register_json,
-    'application/x-yaml': register_yaml,
-    'application/x-python-serialize': register_pickle,
-    'application/x-msgpack': register_msgpack,
-}
+NOTSET = object()
 
 
-def enable_insecure_serializers(choices=['pickle', 'yaml', 'msgpack']):
+def enable_insecure_serializers(choices=NOTSET):
     """Enable serializers that are considered to be unsafe.
 
     Note:
+    ----
         Will enable ``pickle``, ``yaml`` and ``msgpack`` by default, but you
         can also specify a list of serializers (by name or content type)
         to enable.
     """
-    for choice in choices:
-        try:
-            registry.enable(choice)
-        except KeyError:
-            pass
+    choices = ['pickle', 'yaml', 'msgpack'] if choices is NOTSET else choices
+    if choices is not None:
+        for choice in choices:
+            try:
+                registry.enable(choice)
+            except KeyError:
+                pass
 
 
-def disable_insecure_serializers(allowed=['json']):
+def disable_insecure_serializers(allowed=NOTSET):
     """Disable untrusted serializers.
 
     Will disable all serializers except ``json``
     or you can specify a list of deserializers to allow.
 
     Note:
+    ----
         Producers will still be able to serialize data
         in these formats, but consumers will not accept
         incoming data using the untrusted content types.
     """
+    allowed = ['json'] if allowed is NOTSET else allowed
     for name in registry._decoders:
         registry.disable(name)
     if allowed is not None:
@@ -452,7 +445,19 @@ for ep, args in entrypoints('kombu.serializers'):  # pragma: no cover
     register(ep.name, *args)
 
 
-def prepare_accept_content(l, name_to_type=registry.name_to_type):
-    if l is not None:
-        return {n if '/' in n else name_to_type[n] for n in l}
-    return l
+def prepare_accept_content(content_types, name_to_type=None):
+    """Replace aliases of content_types with full names from registry.
+
+    Raises
+    ------
+        SerializerNotInstalled: If the serialization method
+            requested is not available.
+    """
+    name_to_type = registry.name_to_type if not name_to_type else name_to_type
+    if content_types is not None:
+        try:
+            return {n if '/' in n else name_to_type[n] for n in content_types}
+        except KeyError as e:
+            raise SerializerNotInstalled(
+                f'No encoder/decoder installed for {e.args[0]}')
+    return content_types

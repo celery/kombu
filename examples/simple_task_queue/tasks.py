@@ -1,5 +1,5 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 
 def hello_task(who='world'):
-    print('Hello {0}'.format(who))
+    print(f'Hello {who}')

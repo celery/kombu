@@ -1,31 +1,31 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import socket
 import sys
 import types
+from unittest.mock import Mock, patch
 
-from case import Mock, mock, patch
+import pytest
 
-from kombu.five import bytes_if_py2
 from kombu.utils import compat
 from kombu.utils.compat import entrypoints, maybe_fileno
 
 
-class test_entrypoints:
+def test_entrypoints():
+    with patch(
+        'kombu.utils.compat.importlib_metadata.entry_points', create=True
+    ) as iterep:
+        eps = [Mock(), Mock()]
+        iterep.return_value = (
+            {'kombu.test': eps} if sys.version_info < (3, 10) else eps)
 
-    @mock.mask_modules('pkg_resources')
-    def test_without_pkg_resources(self):
-        assert list(entrypoints('kombu.test')) == []
-
-    @mock.module_exists('pkg_resources')
-    def test_with_pkg_resources(self):
-        with patch('pkg_resources.iter_entry_points', create=True) as iterep:
-            eps = iterep.return_value = [Mock(), Mock()]
-
-            assert list(entrypoints('kombu.test'))
-            iterep.assert_called_with('kombu.test')
-            eps[0].load.assert_called_with()
-            eps[1].load.assert_called_with()
+        assert list(entrypoints('kombu.test'))
+        if sys.version_info < (3, 10):
+            iterep.assert_called_with()
+        else:
+            iterep.assert_called_with(group='kombu.test')
+        eps[0].load.assert_called_with()
+        eps[1].load.assert_called_with()
 
 
 def test_maybe_fileno():
@@ -48,8 +48,8 @@ class test_detect_environment:
         finally:
             compat._environment = None
 
-    @mock.module_exists('eventlet', 'eventlet.patcher')
-    def test_detect_environment_eventlet(self):
+    @pytest.mark.ensured_modules('eventlet', 'eventlet.patcher')
+    def test_detect_environment_eventlet(self, module_exists):
         with patch('eventlet.patcher.is_monkey_patched', create=True) as m:
             assert sys.modules['eventlet']
             m.return_value = True
@@ -57,8 +57,8 @@ class test_detect_environment:
             m.assert_called_with(socket)
             assert env == 'eventlet'
 
-    @mock.module_exists('gevent')
-    def test_detect_environment_gevent(self):
+    @pytest.mark.ensured_modules('gevent')
+    def test_detect_environment_gevent(self, module_exists):
         with patch('gevent.socket', create=True) as m:
             prev, socket.socket = socket.socket, m.socket
             try:
@@ -70,17 +70,15 @@ class test_detect_environment:
 
     def test_detect_environment_no_eventlet_or_gevent(self):
         try:
-            sys.modules['eventlet'] = types.ModuleType(
-                bytes_if_py2('eventlet'))
-            sys.modules['eventlet.patcher'] = types.ModuleType(
-                bytes_if_py2('patcher'))
+            sys.modules['eventlet'] = types.ModuleType('eventlet')
+            sys.modules['eventlet.patcher'] = types.ModuleType('patcher')
             assert compat._detect_environment() == 'default'
         finally:
             sys.modules.pop('eventlet.patcher', None)
             sys.modules.pop('eventlet', None)
         compat._detect_environment()
         try:
-            sys.modules['gevent'] = types.ModuleType(bytes_if_py2('gevent'))
+            sys.modules['gevent'] = types.ModuleType('gevent')
             assert compat._detect_environment() == 'default'
         finally:
             sys.modules.pop('gevent', None)

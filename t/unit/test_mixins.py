@@ -1,11 +1,12 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import socket
+from unittest.mock import Mock, patch
 
 import pytest
-import socket
-
-from case import ContextMock, Mock, patch
 
 from kombu.mixins import ConsumerMixin
+from t.mocks import ContextMock
 
 
 def Message(body, content_type='text/plain', content_encoding='utf-8'):
@@ -71,7 +72,7 @@ class test_ConsumerMixin:
 
         def se2(*args, **kwargs):
             c.should_stop = True
-            raise socket.error()
+            raise OSError()
         c.connection.drain_events.side_effect = se2
         it = c.consume(no_ack=True)
         with pytest.raises(StopIteration):
@@ -88,6 +89,26 @@ class test_ConsumerMixin:
         c.connection.drain_events.side_effect = se
         with pytest.raises(socket.error):
             next(it)
+        c.connection.heartbeat_check.assert_called()
+
+    def test_consume_drain_heartbeat_check_no_timeout(self):
+        c, Acons, Bcons = self._context()
+        c.should_stop = False
+        it = c.consume(no_ack=True, timeout=None)
+
+        def se(*args, **kwargs):
+            c.should_stop = True
+            raise socket.timeout()
+        c.connection.drain_events.side_effect = se
+        with pytest.raises(StopIteration):
+            next(it)
+        c.connection.heartbeat_check.assert_called()
+
+        it = c.consume(no_ack=True, timeout=0)
+        c.connection.drain_events.side_effect = se
+        with pytest.raises(StopIteration):
+            next(it)
+        c.connection.heartbeat_check.assert_called()
 
     def test_Consumer_context(self):
         c, Acons, Bcons = self._context()
@@ -109,7 +130,7 @@ class test_ConsumerMixin:
 
 class test_ConsumerMixin_interface:
 
-    def setup(self):
+    def setup_method(self):
         self.c = ConsumerMixin()
 
     def test_get_consumers(self):

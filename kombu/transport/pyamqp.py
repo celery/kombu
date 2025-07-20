@@ -1,9 +1,77 @@
-"""Pure-Python amqp transport."""
-from __future__ import absolute_import, unicode_literals
+"""pyamqp transport module for Kombu.
+
+Pure-Python amqp transport using py-amqp library.
+
+Features
+========
+* Type: Native
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
+
+Connection String
+=================
+Connection string can have the following formats:
+
+.. code-block::
+
+    amqp://[USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+    [USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+    amqp://
+
+For TLS encryption use:
+
+.. code-block::
+
+    amqps://[USER:PASSWORD@]BROKER_ADDRESS[:PORT][/VIRTUALHOST]
+
+Transport Options
+=================
+Transport Options are passed to constructor of underlying py-amqp
+:class:`~kombu.connection.Connection` class.
+
+Using TLS
+=========
+Transport over TLS can be enabled by ``ssl`` parameter of
+:class:`~kombu.Connection` class. By setting ``ssl=True``, TLS transport is
+used::
+
+    conn = Connect('amqp://', ssl=True)
+
+This is equivalent to ``amqps://`` transport URI::
+
+    conn = Connect('amqps://')
+
+For adding additional parameters to underlying TLS, ``ssl`` parameter should
+be set with dict instead of True::
+
+    conn = Connect('amqp://broker.example.com', ssl={
+            'keyfile': '/path/to/keyfile'
+            'certfile': '/path/to/certfile',
+            'ca_certs': '/path/to/ca_certfile'
+        }
+    )
+
+All parameters are passed to ``ssl`` parameter of
+:class:`amqp.connection.Connection` class.
+
+SSL option ``server_hostname`` can be set to ``None`` which is causing using
+hostname from broker URL. This is useful when failover is used to fill
+``server_hostname`` with currently used broker::
+
+    conn = Connect('amqp://broker1.example.com;broker2.example.com', ssl={
+            'server_hostname': None
+        }
+    )
+"""
+
+
+from __future__ import annotations
 
 import amqp
 
-from kombu.five import items
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
@@ -19,7 +87,7 @@ class Message(base.Message):
 
     def __init__(self, msg, channel=None, **kwargs):
         props = msg.properties
-        super(Message, self).__init__(
+        super().__init__(
             body=msg.body,
             channel=channel,
             delivery_tag=msg.delivery_tag,
@@ -83,7 +151,7 @@ class Transport(base.Transport):
     driver_type = 'amqp'
 
     implements = base.Transport.implements.extend(
-        async=True,
+        asynchronous=True,
         heartbeats=True,
     )
 
@@ -109,11 +177,16 @@ class Transport(base.Transport):
     def establish_connection(self):
         """Establish connection to the AMQP broker."""
         conninfo = self.client
-        for name, default_value in items(self.default_connection_params):
+        for name, default_value in self.default_connection_params.items():
             if not getattr(conninfo, name, None):
                 setattr(conninfo, name, default_value)
         if conninfo.hostname == 'localhost':
             conninfo.hostname = '127.0.0.1'
+        # when server_hostname is None, use hostname from URI.
+        if isinstance(conninfo.ssl, dict) and \
+                'server_hostname' in conninfo.ssl and \
+                conninfo.ssl['server_hostname'] is None:
+            conninfo.ssl['server_hostname'] = conninfo.hostname
         opts = dict({
             'host': conninfo.host,
             'userid': conninfo.userid,
@@ -162,7 +235,7 @@ class Transport(base.Transport):
             'port': (self.default_ssl_port if self.client.ssl
                      else self.default_port),
             'hostname': 'localhost',
-            'login_method': 'AMQPLAIN',
+            'login_method': 'PLAIN',
         }
 
     def get_manager(self, *args, **kwargs):
@@ -173,7 +246,8 @@ class SSLTransport(Transport):
     """AMQP SSL Transport."""
 
     def __init__(self, *args, **kwargs):
-        super(SSLTransport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # ugh, not exactly pure, but hey, it's python.
-        self.client.ssl = True
+        if not self.client.ssl:  # not dict or False
+            self.client.ssl = True

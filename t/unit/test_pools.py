@@ -1,12 +1,11 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from unittest.mock import Mock
 
 import pytest
 
-from case import Mock
-
-from kombu import Connection, Producer
-from kombu import pools
-from kombu.connection import ConnectionPool
+from kombu import Connection, Producer, pools
+from kombu.connection import ConnectionPool, PooledConnection
 from kombu.utils.collections import eqhash
 
 
@@ -17,12 +16,12 @@ class test_ProducerPool:
 
         def __init__(self, *args, **kwargs):
             self.instance = Mock()
-            pools.ProducerPool.__init__(self, *args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def Producer(self, connection):
             return self.instance
 
-    def setup(self):
+    def setup_method(self):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
 
@@ -37,6 +36,18 @@ class test_ProducerPool:
         with pytest.raises(IOError):
             self.pool.create_producer()
         conn.release.assert_called_with()
+
+    def test_exception_during_connection_use(self):
+        """Tests that the connection is closed in case of an exception."""
+        with pytest.raises(IOError):
+            with self.pool.acquire() as producer:
+                producer.__connection__ = Mock(spec=PooledConnection)
+                producer.__connection__._pool = self.connections
+                producer.publish = Mock()
+                producer.publish.side_effect = IOError()
+                producer.publish("test data")
+
+        self.connections.replace.assert_called_once()
 
     def test_prepare_release_connection_on_error(self):
         pp = Mock()
@@ -142,7 +153,7 @@ class test_PoolGroup:
     def test_delitem(self):
         g = self.MyGroup()
         g['foo']
-        del(g['foo'])
+        del g['foo']
         assert 'foo' not in g
 
     def test_Connections(self):
@@ -207,6 +218,13 @@ class test_PoolGroup:
             assert pools.get_limit() == limit - 1
 
         pools.set_limit(pools.get_limit())
+
+    def test_remove_limit(self):
+        conn = Connection('memory://')
+        pool = pools.connections[conn]
+        pool.limit = 10
+        with pool.acquire():
+            pool.limit = 0
 
 
 class test_fun_PoolGroup:

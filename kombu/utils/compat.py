@@ -1,38 +1,26 @@
 """Python Compatibility Utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import numbers
 import sys
-
-from functools import wraps
-
 from contextlib import contextmanager
+from functools import wraps
+from importlib import metadata as importlib_metadata
+from io import UnsupportedOperation
 
-from kombu.five import reraise
+from kombu.exceptions import reraise
 
-try:
-    from io import UnsupportedOperation
-    FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
-except ImportError:  # pragma: no cover
-    # Py2
-    FILENO_ERRORS = (AttributeError, ValueError)  # noqa
+FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
 
 try:
     from billiard.util import register_after_fork
 except ImportError:  # pragma: no cover
     try:
-        from multiprocessing.util import register_after_fork  # noqa
+        from multiprocessing.util import register_after_fork
     except ImportError:
-        register_after_fork = None  # noqa
+        register_after_fork = None
 
-try:
-    from typing import NamedTuple
-except ImportError:
-    import collections
-
-    def NamedTuple(name, fields):
-        """Typed version of collections.namedtuple."""
-        return collections.namedtuple(name, [k for k, _ in fields])
 
 _environment = None
 
@@ -51,8 +39,9 @@ def _detect_environment():
     # ## -eventlet-
     if 'eventlet' in sys.modules:
         try:
-            from eventlet.patcher import is_monkey_patched as is_eventlet
             import socket
+
+            from eventlet.patcher import is_monkey_patched as is_eventlet
 
             if is_eventlet(socket):
                 return 'eventlet'
@@ -62,8 +51,9 @@ def _detect_environment():
     # ## -gevent-
     if 'gevent' in sys.modules:
         try:
-            from gevent import socket as _gsocket
             import socket
+
+            from gevent import socket as _gsocket
 
             if socket.socket is _gsocket.socket:
                 return 'gevent'
@@ -83,11 +73,19 @@ def detect_environment():
 
 def entrypoints(namespace):
     """Return setuptools entrypoints for namespace."""
-    try:
-        from pkg_resources import iter_entry_points
-    except ImportError:
-        return iter([])
-    return ((ep, ep.load()) for ep in iter_entry_points(namespace))
+    if sys.version_info >= (3,10):
+        entry_points = importlib_metadata.entry_points(group=namespace)
+    else:
+        entry_points = importlib_metadata.entry_points()
+        try:
+            entry_points = entry_points.get(namespace, [])
+        except AttributeError:
+            entry_points = entry_points.select(group=namespace)
+
+    return (
+        (ep, ep.load())
+        for ep in entry_points
+    )
 
 
 def fileno(f):

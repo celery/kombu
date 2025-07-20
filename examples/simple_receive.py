@@ -2,7 +2,8 @@
 Example receiving a message using the SimpleQueue interface.
 
 """
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 from kombu import Connection
 
@@ -22,7 +23,7 @@ with Connection('amqp://guest:guest@localhost:5672//') as conn:
         print(message.payload)
 
 ####
-#: If you don't use the with statement then you must aways
+#: If you don't use the with statement then you must always
 # remember to close objects after use:
 #   queue.close()
 #   connection.close()
