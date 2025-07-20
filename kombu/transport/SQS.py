@@ -125,6 +125,26 @@ as follows:
 For a complete list of settings you can adjust using this option see
 https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 
+Large Message Support
+---------------------
+SQS has a maximum message size limit of 256KB. To handle larger messages,
+this transport automatically supports the Amazon SQS Extended Client Library,
+which uses S3 to store message payloads that exceed the SQS size limit.
+
+This feature is automatically available when using the SQS transport - no
+additional installation or configuration is required as the necessary
+dependencies are included with the SQS extras.
+
+When a large message is sent:
+- The message body is automatically stored in S3
+- SQS receives a reference pointer to the S3 object
+- When the message is received, the transport transparently retrieves 
+  the payload from S3
+
+Note: You need appropriate S3 permissions in addition to SQS permissions
+for this feature to work. The IAM policy should include s3:GetObject and
+s3:PutObject permissions for the S3 bucket used by the extended client.
+
 Features
 ========
 * Type: Virtual
