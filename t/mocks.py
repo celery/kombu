@@ -1,8 +1,15 @@
+from __future__ import annotations
+
+import time
 from itertools import count
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 from kombu.transport import base
 from kombu.utils import json
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 class _ContextMock(Mock):
@@ -13,7 +20,12 @@ class _ContextMock(Mock):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         pass
 
 
@@ -191,3 +203,15 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         connection.connected = False
+
+
+class TimeoutingTransport(Transport):
+    recoverable_connection_errors = (TimeoutError,)
+
+    def __init__(self, connect_timeout=1, **kwargs):
+        self.connect_timeout = connect_timeout
+        super().__init__(**kwargs)
+
+    def establish_connection(self):
+        time.sleep(self.connect_timeout)
+        raise TimeoutError('timed out')

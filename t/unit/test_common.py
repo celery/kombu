@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import socket
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
@@ -9,6 +12,9 @@ from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
                           declaration_cached, generate_oid, ignore_errors,
                           maybe_declare, send_reply)
 from t.mocks import ContextMock, MockPool
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def test_generate_oid():
@@ -338,7 +344,12 @@ class MockConsumer:
         self.consumers.add(self)
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.consumers.discard(self)
 
 

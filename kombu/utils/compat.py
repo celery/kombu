@@ -1,16 +1,12 @@
 """Python Compatibility Utilities."""
 
+from __future__ import annotations
+
 import numbers
 import sys
 from contextlib import contextmanager
 from functools import wraps
-
-try:
-    from importlib import metadata as importlib_metadata
-except ImportError:
-    # TODO: Remove this when we drop support for Python 3.7
-    import importlib_metadata
-
+from importlib import metadata as importlib_metadata
 from io import UnsupportedOperation
 
 from kombu.exceptions import reraise
@@ -77,9 +73,18 @@ def detect_environment():
 
 def entrypoints(namespace):
     """Return setuptools entrypoints for namespace."""
+    if sys.version_info >= (3,10):
+        entry_points = importlib_metadata.entry_points(group=namespace)
+    else:
+        entry_points = importlib_metadata.entry_points()
+        try:
+            entry_points = entry_points.get(namespace, [])
+        except AttributeError:
+            entry_points = entry_points.select(group=namespace)
+
     return (
         (ep, ep.load())
-        for ep in importlib_metadata.entry_points().get(namespace, [])
+        for ep in entry_points
     )
 
 

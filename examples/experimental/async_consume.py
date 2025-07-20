@@ -1,4 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+from __future__ import annotations
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.asynchronous import Hub

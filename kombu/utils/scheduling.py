@@ -1,5 +1,7 @@
 """Scheduling Utilities."""
 
+from __future__ import annotations
+
 from itertools import count
 
 from .imports import symbol_by_name
@@ -22,6 +24,7 @@ class FairCycle:
     an equal chance to be consumed from.
 
     Arguments:
+    ---------
         fun (Callable): Callback to call.
         resources (Sequence[Any]): List of resources.
         predicate (type): Exception predicate.
@@ -51,7 +54,7 @@ class FairCycle:
             try:
                 return self.fun(resource, callback, **kwargs)
             except self.predicate:
-                # reraise when retries exchausted.
+                # reraise when retries exhausted.
                 if tried >= len(self.resources) - 1:
                     raise
 

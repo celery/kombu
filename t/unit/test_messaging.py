@@ -1,12 +1,14 @@
+from __future__ import annotations
+
 import pickle
 import sys
 from collections import defaultdict
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.exceptions import MessageStateError
+from kombu.exceptions import MessageStateError, OperationalError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
@@ -14,7 +16,7 @@ from t.mocks import Transport
 
 class test_Producer:
 
-    def setup(self):
+    def setup_method(self):
         self.exchange = Exchange('foo', 'direct')
         self.connection = Connection(transport=Transport)
         self.connection.connect()
@@ -120,6 +122,17 @@ class test_Producer:
         assert ctype == 'text/plain'
         assert cencoding == 'utf-8'
 
+    def test_publish_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        expected_retry_policy = {
+            'max_retries': 20
+        }
+        p.publish('hello', retry=True, retry_policy=expected_retry_policy)
+
+        assert self.connection.transport_options == expected_retry_policy
+
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
         p.channel = Mock()
@@ -142,6 +155,56 @@ class test_Producer:
         p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
         timeout = p._channel.basic_publish.call_args[1]['timeout']
         assert timeout == 1
+
+    def test_publish_with_timeout_and_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1, retry_policy={
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        })
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
+
+    def test_publish_with_confirm_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), confirm_timeout=1)
+        confirm_timeout = p._channel.basic_publish.call_args[1]['confirm_timeout']
+        assert confirm_timeout == 1
+
+    @patch('kombu.messaging.maybe_declare')
+    def test_publish_maybe_declare_with_retry_policy(self, maybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        maybe_declare.assert_called_once_with(ANY, ANY, True, **expected_retry_policy)
+
+    @patch('kombu.common._imaybe_declare')
+    def test_publish_maybe_declare_with_retry_policy_ensure_connection(self, _imaybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        _imaybe_declare.assert_called_once_with(ANY, ANY, **expected_retry_policy)
 
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
@@ -173,7 +236,7 @@ class test_Producer:
         p.connection.ensure = Mock()
         ex = Exchange('foo')
         p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
-        p.maybe_declare.assert_called_with(ex)
+        p.maybe_declare.assert_called_with(ex, retry=False)
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()
@@ -188,9 +251,8 @@ class test_Producer:
     def test_enter_exit(self):
         p = self.connection.Producer()
         p.release = Mock()
-
-        assert p.__enter__() is p
-        p.__exit__()
+        with p as x:
+            assert x is p
         p.release.assert_called_with()
 
     def test_connection_property_handles_AttributeError(self):
@@ -242,7 +304,7 @@ class test_Producer:
 
 class test_Consumer:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
         self.connection.connect()
         assert self.connection.connection.connected

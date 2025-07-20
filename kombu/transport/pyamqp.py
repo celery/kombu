@@ -58,7 +58,7 @@ All parameters are passed to ``ssl`` parameter of
 :class:`amqp.connection.Connection` class.
 
 SSL option ``server_hostname`` can be set to ``None`` which is causing using
-hostname from broker URL. This is usefull when failover is used to fill
+hostname from broker URL. This is useful when failover is used to fill
 ``server_hostname`` with currently used broker::
 
     conn = Connect('amqp://broker1.example.com;broker2.example.com', ssl={
@@ -67,6 +67,8 @@ hostname from broker URL. This is usefull when failover is used to fill
     )
 """
 
+
+from __future__ import annotations
 
 import amqp
 

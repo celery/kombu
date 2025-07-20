@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import os
+import socket
 from time import sleep
 
 import pytest
 import redis
 
 import kombu
+from kombu.transport.redis import Transport
 
-from .common import BaseExchangeTypes, BasePriority, BasicFunctionality
+from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
+                     BasicFunctionality)
 
 
 def get_connection(
@@ -42,7 +47,7 @@ def invalid_connection():
 @pytest.mark.env('redis')
 def test_failed_credentials():
     """Tests denied connection when wrong credentials were provided"""
-    with pytest.raises(redis.exceptions.ResponseError):
+    with pytest.raises(redis.exceptions.AuthenticationError):
         get_connection(
             hostname=os.environ.get('REDIS_HOST', 'localhost'),
             port=os.environ.get('REDIS_6379_TCP', '6379'),
@@ -55,7 +60,11 @@ def test_failed_credentials():
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisBasicFunctionality(BasicFunctionality):
-    pass
+    def test_failed_connection__ConnectionError(self, invalid_connection):
+        # method raises transport exception
+        with pytest.raises(redis.exceptions.ConnectionError) as ex:
+            invalid_connection.connection
+        assert ex.type in Transport.connection_errors
 
 
 @pytest.mark.env('redis')
@@ -120,3 +129,117 @@ class test_RedisPriority(BasePriority):
                 assert received_messages[0] == {'msg': 'second'}
                 assert received_messages[1] == {'msg': 'first'}
                 assert received_messages[2] == {'msg': 'third'}
+
+    def test_publish_requeue_consume(self, connection):
+        test_queue = kombu.Queue(
+            'priority_requeue_test',
+            routing_key='priority_requeue_test', max_priority=10
+        )
+
+        received_messages = []
+        received_message_bodies = []
+
+        def callback(body, message):
+            received_messages.append(message)
+            received_message_bodies.append(body)
+            # don't ack the message so it can be requeued
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for msg, prio in [
+                    [{'msg': 'first'}, 6],
+                    [{'msg': 'second'}, 3],
+                    [{'msg': 'third'}, 6],
+                ]:
+                    producer.publish(
+                        msg,
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='pickle',
+                        priority=prio
+                    )
+                # Sleep to make sure that queue sorted based on priority
+                sleep(0.5)
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+                with consumer:
+                    # drain_events() consumes only one value unlike in py-amqp.
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+
+                # requeue the messages
+                for msg in received_messages:
+                    msg.requeue()
+                received_messages.clear()
+                received_message_bodies.clear()
+
+                # add a fourth higher priority message
+                producer.publish(
+                    {'msg': 'fourth'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='pickle',
+                    priority=0  # highest priority
+                )
+
+                with consumer:
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+                    conn.drain_events(timeout=1)
+
+                # Fourth message must be received first
+                assert received_message_bodies[0] == {'msg': 'fourth'}
+                assert received_message_bodies[1] == {'msg': 'second'}
+                assert received_message_bodies[2] == {'msg': 'first'}
+                assert received_message_bodies[3] == {'msg': 'third'}
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('redis')
+def test_RedisConnectTimeout(monkeypatch):
+    # simulate a connection timeout for a new connection
+    def connect_timeout(self):
+        raise socket.timeout
+    monkeypatch.setattr(
+        redis.connection.Connection, "_connect", connect_timeout)
+
+    # ensure the timeout raises a TimeoutError
+    with pytest.raises(redis.exceptions.TimeoutError):
+        # note the host/port here is irrelevant because
+        # connect will raise a socket.timeout
+        kombu.Connection('redis://localhost:12345').connect()
+
+
+@pytest.mark.env('redis')
+def test_RedisConnection_check_hostname(monkeypatch):
+    # simulate a connection timeout for a new connection
+    def connect_check_certificate(self):
+        if self.check_hostname:
+            raise OSError("check_hostname=True")
+        raise socket.timeout("check_hostname=False")
+    monkeypatch.setattr(
+        redis.connection.SSLConnection, "_connect", connect_check_certificate)
+
+    # ensure the timeout raises a TimeoutError
+    with pytest.raises(redis.exceptions.TimeoutError):
+        # note the host/port here is irrelevant because
+        # connect will raise a socket.timeout, not a CertificateError
+        kombu.Connection('rediss://localhost:12345?ssl_check_hostname=false').connect()
+    with pytest.raises(redis.exceptions.ConnectionError):
+        # note the host/port here is irrelevant because
+        # connect will raise a CertificateError due to hostname mismatch
+        kombu.Connection('rediss://localhost:12345?ssl_check_hostname=true').connect()

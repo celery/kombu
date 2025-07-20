@@ -1,5 +1,7 @@
 """Import related utilities."""
 
+from __future__ import annotations
+
 import importlib
 import sys
 
@@ -26,7 +28,8 @@ def symbol_by_name(name, aliases=None, imp=None, package=None,
     If `aliases` is provided, a dict containing short name/long name
     mappings, the name is looked up in the aliases first.
 
-    Examples:
+    Examples
+    --------
         >>> symbol_by_name('celery.concurrency.processes.TaskPool')
         <class 'celery.concurrency.processes.TaskPool'>
 

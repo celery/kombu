@@ -1,13 +1,19 @@
 """Generic resource pool implementation."""
 
+from __future__ import annotations
+
 import os
 from collections import deque
 from queue import Empty
 from queue import LifoQueue as _LifoQueue
+from typing import TYPE_CHECKING
 
 from . import exceptions
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def _after_fork_cleanup_resource(resource):
@@ -61,12 +67,14 @@ class Resource:
         """Acquire resource.
 
         Arguments:
+        ---------
             block (bool): If the limit is exceeded,
                 then block until there is an available item.
             timeout (float): Timeout to wait
                 if ``block`` is true.  Default is :const:`None` (forever).
 
-        Raises:
+        Raises
+        ------
             LimitExceeded: if block is false and the limit has been exceeded.
         """
         if self._closed:
@@ -85,7 +93,7 @@ class Resource:
                             # not evaluated yet, just put it back
                             self._resource.put_nowait(R)
                         else:
-                            # evaluted so must try to release/close first.
+                            # evaluated so must try to release/close first.
                             self.release(R)
                         raise
                     self._dirty.add(R)
@@ -97,6 +105,7 @@ class Resource:
             """Release resource so it can be used by another thread.
 
             Warnings:
+            --------
                 The caller is responsible for discarding the object,
                 and to never use the resource again.  A new resource must
                 be acquired if so needed.
@@ -135,15 +144,20 @@ class Resource:
     def collect_resource(self, resource):
         pass
 
-    def force_close_all(self):
+    def force_close_all(self, close_pool=True):
         """Close and remove all resources in the pool (also those in use).
 
         Used to close resources from parent processes after fork
         (e.g. sockets/connections).
+
+        Arguments:
+        ---------
+            close_pool (bool): If True (default) then the pool is marked
+                as closed. In case of False the pool can be reused.
         """
         if self._closed:
             return
-        self._closed = True
+        self._closed = close_pool
         dirty = self._dirty
         resource = self._resource
         while 1:  # - acquired
@@ -179,7 +193,7 @@ class Resource:
         self._limit = limit
         if reset:
             try:
-                self.force_close_all()
+                self.force_close_all(close_pool=False)
             except Exception:
                 pass
         self.setup()
@@ -191,13 +205,20 @@ class Resource:
             def __enter__(self):
                 pass
 
-            def __exit__(self, type, value, traceback):
+            def __exit__(
+                self,
+                exc_type: type,
+                exc_val: Exception,
+                exc_tb: TracebackType
+            ) -> None:
                 pass
 
         resource = self._resource
         # Items to the left are last recently used, so we remove those first.
         with getattr(resource, 'mutex', Noop()):
-            while len(resource.queue) > self.limit:
+            # keep in mind the dirty resources are not shrinking
+            while len(resource.queue) and \
+                    (len(resource.queue) + len(self._dirty)) > self.limit:
                 R = resource.queue.popleft()
                 if collect:
                     self.collect_resource(R)

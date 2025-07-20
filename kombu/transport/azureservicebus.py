@@ -30,11 +30,13 @@ Features
 Connection String
 =================
 
-Connection string has the following format:
+Connection string has the following formats:
 
 .. code-block::
 
     azureservicebus://SAS_POLICY_NAME:SAS_KEY@SERVICE_BUSNAMESPACE
+    azureservicebus://DefaultAzureCredential@SERVICE_BUSNAMESPACE
+    azureservicebus://ManagedIdentityCredential@SERVICE_BUSNAMESPACE
 
 Transport Options
 =================
@@ -53,9 +55,11 @@ Transport Options
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
 """
 
+from __future__ import annotations
+
 import string
 from queue import Empty
-from typing import Any, Dict, Optional, Set, Tuple, Union
+from typing import Any
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
@@ -64,6 +68,13 @@ from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
                               ServiceBusReceiveMode, ServiceBusReceiver,
                               ServiceBusSender)
 from azure.servicebus.management import ServiceBusAdministrationClient
+
+try:
+    from azure.identity import (DefaultAzureCredential,
+                                ManagedIdentityCredential)
+except ImportError:
+    DefaultAzureCredential = None
+    ManagedIdentityCredential = None
 
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
@@ -83,10 +94,10 @@ class SendReceive:
     """Container for Sender and Receiver."""
 
     def __init__(self,
-                 receiver: Optional[ServiceBusReceiver] = None,
-                 sender: Optional[ServiceBusSender] = None):
-        self.receiver = receiver  # type: ServiceBusReceiver
-        self.sender = sender  # type: ServiceBusSender
+                 receiver: ServiceBusReceiver | None = None,
+                 sender: ServiceBusSender | None = None):
+        self.receiver: ServiceBusReceiver = receiver
+        self.sender: ServiceBusSender = sender
 
     def close(self) -> None:
         if self.receiver:
@@ -100,21 +111,19 @@ class SendReceive:
 class Channel(virtual.Channel):
     """Azure Service Bus channel."""
 
-    default_wait_time_seconds = 5  # in seconds
-    default_peek_lock_seconds = 60  # in seconds (default 60, max 300)
+    default_wait_time_seconds: int = 5  # in seconds
+    default_peek_lock_seconds: int = 60  # in seconds (default 60, max 300)
     # in seconds (is the default from service bus repo)
-    default_uamqp_keep_alive_interval = 30
+    default_uamqp_keep_alive_interval: int = 30
     # number of retries (is the default from service bus repo)
-    default_retry_total = 3
+    default_retry_total: int = 3
     # exponential backoff factor (is the default from service bus repo)
-    default_retry_backoff_factor = 0.8
+    default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
-    default_retry_backoff_max = 120
-    domain_format = 'kombu%(vhost)s'
-    _queue_service = None  # type: ServiceBusClient
-    _queue_mgmt_service = None  # type: ServiceBusAdministrationClient
-    _queue_cache = {}  # type: Dict[str, SendReceive]
-    _noack_queues = set()  # type: Set[str]
+    default_retry_backoff_max: int = 120
+    domain_format: str = 'kombu%(vhost)s'
+    _queue_cache: dict[str, SendReceive] = {}
+    _noack_queues: set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -129,16 +138,23 @@ class Channel(virtual.Channel):
         self.qos.restore_at_shutdown = False
 
     def _try_parse_connection_string(self) -> None:
-        self._namespace, self._policy, self._sas_key = Transport.parse_uri(
+        self._namespace, self._credential = Transport.parse_uri(
             self.conninfo.hostname)
 
-        # Convert
-        endpoint = 'sb://' + self._namespace
-        if not endpoint.endswith('.net'):
-            endpoint += '.servicebus.windows.net'
+        if (
+            DefaultAzureCredential is not None
+            and isinstance(self._credential, DefaultAzureCredential)
+        ) or (
+            ManagedIdentityCredential is not None
+            and isinstance(self._credential, ManagedIdentityCredential)
+        ):
+            return None
+
+        if ":" in self._credential:
+            self._policy, self._sas_key = self._credential.split(':', 1)
 
         conn_dict = {
-            'Endpoint': endpoint,
+            'Endpoint': 'sb://' + self._namespace,
             'SharedAccessKeyName': self._policy,
             'SharedAccessKey': self._sas_key,
         }
@@ -160,8 +176,8 @@ class Channel(virtual.Channel):
 
     def _add_queue_to_cache(
             self, name: str,
-            receiver: Optional[ServiceBusReceiver] = None,
-            sender: Optional[ServiceBusSender] = None
+            receiver: ServiceBusReceiver | None = None,
+            sender: ServiceBusSender | None = None
     ) -> SendReceive:
         if name in self._queue_cache:
             obj = self._queue_cache[name]
@@ -183,7 +199,7 @@ class Channel(virtual.Channel):
     def _get_asb_receiver(
             self, queue: str,
             recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
-            queue_cache_key: Optional[str] = None) -> SendReceive:
+            queue_cache_key: str | None = None) -> SendReceive:
         cache_key = queue_cache_key or queue
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
@@ -194,7 +210,7 @@ class Channel(virtual.Channel):
         return queue_obj
 
     def entity_name(
-            self, name: str, table: Optional[Dict[int, int]] = None) -> str:
+            self, name: str, table: dict[int, int] | None = None) -> str:
         """Format AMQP queue name into a valid ServiceBus queue name."""
         return str(safe_str(name)).translate(table or CHARS_REPLACE_TABLE)
 
@@ -227,7 +243,7 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        self._queue_mgmt_service.delete_queue(queue)
+        self.queue_mgmt_service.delete_queue(queue)
         send_receive_obj = self._queue_cache.pop(queue, None)
         if send_receive_obj:
             send_receive_obj.close()
@@ -242,8 +258,8 @@ class Channel(virtual.Channel):
 
     def _get(
             self, queue: str,
-            timeout: Optional[Union[float, int]] = None
-    ) -> Dict[str, Any]:
+            timeout: float | int | None = None
+    ) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
         # If we're not ack'ing for this queue, just change receive_mode
         recv_mode = ServiceBusReceiveMode.RECEIVE_AND_DELETE \
@@ -273,23 +289,24 @@ class Channel(virtual.Channel):
         return msg
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
-        delivery_info = self.qos.get(delivery_tag).delivery_info
-
-        if delivery_info['exchange'] in self._noack_queues:
-            return super().basic_ack(delivery_tag)
-
-        queue = delivery_info['azure_queue_name']
-        # recv_mode is PEEK_LOCK when ack'ing messages
-        queue_obj = self._get_asb_receiver(queue)
-
         try:
-            queue_obj.receiver.complete_message(delivery_info['azure_message'])
-        except azure.servicebus.exceptions.MessageAlreadySettled:
+            delivery_info = self.qos.get(delivery_tag).delivery_info
+        except KeyError:
             super().basic_ack(delivery_tag)
-        except Exception:
-            super().basic_reject(delivery_tag)
         else:
-            super().basic_ack(delivery_tag)
+            queue = delivery_info['azure_queue_name']
+            # recv_mode is PEEK_LOCK when ack'ing messages
+            queue_obj = self._get_asb_receiver(queue)
+
+            try:
+                queue_obj.receiver.complete_message(
+                    delivery_info['azure_message'])
+            except azure.servicebus.exceptions.MessageAlreadySettled:
+                super().basic_ack(delivery_tag)
+            except Exception:
+                super().basic_reject(delivery_tag)
+            else:
+                super().basic_ack(delivery_tag)
 
     def _size(self, queue: str) -> int:
         """Return the number of messages in a queue."""
@@ -298,7 +315,7 @@ class Channel(virtual.Channel):
 
         return props.total_message_count
 
-    def _purge(self, queue):
+    def _purge(self, queue) -> int:
         """Delete all current messages in a queue."""
         # Azure doesn't provide a purge api yet
         n = 0
@@ -337,24 +354,34 @@ class Channel(virtual.Channel):
             if self.connection is not None:
                 self.connection.close_channel(self)
 
-    @property
+    @cached_property
     def queue_service(self) -> ServiceBusClient:
-        if self._queue_service is None:
-            self._queue_service = ServiceBusClient.from_connection_string(
+        if self._connection_string:
+            return ServiceBusClient.from_connection_string(
                 self._connection_string,
                 retry_total=self.retry_total,
                 retry_backoff_factor=self.retry_backoff_factor,
                 retry_backoff_max=self.retry_backoff_max
             )
-        return self._queue_service
 
-    @property
+        return ServiceBusClient(
+            self._namespace,
+            self._credential,
+            retry_total=self.retry_total,
+            retry_backoff_factor=self.retry_backoff_factor,
+            retry_backoff_max=self.retry_backoff_max
+        )
+
+    @cached_property
     def queue_mgmt_service(self) -> ServiceBusAdministrationClient:
-        if self._queue_mgmt_service is None:
-            self._queue_mgmt_service = \
-                ServiceBusAdministrationClient.from_connection_string(
-                    self._connection_string)
-        return self._queue_mgmt_service
+        if self._connection_string:
+            return ServiceBusAdministrationClient.from_connection_string(
+                self._connection_string
+            )
+
+        return ServiceBusAdministrationClient(
+            self._namespace, self._credential
+        )
 
     @property
     def conninfo(self):
@@ -412,7 +439,8 @@ class Transport(virtual.Transport):
     can_parse_url = True
 
     @staticmethod
-    def parse_uri(uri: str) -> Tuple[str, str, str]:
+    def parse_uri(uri: str) -> tuple[str, str | DefaultAzureCredential |
+                                     ManagedIdentityCredential]:
         # URL like:
         #  azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}
         # urllib parse does not work as the sas key could contain a slash
@@ -421,25 +449,50 @@ class Transport(virtual.Transport):
         # > 'rootpolicy:some/key@somenamespace'
         uri = uri.replace('azureservicebus://', '')
         # > 'rootpolicy:some/key',  'somenamespace'
-        policykeypair, namespace = uri.rsplit('@', 1)
-        # > 'rootpolicy', 'some/key'
-        policy, sas_key = policykeypair.split(':', 1)
+        credential, namespace = uri.rsplit('@', 1)
+
+        if not namespace.endswith('.net'):
+            namespace += '.servicebus.windows.net'
+
+        if "DefaultAzureCredential".lower() == credential.lower():
+            if DefaultAzureCredential is None:
+                raise ImportError('Azure Service Bus transport with a '
+                                  'DefaultAzureCredential requires the '
+                                  'azure-identity library')
+            credential = DefaultAzureCredential()
+        elif "ManagedIdentityCredential".lower() == credential.lower():
+            if ManagedIdentityCredential is None:
+                raise ImportError('Azure Service Bus transport with a '
+                                  'ManagedIdentityCredential requires the '
+                                  'azure-identity library')
+            credential = ManagedIdentityCredential()
+        else:
+            # > 'rootpolicy', 'some/key'
+            policy, sas_key = credential.split(':', 1)
+            credential = f"{policy}:{sas_key}"
 
         # Validate ASB connection string
-        if not all([namespace, policy, sas_key]):
+        if not all([namespace, credential]):
             raise ValueError(
                 'Need a URI like '
                 'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} ' # noqa
                 'or the azure Endpoint connection string'
             )
 
-        return namespace, policy, sas_key
+        return namespace, credential
 
     @classmethod
     def as_uri(cls, uri: str, include_password=False, mask='**') -> str:
-        namespace, policy, sas_key = cls.parse_uri(uri)
-        return 'azureservicebus://{}:{}@{}'.format(
-            policy,
-            sas_key if include_password else mask,
+        namespace, credential = cls.parse_uri(uri)
+        if isinstance(credential, str) and ":" in credential:
+            policy, sas_key = credential.split(':', 1)
+            return 'azureservicebus://{}:{}@{}'.format(
+                policy,
+                sas_key if include_password else mask,
+                namespace
+            )
+
+        return 'azureservicebus://{}@{}'.format(
+            credential.__class__.__name__,
             namespace
         )

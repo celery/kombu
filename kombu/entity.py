@@ -1,5 +1,7 @@
 """Exchange and Queue declarations."""
 
+from __future__ import annotations
+
 import numbers
 
 from .abstract import MaybeChannelBound, Object
@@ -40,6 +42,7 @@ class Exchange(MaybeChannelBound):
     """An Exchange declaration.
 
     Arguments:
+    ---------
         name (str): See :attr:`name`.
         type (str): See :attr:`type`.
         channel (kombu.Connection, ChannelT): See :attr:`channel`.
@@ -49,7 +52,8 @@ class Exchange(MaybeChannelBound):
         arguments (Dict): See :attr:`arguments`.
         no_declare (bool): See :attr:`no_declare`
 
-    Attributes:
+    Attributes
+    ----------
         name (str): Name of the exchange.
             Default is no name (the default exchange).
 
@@ -188,6 +192,7 @@ class Exchange(MaybeChannelBound):
         """Bind the exchange to another exchange.
 
         Arguments:
+        ---------
             nowait (bool): If set the server will not respond, and the call
                 will not block waiting for a response.
                 Default is :const:`False`.
@@ -219,6 +224,7 @@ class Exchange(MaybeChannelBound):
         """Create message instance to be sent with :meth:`publish`.
 
         Arguments:
+        ---------
             body (Any): Message body.
 
             delivery_mode (bool): Set custom delivery mode.
@@ -257,6 +263,7 @@ class Exchange(MaybeChannelBound):
         """Publish message.
 
         Arguments:
+        ---------
             message (Union[kombu.Message, str, bytes]):
                 Message to publish.
             routing_key (str): Message routing key.
@@ -278,6 +285,7 @@ class Exchange(MaybeChannelBound):
         """Delete the exchange declaration on server.
 
         Arguments:
+        ---------
             if_unused (bool): Delete only if the exchange has no bindings.
                 Default is :const:`False`.
             nowait (bool): If set the server will not respond, and a
@@ -320,6 +328,7 @@ class binding(Object):
     """Represents a queue or exchange binding.
 
     Arguments:
+    ---------
         exchange (Exchange): Exchange to bind to.
         routing_key (str): Routing key used as binding key.
         arguments (Dict): Arguments for bind operation.
@@ -374,6 +383,7 @@ class Queue(MaybeChannelBound):
     """A Queue declaration.
 
     Arguments:
+    ---------
         name (str): See :attr:`name`.
         exchange (Exchange, str): See :attr:`exchange`.
         routing_key (str): See :attr:`routing_key`.
@@ -392,7 +402,8 @@ class Queue(MaybeChannelBound):
         max_length_bytes (int): See :attr:`max_length_bytes`.
         max_priority (int): See :attr:`max_priority`.
 
-    Attributes:
+    Attributes
+    ----------
         name (str): Name of the queue.
             Default is no name (default queue destination).
 
@@ -626,6 +637,7 @@ class Queue(MaybeChannelBound):
         """Declare queue on the server.
 
         Arguments:
+        ---------
             nowait (bool): Do not wait for a reply.
             passive (bool): If set, the server will not create the queue.
                 The client can use this to check whether a queue exists
@@ -682,11 +694,13 @@ class Queue(MaybeChannelBound):
         specific types of applications where synchronous functionality
         is more important than performance.
 
-        Returns:
+        Returns
+        -------
             ~kombu.Message: if a message was available,
                 or :const:`None` otherwise.
 
         Arguments:
+        ---------
             no_ack (bool): If enabled the broker will
                 automatically ack messages.
             accept (Set[str]): Custom list of accepted content types.
@@ -708,13 +722,14 @@ class Queue(MaybeChannelBound):
                                         nowait=nowait) or 0
 
     def consume(self, consumer_tag='', callback=None,
-                no_ack=None, nowait=False):
+                no_ack=None, nowait=False, on_cancel=None):
         """Start a queue consumer.
 
         Consumers last as long as the channel they were created on, or
         until the client cancels them.
 
         Arguments:
+        ---------
             consumer_tag (str): Unique identifier for the consumer.
                 The consumer tag is local to a connection, so two clients
                 can use the same consumer tags. If this field is empty
@@ -726,6 +741,9 @@ class Queue(MaybeChannelBound):
             nowait (bool): Do not wait for a reply.
 
             callback (Callable): callback called for each delivered message.
+
+            on_cancel (Callable): callback called on cancel notify received
+                from broker.
         """
         if no_ack is None:
             no_ack = self.no_ack
@@ -735,7 +753,9 @@ class Queue(MaybeChannelBound):
             consumer_tag=consumer_tag or '',
             callback=callback,
             nowait=nowait,
-            arguments=self.consumer_arguments)
+            arguments=self.consumer_arguments,
+            on_cancel=on_cancel,
+        )
 
     def cancel(self, consumer_tag):
         """Cancel a consumer by consumer tag."""
@@ -745,6 +765,7 @@ class Queue(MaybeChannelBound):
         """Delete the queue.
 
         Arguments:
+        ---------
             if_unused (bool): If set, the server will only delete the queue
                 if it has no consumers. A channel error will be raised
                 if the queue has consumers.

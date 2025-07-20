@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 import socket
 from copy import copy, deepcopy
@@ -9,12 +11,12 @@ from kombu import Connection, Consumer, Producer, parse_url
 from kombu.connection import Resource
 from kombu.exceptions import OperationalError
 from kombu.utils.functional import lazy
-from t.mocks import Transport
+from t.mocks import TimeoutingTransport, Transport
 
 
 class test_connection_utils:
 
-    def setup(self):
+    def setup_method(self):
         self.url = 'amqp://user:pass@localhost:5672/my/vhost'
         self.nopass = 'amqp://user:**@localhost:5672/my/vhost'
         self.expected = {
@@ -99,6 +101,19 @@ class test_connection_utils:
         # see Appendix A of http://www.rabbitmq.com/uri-spec.html
         self.assert_info(Connection(url), **expected)
 
+    @pytest.mark.parametrize('url,expected', [
+        ('sqs://user:pass@',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+        ('sqs://',
+         {'userid': None, 'password': None, 'hostname': None,
+          'port': None, 'virtual_host': '/'}),
+    ])
+    def test_sqs_example_urls(self, url, expected, caplog):
+        pytest.importorskip('boto3')
+        self.assert_info(Connection('sqs://'), **expected)
+        assert not caplog.records
+
     @pytest.mark.skip('TODO: urllib cannot parse ipv6 urls')
     def test_url_IPV6(self):
         self.assert_info(
@@ -121,7 +136,7 @@ class test_connection_utils:
 
 class test_Connection:
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection(port=5672, transport=Transport)
 
     def test_establish_connection(self):
@@ -148,7 +163,7 @@ class test_Connection:
         conn._ensure_connection = Mock()
 
         conn.connect()
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -167,7 +182,7 @@ class test_Connection:
 
         conn.connect()
         # connect() is ignoring transport options
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -293,7 +308,9 @@ class test_Connection:
         assert not c.is_evented
 
     def test_register_with_event_loop(self):
-        c = Connection(transport=Mock)
+        transport = Mock(name='transport')
+        transport.connection_errors = []
+        c = Connection(transport=transport)
         loop = Mock(name='loop')
         c.register_with_event_loop(loop)
         c.transport.register_with_event_loop.assert_called_with(
@@ -383,14 +400,12 @@ class test_Connection:
         qsms.assert_called_with(self.conn.connection)
 
     def test__enter____exit__(self):
-        conn = self.conn
-        context = conn.__enter__()
-        assert context is conn
-        conn.connect()
-        assert conn.connection.connected
-        conn.__exit__()
-        assert conn.connection is None
-        conn.close()    # again
+        with self.conn as context:
+            assert context is self.conn
+            self.conn.connect()
+            assert self.conn.connection.connected
+        assert self.conn.connection is None
+        self.conn.close()    # again
 
     def test_close_survives_connerror(self):
 
@@ -477,15 +492,38 @@ class test_Connection:
         def publish():
             raise _ConnectionError('failed connection')
 
-        self.conn.transport.connection_errors = (_ConnectionError,)
+        self.conn.get_transport_cls().connection_errors = (_ConnectionError,)
         ensured = self.conn.ensure(self.conn, publish)
         with pytest.raises(OperationalError):
             ensured()
 
+    def test_ensure_retry_errors_is_limited_by_max_retries(self):
+        class _MessageNacked(Exception):
+            pass
+
+        tries = 0
+
+        def publish():
+            nonlocal tries
+            tries += 1
+            if tries <= 3:
+                raise _MessageNacked('NACK')
+            # On the 4th try, we let it pass
+            return 'ACK'
+
+        ensured = self.conn.ensure(
+            self.conn,
+            publish,
+            max_retries=3,  # 3 retries + 1 initial try = 4 tries
+            retry_errors=(_MessageNacked,)
+        )
+
+        assert ensured() == 'ACK'
+
     def test_autoretry(self):
         myfun = Mock()
 
-        self.conn.transport.connection_errors = (KeyError,)
+        self.conn.get_transport_cls().connection_errors = (KeyError,)
 
         def on_call(*args, **kwargs):
             myfun.side_effect = None
@@ -571,6 +609,18 @@ class test_Connection:
         conn = Connection(transport=MyTransport)
         assert conn.channel_errors == (KeyError, ValueError)
 
+    def test_channel_errors__exception_no_cache(self):
+        """Ensure the channel_errors can be retrieved without an initialized
+        transport.
+        """
+
+        class MyTransport(Transport):
+            channel_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.channel_errors == (KeyError,)
+
     def test_connection_errors(self):
 
         class MyTransport(Transport):
@@ -578,6 +628,80 @@ class test_Connection:
 
         conn = Connection(transport=MyTransport)
         assert conn.connection_errors == (KeyError, ValueError)
+
+    def test_connection_errors__exception_no_cache(self):
+        """Ensure the connection_errors can be retrieved without an
+        initialized transport.
+        """
+
+        class MyTransport(Transport):
+            connection_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.connection_errors == (KeyError,)
+
+    def test_recoverable_connection_errors(self):
+
+        class MyTransport(Transport):
+            recoverable_connection_errors = (KeyError, ValueError)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_connection_errors == (KeyError, ValueError)
+
+    def test_recoverable_connection_errors__fallback(self):
+        """Ensure missing recoverable_connection_errors on the Transport does
+        not cause a fatal error.
+        """
+
+        class MyTransport(Transport):
+            connection_errors = (KeyError,)
+            channel_errors = (ValueError,)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_connection_errors == (KeyError, ValueError)
+
+    def test_recoverable_connection_errors__exception_no_cache(self):
+        """Ensure the recoverable_connection_errors can be retrieved without
+        an initialized transport.
+        """
+
+        class MyTransport(Transport):
+            recoverable_connection_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.recoverable_connection_errors == (KeyError,)
+
+    def test_recoverable_channel_errors(self):
+
+        class MyTransport(Transport):
+            recoverable_channel_errors = (KeyError, ValueError)
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_channel_errors == (KeyError, ValueError)
+
+    def test_recoverable_channel_errors__fallback(self):
+        """Ensure missing recoverable_channel_errors on the Transport does not
+        cause a fatal error.
+        """
+
+        class MyTransport(Transport):
+            pass
+
+        conn = Connection(transport=MyTransport)
+        assert conn.recoverable_channel_errors == ()
+
+    def test_recoverable_channel_errors__exception_no_cache(self):
+        """Ensure the recoverable_channel_errors can be retrieved without an
+        initialized transport.
+        """
+        class MyTransport(Transport):
+            recoverable_channel_errors = (KeyError,)
+
+        conn = Connection(transport=MyTransport)
+        MyTransport.__init__ = Mock(side_effect=Exception)
+        assert conn.recoverable_channel_errors == (KeyError,)
 
     def test_multiple_urls_hostname(self):
         conn = Connection(['example.com;amqp://example.com'])
@@ -587,12 +711,89 @@ class test_Connection:
         conn = Connection('example.com;example.com;')
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
 
+    def test_connection_respect_its_timeout(self):
+        invalid_port = 1222
+        with Connection(
+            f'amqp://guest:guest@localhost:{invalid_port}//',
+            transport_options={'max_retries': 2},
+            connect_timeout=1
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+    def test_connection_failover_without_total_timeout(self):
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={'interval_start': 0, 'interval_step': 0},
+        ) as conn:
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
+            with pytest.raises(OperationalError):
+                conn.default_channel
+            # Never retried, because `retry_over_time` `timeout` is equal
+            # to `connect_timeout`
+            conn._establish_connection.assert_called_once()
+
+    def test_connection_failover_with_total_timeout(self):
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={'connect_retries_timeout': 2,
+                               'interval_start': 0, 'interval_step': 0},
+        ) as conn:
+            conn._establish_connection = Mock(
+                side_effect=conn._establish_connection
+            )
+            with pytest.raises(OperationalError):
+                conn.default_channel
+            assert conn._establish_connection.call_count == 2
+
+    def test_connection_timeout_with_errback(self):
+        errback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'errback': errback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        errback.assert_called()
+
+    def test_connection_timeout_with_callback(self):
+        callback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'callback': callback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        callback.assert_called()
+
 
 class test_Connection_with_transport_options:
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection(port=5672, transport=Transport,
                                transport_options=self.transport_options)
 
@@ -645,6 +846,93 @@ class ResourceCase:
     def test_acquire_no_limit(self):
         P = self.create_resource(None)
         P.acquire().release()
+
+    def test_acquire_resize_in_use(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(5)]
+        self.assert_state(P, 0, 5)
+        with pytest.raises(RuntimeError):
+            P.resize(4)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 5, 0)
+
+    def test_acquire_resize_ignore_err_no_shrink(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(5)]
+        self.assert_state(P, 0, 5)
+        P.resize(4, ignore_errors=True)
+        self.assert_state(P, 0, 5)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 5, 0)
+
+    def test_acquire_resize_ignore_err_shrink(self):
+        P = self.create_resource(5)
+        self.assert_state(P, 5, 0)
+        chans = [P.acquire() for _ in range(4)]
+        self.assert_state(P, 1, 4)
+        P.resize(4, ignore_errors=True)
+        self.assert_state(P, 0, 4)
+        [chan.release() for chan in chans]
+        self.assert_state(P, 4, 0)
+
+    def test_acquire_resize_larger(self):
+        P = self.create_resource(1)
+        self.assert_state(P, 1, 0)
+        c1 = P.acquire()
+        self.assert_state(P, 0, 1)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(2)
+        self.assert_state(P, 1, 1)
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        c1.release()
+        c2.release()
+        self.assert_state(P, 2, 0)
+
+    def test_acquire_resize_force_smaller(self):
+        P = self.create_resource(2)
+        self.assert_state(P, 2, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(1, force=True)     # acts like reset
+        del c1
+        del c2
+        self.assert_state(P, 1, 0)
+        c1 = P.acquire()
+        self.assert_state(P, 0, 1)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        c1.release()
+        self.assert_state(P, 1, 0)
+
+    def test_acquire_resize_reset(self):
+        P = self.create_resource(2)
+        self.assert_state(P, 2, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        self.assert_state(P, 0, 2)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        P.resize(3, reset=True)
+        del c1
+        del c2
+        self.assert_state(P, 3, 0)
+        c1 = P.acquire()
+        c2 = P.acquire()
+        c3 = P.acquire()
+        self.assert_state(P, 0, 3)
+        with pytest.raises(P.LimitExceeded):
+            P.acquire()
+        c1.release()
+        c2.release()
+        c3.release()
+        self.assert_state(P, 3, 0)
 
     def test_replace_when_limit(self):
         P = self.create_resource(10)
@@ -756,6 +1044,43 @@ class test_ConnectionPool(ResourceCase):
         P = self.create_resource(10)
         with P.acquire_channel() as (conn, channel):
             assert channel is conn.default_channel
+
+    def test_exception_during_connection_use(self):
+        """Tests that connections retrieved from a pool are replaced.
+
+        In case of an exception during usage of an exception, it is required that the
+        connection is 'replaced' (effectively closing the connection) before releasing
+        it back into the pool. This ensures that reconnecting to the broker is required
+        before the next usage.
+        """
+        P = self.create_resource(1)
+
+        # Raising an exception during a network call should cause the cause the
+        # connection to be replaced.
+        with pytest.raises(IOError):
+            with P.acquire() as connection:
+                connection.connect()
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        # Acquiring the same connection from the pool yields a disconnected Connection
+        # object.
+        with P.acquire() as connection:
+            assert not connection.connected
+
+        # acquire_channel automatically reconnects
+        with pytest.raises(IOError):
+            with P.acquire_channel() as (connection, _):
+                # The Connection object should still be connected
+                assert connection.connected
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        with P.acquire() as connection:
+            # The connection should be closed
+            assert not connection.connected
 
 
 class test_ChannelPool(ResourceCase):

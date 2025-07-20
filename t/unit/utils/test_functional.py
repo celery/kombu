@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 from itertools import count
 from unittest.mock import Mock
@@ -166,7 +168,7 @@ class test_retry_over_time:
     class Predicate(Exception):
         pass
 
-    def setup(self):
+    def setup_method(self):
         self.index = 0
 
     def myfun(self):

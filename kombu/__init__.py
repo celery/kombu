@@ -1,13 +1,16 @@
 """Messaging library for Python."""
 
+from __future__ import annotations
+
 import os
 import re
 import sys
 from collections import namedtuple
+from typing import Any, cast
 
-__version__ = '5.2.2'
+__version__ = '5.5.4'
 __author__ = 'Ask Solem'
-__contact__ = 'auvipy@gmail.com, ask@celeryproject.org'
+__contact__ = 'auvipy@gmail.com'
 __homepage__ = 'https://kombu.readthedocs.io'
 __docformat__ = 'restructuredtext en'
 
@@ -19,12 +22,12 @@ version_info_t = namedtuple('version_info_t', (
 
 # bumpversion can only search for {current_version}
 # so we have to parse the version here.
-_temp = re.match(
-    r'(\d+)\.(\d+).(\d+)(.+)?', __version__).groups()
+_temp = cast(re.Match, re.match(
+    r'(\d+)\.(\d+).(\d+)(.+)?', __version__)).groups()
 VERSION = version_info = version_info_t(
     int(_temp[0]), int(_temp[1]), int(_temp[2]), _temp[3] or '', '')
-del(_temp)
-del(re)
+del _temp
+del re
 
 STATICA_HACK = True
 globals()['kcah_acitats'[::-1].upper()] = False
@@ -61,15 +64,15 @@ all_by_module = {
 }
 
 object_origins = {}
-for module, items in all_by_module.items():
+for _module, items in all_by_module.items():
     for item in items:
-        object_origins[item] = module
+        object_origins[item] = _module
 
 
 class module(ModuleType):
     """Customized Python module."""
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if name in object_origins:
             module = __import__(object_origins[name], None, None, [name])
             for extra_name in all_by_module[module.__name__]:
@@ -77,7 +80,7 @@ class module(ModuleType):
             return getattr(module, name)
         return ModuleType.__getattribute__(self, name)
 
-    def __dir__(self):
+    def __dir__(self) -> list[str]:
         result = list(new_module.__all__)
         result.extend(('__file__', '__path__', '__doc__', '__all__',
                        '__docformat__', '__name__', '__path__', 'VERSION',
@@ -85,12 +88,6 @@ class module(ModuleType):
                        '__contact__', '__homepage__', '__docformat__'))
         return result
 
-
-# 2.5 does not define __package__
-try:
-    package = __package__
-except NameError:  # pragma: no cover
-    package = 'kombu'
 
 # keep a reference to this module so that it's not garbage collected
 old_module = sys.modules[__name__]
@@ -106,7 +103,7 @@ new_module.__dict__.update({
     '__contact__': __contact__,
     '__homepage__': __homepage__,
     '__docformat__': __docformat__,
-    '__package__': package,
+    '__package__': __package__,
     'version_info_t': version_info_t,
     'version_info': version_info,
     'VERSION': VERSION

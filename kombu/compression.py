@@ -1,5 +1,7 @@
 """Compression utilities."""
 
+from __future__ import annotations
+
 import zlib
 
 from kombu.utils.encoding import ensure_bytes
@@ -16,6 +18,7 @@ def register(encoder, decoder, content_type, aliases=None):
     """Register new compression method.
 
     Arguments:
+    ---------
         encoder (Callable): Function used to compress text.
         decoder (Callable): Function used to decompress previously
             compressed text.
@@ -50,6 +53,7 @@ def compress(body, content_type):
     """Compress text.
 
     Arguments:
+    ---------
         body (AnyStr): The text to compress.
         content_type (str): mime-type of compression method to use.
     """
@@ -61,6 +65,7 @@ def decompress(body, content_type):
     """Decompress compressed text.
 
     Arguments:
+    ---------
         body (AnyStr): Previously compressed text to uncompress.
         content_type (str): mime-type of compression method used.
     """

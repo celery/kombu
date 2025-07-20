@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import Mock, patch
 
 import pytest
@@ -51,7 +53,7 @@ class test_Channel:
 
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.client = Mock(name='client')
         self.T = librabbitmq.Transport(self.client)
 
