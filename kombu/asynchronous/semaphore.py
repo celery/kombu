@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import sys
 from collections import deque
-from typing import TYPE_CHECKING, Callable, Deque
-
-if sys.version_info < (3, 10):
-    from typing_extensions import ParamSpec
-else:
-    from typing import ParamSpec
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from types import TracebackType
+    from typing import Callable, Deque
+    if sys.version_info < (3, 10):
+        from typing_extensions import ParamSpec
+    else:
+        from typing import ParamSpec
 
+    P = ParamSpec("P")
 
 __all__ = ('DummyLock', 'LaxBoundedSemaphore')
-
-P = ParamSpec("P")
 
 
 class LaxBoundedSemaphore:
@@ -26,6 +25,7 @@ class LaxBoundedSemaphore:
     range even if released more times than it was acquired.
 
     Example:
+    -------
         >>> x = LaxBoundedSemaphore(2)
 
         >>> x.acquire(print, 'HELLO 1')
@@ -61,6 +61,7 @@ class LaxBoundedSemaphore:
         until the semaphore is released.
 
         Arguments:
+        ---------
             callback (Callable): The callback to apply.
             *partial_args (Any): partial arguments to callback.
         """
@@ -77,6 +78,7 @@ class LaxBoundedSemaphore:
         """Release semaphore.
 
         Note:
+        ----
             If there are any waiters this will apply the first waiter
             that is waiting for the resource (FIFO order).
         """

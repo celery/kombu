@@ -90,6 +90,13 @@ class test_AsyncHTTPSConnection(AWSCase):
             validate_cert=VALIDATES_CERT,
         )
 
+    def test_request_with_cert_path_https(self):
+        x = AsyncHTTPSConnection("https://example.com")
+        request = x.getrequest()
+        assert request.validate_cert is True
+        assert request.ca_certs is not None
+        assert request.ca_certs.endswith('.pem')
+
     def test_getresponse(self):
         client = Mock(name='client')
         client.add_request = passthrough(name='client.add_request')
@@ -199,7 +206,7 @@ class test_AsyncConnection(AWSCase):
 
 class test_AsyncAWSQueryConnection(AWSCase):
 
-    def setup(self):
+    def setup_method(self):
         session = boto3.session.Session(
             aws_access_key_id='AAA',
             aws_secret_access_key='AAAA',

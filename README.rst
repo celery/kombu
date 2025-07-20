@@ -4,10 +4,11 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.3.0b1
+:Version: 5.5.4
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
+:DeepWiki: |deepwiki|
 :Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
 
 About
@@ -168,7 +169,7 @@ Or handle channels manually:
 
     with connection.channel() as channel:
         producer = Producer(channel, ...)
-        consumer = Producer(channel)
+        consumer = Consumer(channel)
 
 
 All objects can be used outside of with statements too,
@@ -328,12 +329,12 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://api.travis-ci.com/celery/kombu.png?branch=master
+.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/ci.yaml/badge.svg
     :alt: Build status
-    :target: https://travis-ci.com/celery/kombu
+    :target: https://github.com/celery/kombu/actions/workflows/ci.yml
 
-.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
-    :target: https://codecov.io/github/celery/kombu?branch=master
+.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=main
+    :target: https://codecov.io/github/celery/kombu?branch=main
 
 .. |license| image:: https://img.shields.io/pypi/l/kombu.svg
     :alt: BSD License
@@ -350,8 +351,15 @@ file in the top distribution directory for the full license text.
 .. |pyimp| image:: https://img.shields.io/pypi/implementation/kombu.svg
      :alt: Support Python implementations.
      :target: https://pypi.org/project/kombu/
+
 .. |downloads| image:: https://pepy.tech/badge/kombu
     :target: https://pepy.tech/project/kombu
+
+.. |deepwiki| image:: https://devin.ai/assets/deepwiki-badge.png
+    :alt: Ask http://DeepWiki.com
+    :target: https://deepwiki.com/celery/kombu
+    :width: 125px
+
 
 kombu as part of the Tidelift Subscription
 =======

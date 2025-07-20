@@ -69,7 +69,8 @@ from kombu.utils.json import dumps, loads
 
 try:
     import confluent_kafka
-    from confluent_kafka import Consumer, Producer, TopicPartition
+    from confluent_kafka import (Consumer, KafkaException, Producer,
+                                 TopicPartition)
     from confluent_kafka.admin import AdminClient, NewTopic
 
     KAFKA_CONNECTION_ERRORS = ()
@@ -86,7 +87,7 @@ logger = get_logger(__name__)
 DEFAULT_PORT = 9092
 
 
-class NoBrokersAvailable(confluent_kafka.KafkaException):
+class NoBrokersAvailable(KafkaException):
     """Kafka broker is not available exception."""
 
     retriable = True

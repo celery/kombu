@@ -6,12 +6,7 @@ import re
 import sys
 
 import setuptools
-import setuptools.command.test
-
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
 # -- Parse meta
 re_meta = re.compile(r'__(\w+?)__\s*=\s*(.*)')
@@ -80,18 +75,6 @@ def extras(*p):
     return reqs('extras', *p)
 
 
-class pytest(setuptools.command.test.test):
-    user_options = [('pytest-args=', 'a', 'Arguments to pass to py.test')]
-
-    def initialize_options(self):
-        super().initialize_options()
-        self.pytest_args = []
-
-    def run_tests(self):
-        import pytest
-        sys.exit(pytest.main(self.pytest_args))
-
-
 def readme():
     with open('README.rst') as f:
         return f.read()
@@ -110,10 +93,8 @@ setup(
         'Source': 'https://github.com/celery/kombu'
     },
     platforms=['any'],
-    zip_safe=False,
-    license='BSD',
-    cmdclass={'test': pytest},
-    python_requires=">=3.7",
+    license='BSD-3-Clause',
+    python_requires=">=3.8",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
@@ -122,6 +103,7 @@ setup(
         'redis': extras('redis.txt'),
         'mongodb': extras('mongodb.txt'),
         'sqs': extras('sqs.txt'),
+        'gcpubsub': extras('gcpubsub.txt'),
         'zookeeper': extras('zookeeper.txt'),
         'sqlalchemy': extras('sqlalchemy.txt'),
         'librabbitmq': extras('librabbitmq.txt'),
@@ -135,15 +117,16 @@ setup(
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
-        'License :: OSI Approved :: BSD License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Programming Language :: Python :: 3.13',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Intended Audience :: Developers',

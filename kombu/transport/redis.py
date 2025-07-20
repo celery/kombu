@@ -59,9 +59,11 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from importlib.metadata import version
 from queue import Empty
 from time import time
 
+from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -79,8 +81,10 @@ from . import virtual
 
 try:
     import redis
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
     from redis import sentinel
@@ -89,7 +93,7 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
-crit, warn = logger.critical, logger.warn
+crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
@@ -134,6 +138,7 @@ def get_redis_error_classes():
             IOError,
             OSError,
             exceptions.ConnectionError,
+            exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError)),
         (virtual.Transport.channel_errors + (
@@ -355,7 +360,7 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # TODO: Remove this once we soley on Redis-py 3.0.0+
+        # TODO: Remove this once we solely on Redis-py 3.0.0+
         if redis.VERSION[0] >= 3:
             # Redis-py changed the format of zadd args in v3.0.0
             zadd_args = [{delivery_tag: time()}]
@@ -382,7 +387,9 @@ class QoS(virtual.QoS):
     def reject(self, delivery_tag, requeue=False):
         if requeue:
             self.restore_by_tag(delivery_tag, leftmost=True)
-        self.ack(delivery_tag)
+        else:
+            self._remove_from_indices(delivery_tag).execute()
+        super().ack(delivery_tag)
 
     @contextmanager
     def pipe_or_acquire(self, pipe=None, client=None):
@@ -508,7 +515,10 @@ class MultiChannelPoller:
 
     def _client_registered(self, channel, client, cmd):
         if getattr(client, 'connection', None) is None:
-            client.connection = client.connection_pool.get_connection('_')
+            if _REDIS_GET_CONNECTION_WITHOUT_ARGS:
+                client.connection = client.connection_pool.get_connection()
+            else:
+                client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
@@ -719,7 +729,7 @@ class Channel(virtual.Channel):
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
-
+        self._registered = False
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -744,6 +754,9 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
+        # and set to true after successfully added channel to the poll.
+        self._registered = True
+
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
@@ -783,8 +796,10 @@ class Channel(virtual.Channel):
             except KeyError:
                 pass
             for queue in self._lookup(exchange, routing_key):
+                pri = self._get_message_priority(payload, reverse=False)
+
                 (pipe.lpush if leftmost else pipe.rpush)(
-                    queue, dumps(payload),
+                    self._q_for_pri(queue, pri), dumps(payload),
                 )
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
@@ -931,8 +946,8 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
-                        warn('Cannot process event on channel %r: %s',
-                             channel, repr(payload)[:4096], exc_info=1)
+                        warning('Cannot process event on channel %r: %s',
+                                channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
                     self.connection._deliver(
@@ -1079,6 +1094,11 @@ class Channel(virtual.Channel):
 
     def close(self):
         self._closing = True
+        if self._in_poll:
+            try:
+                self._brpop_read()
+            except Empty:
+                pass
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
@@ -1143,11 +1163,17 @@ class Channel(virtual.Channel):
 
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
-        if (
-            hasattr(conn_class, '__init__') and
-            not accepts_argument(conn_class.__init__, 'health_check_interval')
-        ):
-            connparams.pop('health_check_interval')
+        if hasattr(conn_class, '__init__'):
+            # check health_check_interval for the class and bases
+            # classes
+            classes = [conn_class]
+            if hasattr(conn_class, '__bases__'):
+                classes += list(conn_class.__bases__)
+            for klass in classes:
+                if accepts_argument(klass.__init__, 'health_check_interval'):
+                    break
+            else:  # no break
+                connparams.pop('health_check_interval')
 
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
@@ -1187,7 +1213,10 @@ class Channel(virtual.Channel):
             class Connection(connection_cls):
                 def disconnect(self, *args):
                     super().disconnect(*args)
-                    channel._on_connection_disconnect(self)
+                    # We remove the connection from the poller
+                    # only if it has been added properly.
+                    if channel._registered:
+                        channel._on_connection_disconnect(self)
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
@@ -1216,7 +1245,7 @@ class Channel(virtual.Channel):
                 global_keyprefix=self.global_keyprefix,
             )
 
-        return redis.StrictRedis
+        return redis.Redis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
@@ -1362,7 +1391,7 @@ class SentinelChannel(Channel):
      * `master_name` - name of the redis group to poll
 
     Example:
-
+    -------
     .. code-block:: python
 
         >>> import kombu
@@ -1415,10 +1444,12 @@ class SentinelChannel(Channel):
 
         return sentinel_inst.master_for(
             master_name,
-            self.Client,
+            redis.Redis,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
+        params = self._connparams(asynchronous=asynchronous)
+        self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
 
 

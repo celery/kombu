@@ -1,2 +1,0 @@
--r extras/sqs.txt
--r extras/lzma.txt

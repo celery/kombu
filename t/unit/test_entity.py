@@ -210,7 +210,7 @@ class test_Exchange:
 
 class test_Queue:
 
-    def setup(self) -> None:
+    def setup_method(self) -> None:
         self.exchange = Exchange('foo', 'direct')
 
     def test_constructor_with_actual_exchange(self) -> None:
@@ -386,6 +386,22 @@ class test_Queue:
         b = Queue('foo', self.exchange, 'foo', channel=get_conn().channel())
         b.consume('fifafo', None)
         assert 'basic_consume' in b.channel
+
+    def test_consume_with_callbacks(self) -> None:
+        chan = Mock()
+        b = Queue('foo', self.exchange, 'foo', channel=chan)
+        callback = Mock()
+        on_cancel = Mock()
+        b.consume('fifafo', callback=callback, on_cancel=on_cancel)
+        chan.basic_consume.assert_called_with(
+            queue='foo',
+            no_ack=False,
+            consumer_tag='fifafo',
+            callback=callback,
+            nowait=False,
+            arguments=None,
+            on_cancel=on_cancel
+        )
 
     def test_cancel(self) -> None:
         b = Queue('foo', self.exchange, 'foo', channel=get_conn().channel())

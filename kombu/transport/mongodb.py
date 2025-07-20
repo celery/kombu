@@ -47,6 +47,7 @@ from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
+from kombu.utils.url import maybe_sanitize_url
 
 from . import virtual
 from .base import to_rabbitmq_queue_arguments
@@ -65,6 +66,7 @@ class BroadcastCursor:
 
     def __init__(self, cursor):
         self._cursor = cursor
+        self._offset = 0
         self.purge(rewind=False)
 
     def get_size(self):
@@ -77,7 +79,7 @@ class BroadcastCursor:
         if rewind:
             self._cursor.rewind()
 
-        # Fast forward the cursor past old events
+        # Fast-forward the cursor past old events
         self._offset = self._cursor.collection.count_documents({})
         self._cursor = self._cursor.skip(self._offset)
 
@@ -221,7 +223,7 @@ class Channel(virtual.Channel):
         if queue in self._fanout_queues:
             self._get_broadcast_cursor(queue).purge()
         else:
-            self.messages.remove({'queue': queue})
+            self.messages.delete_many({'queue': queue})
 
         return size
 
@@ -257,10 +259,10 @@ class Channel(virtual.Channel):
         self.routing.update_one(lookup, {'$set': data}, upsert=True)
 
     def queue_delete(self, queue, **kwargs):
-        self.routing.remove({'queue': queue})
+        self.routing.delete_many({'queue': queue})
 
         if self.ttl:
-            self.queues.remove({'_id': queue})
+            self.queues.delete_one({'_id': queue})
 
         super().queue_delete(queue, **kwargs)
 
@@ -282,6 +284,10 @@ class Channel(virtual.Channel):
         client = self.connection.client
         hostname = client.hostname
 
+        if hostname.startswith('srv://'):
+            scheme = 'mongodb+srv://'
+            hostname = 'mongodb+' + hostname
+
         if not hostname.startswith(scheme):
             hostname = scheme + hostname
 
@@ -299,7 +305,9 @@ class Channel(virtual.Channel):
 
         port = client.port if client.port else self.default_port
 
-        parsed = uri_parser.parse_uri(hostname, port)
+        # We disable validating and normalization parameters here,
+        # because pymongo will validate and normalize parameters later in __init__ of MongoClient
+        parsed = uri_parser.parse_uri(hostname, port, validate=False)
 
         dbname = parsed['database'] or client.virtual_host
 
@@ -314,6 +322,9 @@ class Channel(virtual.Channel):
         }
         options.update(parsed['options'])
         options = self._prepare_client_options(options)
+
+        if 'tls' in options:
+            options.pop('ssl')
 
         return hostname, dbname, options
 
@@ -447,6 +458,7 @@ class Channel(virtual.Channel):
         """Get expiration header named `argument` of queue definition.
 
         Note:
+        ----
             `queue` must be either queue name or options itself.
         """
         if isinstance(queue, str):
@@ -508,3 +520,15 @@ class Transport(virtual.Transport):
 
     def driver_version(self):
         return pymongo.version
+
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        if not uri:
+            return 'mongodb://'
+        if include_password:
+            return uri
+
+        if ',' not in uri:
+            return maybe_sanitize_url(uri)
+
+        uri1, remainder = uri.split(',', 1)
+        return ','.join([maybe_sanitize_url(uri1), remainder])

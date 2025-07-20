@@ -25,7 +25,7 @@ def test_rabbitmq_queue_arguments(args, input, expected):
 
 class test_StdChannel:
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.channel.queues.clear()
@@ -52,7 +52,7 @@ class test_StdChannel:
 
 class test_Message:
 
-    def setup(self):
+    def setup_method(self):
         self.conn = Connection('memory://')
         self.channel = self.conn.channel()
         self.message = Message(channel=self.channel, delivery_tag=313)

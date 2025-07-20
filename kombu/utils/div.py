@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 
 from .encoding import default_encode
@@ -10,13 +11,14 @@ from .encoding import default_encode
 def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
     """Dump message state to stdout or file."""
     from pprint import pformat
-    from tempfile import mktemp
+    from tempfile import mkstemp
     stderr = sys.stderr if stderr is None else stderr
 
     if dump is None:
         import pickle
         dump = pickle.dump
-    persist = mktemp()
+    fd, persist = mkstemp()
+    os.close(fd)
     print(f'EMERGENCY DUMP STATE TO FILE -> {persist} <-',
           file=stderr)
     fh = open_file(persist, 'w')

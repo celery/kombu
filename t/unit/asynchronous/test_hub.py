@@ -127,10 +127,10 @@ class test_LaxBoundedSemaphore:
 
 class test_Utils:
 
-    def setup(self):
+    def setup_method(self):
         self._prev_loop = get_event_loop()
 
-    def teardown(self):
+    def teardown_method(self):
         set_event_loop(self._prev_loop)
 
     def test_get_set_event_loop(self):
@@ -153,10 +153,10 @@ class test_Utils:
 
 class test_Hub:
 
-    def setup(self):
+    def setup_method(self):
         self.hub = Hub()
 
-    def teardown(self):
+    def teardown_method(self):
         self.hub.close()
 
     def test_reset(self):
@@ -193,7 +193,7 @@ class test_Hub:
         callback = Mock(name='callback')
         with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
             self.hub.call_soon(callback)
-            assert lock.__enter__.called_once()
+            lock.__enter__.assert_called_once()
 
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
@@ -525,6 +525,23 @@ class test_Hub:
         ticks[0].assert_called_once_with()
         ticks[1].assert_called_once_with()
 
+    def test_loop__tick_callbacks_on_ticks_change(self):
+        def callback_1():
+            ticks.remove(ticks_list[0])
+            return Mock(name='cb1')
+
+        ticks_list = [Mock(wraps=callback_1), Mock(name='cb2')]
+        ticks = set(ticks_list)
+
+        self.hub.on_tick = ticks
+        self.hub.poller.unregister = Mock()
+
+        next(self.hub.loop)
+        next(self.hub.loop)
+
+        ticks_list[0].assert_has_calls([call()])
+        ticks_list[1].assert_has_calls([call(), call()])
+
     def test_loop__todo(self):
         deferred = Mock(name='cb_deferred')
 
@@ -568,4 +585,4 @@ class test_Hub:
     def test__pop_ready_uses_lock(self):
         with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
             self.hub._pop_ready()
-            assert lock.__enter__.called_once()
+            lock.__enter__.assert_called_once()

@@ -10,6 +10,7 @@ from .exceptions import NotBoundError
 from .utils.functional import ChannelPromise
 
 if TYPE_CHECKING:
+    from kombu.connection import Connection
     from kombu.transport.virtual import Channel
 
 
@@ -52,7 +53,7 @@ class Object:
                     setattr(self, name, None)
 
     def as_dict(self, recurse: bool = False) -> dict[str, Any]:
-        def f(obj: Any, type: Callable[[Any], Any]) -> Any:
+        def f(obj: Any, type: Callable[[Any], Any] | None = None) -> Any:
             if recurse and isinstance(obj, Object):
                 return obj.as_dict(recurse=True)
             return type(obj) if type and obj is not None else obj
@@ -80,19 +81,19 @@ class MaybeChannelBound(Object):
     can_cache_declaration = False
 
     def __call__(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: (Channel | Connection)
     ) -> _MaybeChannelBoundType:
         """`self(channel) -> self.bind(channel)`."""
         return self.bind(channel)
 
     def bind(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: (Channel | Connection)
     ) -> _MaybeChannelBoundType:
         """Create copy of the instance that is bound to a channel."""
         return copy(self).maybe_bind(channel)
 
     def maybe_bind(
-        self: _MaybeChannelBoundType, channel: Channel
+        self: _MaybeChannelBoundType, channel: (Channel | Connection)
     ) -> _MaybeChannelBoundType:
         """Bind instance to channel if not already bound."""
         if not self.is_bound and channel:

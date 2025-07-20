@@ -54,6 +54,23 @@ Each option has its advantages and disadvantages.
     you need cross-language support, the default setting of `JSON`
     is probably your best choice.
 
+    If you need support for custom types, you can write serialize/deserialize
+    functions and register them as follows:
+
+    .. code-block:: python
+
+        from kombu.utils.json import register_type
+        from django.db.models import Model
+        from django.apps import apps
+
+        # Allow serialization of django models:
+        register_type(
+            Model,
+            "model",
+            lambda o: [o._meta.label, o.pk],
+            lambda o: apps.get_model(o[0]).objects.get(pk=o[1]),
+        )
+
 `pickle` -- If you have no desire to support any language other than
     Python, then using the `pickle` encoding will gain you
     the support of all built-in Python data types (except class instances),
