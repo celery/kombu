@@ -76,7 +76,8 @@ exist in AWS) you can tell this transport about them as follows:
         },
       }
     'sts_role_arn': 'arn:aws:iam::<xxx>:role/STSTest', # optional
-    'sts_token_timeout': 900 # optional
+    'sts_token_timeout': 900, # optional
+    'sts_token_buffer_time': 0, # optional, added in 5.6.0
     }
 
 Note that FIFO and standard queues must be named accordingly (the name of
@@ -91,6 +92,11 @@ AWS STS authentication is supported, by using sts_role_arn, and
 sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
+
+.. versionadded:: 5.6.0
+    sts_token_buffer_time (seconds) is the time by which you want to refresh your token
+    earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
+    should be less than sts_token_timeout.
 
 
 
@@ -138,7 +144,7 @@ import re
 import socket
 import string
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from json import JSONDecodeError
 from queue import Empty
 from typing import Any
@@ -425,10 +431,17 @@ class Channel(virtual.Channel):
             self.transport_options.get('sqs-creation-attributes') or {},
         )
 
-        return self.sqs(queue=queue_name).create_queue(
-            QueueName=queue_name,
-            Attributes=attributes,
-        )
+        queue_tags = self.transport_options.get('queue_tags')
+
+        create_params = {
+            'QueueName': queue_name,
+            'Attributes': attributes,
+        }
+
+        if queue_tags:
+            create_params['tags'] = queue_tags
+
+        return self.sqs(queue=queue_name).create_queue(**create_params)
 
     def _delete(self, queue, *args, **kwargs):
         """Delete queue by name."""
@@ -477,7 +490,7 @@ class Channel(virtual.Channel):
             c.change_message_visibility(
                 QueueUrl=q_url,
                 ReceiptHandle=message['properties']['delivery_tag'],
-                VisibilityTimeout=0
+                VisibilityTimeout=self.wait_time_seconds
             )
         else:
             c.send_message(**kwargs)
@@ -791,10 +804,22 @@ class Channel(virtual.Channel):
                 return self._new_predefined_queue_client_with_sts_session(queue, region)
             return self._predefined_queue_clients[queue]
 
+    def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
+        """Generate STS session credentials with an optional expiration buffer.
+
+        The buffer is only applied if it is less than `token_expiry_seconds` to prevent an expired token.
+        """
+        credentials = self.generate_sts_session_token(role_arn, token_expiry_seconds)
+        if token_buffer_seconds and 0 < token_buffer_seconds < token_expiry_seconds:
+            credentials["Expiration"] -= timedelta(seconds=token_buffer_seconds)
+        return credentials
+
     def _new_predefined_queue_client_with_sts_session(self, queue, region):
-        sts_creds = self.generate_sts_session_token(
+        sts_creds = self.generate_sts_session_token_with_buffer(
             self.transport_options.get('sts_role_arn'),
-            self.transport_options.get('sts_token_timeout', 900))
+            self.transport_options.get('sts_token_timeout', 900),
+            self.transport_options.get('sts_token_buffer_time', 0),
+        )
         self.sts_expiration = sts_creds['Expiration']
         c = self._predefined_queue_clients[queue] = self.new_sqs_client(
             region=region,
@@ -1085,6 +1110,25 @@ class Transport(virtual.Transport):
         )
 
     .. _CreateQueue SQS API: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_CreateQueue.html#API_CreateQueue_RequestParameters
+
+    .. versionadded:: 5.6
+    Queue tags can be applied to SQS queues during creation by passing an
+    ``queue_tags`` key in transport_options. ``queue_tags`` must be
+    a dict of tag key-value pairs.
+
+    .. code-block:: python
+
+        from kombu.transport.SQS import Transport
+
+        transport = Transport(
+            ...,
+            transport_options={
+                'queue_tags': {
+                    'Environment': 'production',
+                    'Team': 'backend',
+                },
+            }
+        )
 
     The ``ApproximateReceiveCount`` message attribute is fetched by this
     transport by default. Requested message attributes can be changed by

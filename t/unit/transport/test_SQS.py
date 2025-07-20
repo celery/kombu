@@ -60,10 +60,11 @@ class SQSMessageMock:
 class QueueMock:
     """ Hold information about a queue. """
 
-    def __init__(self, url, creation_attributes=None):
+    def __init__(self, url, creation_attributes=None, tags=None):
         self.url = url
         # arguments of boto3.sqs.create_queue
         self.creation_attributes = creation_attributes
+        self.tags = tags
         self.attributes = {'ApproximateNumberOfMessages': '0'}
 
         self.messages = []
@@ -91,10 +92,11 @@ class SQSClientMock:
                 return q
         raise Exception(f"Queue url {url} not found")
 
-    def create_queue(self, QueueName=None, Attributes=None):
+    def create_queue(self, QueueName=None, Attributes=None, tags=None):
         q = self._queues[QueueName] = QueueMock(
             'https://sqs.us-east-1.amazonaws.com/xxx/' + QueueName,
             Attributes,
+            tags,
         )
         return {'QueueUrl': q.url}
 
@@ -310,6 +312,28 @@ class test_Channel:
 
         # For cleanup purposes, delete the queue and the queue file
         self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('sqs-creation-attributes', None)
+
+    def test_new_queue_with_tags(self):
+        self.connection.transport_options['queue_tags'] = {
+            'Environment': 'test',
+            'Team': 'backend',
+        }
+        queue_name = 'new_tagged_queue'
+        self.channel._new_queue(queue_name)
+
+        assert queue_name in self.sqs_conn_mock._queues.keys()
+        queue = self.sqs_conn_mock._queues[queue_name]
+
+        assert queue.tags is not None
+        assert queue.tags['Environment'] == 'test'
+        assert queue.tags['Team'] == 'backend'
+
+        # For cleanup purposes, delete the queue and the queue file
+        self.channel._delete(queue_name)
+        # Reset transport options to avoid leaking state into other tests
+        self.connection.transport_options.pop('queue_tags', None)
 
     def test_botocore_config_override(self):
         expected_connect_timeout = 5
@@ -592,7 +616,9 @@ class test_Channel:
             'properties': {'delivery_tag': 'test_message_id'}
         }
         self.channel._put(self.producer.routing_key, message)
-        self.sqs_conn_mock.change_message_visibility.assert_called_once()
+        self.sqs_conn_mock.change_message_visibility.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/unittest',
+            ReceiptHandle='test_message_id', VisibilityTimeout=10)
 
     def test_put_and_get_bulk(self):
         # With QoS.prefetch_count = 0
@@ -1199,6 +1225,43 @@ class test_Channel:
         # Assert
         mock_generate_sts_session_token.assert_called_once()
 
+    def test_sts_new_session_with_buffer_time(self):
+        # Arrange
+        sts_token_timeout = 900
+        sts_token_buffer_time = 60
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn',
+            'sts_token_timeout': sts_token_timeout,
+            'sts_token_buffer_time': sts_token_buffer_time,
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+
+        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': expiration_time,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
+
     def test_sts_session_expired(self):
         # Arrange
         connection = Connection(transport=SQS.Transport, transport_options={
@@ -1228,6 +1291,44 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_called_once()
+
+    def test_sts_session_expired_with_buffer_time(self):
+        # Arrange
+        sts_token_timeout = 900
+        sts_token_buffer_time = 60
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+            'sts_role_arn': 'test::arn',
+            'sts_token_timeout': sts_token_timeout,
+            'sts_token_buffer_time': sts_token_buffer_time,
+        })
+        channel = connection.channel()
+        sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
+        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        queue_name = 'queue-1'
+
+        mock_generate_sts_session_token = Mock()
+        mock_new_sqs_client = Mock()
+        channel.new_sqs_client = mock_new_sqs_client
+
+        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+
+        mock_generate_sts_session_token.side_effect = [
+            {
+                'Expiration': expiration_time,
+                'SessionToken': 123,
+                'AccessKeyId': 123,
+                'SecretAccessKey': 123
+            }
+        ]
+        channel.generate_sts_session_token = mock_generate_sts_session_token
+
+        # Act
+        sqs(queue=queue_name)
+
+        # Assert
+        mock_generate_sts_session_token.assert_called_once()
+        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
 
     def test_sts_session_not_expired(self):
         # Arrange
