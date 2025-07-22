@@ -93,6 +93,32 @@ sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
 
+--------------------
+Predefined Exchanges
+--------------------
+When using a fanout exchange with this transport, messages are sent to an AWS SNS, which then forwards the messages
+to all subscribed queues.
+
+The default behavior of this transport is to create the SNS topic when the exchange is first declared.
+However, it is also possible to use a predefined SNS topic instead of letting the transport create it.
+
+.. code-block:: python
+
+    transport_options = {
+      'predefined_exchanges': {
+        'exchange-1': {
+          'arn': 'arn:aws:sns:us-east-1:xxx:exchange-1',
+          'access_key_id': 'a',
+          'secret_access_key': 'b',
+        },
+        'exchange-2': {
+          'arn': 'arn:aws:sns:us-east-1:xxx:exchange-2',
+          'access_key_id': 'c',
+          'secret_access_key': 'd',
+        },
+      }
+    }
+
 .. versionadded:: 5.6.0
     sts_token_buffer_time (seconds) is the time by which you want to refresh your token
     earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
@@ -135,7 +161,6 @@ Features
 * Supports TTL: No
 """
 
-
 from __future__ import annotations
 
 import base64
@@ -143,27 +168,28 @@ import binascii
 import re
 import socket
 import string
+import threading
 import uuid
 from datetime import datetime, timedelta
 from json import JSONDecodeError
 from queue import Empty
-from typing import Any
+from typing import Any, Literal
 
-from botocore.client import Config
+from botocore.client import BaseClient, Config
 from botocore.exceptions import ClientError
 from vine import ensure_promise, promise, transform
 
+from kombu import Exchange
 from kombu.asynchronous import get_event_loop
 from kombu.asynchronous.aws.ext import boto3, exceptions
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.log import get_logger
-from kombu.utils import scheduling
+from kombu.transport import virtual
+from kombu.utils import json, scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
-
-from . import virtual
 
 logger = get_logger(__name__)
 
@@ -177,6 +203,8 @@ CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 #: SQS bulk get supports a maximum of 10 messages at a time.
 SQS_MAX_MESSAGES = 10
 
+_SUPPORTED_BOTO_SERVICES = Literal["sqs", "sns"]
+
 
 def maybe_int(x):
     """Try to convert x' to int, or return x' if that fails."""
@@ -188,6 +216,10 @@ def maybe_int(x):
 
 class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
+
+
+class UndefinedExchangeException(Exception):
+    """Predefined exchanges are being used and an undefined exchange/SNS topic was used."""
 
 
 class InvalidQueueException(Exception):
@@ -253,7 +285,7 @@ class QoS(virtual.QoS):
         task_name = message_headers['task']
         number_of_retries = int(
             message.properties['delivery_info']['sqs_message']
-                              ['Attributes']['ApproximateReceiveCount'])
+            ['Attributes']['ApproximateReceiveCount'])
         return task_name, number_of_retries
 
 
@@ -267,9 +299,11 @@ class Channel(virtual.Channel):
     _asynsqs = None
     _predefined_queue_async_clients = {}  # A client for each predefined queue
     _sqs = None
+    _sns = None
     _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}  # SQS queue name => SQS queue URL
     _noack_queues = set()
+
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
     B64_REGEX = re.compile(rb'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
@@ -334,6 +368,13 @@ class Channel(virtual.Channel):
             self._noack_queues.discard(queue)
         return super().basic_cancel(consumer_tag)
 
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        # If the exchange is a fanout exchange, initialise the SNS topic
+        if (self.state.exchanges[exchange].get("type") == "fanout" and self.supports_fanout
+        ):
+            self.sns().initialise_exchange(exchange)
+            self.sns().subscribe_queue_to_topic(queue_name=queue, exchange_name=exchange)
+
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
 
@@ -391,9 +432,9 @@ class Channel(virtual.Channel):
         except KeyError:
             if self.predefined_queues:
                 raise UndefinedQueueException((
-                    "Queue with name '{}' must be "
-                    "defined in 'predefined_queues'."
-                ).format(sqs_qname))
+                                                  "Queue with name '{}' must be "
+                                                  "defined in 'predefined_queues'."
+                                              ).format(sqs_qname))
 
             raise DoesNotExistQueueException(
                 f"Queue with name '{sqs_qname}' doesn't exist in SQS"
@@ -417,8 +458,8 @@ class Channel(virtual.Channel):
                 attributes['FifoQueue'] = 'true'
 
             resp = self._create_queue(sqs_qname, attributes)
-            self._queue_cache[sqs_qname] = resp['QueueUrl']
-            return resp['QueueUrl']
+            queue_url = self._queue_cache[sqs_qname] = resp['QueueUrl']
+            return queue_url
 
     def _create_queue(self, queue_name, attributes):
         """Create an SQS queue with a given name and nominal attributes."""
@@ -434,7 +475,7 @@ class Channel(virtual.Channel):
         queue_tags = self.transport_options.get('queue_tags')
 
         create_params = {
-            'QueueName': queue_name,
+            'QueueName':  queue_name,
             'Attributes': attributes,
         }
 
@@ -443,7 +484,7 @@ class Channel(virtual.Channel):
 
         return self.sqs(queue=queue_name).create_queue(**create_params)
 
-    def _delete(self, queue, *args, **kwargs):
+    def _delete(self, queue, exchange, *args, **kwargs):
         """Delete queue by name."""
         if self.predefined_queues:
             return
@@ -452,6 +493,12 @@ class Channel(virtual.Channel):
         self.sqs().delete_queue(
             QueueUrl=q_url,
         )
+
+        # If the exchange is a fanout exchange, unsubscribe the queue to the SNS topic
+        exchange_info = self.state.exchanges.get(exchange)
+        if exchange_info.get("type", "") == 'fanout':
+            self.sns().unsubscribe_queue_from_topic(queue)
+
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
@@ -550,10 +597,10 @@ class Channel(virtual.Channel):
             'MessageAttributeNames')
 
         params: dict[str, Any] = {
-            'QueueUrl': q_url,
-            'MaxNumberOfMessages': max_number_of_messages,
-            'WaitTimeSeconds': wait_time_seconds or self.wait_time_seconds,
-            'MessageAttributeNames': message_attribute_names,
+            'QueueUrl':                    q_url,
+            'MaxNumberOfMessages':         max_number_of_messages,
+            'WaitTimeSeconds':             wait_time_seconds or self.wait_time_seconds,
+            'MessageAttributeNames':       message_attribute_names,
             'MessageSystemAttributeNames': message_system_attribute_names
         }
 
@@ -597,12 +644,13 @@ class Channel(virtual.Channel):
                 max_number_of_messages=max_count
             )
 
-            if resp.get('Messages'):
-                for m in resp['Messages']:
+            if messages := resp.get('Messages'):
+                for m in messages:
                     m['Body'] = AsyncMessage(body=m['Body']).decode()
-                for msg in self._messages_to_python(resp['Messages'], queue):
+                for msg in self._messages_to_python(messages, queue):
                     self.connection._deliver(msg, queue)
                 return
+
         raise Empty()
 
     def _get(self, queue):
@@ -613,10 +661,10 @@ class Channel(virtual.Channel):
             max_number_of_messages=1
         )
 
-        if resp.get('Messages'):
-            body = AsyncMessage(body=resp['Messages'][0]['Body']).decode()
-            resp['Messages'][0]['Body'] = body
-            return self._messages_to_python(resp['Messages'], queue)[0]
+        if messages := resp.get('Messages'):
+            body = AsyncMessage(body=messages[0]['Body']).decode()
+            messages[0]['Body'] = body
+            return self._messages_to_python(messages, queue)[0]
         raise Empty()
 
     def _loop1(self, queue, _=None):
@@ -704,7 +752,7 @@ class Channel(virtual.Channel):
                 if exception.response['Error']['Code'] == 'AccessDenied':
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
-                        )
+                    )
                 super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
@@ -740,8 +788,22 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    def new_sqs_client(self, region, access_key_id,
-                       secret_access_key, session_token=None):
+    def new_sqs_client(self, region, access_key_id, secret_access_key, session_token=None):
+        """Create a new SQS client.
+
+        :param region: The AWS region to use.
+        :param access_key_id: The AWS access key ID for authenticating with boto.
+        :param secret_access_key: The AWS secret access key for authenticating with boto.
+        :param session_token: The AWS session token for authenticating with boto, if required.
+        :returns: A Boto SQS client.
+        """
+        return self._new_boto_client(
+            service='sqs', region=region, access_key_id=access_key_id, secret_access_key=secret_access_key,
+            session_token=session_token
+        )
+
+    def _new_boto_client(self, service: _SUPPORTED_BOTO_SERVICES, region, access_key_id, secret_access_key,
+                         session_token=None):
         session = boto3.session.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
@@ -756,35 +818,38 @@ class Channel(virtual.Channel):
             client_kwargs['endpoint_url'] = self.endpoint_url
         client_config = self.transport_options.get('client-config') or {}
         config = Config(**client_config)
-        return session.client('sqs', config=config, **client_kwargs)
+        return session.client(service, config=config, **client_kwargs)
 
     def sqs(self, queue=None):
+        # If a queue has been provided, check if the queue has been defined already. Re-use it's client if possible.
         if queue is not None and self.predefined_queues:
-
+            # Raise if queue is not defined
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException(
-                    f"Queue with name '{queue}' must be defined"
-                    " in 'predefined_queues'.")
+                raise UndefinedQueueException(f"Queue with name '{queue}' must be defined in 'predefined_queues'.")
+
             q = self.predefined_queues[queue]
+
+            # Handle authenticating boto client with tokens
             if self.transport_options.get('sts_role_arn'):
                 return self._handle_sts_session(queue, q)
-            if not self.transport_options.get('sts_role_arn'):
-                if queue in self._predefined_queue_clients:
-                    return self._predefined_queue_clients[queue]
-                else:
-                    c = self._predefined_queue_clients[queue] = \
-                        self.new_sqs_client(
-                            region=q.get('region', self.region),
-                            access_key_id=q.get(
-                                'access_key_id', self.conninfo.userid),
-                            secret_access_key=q.get(
-                                'secret_access_key', self.conninfo.password)
-                    )
-                    return c
 
+            # If the queue has already been defined, then return the client for the queue
+            if queue in self._predefined_queue_clients:
+                return self._predefined_queue_clients[queue]
+
+            # Create client, add it to the queue map and return
+            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                region=q.get('region', self.region),
+                access_key_id=q.get('access_key_id', self.conninfo.userid),
+                secret_access_key=q.get('secret_access_key', self.conninfo.password)
+            )
+            return c
+
+        # If SQS client has been initialised, return it
         if self._sqs is not None:
             return self._sqs
 
+        # Initialise a new SQS client and return it
         c = self._sqs = self.new_sqs_client(
             region=self.region,
             access_key_id=self.conninfo.userid,
@@ -792,17 +857,67 @@ class Channel(virtual.Channel):
         )
         return c
 
-    def _handle_sts_session(self, queue, q):
+    def sns(self) -> _SnsFanout:
+        # If an SNS class has not been initialised, then initialise it
+        if not self._sns:
+            self._sns = _SnsFanout(channel=self)
+
+        # Return the existing SNS class instance
+        return self._sns
+
+    def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:
+        """Removes any stale SNS topic subscriptions
+
+        This method will check that any SQS subscriptions on the SNS topic are associated with SQS queues. If not,
+        it will remove the stale subscription. This method will only work if the 'supports_fanout' property is True.
+
+        :param exchange_name: The exchange to check for stale subscriptions
+        :return: None
+        """
+        if self.supports_fanout:
+            return self.sns().remove_stale_sns_subscriptions(exchange_name)
+        return None
+
+    def _handle_sts_session(self, queue: str, q):
+        """Checks if the STS token needs renewing for SQS
+
+        :param queue: The queue name
+        :param q: The queue object
+        :returns: The SQS client with a refreshed STS token
+        """
         region = q.get('region', self.region)
-        if not hasattr(self, 'sts_expiration'):  # STS token - token init
+
+        # Check if a token refresh is needed
+        if self.is_sts_token_refresh_required(
+            item=q, client_map=self._predefined_queue_clients, expire_time=getattr(self, "sts_expiration", None)
+        ):
             return self._new_predefined_queue_client_with_sts_session(queue, region)
-        # STS token - refresh if expired
-        elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():
-            return self._new_predefined_queue_client_with_sts_session(queue, region)
+
+        # If token refresh is not required, return existing client
+        return self._predefined_queue_clients[queue]
+
+    @staticmethod
+    def is_sts_token_refresh_required(
+        item: Any, client_map: dict[str, BaseClient], expire_time: datetime | None = None
+    ) -> bool:
+        """Checks if the STS token needs renewing
+
+        This method will check different STS expiry times depending on the service the token was used for.
+
+        :param item: Either the queue or the exchange object
+        :param client_map: Map of client names to boto3 clients. Either the queue or exchange map
+        :param expire_time: The datetime when the token expires.
+        :returns: True if the token needs renewing, False otherwise.
+        """
+        # Get the expiry time of the STS token depending on the service
+        if not expire_time:  # STS token - token init
+            return True
+        elif expire_time.replace(tzinfo=None) < datetime.utcnow():  # STS token - refresh if expired
+            return True
+        elif item not in client_map:  # STS token = refresh if exchange or queue is not in client map
+            return True
         else:  # STS token - ruse existing
-            if queue not in self._predefined_queue_clients:
-                return self._new_predefined_queue_client_with_sts_session(queue, region)
-            return self._predefined_queue_clients[queue]
+            return False
 
     def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
         """Generate STS session credentials with an optional expiration buffer.
@@ -815,12 +930,11 @@ class Channel(virtual.Channel):
         return credentials
 
     def _new_predefined_queue_client_with_sts_session(self, queue, region):
-        sts_creds = self.generate_sts_session_token_with_buffer(
-            self.transport_options.get('sts_role_arn'),
-            self.transport_options.get('sts_token_timeout', 900),
-            self.transport_options.get('sts_token_buffer_time', 0),
-        )
+        # Handle STS token refresh
+        sts_creds = self.get_sts_credentials()
         self.sts_expiration = sts_creds['Expiration']
+
+        # Get new client and return it
         c = self._predefined_queue_clients[queue] = self.new_sqs_client(
             region=region,
             access_key_id=sts_creds['AccessKeyId'],
@@ -829,7 +943,15 @@ class Channel(virtual.Channel):
         )
         return c
 
-    def generate_sts_session_token(self, role_arn, token_expiry_seconds):
+    def get_sts_credentials(self):
+        return self.generate_sts_session_token_with_buffer(
+            self.transport_options.get('sts_role_arn'),
+            self.transport_options.get('sts_token_timeout', 900),
+            self.transport_options.get('sts_token_buffer_time', 0),
+        )
+
+    @staticmethod
+    def generate_sts_session_token(role_arn: str, token_expiry_seconds: int):
         sts_client = boto3.client('sts')
         sts_policy = sts_client.assume_role(
             RoleArn=role_arn,
@@ -846,13 +968,11 @@ class Channel(virtual.Channel):
 
         if queue is not None and self.predefined_queues:
             if queue in self._predefined_queue_async_clients and \
-               not hasattr(self, 'sts_expiration'):
+                not hasattr(self, 'sts_expiration'):
                 return self._predefined_queue_async_clients[queue]
             if queue not in self.predefined_queues:
-                raise UndefinedQueueException((
-                    "Queue with name '{}' must be defined in "
-                    "'predefined_queues'."
-                ).format(queue))
+                raise UndefinedQueueException(f"Queue with name '{queue}' must be defined in 'predefined_queues'.")
+
             q = self.predefined_queues[queue]
             c = self._predefined_queue_async_clients[queue] = \
                 AsyncSQSConnection(
@@ -860,7 +980,7 @@ class Channel(virtual.Channel):
                     region=q.get('region', self.region),
                     message_system_attribute_names=message_system_attribute_names,
                     message_attribute_names=message_attribute_names
-            )
+                )
             return c
 
         if self._asynsqs is not None:
@@ -893,12 +1013,17 @@ class Channel(virtual.Channel):
         return self.transport_options.get('predefined_queues', {})
 
     @cached_property
+    def predefined_exchanges(self):
+        """Map of exchange_name to predefined SNS client."""
+        return self.transport_options.get('predefined_exchanges', {})
+
+    @cached_property
     def queue_name_prefix(self):
         return self.transport_options.get('queue_name_prefix', '')
 
     @cached_property
     def supports_fanout(self):
-        return False
+        return self.transport_options.get('supports_fanout', False)
 
     @cached_property
     def region(self):
@@ -964,7 +1089,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames': None,
+                'MessageAttributeNames':       [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
@@ -988,11 +1113,34 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            'MessageAttributeNames': sorted(message_attrs) if message_attrs else None,
+            'MessageAttributeNames':       sorted(message_attrs) if message_attrs else [],
             'MessageSystemAttributeNames': (
                 sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
             )
         }
+
+    def _put_fanout(self, exchange: str, message: dict, routing_key, **kwargs):
+        """Add a message to fanout queues by adding a notification to an SNS topic, with subscribed SQS queues.
+
+        :param exchange: The name of the exchange to add the notification to.
+        :param message: The message to be added.
+        :param routing_key: The routing key to use for the notification.
+        :param kwargs: Additional parameters
+        :return: None
+        """
+        # Extract properties from message for SNS parameters
+        sns_params = {}
+        if properties := message.get("properties"):
+            if message_attrs := properties.get('message_attributes'):
+                sns_params['MessageAttributes'] = message_attrs
+
+            # If the exchange is a FIFO topic, then add required MessageGroupId and MessageDeduplicationId attributes
+            if exchange.endswith('.fifo'):
+                sns_params['MessageGroupId'] = properties.get('MessageGroupId', "default")
+                sns_params['MessageDeduplicationId'] = properties.get('MessageDeduplicationId', str(uuid.uuid4()))
+
+        # Add the message to the SNS topic
+        self.sns().publish(exchange, message, routing_key, sns_params)
 
     # —————————————————————————————————————————————————————————————
     # _message_to_python helper methods (extracted for testing/readability)
@@ -1065,7 +1213,7 @@ class Channel(virtual.Channel):
         # if payload wasn’t already a Kombu JSON dict, wrap it
         if 'properties' not in payload:
             payload = {
-                'body': raw_text,
+                'body':       raw_text,
                 'properties': {'delivery_info': {}},
             }
 
@@ -1080,6 +1228,465 @@ class Channel(virtual.Channel):
         props['delivery_tag'] = message['ReceiptHandle']
 
         return payload
+
+
+class _SnsFanout:
+    """A class to manage AWS Simple Notification Service (SNS) for fanout exchanges. This class maintains caches of
+    SNS subscriptions, clients, topic ARNs etc to enable efficient management of SNS topics and subscriptions.
+    """
+    _predefined_clients = {}  # A client for each predefined queue
+    _topic_arn_cache: dict[str: str] = {}  # SNS topic name => Topic queue URL
+    _queue_arn_cache: dict[str, str] = {}  # SQS queue URL => Queue ARN
+    _subscription_arn_cache: dict[str, str] = {}  # Queue => Subscription ARN
+    _exchange_topic_cache: dict[str, str] = {}  # Exchange name => SNS topic ARN
+
+    _lock = threading.Lock()
+
+    def __init__(self, channel: Channel):
+        self._chan = channel
+        self._client = None
+
+    def initialise_exchange(self, exchange_name: str) -> None:
+        """Initialise SNS topic for a fanout exchange.
+
+        This method will create the SNS topic if it doesn't exist, and check for any SNS topic subscriptions
+        that no longer exist.
+
+        :param exchange_name: The name of the exchange.
+        :returns: None
+        """
+        # Clear any old subscriptions
+        self.remove_stale_sns_subscriptions(exchange_name)
+
+        # If topic has already been initialised, then do nothing
+        if self._topic_arn_cache.get(exchange_name):
+            return None
+
+        # If predefined_exchanges are set, then do not try to create an SNS topic
+        if self._chan.predefined_exchanges:
+            logger.debug(f"'predefined_exchanges' has been specified, so SNS topics will not be created.")
+            return
+
+        with self._lock:
+            # Create the topic and cache the ARN
+            self._topic_arn_cache[exchange_name] = self._create_sns_topic(exchange_name)
+            return None
+
+    def publish(self, exchange_name: str, message: dict, routing_key, sns_params: dict = None) -> None:
+        """Send a notification to AWS Simple Notification Service (SNS).
+
+        :param exchange_name: The name of the exchange.
+        :param message: The message to be sent.
+        :param routing_key: The routing key for the notification.
+        :param sns_params: Additional parameters for SNS notification.
+        :return: None
+        """
+        # Get topic ARN for the given exchange
+        topic_arn = self._get_topic_arn(exchange_name)
+
+        # Build request args for boto
+        request_args = {
+            "TopicArn": topic_arn,
+            "Message":  dumps(message),
+        }
+        request_args.update(sns_params or {})
+
+        # Serialise message attributes into SNS format
+        if serialised_attrs := self._serialise_message_attributes(request_args.pop("MessageAttributes", {})):
+            request_args["MessageAttributes"] = serialised_attrs
+
+        # Send event to topic
+        response = self._get_client(exchange_name).publish(**request_args)
+        if (status_code := response["ResponseMetadata"]["HTTPStatusCode"]) != 200:
+            raise UndefinedExchangeException(
+                f"Unable to send message to topic '{topic_arn}': status code was {status_code}")
+
+    def _get_topic_arn(self, exchange_name: str) -> str:
+        """Get the SNS topic ARN
+
+        If the topic ARN is not in the cache, then create it
+        :param exchange_name: The exchange to create the SNS topic for
+        :return: The SNS topic ARN
+        """
+        # If topic ARN is in the cache, then return it
+        if topic_arn := self._topic_arn_cache.get(exchange_name):
+            return topic_arn
+
+        # If predefined-exchanges are used, then do not create a new topic and raise an exception
+        if self._chan.predefined_exchanges:
+            with self._lock:
+                # Try and get the topic ARN from the predefined_exchanges and add it to the cache
+                topic_arn = self._topic_arn_cache[exchange_name] = self._chan.predefined_exchanges.get(exchange_name)
+                if topic_arn:
+                    return topic_arn
+
+            # If pre-defined exchanges do not have the exchange, then raise an exception
+            raise UndefinedExchangeException(
+                f"Exchange with name '{exchange_name}' must be defined in 'predefined_exchanges'."
+            )
+
+        # If predefined_caches are not used, then create a new SNS topic/retrieve the ARN from AWS SNS and cache it
+        with self._lock:
+            arn = self._topic_arn_cache[exceptions] = self._create_sns_topic(exchange_name)
+            return arn
+
+    def _create_sns_topic(self, exchange_name: str) -> str:
+        """Creates an AWS SNS topic
+
+        If the topic already exists, AWS will return it's ARN without creating a new one.
+
+        :param exchange_name: The exchange to create the SNS topic for
+        :return: Topic ARN
+        """
+        # Create the SNS topic/Retrieve the SNS topic ARN
+        topic_name = self._chan.canonical_queue_name(exchange_name)
+
+        logger.debug(f"Creating SNS topic '{topic_name}'")
+
+        # Call SNS API to create the topic
+        response = self._get_client().create_topic(
+            Name=topic_name,
+            Attributes={
+                "FifoTopic": str(topic_name.endswith(".fifo")),
+
+            },
+            Tags=[
+                {"Key": "ManagedBy", "Value": "Celery/Kombu"},
+                {"Key":   "Description",
+                 "Value": "This SNS topic is used by Kombu to enable Fanout support for AWS SQS."},
+            ],
+        )
+        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+            raise UndefinedExchangeException("Unable to create SNS topic")
+
+        # Extract the ARN from the response
+        arn = response["TopicArn"]
+        logger.info(f"Created SNS topic '{topic_name}' with ARN '{arn}'")
+
+        return arn
+
+    def _set_permission_on_sqs_queue(self, topic_arn: str, queue_name: str, queue_arn: str):
+        """Sets the permissions on an AWS SQS queue to enable the SNS topic to publish to the queue.
+
+        :param topic_arn: The ARN of the SNS topic
+        :param queue_name: The queue name to set permissions for
+        :param queue_arn: The ARN of the SQS queue
+        :return: None
+        """
+        self._chan.sqs().set_queue_attributes(
+            QueueUrl=self._chan._resolve_queue_url(queue_name),
+            Attributes={
+                "Policy": json.dumps(
+                    {
+                        "Version":   "2012-10-17",
+                        "Statement": [
+                            {
+                                "Sid":       "KombuManaged",
+                                "Effect":    "Allow",
+                                "Principal": {"Service": "sns.amazonaws.com"},
+                                "Action":    "SQS:SendMessage",
+                                "Resource":  queue_arn,
+                                "Condition": {"ArnLike": {"aws:SourceArn": topic_arn}},
+                            }
+                        ],
+                    }
+                )
+            },
+        )
+        logger.debug(f"Set permissions on SNS topic '{topic_arn}'")
+
+    @staticmethod
+    def _serialise_message_attributes(message_attributes: dict) -> dict:
+        """Serialises SQS message attributes into SNS format.
+
+        :param message_attributes: A dictionary of message attributes
+        :returns: A dictionary of serialised message attributes in SNS format.
+        """
+        if not message_attributes:
+            return {}
+
+        attrs = {}
+        for key, value in message_attributes.items():
+            attrs[key] = {
+                "DataType":    "String",
+                "StringValue": str(value),
+            }
+
+        return attrs
+
+    def _get_client(self, exchange_name: str | None = None):
+        """Get or create a Boto SNS client.
+
+        If an SNS client has already been initialised for this Channel instance, return it. If not, create a new SNS
+        client, add it to this Channel instance and return it.
+
+        If the exchange is defined in the predefined_exchanges, then return the client for the exchange and handle
+        any STS token renewal.
+
+        :param exchange_name: The name of the exchange
+        :returns: A Boto SNS client.
+        """
+        # Attempt to get pre-=defined client for exchange if it has been provided
+        if exchange_name is not None and self._chan.predefined_exchanges:
+            # Raise if queue is not defined
+            if not (e := self._chan.predefined_exchanges.get(exchange_name)):
+                raise UndefinedExchangeException(
+                    f"Exchange with name '{exchange_name}' must be defined in 'predefined_exchanges'.")
+
+            # Handle authenticating boto client with tokens
+            if self._chan.transport_options.get('sts_role_arn'):
+                return self._handle_sts_session(exchange_name, e)
+
+            # If the queue has already been defined, then return the client for the queue
+            if exchange_name in self._predefined_clients:
+                return self._predefined_clients[exchange_name]
+
+            # Create client, add it to the queue map and return
+            c = self._predefined_clients[exchange_name] = self._create_boto_client(
+                region=e.get('region', self._chan.region),
+                access_key_id=e.get('access_key_id', self._chan.conninfo.userid),
+                secret_access_key=e.get('secret_access_key', self._chan.conninfo.password)
+            )
+            return c
+
+        # If SQS client has been initialised, return it
+        if self._client is not None:
+            return self._client
+
+        # Initialise a new SQS client and return it
+        c = self._client = self._create_boto_client(
+            region=self._chan.region,
+            access_key_id=self._chan.conninfo.userid,
+            secret_access_key=self._chan.conninfo.password,
+        )
+        return c
+
+    def _handle_sts_session(self, exchange_name: str, e):
+        """Checks if the STS token needs renewing for SNS
+
+        :param exchange_name: The exchange name
+        :param e: The exchange object
+        :returns: The SNS client with a refreshed STS token
+        """
+        # Check if a token refresh is needed
+        if self._chan.is_sts_token_refresh_required(
+            item=e, client_map=self._predefined_clients, expire_time=getattr(self, "sts_expiration", None)
+        ):
+            return self._create_boto_client_with_sts_session(e, region=e.get('region', self._chan.region))
+
+        # If token refresh is not required, return existing client
+        return self._predefined_clients[exchange_name]
+
+    def _create_boto_client_with_sts_session(self, exchange: Exchange, region: str):
+        # Handle STS token refresh
+        sts_creds = self._chan.get_sts_credentials()
+        self.sts_expiration = sts_creds['Expiration']
+
+        # Get new client and return it
+        c = self._predefined_clients[exchange] = self._create_boto_client(
+            region=region,
+            access_key_id=sts_creds['AccessKeyId'],
+            secret_access_key=sts_creds['SecretAccessKey'],
+            session_token=sts_creds['SessionToken'],
+        )
+        return c
+
+    def _create_boto_client(self, region, access_key_id, secret_access_key, session_token=None):
+        """Create a new SNS client.
+
+        :param region: The AWS region to use.
+        :param access_key_id: The AWS access key ID for authenticating with boto.
+        :param secret_access_key: The AWS secret access key for authenticating with boto.
+        :param session_token: The AWS session token for authenticating with boto, if required.
+        :returns: A Boto SNS client.
+        """
+        return self._chan._new_boto_client(
+            service='sns', region=region, access_key_id=access_key_id, secret_access_key=secret_access_key,
+            session_token=session_token
+        )
+
+    def __get_queue_arn(self, queue_name: str) -> str:
+        """Returns the ARN of the SQS queue associated with the given queue
+
+        This method will return the ARN from the cache if it exists, otherwise it will fetch it from SQS.
+
+        :param queue_name: The queue to get the ARN for
+        """
+        # Check if the queue ARN is already cached, and return if it exists
+        if arn := self._queue_arn_cache.get(queue_name):
+            return arn
+
+        queue_url = self._chan._resolve_queue_url(queue_name)
+
+        # Get the ARN for the SQS queue
+        response = self._chan.sqs().get_queue_attributes(
+            QueueUrl=queue_url, AttributeNames=["QueueArn"]
+        )
+        if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+            raise UndefinedExchangeException("Unable to get ARN for SQS queue")
+
+        # Update queue ARN cache
+        with self._lock:
+            arn = self._queue_arn_cache[queue_name] = response["Attributes"]["QueueArn"]
+
+        return arn
+
+    """
+    ---------------------------------
+    SNS topic subscription management
+    ---------------------------------
+    """
+
+    def subscribe_queue_to_topic(self, queue_name: str, exchange_name: str) -> str:
+        """Subscribes a queue to an AWS SNS topic
+
+        :param queue_name: The queue to subscribe
+        :param exchange_name: The exchange to subscribe to the queue, if not provided
+        :raises: UndefinedExchangeException if exchange is not defined.
+        :return: The subscription ARN
+        """
+        # Get exchange from Queue and raise if not defined
+        cache_key = f"{exchange_name}:{queue_name}"
+
+        # If the subscription ARN is already cached, return it
+        if subscription_arn := self._subscription_arn_cache.get(cache_key):
+            return subscription_arn
+
+        queue_arn = self.__get_queue_arn(queue_name)
+        topic_arn = self._get_topic_arn(exchange_name)
+
+        logger.debug(f"Subscribing queue '{queue_arn}' to SNS topic '{topic_arn}'")
+
+        # Request SNS client to subscribe the queue to the topic
+        response = self._get_client().subscribe(
+            TopicArn=topic_arn,
+            Protocol="sqs",
+            Endpoint=queue_arn,
+            Attributes={
+                "RawMessageDelivery": "true"
+            },
+            ReturnSubscriptionArn=True
+        )
+        if (status_code := response["ResponseMetadata"]["HTTPStatusCode"]) != 200:
+            raise Exception(f"Unable to subscribe queue: status code was {status_code}")
+
+        # Update subscription ARN cache
+        with self._lock:
+            subscription_arn = self._subscription_arn_cache[cache_key] = response["SubscriptionArn"]
+            logger.info(
+                f"Create subscription '{subscription_arn}' for SQS queue '{queue_arn}' to SNS topic '{topic_arn}'")
+
+        # Setup permissions for the queue to receive messages from the topic
+        self._set_permission_on_sqs_queue(topic_arn=topic_arn, queue_arn=queue_arn, queue_name=queue_name)
+
+        return subscription_arn
+
+    def unsubscribe_queue_from_topic(self, queue_name: str) -> None:
+        """Unsubscribes a queue from an AWS SNS topic
+
+        :param queue_name: The queue to unsubscribe
+        :return: None
+        """
+        # Get subscription ARN from cache if it exists, and return if it exists
+        if not (subscription_arn := self._subscription_arn_cache.get(queue_name)):
+            return
+
+        # Unsubscribe the SQS queue from the SNS topic
+        self._unsubscribe_sns_subscription(subscription_arn)
+        logger.info(f"Unsubscribed subscription '{subscription_arn}' for SQS queue '{queue_name}'")
+
+    def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:
+        """Removes any stale SNS topic subscriptions
+
+        This method will check that any SQS subscriptions on the SNS topic are associated with SQS queues. If not,
+        it will remove the stale subscription.
+
+        :param exchange_name: The exchange to check for stale subscriptions
+        :return: None
+        """
+        # If predefined_exchanges are set, then do not try to remove subscriptions
+        if self._chan.predefined_exchanges:
+            logger.debug(
+                f"'predefined_exchanges' has been specified, so stale SNS subscription cleanup will be skipped.")
+            return
+
+        logger.debug(f"Checking for stale SNS subscriptions for exchange '{exchange_name}'")
+
+        # Get subscriptions to check
+        topic_arn = self._get_topic_arn(exchange_name)
+
+        # Iterate through the subscriptions and remove any that are not associated with SQS queues
+        for subscription_arn in self._get_invalid_sns_subscriptions(topic_arn):
+            # Unsubscribe the SQS queue from the SNS topic
+            try:
+                self._unsubscribe_sns_subscription(subscription_arn)
+                logger.info(f"Removed stale subscription '{subscription_arn}' for SNS topic '{topic_arn}'")
+
+            # Report any failures to remove the subscription and continue to the next as this is not a critical error
+            except Exception as e:
+                logger.warning(
+                    f"Failed to remove stale subscription '{subscription_arn}' for SNS topic '{topic_arn}': {e}")
+
+    def _unsubscribe_sns_subscription(self, subscription_arn: str) -> None:
+        """Unsubscribes a subscription from an AWS SNS topic
+
+        :param subscription_arn: The ARN of the subscription to unsubscribe
+        :return: None
+        """
+        response = self._get_client().unsubscribe(SubscriptionArn=subscription_arn)
+        if (status_code := response["ResponseMetadata"]["HTTPStatusCode"]) != 200:
+            logger.error(f"Unable to unsubscribe queue: status code was {status_code}")
+            return
+
+    def _get_invalid_sns_subscriptions(self, sns_topic_arn: str) -> list[str]:
+        """Get a list of all invalid SQS subscriptions associated with a given SNS topic
+
+        :param sns_topic_arn: The SNS topic ARN to check
+        :return: A list of SNS subscription ARNs that are invalid
+        """
+        paginator = self._get_client().get_paginator("list_subscriptions_by_topic")
+        req_args = {
+            "TopicArn": sns_topic_arn,
+        }
+
+        # Iterate through the paginated subscriptions and build a list of subscriptions to check
+        invalid_subscription_arns = []
+        for response in paginator.paginate(**req_args):
+            invalid_subscription_arns.extend(
+                self._filter_sns_subscription_response(response.get("Subscriptions"))
+            )
+
+        return invalid_subscription_arns
+
+    def _filter_sns_subscription_response(self, subscriptions: list[dict]) -> list[str]:
+        """Returns a list of SNS subscription ARNs that are not associated with a SQS queue
+
+        :param subscriptions: A list of subscriptions for an SNS topic
+        :return: A list of subscription ARNs that are dead
+        """
+        subscription_arns = []
+        for subscription in subscriptions:
+            # Skip subscription if it is not for SQS
+            if not subscription.get("Protocol", "").lower() == "sqs":
+                continue
+
+            # Extract the SQS queue ARN from the subscription endpoint
+            queue_name = subscription["Endpoint"].split(":")[-1]
+
+            # Check if the queue has been removed by calling the get queue URL method. Note: listing the queues sometimes
+            # results in a valid queue not being returned (due to eventual consistency in SQS), so calling this method
+            # helps to mitigate this.
+            try:
+                self._chan.sqs().get_queue_url(QueueName=queue_name)
+            except ClientError as e:
+                queue_missing_errs = ["QueueDoesNotExist", "NonExistentQueue"]
+                # If one of the errors above has been raised, then the queue has been removed and the subscription should
+                # be removed too.
+                if any(err in str(e) for err in queue_missing_errs):
+                    subscription_arns.append(subscription["SubscriptionArn"])
+                else:
+                    raise
+        return subscription_arns
 
 
 class Transport(virtual.Transport):
