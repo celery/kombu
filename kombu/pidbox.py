@@ -201,7 +201,8 @@ class Mailbox:
         self._producer_pool = producer_pool
         if queue_exclusive and queue_durable:
             raise ValueError(
-                "queue_exclusive and queue_durable cannot both be True",
+                "queue_exclusive and queue_durable cannot both be True "
+                "(exclusive queues are automatically deleted and cannot be durable).",
             )
 
     def __call__(self, connection):
