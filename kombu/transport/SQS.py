@@ -821,7 +821,7 @@ class Channel(virtual.Channel):
         return session.client(service, config=config, **client_kwargs)
 
     def sqs(self, queue=None):
-        # If a queue has been provided, check if the queue has been defined already. Re-use it's client if possible.
+        # If a queue has been provided, check if the queue has been defined already. Reuse it's client if possible.
         if queue is not None and self.predefined_queues:
             # Raise if queue is not defined
             if queue not in self.predefined_queues:
