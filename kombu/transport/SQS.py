@@ -916,7 +916,7 @@ class Channel(virtual.Channel):
             return True
         elif item not in client_map:  # STS token = refresh if exchange or queue is not in client map
             return True
-        else:  # STS token - ruse existing
+        else:  # STS token - reuse existing
             return False
 
     def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
