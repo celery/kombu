@@ -1352,7 +1352,7 @@ class _SnsFanout:
             },
             Tags=[
                 {"Key": "ManagedBy", "Value": "Celery/Kombu"},
-                {"Key":   "Description",
+                {"Key": "Description",
                  "Value": "This SNS topic is used by Kombu to enable Fanout support for AWS SQS."},
             ],
         )
