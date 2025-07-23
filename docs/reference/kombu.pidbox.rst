@@ -70,6 +70,20 @@
         .. automethod:: get_reply_queue
         .. automethod:: get_queue
 
+    Mailbox Options
+    ~~~~~~~~~~~~~~~
+
+    .. versionadded:: 5.6.0
+
+    The `Mailbox` supports several configuration options that affect
+    the behavior of its exchanges and queues.
+
+    - ``durable``: If True, declares durable exchanges that survive broker restarts.
+    - ``exclusive``: If True, declares exclusive exchanges (usable by only one connection).
+
+    These provide finer control over broker-side behavior and are useful
+    in production environments where queue durability matters.\
+
     Node
     ----
 
@@ -91,15 +105,3 @@
         .. automethod:: handle
         .. automethod:: handle_message
         .. automethod:: reply
-
-    Mailbox Options
-    ~~~~~~~~~~~~~~~
-
-    The `Mailbox` supports several configuration options that affect
-    the behavior of its exchanges and queues.
-
-    - ``durable``: If True, declares durable exchanges that survive broker restarts.
-    - ``exclusive``: If True, declares exclusive exchanges (usable by only one connection).
-
-    These provide finer control over broker-side behavior and are useful
-    in production environments where queue durability matters.\
