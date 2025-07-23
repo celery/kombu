@@ -1287,7 +1287,7 @@ class _SnsFanout:
         # Build request args for boto
         request_args = {
             "TopicArn": topic_arn,
-            "Message":  dumps(message),
+            "Message": dumps(message),
         }
         request_args.update(sns_params or {})
 
