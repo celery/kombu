@@ -1426,7 +1426,7 @@ class _SnsFanout:
         :param exchange_name: The name of the exchange
         :returns: A Boto SNS client.
         """
-        # Attempt to get pre-=defined client for exchange if it has been provided
+        # Attempt to get predefined client for exchange if it has been provided
         if exchange_name is not None and self._chan.predefined_exchanges:
             # Raise if queue is not defined
             if not (e := self._chan.predefined_exchanges.get(exchange_name)):
