@@ -1477,7 +1477,7 @@ class _SnsFanout:
         # If token refresh is not required, return existing client
         return self._predefined_clients[exchange_name]
 
-    def _create_boto_client_with_sts_session(self, exchange: Exchange, region: str):
+    def _create_boto_client_with_sts_session(self, exchange: str, region: str):
         # Handle STS token refresh
         sts_creds = self._chan.get_sts_credentials()
         self.sts_expiration = sts_creds['Expiration']
