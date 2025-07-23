@@ -1327,7 +1327,7 @@ class _SnsFanout:
 
         # If predefined_caches are not used, then create a new SNS topic/retrieve the ARN from AWS SNS and cache it
         with self._lock:
-            arn = self._topic_arn_cache[exceptions] = self._create_sns_topic(exchange_name)
+            arn = self._topic_arn_cache[exchange_name] = self._create_sns_topic(exchange_name)
             return arn
 
     def _create_sns_topic(self, exchange_name: str) -> str:
