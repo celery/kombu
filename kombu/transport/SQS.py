@@ -1113,7 +1113,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            'MessageAttributeNames':       sorted(message_attrs) if message_attrs else [],
+            'MessageAttributeNames': sorted(message_attrs) if message_attrs else [],
             'MessageSystemAttributeNames': (
                 sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
             )
