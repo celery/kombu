@@ -1089,7 +1089,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames':       [],
+                'MessageAttributeNames': [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
