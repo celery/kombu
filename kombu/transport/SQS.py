@@ -179,7 +179,6 @@ from botocore.client import BaseClient, Config
 from botocore.exceptions import ClientError
 from vine import ensure_promise, promise, transform
 
-from kombu import Exchange
 from kombu.asynchronous import get_event_loop
 from kombu.asynchronous.aws.ext import boto3, exceptions
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
@@ -353,13 +352,16 @@ class Channel(virtual.Channel):
             queue_name = url.split('/')[-1]
             self._queue_cache[queue_name] = url
 
-    def basic_consume(self, queue, no_ack, *args, **kwargs):
+    def basic_consume(self, queue, no_ack, callback, consumer_tag,  **kwargs):
+        # If using a Fanout exchange, then subscribe to the queue to SNS
+        self._subscribe_queue_to_fanout_exchange_if_required(queue)
+
         if no_ack:
             self._noack_queues.add(queue)
         if self.hub:
             self._loop1(queue)
         return super().basic_consume(
-            queue, no_ack, *args, **kwargs
+            queue, no_ack, callback, consumer_tag, **kwargs
         )
 
     def basic_cancel(self, consumer_tag):
@@ -370,10 +372,8 @@ class Channel(virtual.Channel):
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         # If the exchange is a fanout exchange, initialise the SNS topic
-        if (self.state.exchanges[exchange].get("type") == "fanout" and self.supports_fanout
-        ):
+        if self._exchange_is_fanout(exchange):
             self.sns().initialise_exchange(exchange)
-            self.sns().subscribe_queue_to_topic(queue_name=queue, exchange_name=exchange)
 
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
@@ -488,16 +488,16 @@ class Channel(virtual.Channel):
         """Delete queue by name."""
         if self.predefined_queues:
             return
-
         q_url = self._resolve_queue_url(queue)
         self.sqs().delete_queue(
             QueueUrl=q_url,
         )
 
         # If the exchange is a fanout exchange, unsubscribe the queue to the SNS topic
-        exchange_info = self.state.exchanges.get(exchange)
-        if exchange_info.get("type", "") == 'fanout':
-            self.sns().unsubscribe_queue_from_topic(queue)
+        if self._exchange_is_fanout(exchange):
+            self.sns().unsubscribe_queue_from_topic(
+                queue_name=queue, exchange_name=exchange
+            )
 
         self._queue_cache.pop(queue, None)
 
@@ -967,8 +967,10 @@ class Channel(virtual.Channel):
             'MessageAttributeNames')
 
         if queue is not None and self.predefined_queues:
-            if queue in self._predefined_queue_async_clients and \
-                not hasattr(self, 'sts_expiration'):
+            if (
+                queue in self._predefined_queue_async_clients and
+                not hasattr(self, 'sts_expiration')
+            ):
                 return self._predefined_queue_async_clients[queue]
             if queue not in self.predefined_queues:
                 raise UndefinedQueueException(f"Queue with name '{queue}' must be defined in 'predefined_queues'.")
@@ -1089,7 +1091,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames': [],
+                'MessageAttributeNames':       [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
@@ -1113,7 +1115,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            'MessageAttributeNames': sorted(message_attrs) if message_attrs else [],
+            'MessageAttributeNames':       sorted(message_attrs) if message_attrs else [],
             'MessageSystemAttributeNames': (
                 sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
             )
@@ -1142,6 +1144,50 @@ class Channel(virtual.Channel):
         # Add the message to the SNS topic
         self.sns().publish(exchange, message, routing_key, sns_params)
 
+    def _subscribe_queue_to_fanout_exchange_if_required(self, queue_name: str) -> None:
+        """Subscribe the given queue to the SNS topic if this is a fanout exchange
+
+        :param queue_name: The name of the queue to subscribe.
+        :return: None
+        """
+        try:
+            # Get the exchange name for the queue and get the exchange type
+            exchange_name = self._get_exchange_for_queue(queue_name)
+
+            # If the exchange is a fanout type and the transport supports it,
+            # subscribe the queue to the topic
+            if self._exchange_is_fanout(exchange_name):
+                self.sns().subscribe_queue_to_topic(
+                    queue_name=queue_name, exchange_name=exchange_name
+                )
+
+        except UndefinedQueueException as e:
+            logger.debug(f"Not subscribing queue '{queue_name}'to fanout exchange: {e}")
+
+    def _exchange_is_fanout(self, exchange_name: str) -> bool:
+        """Check if the given exchange is a fanout type.
+
+        :param exchange_name: The name of the exchange to check.
+        :return: True if the exchange is a fanout type and the transport supports it,
+        False otherwise.
+        """
+        try:
+            exchange_type = self.state.exchanges[exchange_name]["type"]
+            return exchange_type == "fanout" and self.supports_fanout
+        except KeyError:
+            return False
+
+    def _get_exchange_for_queue(self, queue_name: str) -> str:
+        """Get the exchange name for the given queue.
+
+        :param queue_name: The name of the queue to get the exchange for.
+        :return: The name of the exchange for the given queue.
+        :raises UndefinedQueueException: If the queue has not been defined.
+        """
+        try:
+            return list(self.state.queue_index[queue_name])[0].exchange
+        except (KeyError, IndexError):
+            raise UndefinedQueueException(f"Queue '{queue_name}' has not been defined.")
     # —————————————————————————————————————————————————————————————
     # _message_to_python helper methods (extracted for testing/readability)
     # —————————————————————————————————————————————————————————————
@@ -1235,7 +1281,7 @@ class _SnsFanout:
     SNS subscriptions, clients, topic ARNs etc to enable efficient management of SNS topics and subscriptions.
     """
     _predefined_clients = {}  # A client for each predefined queue
-    _topic_arn_cache: dict[str: str] = {}  # SNS topic name => Topic queue URL
+    _topic_arn_cache: dict[str, str] = {}  # SNS topic name => Topic ARN
     _queue_arn_cache: dict[str, str] = {}  # SQS queue URL => Queue ARN
     _subscription_arn_cache: dict[str, str] = {}  # Queue => Subscription ARN
     _exchange_topic_cache: dict[str, str] = {}  # Exchange name => SNS topic ARN
@@ -1264,7 +1310,10 @@ class _SnsFanout:
 
         # If predefined_exchanges are set, then do not try to create an SNS topic
         if self._chan.predefined_exchanges:
-            logger.debug(f"'predefined_exchanges' has been specified, so SNS topics will not be created.")
+            logger.debug(
+                "'predefined_exchanges' has been specified, so SNS topics will"
+                " not be created."
+            )
             return
 
         with self._lock:
@@ -1287,7 +1336,7 @@ class _SnsFanout:
         # Build request args for boto
         request_args = {
             "TopicArn": topic_arn,
-            "Message": dumps(message),
+            "Message":  dumps(message),
         }
         request_args.update(sns_params or {})
 
@@ -1316,7 +1365,8 @@ class _SnsFanout:
         if self._chan.predefined_exchanges:
             with self._lock:
                 # Try and get the topic ARN from the predefined_exchanges and add it to the cache
-                topic_arn = self._topic_arn_cache[exchange_name] = self._chan.predefined_exchanges.get(exchange_name)
+                topic_arn = self._topic_arn_cache[exchange_name] = self._chan.predefined_exchanges.get(exchange_name,
+                                                                                                       {}).get("arn")
                 if topic_arn:
                     return topic_arn
 
@@ -1352,7 +1402,7 @@ class _SnsFanout:
             },
             Tags=[
                 {"Key": "ManagedBy", "Value": "Celery/Kombu"},
-                {"Key": "Description",
+                {"Key":   "Description",
                  "Value": "This SNS topic is used by Kombu to enable Fanout support for AWS SQS."},
             ],
         )
@@ -1477,13 +1527,19 @@ class _SnsFanout:
         # If token refresh is not required, return existing client
         return self._predefined_clients[exchange_name]
 
-    def _create_boto_client_with_sts_session(self, exchange: str, region: str):
+    def _create_boto_client_with_sts_session(self, exchange_name: str, region: str):
+        """Creates a new SNS client with a refreshed STS token.
+
+        :param exchange_name: The exchange name
+        :param region: The AWS region to use.
+        :returns: The SNS client with a refreshed STS token.
+        """
         # Handle STS token refresh
         sts_creds = self._chan.get_sts_credentials()
         self.sts_expiration = sts_creds['Expiration']
 
         # Get new client and return it
-        c = self._predefined_clients[exchange] = self._create_boto_client(
+        c = self._predefined_clients[exchange_name] = self._create_boto_client(
             region=region,
             access_key_id=sts_creds['AccessKeyId'],
             secret_access_key=sts_creds['SecretAccessKey'],
@@ -1581,14 +1637,16 @@ class _SnsFanout:
 
         return subscription_arn
 
-    def unsubscribe_queue_from_topic(self, queue_name: str) -> None:
+    def unsubscribe_queue_from_topic(self, queue_name: str, exchange_name: str) -> None:
         """Unsubscribes a queue from an AWS SNS topic
 
         :param queue_name: The queue to unsubscribe
+        :param exchange_name: The exchange to unsubscribe from the queue, if not provided
         :return: None
         """
+        cache_key = f"{exchange_name}:{queue_name}"
         # Get subscription ARN from cache if it exists, and return if it exists
-        if not (subscription_arn := self._subscription_arn_cache.get(queue_name)):
+        if not (subscription_arn := self._subscription_arn_cache.get(cache_key)):
             return
 
         # Unsubscribe the SQS queue from the SNS topic
@@ -1607,7 +1665,8 @@ class _SnsFanout:
         # If predefined_exchanges are set, then do not try to remove subscriptions
         if self._chan.predefined_exchanges:
             logger.debug(
-                f"'predefined_exchanges' has been specified, so stale SNS subscription cleanup will be skipped.")
+                "'predefined_exchanges' has been specified, so stale SNS subscription cleanup will be skipped."
+            )
             return
 
         logger.debug(f"Checking for stale SNS subscriptions for exchange '{exchange_name}'")
@@ -1673,14 +1732,16 @@ class _SnsFanout:
             # Extract the SQS queue ARN from the subscription endpoint
             queue_name = subscription["Endpoint"].split(":")[-1]
 
-            # Check if the queue has been removed by calling the get queue URL method. Note: listing the queues sometimes
-            # results in a valid queue not being returned (due to eventual consistency in SQS), so calling this method
+            # Check if the queue has been removed by calling the get queue URL method.
+            # Note: listing the queues sometimes results in a valid queue not being
+            # returned (due to eventual consistency in SQS), so calling this method
             # helps to mitigate this.
             try:
                 self._chan.sqs().get_queue_url(QueueName=queue_name)
             except ClientError as e:
                 queue_missing_errs = ["QueueDoesNotExist", "NonExistentQueue"]
-                # If one of the errors above has been raised, then the queue has been removed and the subscription should
+                # If one of the errors above has been raised, then the queue has been
+                # removed and the subscription should
                 # be removed too.
                 if any(err in str(e) for err in queue_missing_errs):
                     subscription_arns.append(subscription["SubscriptionArn"])
