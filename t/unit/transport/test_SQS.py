@@ -21,9 +21,12 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.exceptions import KombuError
-from kombu.transport.SQS import (UndefinedExchangeException,
-                                 UndefinedQueueException, _SnsFanout,
-                                 _SnsSubscription)
+from kombu.transport.SQS import (
+    UndefinedExchangeException,
+    UndefinedQueueException,
+    _SnsFanout,
+    _SnsSubscription,
+)
 
 boto3 = pytest.importorskip("boto3")
 
@@ -99,7 +102,7 @@ def mock_fanout():
 
 @pytest.fixture
 def mock_new_sqs_client():
-    with patch(f"kombu.transport.SQS.Channel.new_sqs_client") as mock:
+    with patch("kombu.transport.SQS.Channel.new_sqs_client") as mock:
         yield mock
 
 
@@ -1806,7 +1809,11 @@ class test_Channel:
         assert mock_fanout.publish.call_args_list == [
             call(
                 exchange_name="queue-1.fifo",
-                message='{"key1": "This is a value", "key2": 123, "key3": true, "properties": {"MessageGroupId": "ThisIsNotDefault", "MessageDeduplicationId": "MyDedupId"}}',
+                message=(
+                    '{"key1": "This is a value", "key2": 123, "key3": true,'
+                    ' "properties": {"MessageGroupId": "ThisIsNotDefault", '
+                    '"MessageDeduplicationId": "MyDedupId"}}'
+                ),
                 message_attributes=None,
                 request_params={
                     "MessageGroupId": "ThisIsNotDefault",
@@ -1850,7 +1857,11 @@ class test_Channel:
         assert mock_fanout.publish.call_args_list == [
             call(
                 exchange_name="queue-1",
-                message='{"key1": "This is a value", "key2": 123, "key3": true, "properties": {"message_attributes": {"attr1": "my-attribute-value", "attr2": 123}}}',
+                message=(
+                    '{"key1": "This is a value", "key2": 123, "key3": true, '
+                    '"properties": {"message_attributes": {"attr1": '
+                    '"my-attribute-value", "attr2": 123}}}'
+                ),
                 message_attributes={"attr1": "my-attribute-value", "attr2": 123},
                 request_params={},
             )
@@ -1891,7 +1902,7 @@ class test_Channel:
         # Act
         with pytest.raises(
             UndefinedQueueException,
-            match=f"Queue with name 'queue-4' must be defined in 'predefined_queues'.",
+            match="Queue with name 'queue-4' must be defined in 'predefined_queues'.",
         ):
             SQS_Channel_sqs.__get__(channel_fixture, SQS.Channel)(queue="queue-4")
 
@@ -2077,7 +2088,7 @@ class test_SnsFanout:
         with pytest.raises(
             UndefinedExchangeException,
             match="Exchange with name 'exchange-2' must be defined in 'predefined_exchanges'.",
-        ) as e:
+        ):
             sns_fanout._get_topic_arn(exchange_name)
 
         # Assert
@@ -2664,7 +2675,8 @@ class test_SnsSubscription:
         # Check logs
         log_lines = [
             f"Removed stale subscription 'subscription-arn-1' for SNS topic '{topic_arn}'",
-            f"Failed to remove stale subscription 'subscription-arn-2' for SNS topic '{topic_arn}': A test exception",
+            f"Failed to remove stale subscription 'subscription-arn-2' for SNS topic"
+            f" '{topic_arn}': A test exception",
             f"Removed stale subscription 'subscription-arn-3' for SNS topic '{topic_arn}'",
         ]
         for line in log_lines:
@@ -2716,9 +2728,8 @@ class test_SnsSubscription:
         ]
 
         assert (
-            f"Set permissions on SNS topic 'arn:aws:sns:us-east-1:123456789012:my-topic'"
-            in caplog.text
-        )
+            "Set permissions on SNS topic 'arn:aws:sns:us-east-1:123456789012:my-topic'"
+        ) in caplog.text
 
     def test_subscribe_queue_to_sns_topic_successful_subscription(
         self, sns_subscription, caplog, sns_fanout
