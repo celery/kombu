@@ -82,7 +82,9 @@ def connection_fixture():
 
 @pytest.fixture
 def channel_fixture(connection_fixture) -> SQS.Channel:
-    return connection_fixture.channel()
+    chan = connection_fixture.channel()
+    chan.region = "some-aws-region"
+    return chan
 
 
 @pytest.fixture
@@ -1934,7 +1936,7 @@ class test_Channel:
         }
         assert result == queue_2_client
         assert mock_new_sqs_client.call_args_list == [
-            call(region="eu-west-1", access_key_id="c", secret_access_key="d")
+            call(region="some-aws-region", access_key_id="c", secret_access_key="d")
         ]
 
     def test_fanout_instance_already_initialised(self, channel_fixture):
@@ -2316,7 +2318,6 @@ class test_SnsFanout:
     def test_get_client_new_client(self, sns_fanout):
         # Arrange
         sns_fanout._create_boto_client = Mock()
-        sns_fanout.channel.region = "eu-west-2"
         sns_fanout.channel.conninfo.userid = "MyAccessKeyID"
         sns_fanout.channel.conninfo.password = "MySecretAccessKey"
 
@@ -2329,12 +2330,16 @@ class test_SnsFanout:
             sns_fanout._create_boto_client.call_args_list
             == [
                 call(
-                    region="eu-west-2",
+                    region="some-aws-region",
                     access_key_id="MyAccessKeyID",
                     secret_access_key="MySecretAccessKey",
                 )
             ]
-            != [call(region="eu-west-2", access_key_id=None, secret_access_key=None)]
+            != [
+                call(
+                    region="some-aws-region", access_key_id=None, secret_access_key=None
+                )
+            ]
         )
 
     def test_token_refresh_required_no_date(self, sns_fanout):
