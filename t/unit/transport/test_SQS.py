@@ -21,12 +21,9 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.exceptions import KombuError
-from kombu.transport.SQS import (
-    UndefinedExchangeException,
-    UndefinedQueueException,
-    _SnsFanout,
-    _SnsSubscription,
-)
+from kombu.transport.SQS import (UndefinedExchangeException,
+                                 UndefinedQueueException, _SnsFanout,
+                                 _SnsSubscription)
 
 boto3 = pytest.importorskip("boto3")
 
@@ -493,7 +490,7 @@ class test_Channel:
             url="https://sqs.us-east-1.amazonaws.com/xxx/queue-1"
         )
 
-        # Delare fanout exchange and queue
+        # Declare fanout exchange and queue
         exchange_name = "test_SQS_fanout"
         exchange = Exchange(exchange_name, type="fanout")
         queue = Queue("queue-1", exchange)

@@ -1100,7 +1100,7 @@ class Channel(virtual.Channel):
                 port = f":{self.conninfo.port}"
             else:
                 port = ""
-            return "{}://{}{}".format(scheme, self.conninfo.hostname, port)
+            return f"{scheme}://{self.conninfo.hostname}{port}"
 
     @cached_property
     def wait_time_seconds(self) -> int:
