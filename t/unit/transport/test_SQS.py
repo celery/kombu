@@ -20,12 +20,9 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.exceptions import KombuError
-from kombu.transport.SQS import (
-    UndefinedExchangeException,
-    UndefinedQueueException,
-    _SnsFanout,
-    _SnsSubscription,
-)
+from kombu.transport.SQS import (UndefinedExchangeException,
+                                 UndefinedQueueException, _SnsFanout,
+                                 _SnsSubscription)
 
 boto3 = pytest.importorskip('boto3')
 
