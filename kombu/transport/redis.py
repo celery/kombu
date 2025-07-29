@@ -7,7 +7,8 @@ Features
 * Supports Topic: Yes
 * Supports Fanout: Yes
 * Supports Priority: Yes
-* Supports TTL: No
+* Supports Queue TTL: Yes
+* Supports Message TTL: No
 
 Connection String
 =================
@@ -49,6 +50,8 @@ Transport Options
 * ``health_check_interval``
 * ``retry_on_timeout``
 * ``priority_steps``
+* ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
+  The queue will be automatically deleted after this period of inactivity.
 """
 
 from __future__ import annotations
@@ -68,6 +71,7 @@ from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
+from kombu.transport.base import to_rabbitmq_queue_arguments
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
@@ -210,6 +214,7 @@ class GlobalKeyPrefixMixin:
         "ZADD",
         "ZREM",
         "ZREVRANGEBYSCORE",
+        "PEXPIRE",
     ]
 
     PREFIXED_COMPLEX_COMMANDS = {
@@ -697,6 +702,8 @@ class Channel(virtual.Channel):
     _async_pool = None
     _pool = None
 
+    _expires = {}
+
     from_transport_options = (
         virtual.Channel.from_transport_options +
         ('sep',
@@ -1001,7 +1008,10 @@ class Channel(virtual.Channel):
             for pri in self.priority_steps:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
+                    self._maybe_update_queues_expire(queue)
                     return loads(bytes_to_str(item))
+
+            self._maybe_update_queues_expire(queue)
             raise Empty()
 
     def _size(self, queue):
@@ -1030,6 +1040,8 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             client.lpush(self._q_for_pri(queue, pri), dumps(message))
 
+        self._maybe_update_queues_expire(queue)
+
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         with self.conn_or_acquire() as client:
@@ -1042,6 +1054,10 @@ class Channel(virtual.Channel):
         if auto_delete:
             self.auto_delete_queues.add(queue)
 
+        expire = self._get_queue_expire(kwargs)
+        if expire is not None:
+            self._expires[queue] = expire
+
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
@@ -1053,6 +1069,39 @@ class Channel(virtual.Channel):
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))
+
+    def _maybe_update_queues_expire(self, queue):
+        """Update expiration on queue keys.
+
+        For each queue, set expiration time in milliseconds.
+        Will only be set if x-expires argument was provided when creating the queue.
+        """
+        if not self._expires or queue not in self._expires:
+            return
+
+        with self.conn_or_acquire() as client:
+            with client.pipeline() as pipe:
+                for priority in self.priority_steps:
+                    pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
+                pipe.execute()
+
+    def _get_queue_expire(self, args):
+        """Get expiration header named `x-expires` of queue definition.
+
+        Returns expiration time in milliseconds or None if not set.
+
+        Arguments:
+        ---------
+            args (dict): Queue arguments dictionary
+        """
+        try:
+            value = args['arguments']['x-expires']
+            return int(value)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
