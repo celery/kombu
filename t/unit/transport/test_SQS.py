@@ -1148,7 +1148,7 @@ class test_Channel:
         assert 'MessageGroupId' in sqs_queue_mock.send_message.call_args[1]
         assert 'MessageDeduplicationId' in \
             sqs_queue_mock.send_message.call_args[1]
-    
+
     def test_predefined_queues_put_with_message_group_id(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
