@@ -306,7 +306,6 @@ class Channel(virtual.Channel):
     _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}  # SQS queue name => SQS queue URL
     _noack_queues = set()
-
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
     B64_REGEX = re.compile(
@@ -664,7 +663,6 @@ class Channel(virtual.Channel):
                 for msg in self._messages_to_python(messages, queue):
                     self.connection._deliver(msg, queue)
                 return
-
         raise Empty()
 
     def _get(self, queue):
@@ -852,7 +850,6 @@ class Channel(virtual.Channel):
                 raise UndefinedQueueException(
                     f"Queue with name '{queue}' must be defined in 'predefined_queues'."
                 )
-
             q = self.predefined_queues[queue]
 
             # Handle authenticating boto client with tokens
@@ -1018,7 +1015,6 @@ class Channel(virtual.Channel):
                 raise UndefinedQueueException(
                     f"Queue with name '{queue}' must be defined in 'predefined_queues'."
                 )
-
             q = self.predefined_queues[queue]
             c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(
                 sqs_connection=self.sqs(queue=queue),
