@@ -463,11 +463,13 @@ class Channel(virtual.Channel):
                 # we don't want to want to have the attribute in the body
                 kwargs['MessageAttributes'] = \
                     message['properties'].pop('message_attributes')
+            # support SQS fair queue system.
+            if 'MessageGroupId' in message['properties']:
+                kwargs['MessageGroupId'] = \
+                    message['properties']['MessageGroupId']
+            # Support FIFO queues.
             if queue.endswith('.fifo'):
-                if 'MessageGroupId' in message['properties']:
-                    kwargs['MessageGroupId'] = \
-                        message['properties']['MessageGroupId']
-                else:
+                if 'MessageGroupId' not in kwargs:
                     kwargs['MessageGroupId'] = 'default'
                 if 'MessageDeduplicationId' in message['properties']:
                     kwargs['MessageDeduplicationId'] = \
