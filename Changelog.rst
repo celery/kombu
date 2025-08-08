@@ -4,6 +4,31 @@
  Change history
 ================
 
+.. _version-5.6.0b1:
+
+5.6.0b1
+=======
+:release-date: 29 July, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Revert "Feature: urllib3 instead of curl" (#2261)
+- Fix #2286 : SQS - Enhance support for receiving message attributes. Allow string in msg body. (#2300)
+- Update gcpubsub.txt for protobuf (#2320)
+- fix body bytes encoding in curl.py (#2322)
+- Hotfix(aws_ssl): validate secure connection (#2323)
+- Update setup.py to remove deprecation warning (#2298)
+- Update protobuf to 5.29.5 (#2199)
+- Allow setting `tags` in initial `boto3.sqs.create_queue` call via `transport_options` (#2321)
+- Add sts_token_buffer_time parameter to transport options (#2216)
+- Docs: Fix incorrect "added in 5.6.0" note for sts_token_timeout in SQS transport docs (#2327)
+- SQS: when redelivering a message apply visibility timeout based on wait_time_seconds (long polling time) (#2049)
+- Bump redis requirement to <6 to support v5.3 (#2329)
+- Pidbox: support queue_exclusive / queue_durable (RabbitMQ 4.x) (#2338)
+- Prepare for (pre) release: v5.6.0b1 (#2343)
+
 .. _version-5.5.4:
 
 5.5.4
@@ -22,8 +47,6 @@ What's Changed
 - Resolve logger warnings (#2302)
 - Fixed lint error from `kombu/transport/native_delayed_delivery.py` (#2308)
 - Prepare for release: v5.5.4 (#2309)
-
-.. _version-5.5.2:
 
 .. _version-5.5.3:
 
