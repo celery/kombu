@@ -1488,7 +1488,7 @@ class test_Redis:
         assert conn.transport.brpop_timeout == 2
         assert chan.brpop_timeout == 2
         assert chan.brpop_timeout == conn.transport.brpop_timeout
-        assert conn.transport.polling_interval is None
+        assert conn.transport.polling_interval == 2
 
         conn.release()
 
