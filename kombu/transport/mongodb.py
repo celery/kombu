@@ -36,6 +36,7 @@ Transport Options
 from __future__ import annotations
 
 import datetime
+import warnings
 from queue import Empty
 
 import pymongo
