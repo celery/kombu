@@ -1320,9 +1320,9 @@ class Transport(virtual.Transport):
 
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+        # Use polling_interval to set brpop_timeout if provided, but do not modify polling_interval itself.
         if self.polling_interval is not None:
             self.brpop_timeout = self.polling_interval
-            self.polling_interval = None
 
     def driver_version(self):
         return redis.__version__
