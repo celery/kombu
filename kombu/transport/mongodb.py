@@ -330,8 +330,11 @@ class Channel(virtual.Channel):
             if lk not in normalized:
                 normalized[lk] = val
             else:
-                # Conflict: keys differ only in case and have different values; skip or handle as needed
-                pass  # Optionally, log a warning here
+                # Conflict: keys differ only in case and have different values; log a warning
+                warnings.warn(
+                    f"MongoDB transport: Option conflict for key '{k}' and '{lk}' with different values: "
+                    f"{normalized.get(lk)!r} vs {val!r}. Using value for '{k}'."
+                )
         options = normalized
         options = self._prepare_client_options(options)
 
