@@ -321,6 +321,14 @@ class Channel(virtual.Channel):
                                  if self.connect_timeout else None),
         }
         options.update(parsed['options'])
+        normalized = {}
+        for k, v in options.items():
+            val = v[0] if isinstance(v, list) and len(v) == 1 else v
+            normalized[k] = val
+            lk = k.lower()
+            if lk not in normalized:
+                normalized[lk] = val
+        options = normalized
         options = self._prepare_client_options(options)
 
         if 'tls' in options:
