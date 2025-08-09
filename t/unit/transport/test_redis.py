@@ -1477,13 +1477,20 @@ class test_Redis:
         assert conn.transport.connection_errors
         assert conn.transport.channel_errors
 
-    def test_check_at_least_we_try_to_connect_and_fail(self):
-        import redis
-        connection = Connection('redis://localhost:65534/')
+    def test_brpop_timeout_propagates_from_transport_options(self):
+        # Set either polling_interval or brpop_timeout to 2
+        conn = Connection("redis://localhost/0", transport_options={"polling_interval": 2})
 
-        with pytest.raises(redis.exceptions.ConnectionError):
-            chan = connection.channel()
-            chan._size('some_queue')
+        # Avoid network I/O during Channel.__init__()
+        with patch("kombu.transport.redis.redis.Redis.ping", return_value=True):
+            chan = conn.channel()
+
+        assert conn.transport.brpop_timeout == 2
+        assert chan.brpop_timeout == 2
+        assert chan.brpop_timeout == conn.transport.brpop_timeout
+        assert conn.transport.polling_interval == 2
+
+        conn.release()
 
 
 class test_MultiChannelPoller:
