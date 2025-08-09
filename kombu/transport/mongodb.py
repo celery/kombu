@@ -329,12 +329,16 @@ class Channel(virtual.Channel):
             # Only set the lowercase key if it does not exist, or if it exists and has the same value
             if lk not in normalized or normalized[lk] == val:
                 normalized[lk] = val
+            elif normalized[lk] == val:
+                # Values match, no action needed
+                pass
             else:
                 # Conflict: keys differ only in case and have different values; log a warning
                 warnings.warn(
                     f"MongoDB transport: Option conflict for key '{k}' and '{lk}' with different values: "
                     f"{normalized.get(lk)!r} vs {val!r}. Using value for '{k}'."
                 )
+                # Do not overwrite the existing value for lk
         options = normalized
         options = self._prepare_client_options(options)
 
