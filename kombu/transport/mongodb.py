@@ -329,8 +329,6 @@ class Channel(virtual.Channel):
             # Only set the lowercase key if it does not exist, or if it exists and has the same value
             if lk not in normalized:
                 normalized[lk] = val
-            elif normalized[lk] == val:
-                pass  # already set to the same value, do nothing
             else:
                 # Conflict: keys differ only in case and have different values; skip or handle as needed
                 pass  # Optionally, log a warning here
