@@ -326,9 +326,14 @@ class Channel(virtual.Channel):
             val = v[0] if isinstance(v, list) and len(v) == 1 else v
             normalized[k] = val
             lk = k.lower()
-            # Always set the lowercase key, unless it already exists with a different value
-            if lk not in normalized or normalized[lk] == normalized[k]:
+            # Only set the lowercase key if it does not exist, or if it exists and has the same value
+            if lk not in normalized:
                 normalized[lk] = val
+            elif normalized[lk] == val:
+                pass  # already set to the same value, do nothing
+            else:
+                # Conflict: keys differ only in case and have different values; skip or handle as needed
+                pass  # Optionally, log a warning here
         options = normalized
         options = self._prepare_client_options(options)
 
