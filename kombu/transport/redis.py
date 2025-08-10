@@ -737,7 +737,7 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
-        self.brpop_timeout = self.connection.transport.brpop_timeout
+        self.brpop_timeout = self.connection.brpop_timeout
 
         if self.fanout_prefix:
             if isinstance(self.fanout_prefix, str):
