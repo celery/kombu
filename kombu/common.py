@@ -360,8 +360,9 @@ class QoS:
             e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
             with a single ``prefetch_count`` keyword argument.
         initial_value (int): Initial prefetch count value..
-        max_prefetch (int): Maximum allowed prefetch count. If specified,
-            increment_eventually will not allow the value to exceed this limit.
+        max_prefetch (int or None): Maximum allowed prefetch count. If specified
+            as an integer, increment_eventually will not allow the value to exceed this limit.
+            If None (the default), there is no upper limit on the prefetch count.
 
     Example:
     -------
