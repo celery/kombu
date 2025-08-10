@@ -20,7 +20,7 @@
     .. rubric:: Transport-specific notes
     .. versionadded:: 5.6.0
     Redis now honours the generic
-    :pyattr:`~kombu.transport.virtual.Transport.polling_interval`
+    :attr:`~kombu.transport.virtual.Transport.polling_interval`
     option (present in SQS, etcd, Zookeeper, …).  When you pass
 
     .. code-block:: python
