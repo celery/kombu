@@ -1300,7 +1300,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
-    brpop_timeout = 1.0
+    brpop_timeout = 1
     default_port = DEFAULT_PORT
     driver_type = 'redis'
     driver_name = 'redis'
