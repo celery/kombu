@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-5.6.0b2:
+
+5.6.0b2
+=======
+:release-date: 12 August, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Normalize mongodb options keys (#2347)
+- Redis: propagate polling_interval from transport options to _brpop_start timeout (#2346)
+- Add max_prefetch limit to QoS class and related tests (#2348)
+- Prepare for (pre) release: v5.6.0b2 (#2349)
+
 .. _version-5.6.0b1:
 
 5.6.0b1
