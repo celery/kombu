@@ -128,6 +128,79 @@ class test_mongodb_uri_parsing:
         client_options = database.client.options
         assert client_options.server_selection_timeout == 1.0
 
+    def test_flattens_single_item_and_lowercases(self, monkeypatch):
+        # Use the test harness' connection/channel
+        from kombu.transport import mongodb as mod
+        ch = _create_mock_connection("mongodb://localhost").default_channel
+
+        fake = {"database": "test",
+                "options": {"replicaSet": ["rs0"], "readPreference": ["primary"]}}
+        monkeypatch.setattr(mod.uri_parser, "parse_uri", lambda *a, **k: fake)
+
+        _, dbname, options = ch._parse_uri()
+
+        assert dbname == "test"
+        # flattened + lowercased:
+        assert options["replicaset"] == "rs0"
+        assert options["readpreference"] == "primary"
+        # originals retained (loop keeps k as-is too)
+        assert options["replicaSet"] == "rs0"
+        assert options["readPreference"] == "primary"
+
+    def test_multi_item_lists_not_flattened(self, monkeypatch):
+        from kombu.transport import mongodb as mod
+        ch = _create_mock_connection("mongodb://localhost").default_channel
+
+        fake = {"database": "test",
+                "options": {"readPreferenceTags": ["dc:east", "use:analytics"]}}
+        monkeypatch.setattr(mod.uri_parser, "parse_uri", lambda *a, **k: fake)
+
+        _, _, options = ch._parse_uri()
+
+        assert options["readpreferencetags"] == ["dc:east", "use:analytics"]
+        assert options["readPreferenceTags"] == ["dc:east", "use:analytics"]
+
+    def test_tls_pops_ssl_after_normalization(self, monkeypatch):
+        from kombu.transport import mongodb as mod
+        ch = _create_mock_connection("mongodb://localhost").default_channel
+
+        fake = {"database": "test", "options": {"tls": True}}
+        monkeypatch.setattr(mod.uri_parser, "parse_uri", lambda *a, **k: fake)
+
+        _, _, options = ch._parse_uri()
+
+        assert "tls" in options
+        assert "ssl" not in options  # removed when tls is present
+
+    def test_equal_values_different_casing_no_warning(self, monkeypatch, recwarn):
+        from kombu.transport import mongodb as mod
+        ch = _create_mock_connection("mongodb://localhost").default_channel
+
+        fake = {"database": "test",
+                "options": {"replicaSet": ["rs0"], "replicaset": ["rs0"]}}
+        monkeypatch.setattr(mod.uri_parser, "parse_uri", lambda *a, **k: fake)
+
+        _, _, options = ch._parse_uri()
+
+        assert options["replicaset"] == "rs0"
+        # Only fail if our specific conflict message appears (ignore unrelated warnings)
+        assert not any("Option conflict for key" in str(w.message) for w in recwarn)
+
+    def test_conflicting_values_same_key_diff_case_last_wins(self, monkeypatch, recwarn):
+        from kombu.transport import mongodb as mod
+        ch = _create_mock_connection("mongodb://localhost").default_channel
+
+        fake = {"database": "test",
+                "options": {"replicaSet": ["rs0"], "replicaset": ["DIFFERENT"]}}
+        monkeypatch.setattr(mod.uri_parser, "parse_uri", lambda *a, **k: fake)
+
+        _, _, options = ch._parse_uri()
+
+        # Current implementation effectively lets the later key win (order-dependent).
+        assert options["replicaset"] == "DIFFERENT"
+        # And it does not emit the conflict warning right now.
+        assert not any("Option conflict for key" in str(w.message) for w in recwarn)
+
 
 class BaseMongoDBChannelCase:
 
