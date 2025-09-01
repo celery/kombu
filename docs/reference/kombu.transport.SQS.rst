@@ -71,3 +71,32 @@ Message Attributes
 SQS supports sending message attributes along with the message body.
 To use this feature, you can pass a 'message_attributes' as keyword argument
 to `basic_publish` method.
+
+Large Message Support
+------------------------
+
+SQS has a maximum message size limit of 256KB. To handle larger messages,
+the SQS transport automatically supports the Amazon SQS Extended Client Library,
+which uses S3 to store message payloads that exceed the SQS size limit.
+
+This feature is automatically available when using the SQS transport - no
+additional installation or configuration is required as the necessary
+dependencies are included with the SQS extras.
+
+**How it works:**
+
+- When sending a message larger than 256KB, the transport automatically stores
+  the message body in S3
+- SQS receives a reference pointer to the S3 object instead of the actual message
+- When receiving the message, the transport transparently retrieves the payload
+  from S3
+
+**IAM Permissions:**
+
+To use this feature, your AWS credentials need appropriate S3 permissions in
+addition to standard SQS permissions:
+
+- ``s3:GetObject`` - for retrieving large messages
+- ``s3:PutObject`` - for storing large messages
+
+The S3 bucket used for storage is managed by the SQS Extended Client Library.

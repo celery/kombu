@@ -28,6 +28,11 @@ except ImportError:
             "get_cert_path is unavailable because boto3 or botocore is not installed."
         )
 
+try:
+    import sqs_extended_client
+except ImportError:
+    sqs_extended_client = None
+
 __all__ = (
     'exceptions', 'AWSRequest', 'get_response', 'get_cert_path',
 )
