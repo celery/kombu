@@ -35,7 +35,7 @@ Transport Options
 
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timedelta, timezone
 import warnings
 from queue import Empty
 
@@ -472,7 +472,7 @@ class Channel(virtual.Channel):
     def _get_message_expire(self, message):
         value = message.get('properties', {}).get('expiration')
         if value is not None:
-            return self.get_now() + datetime.timedelta(milliseconds=int(value))
+            return self.get_now() + timedelta(milliseconds=int(value))
 
     def _get_queue_expire(self, queue, argument):
         """Get expiration header named `argument` of queue definition.
@@ -496,7 +496,7 @@ class Channel(virtual.Channel):
         except (KeyError, TypeError):
             return
 
-        return self.get_now() + datetime.timedelta(milliseconds=value)
+        return self.get_now() + timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
         """Update expiration field on queues documents."""
@@ -512,7 +512,7 @@ class Channel(virtual.Channel):
 
     def get_now(self):
         """Return current time in UTC."""
-        return datetime.datetime.utcnow()
+        return datetime.now(timezone.utc)
 
 
 class Transport(virtual.Transport):
