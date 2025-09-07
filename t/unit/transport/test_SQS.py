@@ -243,7 +243,7 @@ class test_Channel:
         channel = connection.channel()
         assert channel.transport_options.get('region') is None
         # the default region is us-east-1
-        # assert channel.region == 'us-east-1'
+        assert channel.region == 'us-east-1'
 
         # when boto3 picks a region
         os.environ['AWS_DEFAULT_REGION'] = 'us-east-2'

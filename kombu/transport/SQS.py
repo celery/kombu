@@ -797,7 +797,7 @@ class Channel(virtual.Channel):
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
             return self._new_predefined_queue_client_with_sts_session(queue, region)
         # STS token - refresh if expired
-        elif self.sts_expiration.replace(tzinfo=None) < datetime.now():
+        elif self.sts_expiration.replace(tzinfo=None) < datetime.now(timezone.utc).replace(tzinfo=None):
             return self._new_predefined_queue_client_with_sts_session(queue, region)
         else:  # STS token - ruse existing
             if queue not in self._predefined_queue_clients:
