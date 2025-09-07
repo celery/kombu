@@ -35,8 +35,8 @@ Transport Options
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import warnings
+from datetime import datetime, timedelta, timezone
 from queue import Empty
 
 import pymongo
