@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import datetime
+from datetime import datetime, timedelta, timezone
 from queue import Empty
 from unittest.mock import MagicMock, call, patch
 
@@ -28,7 +28,7 @@ def _create_mock_connection(url='', **kwargs):
         _fanout_queues = {}
 
         collections = {}
-        now = datetime.datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         def _create_client(self):
             # not really a 'MongoClient',
@@ -513,7 +513,7 @@ class test_mongodb_channel_ttl(BaseMongoDBChannelCase):
         self.channel = self.connection.default_channel
 
         self.expire_at = (
-            self.channel.get_now() + datetime.timedelta(milliseconds=777))
+            self.channel.get_now() + timedelta(milliseconds=777))
 
     # Tests
 
@@ -654,7 +654,7 @@ class test_mongodb_channel_calc_queue_size(BaseMongoDBChannelCase):
         self.channel = self.connection.default_channel
 
         self.expire_at = (
-            self.channel.get_now() + datetime.timedelta(milliseconds=777))
+            self.channel.get_now() + timedelta(milliseconds=777))
 
     # Tests
 
