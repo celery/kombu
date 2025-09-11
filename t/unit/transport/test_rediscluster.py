@@ -695,7 +695,7 @@ class test_Channel:
 
             def _on_connection_disconnect(self, connection):
                 # increment the counter when the method is called
-                self.on_disconect_count += 1
+                self.on_disconnect_count += 1
 
         # create the channel
         chan = XChannel(Mock(
