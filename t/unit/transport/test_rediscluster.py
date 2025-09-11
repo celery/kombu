@@ -720,7 +720,7 @@ class test_Channel:
             # than disconnect the Redis connection
             redis_connection.disconnect()
             # the on_disconnect counter should be incremented
-            assert chan.on_disconect_count == 1
+            assert chan.on_disconnect_count == 1
 
 
 class test_Redis:
