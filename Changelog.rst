@@ -4,6 +4,20 @@
  Change history
 ================
 
+.. _version-5.6.0b3:
+
+5.6.0b3
+=======
+:release-date: 15 September, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Remove custom `LifoQueue` class conflicting with recent gevent (#2314)
+- Replace deprecated datetime.utcnow() with datetime.now(timezone.utc) (#2355)
+- Prepare for (pre) release: v5.6.0b3 (#2359)
+
 .. _version-5.6.0b2:
 
 5.6.0b2
