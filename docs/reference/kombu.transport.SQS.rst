@@ -71,3 +71,29 @@ Message Attributes
 SQS supports sending message attributes along with the message body.
 To use this feature, you can pass a 'message_attributes' as keyword argument
 to `basic_publish` method.
+
+Fair Queue Support
+------------------------
+
+Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups 
+are processed in a balanced manner.
+
+Fair Queues are designed to prevent a single message group (or tenant) from monopolizing consumer resources, which can happen with standard queues 
+that handle multi-tenant workloads with unbalanced message distribution.
+
+When publishing messages to a Fair Queue, you must provide a `MessageGroupId`. This can be done by passing it as a 
+keyword argument to the `publish` method::
+
+    producer.publish(
+        message,
+        routing_key='my-fair-queue',
+        MessageGroupId='customer-123'  # Required for FIFO and Fair queues
+    )
+
+Benefits of using Fair Queues with Kombu:
+- Improved message processing fairness across message groups
+- Better workload distribution among consumers
+- Eliminates noisy neighbor problem
+
+For more information, refer to the AWS documentation on Fair Queues: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html
+
