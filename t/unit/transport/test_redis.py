@@ -1023,6 +1023,17 @@ class test_Channel:
                 connparams = conn.default_channel._connparams()
                 assert connparams['health_check_interval'] == 25
 
+    def test_connparams_includes_client_name_from_transport_options(self):
+        # Ensure that when client_name is provided via transport options,
+        # it is propagated into the connection parameters used to build
+        # the Redis connection/pool.
+        with Connection(
+            transport=Transport,
+            transport_options={'client_name': 'kombu-worker'},
+        ) as conn:
+            params = conn.default_channel._connparams()
+            assert params['client_name'] == 'kombu-worker'
+
     def test_rotate_cycle_ValueError(self):
         cycle = self.channel._queue_cycle
         cycle.update(['kramer', 'jerry'])
@@ -1841,7 +1852,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None)
+                username=None, retry_on_timeout=None, client_name=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1864,7 +1875,35 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None)
+                username=None, retry_on_timeout=None, client_name=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with('not_important', ANY)
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_with_client_name(self):
+        # When client_name is provided in transport options, ensure it is
+        # forwarded to the redis.sentinel.Sentinel constructor.
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                    'client_name': 'kombu-worker',
+                },
+            )
+
+            connection.channel()
+            patched.assert_called_once_with(
+                [
+                    ('localhost', 65532),
+                ],
+                connection_class=ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password=None, sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None,
+                username=None, retry_on_timeout=None, client_name='kombu-worker')
 
             master_for = patched.return_value.master_for
             master_for.assert_called()

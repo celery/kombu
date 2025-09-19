@@ -647,6 +647,7 @@ class Channel(virtual.Channel):
     retry_on_timeout = None
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
+    client_name = None
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -718,7 +719,8 @@ class Channel(virtual.Channel):
          'max_connections',
          'health_check_interval',
          'retry_on_timeout',
-         'priority_steps')  # <-- do not add comma here!
+         'priority_steps',
+         'client_name')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
@@ -1160,6 +1162,7 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
             'health_check_interval': self.health_check_interval,
             'retry_on_timeout': self.retry_on_timeout,
+            'client_name': self.client_name,
         }
 
         conn_class = self.connection_class
