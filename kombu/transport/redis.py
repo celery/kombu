@@ -49,6 +49,7 @@ Transport Options
 * ``health_check_interval``
 * ``retry_on_timeout``
 * ``priority_steps``
+* ``client_name``: (str) The name to use when connecting to Redis server.
 """
 
 from __future__ import annotations
