@@ -79,6 +79,7 @@ try:
 except ImportError:
     confluent_kafka = None
     KAFKA_CONNECTION_ERRORS = KAFKA_CHANNEL_ERRORS = ()
+
     class KafkaException(Exception):
         pass
 
