@@ -96,7 +96,7 @@ def readme():
 
 
 setup(
-    name='kombu',
+    name='moe-kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
     version=meta['version'],
     description=meta['doc'],

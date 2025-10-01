@@ -400,6 +400,10 @@ class Channel(virtual.Channel):
         else:
             body = dumps(message)
         kwargs = {'QueueUrl': q_url, 'MessageBody': body}
+        # support fair sqs queue
+        if 'MessageGroupId' in message['properties']:
+            kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
+        # support fifo queue
         if queue.endswith('.fifo'):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
