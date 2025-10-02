@@ -26,7 +26,7 @@ the connection string has following format:
     sentinel://[USER:PASSWORD@]SENTINEL_ADDRESS[:PORT]
 
 
-To use Valkey (which was originally a redis fork),
+To use Valkey (which was originally a Redis fork),
 the connection string has the following format:
 
 .. code-block::
