@@ -135,6 +135,9 @@ All of these are valid URLs:
     # Using Redis sentinel
     sentinel://sentinel1:26379;sentinel://sentinel2:26379
 
+    # Using Valkey
+    valkey://localhost:6379/
+
     # Using Qpid
     qpid://localhost/
 
@@ -229,6 +232,8 @@ Transport Comparison
 | *qpid*        | Native   | Yes        | Yes        | Yes           | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          |
++---------------+----------+------------+------------+---------------+--------------+
+| *valkey*      | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          |
 +---------------+----------+------------+------------+---------------+--------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           |
 +---------------+----------+------------+------------+---------------+--------------+
