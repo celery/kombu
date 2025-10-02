@@ -943,8 +943,7 @@ class Channel(virtual.Channel):
         if not expire_time:  # STS token - token init
             return True
         # STS token - refresh if expired
-        elif expire_time.replace(tzinfo=None) < datetime.now(
-            timezone.utc).replace(tzinfo=None):
+        elif expire_time.replace(tzinfo=None) < datetime.now(timezone.utc).replace(tzinfo=None):
             return True
         # STS token = refresh if exchange or queue is not in client map
         elif not client_map.get(name):
