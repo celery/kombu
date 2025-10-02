@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
 import pytest
@@ -14,7 +14,7 @@ class test_to_timestamp:
         assert to_timestamp(3.13) == 3.13
 
     def test_datetime(self):
-        assert to_timestamp(datetime.utcnow())
+        assert to_timestamp(datetime.now(timezone.utc))
 
 
 class test_Entry:
