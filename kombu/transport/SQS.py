@@ -144,7 +144,7 @@ import re
 import socket
 import string
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from queue import Empty
 from typing import Any
@@ -799,7 +799,7 @@ class Channel(virtual.Channel):
         if not hasattr(self, 'sts_expiration'):  # STS token - token init
             return self._new_predefined_queue_client_with_sts_session(queue, region)
         # STS token - refresh if expired
-        elif self.sts_expiration.replace(tzinfo=None) < datetime.utcnow():
+        elif self.sts_expiration.replace(tzinfo=None) < datetime.now(timezone.utc).replace(tzinfo=None):
             return self._new_predefined_queue_client_with_sts_session(queue, region)
         else:  # STS token - ruse existing
             if queue not in self._predefined_queue_clients:
