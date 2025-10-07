@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 
 from kombu.exceptions import KombuError
 from kombu.log import get_logger
+
 from .exceptions import UndefinedExchangeException
 
 if typing.TYPE_CHECKING:
@@ -29,7 +30,7 @@ class SNS:
 
     _lock = threading.Lock()
 
-    def __init__(self, channel: "Channel"):
+    def __init__(self, channel: Channel):
         self.channel = channel
         self._client = None
         self.subscriptions = _SnsSubscription(self)

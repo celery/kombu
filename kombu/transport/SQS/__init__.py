@@ -180,17 +180,21 @@ from botocore.exceptions import ClientError
 from vine import ensure_promise, promise, transform
 
 from kombu.asynchronous import get_event_loop
-from kombu.asynchronous.aws.ext import boto3, exceptions as aws_exceptions
+from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.ext import exceptions as aws_exceptions
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.log import get_logger
 from kombu.transport import virtual
-from kombu.transport.SQS.exceptions import AccessDeniedQueueException, \
-    DoesNotExistQueueException, InvalidQueueException, UndefinedQueueException
+from kombu.transport.SQS.exceptions import (AccessDeniedQueueException,
+                                            DoesNotExistQueueException,
+                                            InvalidQueueException,
+                                            UndefinedQueueException)
 from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
+
 from .SNS import SNS
 
 logger = get_logger(__name__)

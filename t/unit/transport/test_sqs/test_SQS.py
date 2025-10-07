@@ -26,11 +26,10 @@ from botocore.exceptions import ClientError  # noqa
 
 from kombu.transport import SQS  # noqa
 
-from .fixtures import (
-    channel_fixture, channel_fixture, connection_fixture,
-    connection_fixture, mock_fanout, mock_new_sqs_client, mock_sqs, sns_fanout,
-    sns_subscription, example_predefined_exchanges, example_predefined_queues
-)  # noqa
+from .fixtures import (channel_fixture, connection_fixture,
+                       example_predefined_exchanges, example_predefined_queues,
+                       mock_fanout, mock_new_sqs_client, mock_sqs, sns_fanout,
+                       sns_subscription)
 
 SQS_Channel_sqs = SQS.Channel.sqs
 
