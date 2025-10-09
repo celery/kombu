@@ -49,6 +49,7 @@ Transport Options
 * ``health_check_interval``
 * ``retry_on_timeout``
 * ``priority_steps``
+* ``client_name``: (str) The name to use when connecting to Redis server.
 """
 
 from __future__ import annotations
@@ -59,9 +60,11 @@ import socket
 from bisect import bisect
 from collections import namedtuple
 from contextlib import contextmanager
+from importlib.metadata import version
 from queue import Empty
 from time import time
 
+from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
@@ -79,8 +82,10 @@ from . import virtual
 
 try:
     import redis
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
     from redis import sentinel
@@ -511,7 +516,10 @@ class MultiChannelPoller:
 
     def _client_registered(self, channel, client, cmd):
         if getattr(client, 'connection', None) is None:
-            client.connection = client.connection_pool.get_connection('_')
+            if _REDIS_GET_CONNECTION_WITHOUT_ARGS:
+                client.connection = client.connection_pool.get_connection()
+            else:
+                client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
@@ -640,6 +648,7 @@ class Channel(virtual.Channel):
     retry_on_timeout = None
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
+    client_name = None
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -711,7 +720,8 @@ class Channel(virtual.Channel):
          'max_connections',
          'health_check_interval',
          'retry_on_timeout',
-         'priority_steps')  # <-- do not add comma here!
+         'priority_steps',
+         'client_name')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
@@ -730,6 +740,7 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
+        self.brpop_timeout = self.connection.brpop_timeout
 
         if self.fanout_prefix:
             if isinstance(self.fanout_prefix, str):
@@ -947,7 +958,9 @@ class Channel(virtual.Channel):
                         message, self._fanout_to_queue[exchange])
                     return True
 
-    def _brpop_start(self, timeout=1):
+    def _brpop_start(self, timeout=None):
+        if timeout is None:
+            timeout = self.brpop_timeout
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
@@ -1150,6 +1163,7 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
             'health_check_interval': self.health_check_interval,
             'retry_on_timeout': self.retry_on_timeout,
+            'client_name': self.client_name,
         }
 
         conn_class = self.connection_class
@@ -1290,6 +1304,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
+    brpop_timeout = 1
     default_port = DEFAULT_PORT
     driver_type = 'redis'
     driver_name = 'redis'
@@ -1309,6 +1324,9 @@ class Transport(virtual.Transport):
 
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+        # Use polling_interval to set brpop_timeout if provided, but do not modify polling_interval itself.
+        if self.polling_interval is not None:
+            self.brpop_timeout = self.polling_interval
 
     def driver_version(self):
         return redis.__version__

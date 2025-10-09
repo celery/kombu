@@ -16,12 +16,17 @@ except ImportError:
 
     class BotoCoreError(Exception):
         pass
+
     exceptions = _void()
-    exceptions.BotoCoreError = BotoCoreError
+    exceptions.BotoCoreError = BotoCoreError  # type: ignore[attr-defined]
     AWSRequest = _void()
     get_response = _void()
-    get_cert_path = _void()
 
+    def get_cert_path() -> str:
+        """Raises NotImplementedError if boto3 or botocore is not installed."""
+        raise NotImplementedError(
+            "get_cert_path is unavailable because boto3 or botocore is not installed."
+        )
 
 __all__ = (
     'exceptions', 'AWSRequest', 'get_response', 'get_cert_path',

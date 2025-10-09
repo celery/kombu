@@ -181,6 +181,7 @@ class Mailbox:
                  type='direct', connection=None, clock=None,
                  accept=None, serializer=None, producer_pool=None,
                  queue_ttl=None, queue_expires=None,
+                 queue_durable=False, queue_exclusive=False,
                  reply_queue_ttl=None, reply_queue_expires=10.0):
         self.namespace = namespace
         self.connection = connection
@@ -193,9 +194,16 @@ class Mailbox:
         self.serializer = self.serializer if serializer is None else serializer
         self.queue_ttl = queue_ttl
         self.queue_expires = queue_expires
+        self.queue_durable = queue_durable
+        self.queue_exclusive = queue_exclusive
         self.reply_queue_ttl = reply_queue_ttl
         self.reply_queue_expires = reply_queue_expires
         self._producer_pool = producer_pool
+        if queue_exclusive and queue_durable:
+            raise ValueError(
+                "queue_exclusive and queue_durable cannot both be True "
+                "(exclusive queues are automatically deleted and cannot be durable).",
+            )
 
     def __call__(self, connection):
         bound = copy(self)
@@ -236,8 +244,9 @@ class Mailbox:
             f'{oid}.{self.reply_exchange.name}',
             exchange=self.reply_exchange,
             routing_key=oid,
-            durable=False,
-            auto_delete=True,
+            durable=self.queue_durable,
+            exclusive=self.queue_exclusive,
+            auto_delete=not self.queue_durable,
             expires=self.reply_queue_expires,
             message_ttl=self.reply_queue_ttl,
         )
@@ -250,8 +259,9 @@ class Mailbox:
         return Queue(
             f'{hostname}.{self.namespace}.pidbox',
             exchange=self.exchange,
-            durable=False,
-            auto_delete=True,
+            durable=self.queue_durable,
+            exclusive=self.queue_exclusive,
+            auto_delete=not self.queue_durable,
             expires=self.queue_expires,
             message_ttl=self.queue_ttl,
         )
