@@ -17,11 +17,6 @@ from kombu import Exchange, Queue
 from kombu.exceptions import KombuError
 from kombu.transport.SQS.exceptions import UndefinedExchangeException
 
-from .fixtures import (
-    channel_fixture, channel_fixture, connection_fixture,
-    connection_fixture, mock_fanout, mock_new_sqs_client, mock_sqs, sns_fanout,
-    sns_subscription
-)   # noqa
 
 boto3 = pytest.importorskip('boto3')
 

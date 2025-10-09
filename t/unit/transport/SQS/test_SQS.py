@@ -19,6 +19,7 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.transport.SQS import UndefinedQueueException
+from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
 
@@ -26,11 +27,6 @@ from botocore.exceptions import ClientError  # noqa
 
 from kombu.transport import SQS  # noqa
 
-from .fixtures import (
-    channel_fixture, channel_fixture, connection_fixture,
-    connection_fixture, mock_fanout, mock_new_sqs_client, mock_sqs, sns_fanout,
-    sns_subscription, example_predefined_exchanges, example_predefined_queues
-)  # noqa
 
 SQS_Channel_sqs = SQS.Channel.sqs
 
@@ -568,13 +564,15 @@ class test_Channel:
         kombu_messages = []
         for m in self.sqs_conn_mock.receive_message(
             QueueUrl=q_url,
-            MaxNumberOfMessages=kombu_message_count)['Messages']:
+            MaxNumberOfMessages=kombu_message_count
+        )['Messages']:
             m['Body'] = Message(body=m['Body']).decode()
             kombu_messages.append(m)
         json_messages = []
         for m in self.sqs_conn_mock.receive_message(
             QueueUrl=q_url,
-            MaxNumberOfMessages=json_message_count)['Messages']:
+            MaxNumberOfMessages=json_message_count
+        )['Messages']:
             m['Body'] = Message(body=m['Body']).decode()
             json_messages.append(m)
 
@@ -1126,7 +1124,8 @@ class test_Channel:
         channel = connection.channel()
 
         def apply_backoff_policy(
-            queue_name, delivery_tag, retry_policy, backoff_tasks):
+            queue_name, delivery_tag, retry_policy, backoff_tasks
+        ):
             return None
 
         mock_apply_policy = Mock(side_effect=apply_backoff_policy)

@@ -161,7 +161,6 @@ Features
 * Supports TTL: No
 """
 
-
 from __future__ import annotations
 
 import base64
@@ -284,7 +283,8 @@ class Channel(virtual.Channel):
 
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
-    B64_REGEX = re.compile(rb'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
+    B64_REGEX = re.compile(
+        rb'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 
     def __init__(self, *args, **kwargs):
         if boto3 is None:
@@ -1109,7 +1109,8 @@ class Channel(virtual.Channel):
             }
 
         if isinstance(fetch, list):
-            message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in fetch] else (
+            message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                                fetch] else (
                 list(set(fetch + [APPROXIMATE_RECEIVE_COUNT]))
             )
 
@@ -1118,12 +1119,14 @@ class Channel(virtual.Channel):
             attrs = fetch.get('MessageAttributeNames', None)
 
             if isinstance(system, list):
-                message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in system] else (
+                message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                                    system] else (
                     list(set(system + [APPROXIMATE_RECEIVE_COUNT]))
                 )
 
             if isinstance(attrs, list) and attrs:
-                message_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in attrs] else (
+                message_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                             attrs] else (
                     list(set(attrs))
                 )
 
@@ -1296,7 +1299,7 @@ class Channel(virtual.Channel):
         # add SQS metadata
         di.update({
             'sqs_message': message,
-            'sqs_queue':   q_url,
+            'sqs_queue': q_url,
         })
         props['delivery_tag'] = message['ReceiptHandle']
 
