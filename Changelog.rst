@@ -4,6 +4,160 @@
  Change history
 ================
 
+.. _version-5.6.0rc1:
+
+5.6.0rc1
+=======
+:release-date: 28 September, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+QoS Max Prefetch Limit
+----------------------
+
+`PR #2348 <https://github.com/celery/kombu/pull/2348>`_
+
+Prevent Out Of Memory crashes when queues flood with ETA/countdown tasks. The new optional ``max_prefetch`` parameter caps how many messages workers hold in memory. Defaults to unlimited (``None``) to preserve existing behavior.
+
+.. code-block:: python
+
+    from kombu.common import QoS
+
+    # Limit prefetch to maximum 100 messages
+    qos = QoS(callback=consumer.qos, initial_value=10, max_prefetch=100)
+
+Redis Polling Interval Support
+------------------------------
+
+`PR #2346 <https://github.com/celery/kombu/pull/2346>`_
+
+Fix Redis transport to properly propagate ``polling_interval`` and ``brpop_timeout`` from ``transport_options`` to the Channel's ``_brpop_start`` timeout.
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {"polling_interval": 10}
+
+Leave it unset to keep the familiar 1-second default, or raise it to slow down idle polling.
+
+Pidbox RabbitMQ 4.x Compatibility
+---------------------------------
+
+`PR #2338 <https://github.com/celery/kombu/pull/2338>`_
+
+Let pidbox queues work on RabbitMQ 4.x brokers that reject transient, non-exclusive queues.
+
+MongoDB Transport Improvements
+------------------------------
+
+`PR #2347 <https://github.com/celery/kombu/pull/2347>`_
+
+URI options now come through lowercase and flattened again, so settings like ``replicaSet=test_rs`` show up as ``options['replicaset']``.
+
+Resource Pool Gevent Compatibility
+----------------------------------
+
+`PR #2314 <https://github.com/celery/kombu/pull/2314>`_
+
+Restore compatibility with recent gevent releases that monkey-patch the standard library queue.
+
+Timezone-aware UTC Timestamps
+-----------------------------
+
+`PR #2355 <https://github.com/celery/kombu/pull/2355>`_
+
+Replace every usage of ``datetime.utcnow()`` with ``datetime.now(timezone.utc)`` to return timezone-aware UTC datetimes.
+
+Redis Client Name Support
+----------------------------------
+
+`PR #2367 <https://github.com/celery/kombu/pull/2367>`_
+
+Support for propagating the ``client_name`` connection parameter through the Redis transport (including Sentinel) so that connections appear with meaningful names in monitoring tools.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump mypy from 1.14.1 to 1.18.1 AGAIN (#2363)
+- Remove nested query from sqlalchemy _size (#2315)
+- Remove misused argument for autoflake (#2368)
+- Support client_name connection parameter for redis transport (#2367)
+- Prepare for (pre) release: v5.6.0rc1 (#2369)
+
+.. _version-5.6.0b3:
+
+5.6.0b3
+=======
+:release-date: 15 September, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Remove custom `LifoQueue` class conflicting with recent gevent (#2314)
+- Replace deprecated datetime.utcnow() with datetime.now(timezone.utc) (#2355)
+- Prepare for (pre) release: v5.6.0b3 (#2359)
+
+.. _version-5.6.0b2:
+
+5.6.0b2
+=======
+:release-date: 12 August, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Normalize mongodb options keys (#2347)
+- Redis: propagate polling_interval from transport options to _brpop_start timeout (#2346)
+- Add max_prefetch limit to QoS class and related tests (#2348)
+- Prepare for (pre) release: v5.6.0b2 (#2349)
+
+.. _version-5.6.0b1:
+
+5.6.0b1
+=======
+:release-date: 29 July, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Revert "Feature: urllib3 instead of curl" (#2261)
+- Fix #2286 : SQS - Enhance support for receiving message attributes. Allow string in msg body. (#2300)
+- Update gcpubsub.txt for protobuf (#2320)
+- fix body bytes encoding in curl.py (#2322)
+- Hotfix(aws_ssl): validate secure connection (#2323)
+- Update setup.py to remove deprecation warning (#2298)
+- Update protobuf to 5.29.5 (#2199)
+- Allow setting `tags` in initial `boto3.sqs.create_queue` call via `transport_options` (#2321)
+- Add sts_token_buffer_time parameter to transport options (#2216)
+- Docs: Fix incorrect "added in 5.6.0" note for sts_token_timeout in SQS transport docs (#2327)
+- SQS: when redelivering a message apply visibility timeout based on wait_time_seconds (long polling time) (#2049)
+- Bump redis requirement to <6 to support v5.3 (#2329)
+- Pidbox: support queue_exclusive / queue_durable (RabbitMQ 4.x) (#2338)
+- Prepare for (pre) release: v5.6.0b1 (#2343)
+
+.. _version-5.5.4:
+
+5.5.4
+=====
+:release-date: 01 June, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- chore: add Codecov test analytics (#2290)
+- Added DeepWiki to README (#2295)
+- redis.connection.ConnectionPool API change: get_connection does not accept arguments (#2294)
+- Update mongodb.txt to match celery version (#2297)
+- Update ubuntu version as per blacksmiths update (#2301)
+- Resolve logger warnings (#2302)
+- Fixed lint error from `kombu/transport/native_delayed_delivery.py` (#2308)
+- Prepare for release: v5.5.4 (#2309)
+
 .. _version-5.5.3:
 
 5.5.3
