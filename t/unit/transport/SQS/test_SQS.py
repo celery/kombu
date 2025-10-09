@@ -19,6 +19,7 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.transport.SQS import UndefinedQueueException
+
 from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
@@ -26,7 +27,6 @@ boto3 = pytest.importorskip('boto3')
 from botocore.exceptions import ClientError  # noqa
 
 from kombu.transport import SQS  # noqa
-
 
 SQS_Channel_sqs = SQS.Channel.sqs
 

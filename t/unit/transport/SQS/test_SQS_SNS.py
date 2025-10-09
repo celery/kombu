@@ -17,7 +17,6 @@ from kombu import Exchange, Queue
 from kombu.exceptions import KombuError
 from kombu.transport.SQS.exceptions import UndefinedExchangeException
 
-
 boto3 = pytest.importorskip('boto3')
 
 from botocore.exceptions import ClientError  # noqa
