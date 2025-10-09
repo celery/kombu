@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class UndefinedQueueException(Exception):
     """Predefined queues are being used and an undefined queue was used."""
 
