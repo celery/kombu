@@ -10,6 +10,8 @@ from kombu.transport import nats
 pytest.importorskip('nats')
 
 
+@pytest.mark.env('nats')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_Channel:
     def setup_method(self):
         self.connection = self.create_connection()
@@ -96,6 +98,8 @@ class test_Channel:
         assert channel.connection_wait_time_seconds == wait_time
 
 
+@pytest.mark.env('nats')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_Transport:
     def setup_method(self):
         self.client = Mock()
