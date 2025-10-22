@@ -42,6 +42,7 @@ Kombu Transports
     kombu.transport.virtual.exchange
     kombu.transport.azurestoragequeues
     kombu.transport.azureservicebus
+    kombu.transport.django
     kombu.transport.pyamqp
     kombu.transport.librabbitmq
     kombu.transport.qpid
