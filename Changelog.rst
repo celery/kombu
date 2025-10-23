@@ -4,6 +4,90 @@
  Change history
 ================
 
+.. _version-5.6.0rc2:
+
+5.6.0rc2
+=======
+:release-date: 20 October, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+QoS Max Prefetch Limit
+----------------------
+
+`PR #2348 <https://github.com/celery/kombu/pull/2348>`_
+
+Prevent Out Of Memory crashes when queues flood with ETA/countdown tasks. The new optional ``max_prefetch`` parameter caps how many messages workers hold in memory. Defaults to unlimited (``None``) to preserve existing behavior.
+
+.. code-block:: python
+
+    from kombu.common import QoS
+
+    # Limit prefetch to maximum 100 messages
+    qos = QoS(callback=consumer.qos, initial_value=10, max_prefetch=100)
+
+Redis Polling Interval Support
+------------------------------
+
+`PR #2346 <https://github.com/celery/kombu/pull/2346>`_
+
+Fix Redis transport to properly propagate ``polling_interval`` and ``brpop_timeout`` from ``transport_options`` to the Channel's ``_brpop_start`` timeout.
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {"polling_interval": 10}
+
+Leave it unset to keep the familiar 1-second default, or raise it to slow down idle polling.
+
+Pidbox RabbitMQ 4.x Compatibility
+---------------------------------
+
+`PR #2338 <https://github.com/celery/kombu/pull/2338>`_
+
+Let pidbox queues work on RabbitMQ 4.x brokers that reject transient, non-exclusive queues.
+
+MongoDB Transport Improvements
+------------------------------
+
+`PR #2347 <https://github.com/celery/kombu/pull/2347>`_
+
+URI options now come through lowercase and flattened again, so settings like ``replicaSet=test_rs`` show up as ``options['replicaset']``.
+
+Resource Pool Gevent Compatibility
+----------------------------------
+
+`PR #2314 <https://github.com/celery/kombu/pull/2314>`_
+
+Restore compatibility with recent gevent releases that monkey-patch the standard library queue.
+
+Timezone-aware UTC Timestamps
+-----------------------------
+
+`PR #2355 <https://github.com/celery/kombu/pull/2355>`_
+
+Replace every usage of ``datetime.utcnow()`` with ``datetime.now(timezone.utc)`` to return timezone-aware UTC datetimes.
+
+Redis Client Name Support
+----------------------------------
+
+`PR #2367 <https://github.com/celery/kombu/pull/2367>`_
+
+Support for propagating the ``client_name`` connection parameter through the Redis transport (including Sentinel) so that connections appear with meaningful names in monitoring tools.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update Redis version constraint to <6.2 (#2377)
+- remove Python 3.8 from CI as EOL (#2241)
+- Revert "Bump pymongo from 4.10.1 to 4.15.3" (#2384)
+- Update requirements to remove backports.zoneinfo (#2391)
+- Update qpid-python and qpid-tools versions (#2392)
+- Remove Qpid transport from requirements of func test (#2393)
+- Fix comment grammar in entity_name test (#2394)
+- Prepare for (pre) release: v5.6.0rc2 (#2396)
+
 .. _version-5.6.0rc1:
 
 5.6.0rc1

@@ -361,8 +361,8 @@ def test_custom_entity_name():
     # dashes allowed and dots replaced by dashes
     assert channel.entity_name('test-celery') == 'test-celery'
     assert channel.entity_name('test.celery') == 'test-celery'
-
-    # all other punctuation replaced by underscores
+    
+    # all other punctuation is replaced by underscores
     assert channel.entity_name('test_celery') == 'test_celery'
     assert channel.entity_name('test:celery') == 'test_celery'
     assert channel.entity_name('test+celery') == 'test_celery'
