@@ -19,8 +19,10 @@ logger = get_logger(__name__)
 
 
 class SNS:
-    """A class to manage AWS Simple Notification Service (SNS) for fanout exchanges. This class maintains caches of
-    SNS subscriptions, clients, topic ARNs etc to enable efficient management of SNS topics and subscriptions.
+    """A class to manage AWS Simple Notification Service (SNS) for fanout exchanges.
+
+    This class maintains caches of SNS subscriptions, clients, topic ARNs etc to
+    enable efficient management of SNS topics and subscriptions.
     """
 
     _predefined_clients = {}  # A client for each predefined queue
@@ -101,7 +103,7 @@ class SNS:
             )
 
     def _get_topic_arn(self, exchange_name: str) -> str:
-        """Get the SNS topic ARN
+        """Get the SNS topic ARN.
 
         If the topic ARN is not in the cache, then create it
         :param exchange_name: The exchange to create the SNS topic for
@@ -134,7 +136,7 @@ class SNS:
             return arn
 
     def _create_sns_topic(self, exchange_name: str) -> str:
-        """Creates an AWS SNS topic
+        """Creates an AWS SNS topic.
 
         If the topic already exists, AWS will return it's ARN without creating a new one.
 
@@ -239,7 +241,7 @@ class SNS:
         return c
 
     def _handle_sts_session(self, exchange_name: str, e: dict):
-        """Checks if the STS token needs renewing for SNS
+        """Checks if the STS token needs renewing for SNS.
 
         :param exchange_name: The exchange name
         :param e: The exchange object
@@ -314,7 +316,7 @@ class _SnsSubscription:
         self.sns = sns_fanout
 
     def subscribe_queue(self, queue_name: str, exchange_name: str) -> str:
-        """Subscribes a queue to an AWS SNS topic
+        """Subscribes a queue to an AWS SNS topic.
 
         :param queue_name: The queue to subscribe
         :param exchange_name: The exchange to subscribe to the queue, if not provided
@@ -349,7 +351,7 @@ class _SnsSubscription:
         return subscription_arn
 
     def unsubscribe_queue(self, queue_name: str, exchange_name: str) -> None:
-        """Unsubscribes a queue from an AWS SNS topic
+        """Unsubscribes a queue from an AWS SNS topic.
 
         :param queue_name: The queue to unsubscribe
         :param exchange_name: The exchange to unsubscribe from the queue, if not provided
@@ -367,7 +369,7 @@ class _SnsSubscription:
         )
 
     def cleanup(self, exchange_name: str) -> None:
-        """Removes any stale SNS topic subscriptions
+        """Removes any stale SNS topic subscriptions.
 
         This method will check that any SQS subscriptions on the SNS topic are associated with SQS queues. If not,
         it will remove the stale subscription.
@@ -405,7 +407,7 @@ class _SnsSubscription:
                 )
 
     def _subscribe_queue_to_sns_topic(self, queue_arn: str, topic_arn: str) -> str:
-        """Subscribes a queue to an AWS SNS topic
+        """Subscribes a queue to an AWS SNS topic.
 
         :param queue_arn: The ARN of the queue to subscribe
         :param topic_arn: The ARN of the SNS topic to subscribe to
@@ -467,7 +469,7 @@ class _SnsSubscription:
         logger.debug(f"Set permissions on SNS topic '{topic_arn}'")
 
     def _unsubscribe_sns_subscription(self, subscription_arn: str) -> None:
-        """Unsubscribes a subscription from an AWS SNS topic
+        """Unsubscribes a subscription from an AWS SNS topic.
 
         :param subscription_arn: The ARN of the subscription to unsubscribe
         :return: None
@@ -479,7 +481,7 @@ class _SnsSubscription:
             )
 
     def _get_invalid_sns_subscriptions(self, sns_topic_arn: str) -> list[str]:
-        """Get a list of all invalid SQS subscriptions associated with a given SNS topic
+        """Get a list of all invalid SQS subscriptions associated with a given SNS topic.
 
         :param sns_topic_arn: The SNS topic ARN to check
         :return: A list of SNS subscription ARNs that are invalid
@@ -496,7 +498,7 @@ class _SnsSubscription:
         return invalid_subscription_arns
 
     def _filter_sns_subscription_response(self, subscriptions: list[dict]) -> list[str]:
-        """Returns a list of SNS subscription ARNs that are not associated with a SQS queue
+        """Returns a list of SNS subscription ARNs that are not associated with a SQS queue.
 
         :param subscriptions: A list of subscriptions for an SNS topic
         :return: A list of subscription ARNs that are dead
@@ -534,7 +536,7 @@ class _SnsSubscription:
         return subscription_arns
 
     def _get_queue_arn(self, queue_name: str) -> str:
-        """Returns the ARN of the SQS queue associated with the given queue
+        """Returns the ARN of the SQS queue associated with the given queue.
 
         This method will return the ARN from the cache if it exists, otherwise it will fetch it from SQS.
 

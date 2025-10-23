@@ -46,7 +46,7 @@ example_predefined_queues = {
 }
 
 
-class testSNS:
+class test_SNS:
     @pytest.fixture
     def mock_sts_credentials(self):
         return {

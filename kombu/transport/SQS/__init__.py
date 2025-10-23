@@ -872,7 +872,7 @@ class Channel(virtual.Channel):
         return self._fanout
 
     def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:
-        """Removes any stale SNS topic subscriptions
+        """Removes any stale SNS topic subscriptions.
 
         This method will check that any SQS subscriptions on the SNS topic are associated with SQS queues. If not,
         it will remove the stale subscription. This method will only work if the 'supports_fanout' property is True.
@@ -885,7 +885,7 @@ class Channel(virtual.Channel):
         return None
 
     def _handle_sts_session(self, queue: str, q):
-        """Checks if the STS token needs renewing for SQS
+        """Checks if the STS token needs renewing for SQS.
 
         :param queue: The queue name
         :param q: The queue object
@@ -910,7 +910,7 @@ class Channel(virtual.Channel):
         client_map: dict[str, BaseClient],
         expire_time: datetime | None = None,
     ) -> bool:
-        """Checks if the STS token needs renewing
+        """Checks if the STS token needs renewing.
 
         This method will check different STS expiry times depending on the service the token was used for.
 
@@ -1176,7 +1176,7 @@ class Channel(virtual.Channel):
         )
 
     def _subscribe_queue_to_fanout_exchange_if_required(self, queue_name: str) -> None:
-        """Subscribe the given queue to the SNS topic if this is a fanout exchange
+        """Subscribe the given queue to the SNS topic if this is a fanout exchange.
 
         :param queue_name: The name of the queue to subscribe.
         :return: None
