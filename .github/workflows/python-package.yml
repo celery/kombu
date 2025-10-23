@@ -33,8 +33,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
         os: ["blacksmith-4vcpu-ubuntu-2404"]
+
 
     steps:
     - name: Install apt packages
@@ -54,7 +55,7 @@ jobs:
     - name: >
         Run tox for
         "${{ matrix.python-version }}-unit"
-      timeout-minutes: 5
+      timeout-minutes: 10
       run: >
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
@@ -80,7 +81,7 @@ jobs:
       strategy:
           fail-fast: false
           matrix:
-              python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+              python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
               toxenv: [
                   'py-amqp',
                   'py-redis',
