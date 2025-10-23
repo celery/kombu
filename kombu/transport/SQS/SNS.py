@@ -1,3 +1,10 @@
+"""Amazon SNS fanout support for the AWS SQS transport module for Kombu.
+
+This module provides a `SNS` class that can be used to manage SNS topics and subscriptions.
+It's primarily used to provide fanout support via AWS Simple Notification Service (SNS)
+topics and subscriptions. The module also provides methods for handling the lifecycle
+of these topics.
+"""
 from __future__ import annotations
 
 import json

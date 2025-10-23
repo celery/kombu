@@ -1,3 +1,5 @@
+"""AWS SQS and SNS exceptions."""
+
 from __future__ import annotations
 
 
