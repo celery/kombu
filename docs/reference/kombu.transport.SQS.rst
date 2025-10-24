@@ -23,6 +23,7 @@
         :members:
         :undoc-members:
 
+
 Back-off policy
 ------------------------
 Back-off policy is using SQS visibility timeout mechanism altering the time difference between task retries.
@@ -71,3 +72,21 @@ Message Attributes
 SQS supports sending message attributes along with the message body.
 To use this feature, you can pass a 'message_attributes' as keyword argument
 to `basic_publish` method.
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.exceptions``
+================================================
+
+.. automodule:: kombu.transport.SQS.exceptions
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.SNS``
+================================================
+
+.. automodule:: kombu.transport.SQS.SNS
+   :members:
+   :show-inheritance:
+   :undoc-members:
