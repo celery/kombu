@@ -74,7 +74,7 @@ class test_SNS:
         # Arrange
         exchange_name = "test_exchange"
 
-        sns_fanout.channel.predefined_exchanges = {"exchnage-1": {}}
+        sns_fanout.channel.predefined_exchanges = {"exchange-1": {}}
         sns_fanout.subscriptions = Mock()
         caplog.set_level(logging.DEBUG)
 
