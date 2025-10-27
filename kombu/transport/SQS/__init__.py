@@ -576,19 +576,19 @@ class Channel(virtual.Channel):
         """
         q_url: str = self._new_queue(queue)
         client = self.sqs(queue=queue)
-
-        message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames')
-        message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames')
+        msg_attrs = self.get_message_attributes
 
         params: dict[str, Any] = {
             'QueueUrl': q_url,
             'MaxNumberOfMessages': max_number_of_messages,
             'WaitTimeSeconds': wait_time_seconds or self.wait_time_seconds,
-            'MessageAttributeNames': message_attribute_names,
-            'MessageSystemAttributeNames': message_system_attribute_names
         }
+
+        if msg_sys_attrs := msg_attrs.get('MessageSystemAttributeNames'):
+            params['MessageSystemAttributeNames'] = msg_sys_attrs
+
+        if msg_attrs := msg_attrs.get('MessageAttributeNames'):
+            params['MessageAttributeNames'] = msg_attrs
 
         return client.receive_message(**params)
 
@@ -802,7 +802,7 @@ class Channel(virtual.Channel):
         secret_access_key,
         session_token=None,
     ):
-        session = boto3.session.Session(
+        session = boto3.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
@@ -816,7 +816,7 @@ class Channel(virtual.Channel):
             client_kwargs['endpoint_url'] = self.endpoint_url
         client_config = self.transport_options.get('client-config') or {}
         config = Config(**client_config)
-        return session.client('sqs', config=config, **client_kwargs)
+        return session.client(service, config=config, **client_kwargs)
 
     def sqs(self, queue=None):
         # If a queue has been provided, check if the queue has been defined already. Reuse it's client if possible.
@@ -1135,7 +1135,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            "MessageAttributeNames": sorted(message_attrs) if message_attrs else [],
+            "MessageAttributeNames": sorted(message_attrs) if message_attrs else None,
             "MessageSystemAttributeNames": (
                 sorted(message_system_attrs)
                 if message_system_attrs

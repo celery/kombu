@@ -406,11 +406,6 @@ class test_SNS:
                     secret_access_key="MySecretAccessKey",
                 )
             ]
-            != [
-                call(
-                    region="some-aws-region", access_key_id=None, secret_access_key=None
-                )
-            ]
         )
 
     def test_token_refresh_required_no_date(self, sns_fanout):
