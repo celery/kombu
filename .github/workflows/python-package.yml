@@ -33,14 +33,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
         os: ["blacksmith-4vcpu-ubuntu-2404"]
+
 
     steps:
     - name: Install apt packages
       if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
       run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
       uses: useblacksmith/setup-python@v6
       with:
@@ -54,7 +55,7 @@ jobs:
     - name: >
         Run tox for
         "${{ matrix.python-version }}-unit"
-      timeout-minutes: 5
+      timeout-minutes: 10
       run: >
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
@@ -80,7 +81,7 @@ jobs:
       strategy:
           fail-fast: false
           matrix:
-              python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+              python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
               toxenv: [
                   'py-amqp',
                   'py-redis',
@@ -106,7 +107,7 @@ jobs:
           -   name: Install apt packages
               run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
 
-          -   uses: actions/checkout@v4
+          -   uses: actions/checkout@v5
           -   name: Set up Python ${{ matrix.python-version }}
               uses: useblacksmith/setup-python@v6
               with:
