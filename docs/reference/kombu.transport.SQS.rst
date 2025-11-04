@@ -78,8 +78,9 @@ Fair Queue Support
 Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups 
 are processed in a balanced manner.
 
-Fair Queues are designed to prevent a single message group (or tenant) from monopolizing consumer resources, which can happen with standard queues 
-that handle multi-tenant workloads with unbalanced message distribution.
+Fair Queues are designed to prevent a single message group (or tenant) from monopolizing
+consumer resources, which can happen with standard queues that handle multi-tenant
+workloads with unbalanced message distribution.
 
 When publishing messages to a Fair Queue, you must provide a `MessageGroupId`. This can be done by passing it as a 
 keyword argument to the `publish` method::
