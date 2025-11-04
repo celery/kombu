@@ -256,7 +256,6 @@ class Hub:
             return ready
 
     def close(self, *args):
-        global _current_loop
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
         [self._unregister(fd) for fd in self.writers]
