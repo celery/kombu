@@ -463,7 +463,7 @@ class Channel(virtual.Channel):
                 # we don't want to want to have the attribute in the body
                 kwargs['MessageAttributes'] = \
                     message['properties'].pop('message_attributes')
-            # support SQS fair queue system.
+            # Support SQS fair queue system.
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
                     message['properties']['MessageGroupId']
