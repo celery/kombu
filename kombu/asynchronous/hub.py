@@ -256,6 +256,7 @@ class Hub:
             return ready
 
     def close(self, *args):
+        global _current_loop
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
         [self._unregister(fd) for fd in self.writers]
@@ -273,6 +274,10 @@ class Hub:
         todos = self._pop_ready()
         for item in todos:
             item()
+
+        # Clear global event loop variable if this hub is the current loop
+        if _current_loop is self:
+            set_event_loop(None)
 
     def _discard(self, fd):
         fd = fileno(fd)
