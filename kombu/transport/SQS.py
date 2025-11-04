@@ -545,9 +545,9 @@ class Channel(virtual.Channel):
         client = self.sqs(queue=queue)
 
         message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames')
+            'MessageSystemAttributeNames', ['All'])
         message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames')
+            'MessageAttributeNames', ['All'])
 
         params: dict[str, Any] = {
             'QueueUrl': q_url,
