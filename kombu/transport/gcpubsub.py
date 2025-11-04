@@ -350,7 +350,10 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
+        queue_no_name_prefix = queue
         queue = self.entity_name(queue)
+        if queue not in self._queue_cache:
+            self._queue_bind(queue_no_name_prefix, queue_no_name_prefix, None, queue_no_name_prefix)
         qdesc = self._queue_cache[queue]
         routing_key = self._get_routing_key(message)
         logger.debug(
