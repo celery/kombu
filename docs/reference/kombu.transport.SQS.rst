@@ -72,7 +72,7 @@ SQS supports sending message attributes along with the message body.
 To use this feature, you can pass a 'message_attributes' as keyword argument
 to `basic_publish` method.
 
-Fair Queue Support
+Fair Queue Support (only available from version 5.7.0+)
 ------------------------
 
 Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups 
