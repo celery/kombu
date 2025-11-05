@@ -1110,7 +1110,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames': None,
+                'MessageAttributeNames': [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
@@ -1137,7 +1137,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            "MessageAttributeNames": sorted(message_attrs) if message_attrs else None,
+            "MessageAttributeNames": sorted(message_attrs) if message_attrs else [],
             "MessageSystemAttributeNames": (
                 sorted(message_system_attrs)
                 if message_system_attrs

@@ -19,6 +19,7 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.transport.SQS import UndefinedQueueException, maybe_int
+
 from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
@@ -107,9 +108,11 @@ class SQSClientMock:
         QueueUrl=None,
         MaxNumberOfMessages=1,
         WaitTimeSeconds=10,
-        MessageAttributeNames=None,
-        MessageSystemAttributeNames=None
+        MessageAttributeNames=[],
+        MessageSystemAttributeNames=[],
     ):
+        assert isinstance(MessageAttributeNames, (list, tuple))
+        assert isinstance(MessageSystemAttributeNames, (list, tuple))
         self._receive_messages_calls += 1
         for q in self._queues.values():
             if q.url == QueueUrl:
@@ -847,7 +850,7 @@ class test_Channel:
                 sqs_connection=expected_queue_mock,
                 region='us-east-1',
                 message_system_attribute_names=['ApproximateReceiveCount'],
-                message_attribute_names=None
+                message_attribute_names=[]
             )
         ]
 
