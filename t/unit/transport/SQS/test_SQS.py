@@ -19,6 +19,7 @@ import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
 from kombu.transport.SQS import UndefinedQueueException, maybe_int
+
 from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
