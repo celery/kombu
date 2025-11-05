@@ -215,7 +215,7 @@ def maybe_int(x):
     """Try to convert x' to int, or return x' if that fails."""
     try:
         return int(x)
-    except ValueError:
+    except (TypeError, ValueError):
         return x
 
 
@@ -447,7 +447,9 @@ class Channel(virtual.Channel):
         # Allow specifying additional boto create_queue Attributes
         # via transport options
         if self.predefined_queues:
-            return None
+            raise UndefinedQueueException(
+                f"Queue with name '{queue_name}' must be defined in 'predefined_queues'."
+            )
 
         attributes.update(
             self.transport_options.get('sqs-creation-attributes') or {},
@@ -991,12 +993,12 @@ class Channel(virtual.Channel):
                 self, "sts_expiration"
             ):
                 return self._predefined_queue_async_clients[queue]
-            if queue not in self.predefined_queues:
+
+            if not (q := self.predefined_queues.get(queue)):
                 raise UndefinedQueueException(
                     f"Queue with name '{queue}' must be defined in 'predefined_queues'."
                 )
 
-            q = self.predefined_queues[queue]
             c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(
                 sqs_connection=self.sqs(queue=queue),
                 region=q.get("region", self.region),

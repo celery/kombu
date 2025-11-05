@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 import threading
-import typing
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from botocore.exceptions import ClientError
 
@@ -19,7 +19,8 @@ from kombu.log import get_logger
 
 from .exceptions import UndefinedExchangeException
 
-if typing.TYPE_CHECKING:
+# pragma: no branch
+if TYPE_CHECKING:
     from . import Channel
 
 logger = get_logger(__name__)

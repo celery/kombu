@@ -18,8 +18,7 @@ from unittest.mock import Mock, call, patch
 import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
-from kombu.transport.SQS import UndefinedQueueException
-
+from kombu.transport.SQS import UndefinedQueueException, maybe_int
 from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
@@ -142,6 +141,16 @@ class SQSClientMock:
         if queue_name is None:
             raise Exception(f"Queue url {QueueUrl} not found")
         del self._queues[queue_name]
+
+
+class test_MaybeInt:
+    @pytest.mark.parametrize("input_value", [100, "100", 100.0])
+    def test_working(self, input_value):
+        assert maybe_int(input_value) == 100
+
+    @pytest.mark.parametrize("input_value", [None, "hello", Mock(), "100.0"])
+    def test_nan(self, input_value):
+        assert maybe_int(input_value) is input_value
 
 
 class test_Channel:
@@ -270,6 +279,42 @@ class test_Channel:
                'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
 
+    @patch('kombu.transport.virtual.base.Channel.basic_consume')
+    @patch('kombu.transport.SQS.Channel._noack_queues')
+    def test_basic_consume_no_ack(self, noack_queues_mock, basic_consume_mock):
+        # Arrange
+        channel = self.connection.channel()
+
+        # Act
+        channel.basic_consume(
+            self.queue_name,
+            no_ack=True,
+            callback=self.handleMessageCallback,
+            consumer_tag='unittest'
+        )
+
+        # Assert
+        assert noack_queues_mock.add.call_args_list == [call(self.queue_name)]
+        assert basic_consume_mock.call_args_list == [
+            call(self.queue_name, True, self.handleMessageCallback, 'unittest')
+        ]
+
+    @patch('kombu.transport.virtual.base.Channel.basic_cancel')
+    @patch('kombu.transport.SQS.Channel._noack_queues')
+    def test_basic_cancel(self, noack_queues_mock, basic_consume_mock):
+        # Arrange
+        consumer_tag = 'unittest'
+        channel = self.connection.channel()
+        channel._consumers.add(consumer_tag)
+        channel._tag_to_queue[consumer_tag] = 'test-queue'
+
+        # Act
+        channel.basic_cancel(consumer_tag)
+
+        # Assert
+        assert noack_queues_mock.discard.call_args_list == [call("test-queue")]
+        assert basic_consume_mock.call_args_list == [call(consumer_tag)]
+
     def test_resolve_queue_url(self):
         queue_name = 'unittest_queue'
         assert self.sqs_conn_mock._queues[queue_name].url == \
@@ -277,10 +322,39 @@ class test_Channel:
 
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
-        self.channel._new_queue(queue_name)
-        assert queue_name in self.sqs_conn_mock._queues.keys()
-        # For cleanup purposes, delete the queue and the queue file
-        self.channel._delete(queue_name)
+        try:
+            self.channel._new_queue(queue_name)
+            assert queue_name in self.sqs_conn_mock._queues.keys()
+        finally:
+            # For cleanup purposes, delete the queue and the queue file
+            self.channel._delete(queue_name)
+
+    def test_new_fifo_queue(self):
+        queue_name = 'new_unittest_queue.fifo'
+        try:
+            self.channel._new_queue(queue_name)
+
+            queue: QueueMock = self.sqs_conn_mock._queues[queue_name]
+            assert isinstance(queue, QueueMock)
+            assert queue.url == 'https://sqs.us-east-1.amazonaws.com/xxx/' + queue_name
+            assert queue.creation_attributes == {'VisibilityTimeout': str(self.channel.visibility_timeout),
+                                                 'FifoQueue': 'true'}
+
+        finally:
+            # For cleanup purposes, delete the queue and the queue file
+            self.channel._delete(queue_name)
+
+    def test_create_queue_with_predefined_queues(self):
+        queue_name = 'new_unittest_queue'
+        try:
+            with pytest.raises(
+                UndefinedQueueException,
+                match=f"Queue with name '{queue_name}' must be defined in 'predefined_queues'."
+            ):
+                self.channel.predefined_queues = example_predefined_queues
+                self.channel._create_queue(queue_name, {})
+        finally:
+            self.channel.predefined_queues = set()
 
     def test_new_queue_custom_creation_attributes(self):
         self.connection.transport_options['sqs-creation-attributes'] = {
@@ -352,6 +426,14 @@ class test_Channel:
         self.channel._delete(queue_name)
         assert queue_name not in self.channel._queue_cache
         assert queue_name not in self.sqs_conn_mock._queues
+
+    def test_delete_with_predefined_queues(self):
+        queue_name = 'new_unittest_queue'
+        try:
+            self.channel.predefined_queues = example_predefined_queues
+            assert self.channel._delete(queue_name) is None
+        finally:
+            self.channel.predefined_queues = set()
 
     def test_delete_with_no_exchange(
         self, mock_fanout, channel_fixture, connection_fixture
@@ -724,6 +806,67 @@ class test_Channel:
             'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
             'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
+
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_predefined_queue_creates_queue_existing_client(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-1'
+
+        mock_async_instance = Mock(name='async_sqs_instance')
+        mock_async_sqs.side_effect = AssertionError("This should not have been called")
+
+        self.channel.predefined_queues = example_predefined_queues
+        self.channel._predefined_queue_async_clients[queue_name] = mock_async_instance
+
+        # Act
+        result = self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert result is mock_async_instance
+        assert mock_async_sqs.call_count == 0
+
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_predefined_queue_creates_queue_no_existing_client(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-1'
+        expected_queue_mock = self.channel.sqs(queue_name)
+
+        mock_async_instance = Mock(name='async_sqs_instance')
+        mock_async_sqs.return_value = mock_async_instance
+
+        self.channel.predefined_queues = example_predefined_queues
+        self.channel._predefined_queue_async_clients = {}
+
+        # Act
+        result = self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert result is mock_async_instance
+        assert mock_async_sqs.call_args_list == [
+            call(
+                sqs_connection=expected_queue_mock,
+                region='us-east-1',
+                message_system_attribute_names=['ApproximateReceiveCount'],
+                message_attribute_names=None
+            )
+        ]
+
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_defined_queues_but_missing(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-6'
+
+        self.channel.predefined_queues = example_predefined_queues
+
+        # Act
+        with pytest.raises(
+            UndefinedQueueException,
+            match="Queue with name 'queue-6' must be defined in 'predefined_queues'."
+        ):
+            self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert mock_async_sqs.call_count == 0
 
     @pytest.mark.parametrize('fetch_attributes,expected', [
         # as a list for backwards compatibility
@@ -1152,14 +1295,6 @@ class test_Channel:
         })
         channel = connection.channel()
 
-        def extract_task_name_and_number_of_retries(delivery_tag):
-            return 'svc.tasks.tasks.task1', 2
-
-        mock_extract_task_name_and_number_of_retries = Mock(
-            side_effect=extract_task_name_and_number_of_retries)
-        channel.qos.extract_task_name_and_number_of_retries = \
-            mock_extract_task_name_and_number_of_retries
-
         queue_name = "queue-1"
 
         exchange = Exchange('test_SQS', type='direct')
@@ -1168,6 +1303,8 @@ class test_Channel:
 
         message_mock = Mock()
         message_mock.delivery_info = {'routing_key': queue_name}
+        message_mock.headers = {"task": "svc.tasks.tasks.task1"}
+        message_mock.properties = {"delivery_info": {"sqs_message": {"Attributes": {"ApproximateReceiveCount": 2}}}}
         channel.qos._delivered['test_message_id'] = message_mock
 
         channel.sqs = Mock()
@@ -1834,3 +1971,113 @@ class test_Channel:
         # Act & Assert
         expected_result = exchanges if exchanges is not None else {}
         assert channel_fixture.predefined_exchanges == expected_result
+
+    @pytest.mark.parametrize('fetch_attributes, call_args', [
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': []
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': None
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': [],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': None,
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        )
+    ])
+    def test_receive_message(self, fetch_attributes, call_args):
+        # Arrange
+        self.connection.transport_options["fetch_message_attributes"] = fetch_attributes
+
+        with patch.object(self.sqs_conn_mock, 'receive_message', wraps=self.sqs_conn_mock.receive_message,
+                          name="RxSpy") as rx_spy:
+            self.sqs_conn_mock.send_message(QueueUrl=f'https://sqs.us-east-1.amazonaws.com/xxx/{self.queue_name}',
+                                            MessageBody='This is a test')
+
+            # Act
+            result = self.channel._receive_message(self.queue_name)
+
+            # Assert
+            assert 1 == len(result["Messages"])
+            assert 'This is a test' == result["Messages"][0]['Body']
+            assert rx_spy.call_args_list == [
+                call(
+                    QueueUrl=f'https://sqs.us-east-1.amazonaws.com/xxx/{self.queue_name}',
+                    MaxNumberOfMessages=1, WaitTimeSeconds=10,
+                    **call_args
+                )]
+
+    @pytest.mark.freeze_time("2025-11-05 14:57:12")
+    def test_generate_sts_session_token(self, mock_boto_client):
+        # Arrange
+        role_arn = "arn:aws:iam::123456789012:role/role-a"
+        token_expiry = 123
+
+        # Act
+        session_token = self.channel.generate_sts_session_token(role_arn, token_expiry)
+
+        # Assert
+        assert session_token == {
+            'AccessKeyId': 'AKIAIOSFODNN7EXAMPLE',
+            'Expiration': datetime(2025, 11, 5, 14, 57, 12) + timedelta(seconds=token_expiry),
+            'SecretAccessKey': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY',
+            'SessionToken': 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFq'
+                            'wAeMicRXmxfpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wU'
+                            'E8phUZampKsburEDy0KPkyQDYwT7WZ0wq5VSXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo'
+                            '0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSI'
+                            'lTJabIQwj2ICCR/oLxBA==',
+        }
