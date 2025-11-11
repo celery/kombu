@@ -59,7 +59,7 @@ introduces certain implementation and usage constraints:
   CID-{queue} as consumer group of queues. When configuring multiple queues, be sure to maintain
   consistency of the `subscription relationship <https://rocketmq.apache.org/docs/domainModel/09subscription>`_.
 
-* Queues are implicitly durable, ant they do not support features such as reply_to or
+* Queues are implicitly durable, and they do not support features such as reply_to or
   exclusive queues.
 
 Transport Options
@@ -83,18 +83,18 @@ Connection Example
     with Connection('rocketmq://ak:sk@endpoint:port//') as conn:
     # or
     with Connection('rocketmq://ak:sk@endpoint:port//', transport_options={
-                    'backoff_policy': [30, 60, 90, 120, 240, 300],
-                    'consumer_options': {
-                        'global_group_id': 'CID-ALL-IN-ONE',
-                        'group_format': 'CID-{}',
-                        'topic_config': {
-                            'topic_xx': {
-                                'group_id': 'CID-xx',
-                                'filter_exp': 'exp'
-                            }
-                        }
-                    }
-                }) as conn:
+        'backoff_policy': [30, 60, 90, 120, 240, 300],
+        'consumer_options': {
+            'global_group_id': 'CID-ALL-IN-ONE',
+            'group_format': 'CID-{}',
+            'topic_config': {
+                'topic_xx': {
+                    'group_id': 'CID-xx',
+                    'filter_exp': 'exp'
+                }
+            }
+        }
+    }) as conn:
     #  The group_format and global_group_id are exclusive, and global_group_id has higher priority.
     #  If topic config exists, use its specified group, and others use global or formatted one.
 
@@ -245,7 +245,7 @@ class QoS(virtual.QoS):
         :raises Exception: if operation fails
         """
         if delivery_tag not in self._not_yet_acked:
-            logger.warn(f'reject message not found. {delivery_tag}')
+            logger.warning(f'reject message not found. {delivery_tag}')
             return
         if requeue:
             message = self._not_yet_acked.pop(delivery_tag)
@@ -607,9 +607,6 @@ class Channel(virtual.Channel):
             max_retries=1, interval_start=2, interval_step=0, timeout=self.await_duration * 2 + 3
         )
 
-        if not messages:
-            pass
-
         for message in messages:
             if message.topic in self._auto_ack_topics:
                 _ack_rocketmq_message(consumer, message, False)
@@ -846,7 +843,7 @@ def _ack_rocketmq_message(consumer: SimpleConsumer, message: RocketmqMessage,
     :raises KombuError: If acknowledgment fails and `raise_exception` is True.
     """
     if not consumer or not consumer.is_running:
-        logger.warn(f'unexpected condition: consumer is None or not running. {message}')
+        logger.warning(f'unexpected condition: consumer is None or not running. {message}')
         return
     try:
         retry_over_time(
