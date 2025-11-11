@@ -89,7 +89,7 @@ except ImportError:  # pragma: no cover
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
-    from redis import sentinel, CredentialProvider
+    from redis import CredentialProvider, sentinel
 except ImportError:  # pragma: no cover
     sentinel = None
 
@@ -1157,7 +1157,6 @@ class Channel(virtual.Channel):
             'virtual_host': conninfo.virtual_host,
             'username': conninfo.userid,
             'password': conninfo.password,
-            'credential_provider': conninfo.credential_provider,
             'max_connections': self.max_connections,
             'socket_timeout': self.socket_timeout,
             'socket_connect_timeout': self.socket_connect_timeout,
@@ -1167,22 +1166,6 @@ class Channel(virtual.Channel):
             'retry_on_timeout': self.retry_on_timeout,
             'client_name': self.client_name,
         }
-
-        credential_provider = conninfo.credential_provider
-        if credential_provider:
-            if isinstance(credential_provider, str):
-                credential_provider_cls = symbol_by_name(credential_provider)
-                credential_provider = credential_provider_cls()
-
-            if not isinstance(credential_provider, CredentialProvider):
-                raise ValueError(
-                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
-                )
-
-            connparams['credential_provider'] = credential_provider
-            # drop username and password if credential provider is configured
-            connparams.pop("username", None)
-            connparams.pop("password", None)
 
         conn_class = self.connection_class
 

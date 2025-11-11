@@ -995,6 +995,15 @@ class test_Channel:
         assert connection_parameters['username'] == 'foo'
         assert connection_parameters['password'] == 'bar'
 
+    def test_connparams_client_credentials_with_credential_provider(self):
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=redis.CredentialProvider'
+        connection_parameters = self.channel._connparams()
+
+        assert 'username' not in connection_parameters
+        assert 'password' not in connection_parameters
+        assert 'credential_provider' in connection_parameters
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
