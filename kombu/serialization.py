@@ -390,22 +390,11 @@ def register_msgpack():
         content_encoding='binary',
     )
 
-
-def register_cloudpickle_gcs():
-    """Register cloudpickle with GCS offloading for large payloads.
-
-    Uses cloudpickle for serialization with automatic Google Cloud Storage
-    offloading for payloads larger than the configured threshold.
-    """
-    from .serialization_cloudpickle_gcs import register_cloudpickle_gcs as _register
-    _register(registry)
-
 # Register the base serialization methods.
 register_json()
 register_pickle()
 register_yaml()
 register_msgpack()
-register_cloudpickle_gcs()
 
 # Default serializer is 'json'
 registry._set_default_serializer('json')
@@ -416,12 +405,10 @@ _setupfuns = {
     'pickle': register_pickle,
     'yaml': register_yaml,
     'msgpack': register_msgpack,
-    'cloudpickle_gcs': register_cloudpickle_gcs,
     'application/json': register_json,
     'application/x-yaml': register_yaml,
     'application/x-python-serialize': register_pickle,
     'application/x-msgpack': register_msgpack,
-    'application/x-cloudpickle-gcs': register_cloudpickle_gcs,
 }
 
 
