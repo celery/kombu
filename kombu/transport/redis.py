@@ -1150,6 +1150,22 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
+    def _process_credential_provider(self, credential_provider, connparams):
+        if credential_provider:
+            if isinstance(credential_provider, str):
+                credential_provider_cls = symbol_by_name(credential_provider)
+                credential_provider = credential_provider_cls()
+
+            if not isinstance(credential_provider, CredentialProvider):
+                raise ValueError(
+                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
+                )
+
+            connparams['credential_provider'] = credential_provider
+            # drop username and password if credential provider is configured
+            connparams.pop("username", None)
+            connparams.pop("password", None)
+
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
@@ -1169,21 +1185,7 @@ class Channel(virtual.Channel):
             'client_name': self.client_name,
         }
 
-        credential_provider = conninfo.credential_provider
-        if credential_provider:
-            if isinstance(credential_provider, str):
-                credential_provider_cls = symbol_by_name(credential_provider)
-                credential_provider = credential_provider_cls()
-
-            if not isinstance(credential_provider, CredentialProvider):
-                raise ValueError(
-                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
-                )
-
-            connparams['credential_provider'] = credential_provider
-            # drop username and password if credential provider is configured
-            connparams.pop("username", None)
-            connparams.pop("password", None)
+        self._process_credential_provider(conninfo.credential_provider, connparams)
 
         conn_class = self.connection_class
 
@@ -1226,20 +1228,7 @@ class Channel(virtual.Channel):
 
             # credential provider as query string
             credential_provider = query.pop("credential_provider", None)
-            if credential_provider:
-                if isinstance(credential_provider, str):
-                    credential_provider_cls = symbol_by_name(credential_provider)
-                    credential_provider = credential_provider_cls()
-
-                if not isinstance(credential_provider, CredentialProvider):
-                    raise ValueError(
-                        "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
-                    )
-
-                connparams['credential_provider'] = credential_provider
-                # drop username and password if credential provider is configured
-                connparams.pop("username", None)
-                connparams.pop("password", None)
+            self._process_credential_provider(credential_provider, connparams)
 
             connparams.pop('host', None)
             connparams.pop('port', None)
