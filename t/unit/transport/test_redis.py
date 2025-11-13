@@ -436,7 +436,7 @@ class test_Channel:
             client=Mock(
                 transport_options={},
                 hostname="127.0.0.1",
-                virtual_host=None)))
+                virtual_host=None, credential_provider=None)))
         # create the _connparams with overridden connection_class
         connparams = chan._connparams(asynchronous=True)
         # create redis.Connection
@@ -1861,7 +1861,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None)
+                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1884,7 +1884,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None)
+                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1912,7 +1912,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name='kombu-worker')
+                username=None, retry_on_timeout=None, client_name='kombu-worker', credential_provider=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
