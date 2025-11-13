@@ -965,7 +965,7 @@ class test_Channel:
             self.channel.connection.client.virtual_host = 'dwqeq'
             self.channel._connparams()
 
-    def test__process_credential_provider(self):
+    def test_process_credential_provider(self):
         connparams = {
             "username": "test",
             "password": "test"
