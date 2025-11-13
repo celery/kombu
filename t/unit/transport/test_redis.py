@@ -1004,6 +1004,20 @@ class test_Channel:
         assert 'password' not in connection_parameters
         assert 'credential_provider' in connection_parameters
 
+    def test_connparams_client_credentials_with_credential_provider_raise_error(self):
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=nonexit.CredentialProvider'
+
+        with pytest.raises(ImportError):
+            self.channel._connparams()
+
+        # check for
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=abc.ABC'
+
+        with pytest.raises(ValueError):
+            self.channel._connparams()
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
