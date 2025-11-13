@@ -1011,7 +1011,7 @@ class test_Channel:
         with pytest.raises(ImportError):
             self.channel._connparams()
 
-        # check for
+        # check for ValueError when credential provider is not a subclass of CredentialProvider
         self.channel.connection.client.hostname = \
             'redis://foo:bar@127.0.0.1:6379/0?credential_provider=abc.ABC'
 
