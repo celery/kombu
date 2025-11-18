@@ -125,9 +125,11 @@ class SQSClientMock:
         QueueUrl=None,
         MaxNumberOfMessages=1,
         WaitTimeSeconds=10,
-        MessageAttributeNames=None,
-        MessageSystemAttributeNames=None
+        MessageAttributeNames=[],
+        MessageSystemAttributeNames=[],
     ):
+        assert isinstance(MessageAttributeNames, (list, tuple))
+        assert isinstance(MessageSystemAttributeNames, (list, tuple))
         self._receive_messages_calls += 1
         for q in self._queues.values():
             if q.url == QueueUrl:

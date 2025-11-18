@@ -547,9 +547,10 @@ class Channel(virtual.Channel):
         client = self.sqs(queue=queue)
 
         message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames')
+            'MessageSystemAttributeNames') or []
+
         message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames')
+            'MessageAttributeNames') or []
 
         params: dict[str, Any] = {
             'QueueUrl': q_url,
@@ -966,7 +967,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames': None,
+                'MessageAttributeNames': [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
@@ -990,7 +991,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            'MessageAttributeNames': sorted(message_attrs) if message_attrs else None,
+            'MessageAttributeNames': sorted(message_attrs) if message_attrs else [],
             'MessageSystemAttributeNames': (
                 sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
             )
