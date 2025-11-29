@@ -446,11 +446,14 @@ class Connection:
 
         def on_error(exc, intervals, retries, interval=0):
             round = self.completes_cycle(retries)
+            # NOTE(arnaud/OVH) we changed this to select next host
+            # before going down to errback, because errback was raising
+            # a TimeoutError, preventing the retry to cycle through hosts
+            self.maybe_switch_next()  # select next host
             if round:
                 interval = next(intervals)
             if errback:
                 errback(exc, interval)
-            self.maybe_switch_next()  # select next host
 
             return interval if round else 0
 
