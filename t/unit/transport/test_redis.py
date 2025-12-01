@@ -452,6 +452,26 @@ class test_Channel:
         # the on_disconnect counter should be incremented
         assert chan.on_disconect_count == 1
 
+    def test_connparams_credential_provider(self):
+        # Case 1: credential_provider is None
+        self.channel.client.transport_options = {}
+        self.channel.connection.client.credential_provider = None
+        self.channel._prepare_virtual_host = Mock(return_value=0)
+        connparams = self.channel._connparams(asynchronous=True)
+        assert 'credential_provider' not in connparams
+
+        # Case 2: credential_provider is set
+        mock_provider = Mock()
+        self.channel.connection.client.credential_provider = mock_provider
+        with patch.object(self.channel, '_process_credential_provider') as mock_process:
+            def side_effect(provider, params):
+                if provider:
+                    params['credential_provider'] = provider
+            mock_process.side_effect = side_effect
+            connparams = self.channel._connparams(asynchronous=True)
+            assert 'credential_provider' in connparams
+            assert connparams['credential_provider'] == mock_provider
+
     def test_redis__on_disconnect_should_not_be_called_if_not_registered(self):
         """Test should check if the _on_disconnect method is not called because
            the connection to Redis isn't established properly."""
@@ -1914,7 +1934,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
+                username=None, retry_on_timeout=None, client_name=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1937,7 +1957,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
+                username=None, retry_on_timeout=None, client_name=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1965,7 +1985,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name='kombu-worker', credential_provider=None)
+                username=None, retry_on_timeout=None, client_name='kombu-worker')
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
