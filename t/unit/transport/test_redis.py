@@ -452,26 +452,6 @@ class test_Channel:
         # the on_disconnect counter should be incremented
         assert chan.on_disconect_count == 1
 
-    def test_connparams_credential_provider(self):
-        # Case 1: credential_provider is None
-        self.channel.client.transport_options = {}
-        self.channel.connection.client.credential_provider = None
-        self.channel._prepare_virtual_host = Mock(return_value=0)
-        connparams = self.channel._connparams(asynchronous=True)
-        assert 'credential_provider' not in connparams
-
-        # Case 2: credential_provider is set
-        mock_provider = Mock()
-        self.channel.connection.client.credential_provider = mock_provider
-        with patch.object(self.channel, '_process_credential_provider') as mock_process:
-            def side_effect(provider, params):
-                if provider:
-                    params['credential_provider'] = provider
-            mock_process.side_effect = side_effect
-            connparams = self.channel._connparams(asynchronous=True)
-            assert 'credential_provider' in connparams
-            assert connparams['credential_provider'] == mock_provider
-
     def test_redis__on_disconnect_should_not_be_called_if_not_registered(self):
         """Test should check if the _on_disconnect method is not called because
            the connection to Redis isn't established properly."""
@@ -1006,6 +986,17 @@ class test_Channel:
         with pytest.raises(ValueError):
             self.channel._process_credential_provider(credential_provider, connparams)
 
+        # test with provider instance
+        class MockCredentialProvider:
+            pass
+
+        with patch('kombu.transport.redis.CredentialProvider', new=MockCredentialProvider):
+            provider = MockCredentialProvider()
+            connparams = {"username": "test", "password": "test"}
+            self.channel._process_credential_provider(provider, connparams)
+            assert connparams['credential_provider'] is provider
+            assert "username" not in connparams
+
     def test_connparams_allows_slash_in_db(self):
         self.channel.connection.client.virtual_host = '/123'
         assert self.channel._connparams()['db'] == 123
@@ -1035,6 +1026,11 @@ class test_Channel:
 
         assert connection_parameters['username'] == 'foo'
         assert connection_parameters['password'] == 'bar'
+
+    def test_connparams_no_credential_provider(self):
+        self.channel.connection.client.credential_provider = None
+        connection_parameters = self.channel._connparams()
+        assert 'credential_provider' not in connection_parameters
 
     def test_connparams_client_credentials_with_credential_provider_as_kwargs(self):
         self.channel.connection.client.credential_provider = redis.CredentialProvider()
