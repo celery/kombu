@@ -1174,7 +1174,6 @@ class Channel(virtual.Channel):
             'virtual_host': conninfo.virtual_host,
             'username': conninfo.userid,
             'password': conninfo.password,
-            'credential_provider': conninfo.credential_provider,
             'max_connections': self.max_connections,
             'socket_timeout': self.socket_timeout,
             'socket_connect_timeout': self.socket_connect_timeout,
