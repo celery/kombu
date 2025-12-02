@@ -32,18 +32,15 @@ class SNS:
     This class maintains caches of SNS subscriptions, clients, topic ARNs etc to
     enable efficient management of SNS topics and subscriptions.
     """
-
-    _predefined_clients = {}  # A client for each predefined queue
-    _topic_arn_cache: dict[str, str] = {}  # SNS topic name => Topic ARN
-    _exchange_topic_cache: dict[str, str] = {}  # Exchange name => SNS topic ARN
-    sts_expiration: datetime | None = None  # Cached STS expiration time
-
-    _lock = threading.Lock()
-
     def __init__(self, channel: Channel):
         self.channel = channel
         self._client = None
         self.subscriptions = _SnsSubscription(self)
+        self._predefined_clients = {}  # A client for each predefined queue
+        self._topic_arn_cache: dict[str, str] = {}  # SNS topic name => Topic ARN
+        self._exchange_topic_cache: dict[str, str] = {}  # Exchange name => SNS topic ARN
+        self.sts_expiration: datetime | None = None  # Cached STS expiration time
+        self._lock = threading.Lock()
 
     def initialise_exchange(self, exchange_name: str) -> None:
         """Initialise SNS topic for a fanout exchange.

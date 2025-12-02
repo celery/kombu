@@ -533,7 +533,7 @@ class test_SnsSubscription:
 
     @pytest.fixture
     def mock_get_client(self, sns_fanout):
-        with patch.object(sns_fanout, "_get_client") as mock:
+        with patch.object(sns_fanout, "get_client") as mock:
             yield mock
 
     @pytest.fixture
@@ -549,7 +549,8 @@ class test_SnsSubscription:
     def test_subscribe_queue_already_subscribed(
         self,
         sns_subscription,
-        sns_fanout
+        sns_fanout,
+        mock_get_client
     ):
         # Arrange
         queue_name = "test_queue"
@@ -558,14 +559,13 @@ class test_SnsSubscription:
         sns_subscription._subscription_arn_cache[f"{exchange_name}:{queue_name}"] = (
             cached_subscription_arn
         )
-        sns_fanout._get_client = Mock()
 
         # Act
         result = sns_subscription.subscribe_queue(queue_name, exchange_name)
 
         # Assert
         assert result == cached_subscription_arn
-        assert sns_fanout._get_client.call_count == 0
+        assert mock_get_client.call_count == 0
 
     def test_subscribe_queue_success_queue_in_cache(
         self,
@@ -791,7 +791,7 @@ class test_SnsSubscription:
                ) in caplog.text
 
     def test_subscribe_queue_to_sns_topic_successful_subscription(
-        self, sns_subscription, caplog, sns_fanout
+        self, sns_subscription, caplog, sns_fanout, mock_get_client
     ):
         # Arrange
         caplog.set_level(logging.DEBUG)
@@ -811,6 +811,7 @@ class test_SnsSubscription:
 
         # Assert
         assert result == subscription_arn
+        assert mock_get_client.call_args_list == []
         assert mock_client.return_value.subscribe.call_args_list == [
             call(
                 TopicArn="arn:aws:sns:us-west-2:123456789012:my-topic",
