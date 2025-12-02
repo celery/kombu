@@ -16,7 +16,6 @@ from kombu.transport.SQS.SNS import SNS, _SnsSubscription
 
 boto3 = pytest.importorskip('boto3')
 
-from botocore.exceptions import ClientError  # noqa
 
 from kombu.transport import SQS  # noqa
 
