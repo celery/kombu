@@ -986,6 +986,17 @@ class test_Channel:
         with pytest.raises(ValueError):
             self.channel._process_credential_provider(credential_provider, connparams)
 
+        # test with provider instance
+        class MockCredentialProvider:
+            pass
+
+        with patch('kombu.transport.redis.CredentialProvider', new=MockCredentialProvider):
+            provider = MockCredentialProvider()
+            connparams = {"username": "test", "password": "test"}
+            self.channel._process_credential_provider(provider, connparams)
+            assert connparams['credential_provider'] is provider
+            assert "username" not in connparams
+
     def test_connparams_allows_slash_in_db(self):
         self.channel.connection.client.virtual_host = '/123'
         assert self.channel._connparams()['db'] == 123
@@ -1015,6 +1026,11 @@ class test_Channel:
 
         assert connection_parameters['username'] == 'foo'
         assert connection_parameters['password'] == 'bar'
+
+    def test_connparams_no_credential_provider(self):
+        self.channel.connection.client.credential_provider = None
+        connection_parameters = self.channel._connparams()
+        assert 'credential_provider' not in connection_parameters
 
     def test_connparams_client_credentials_with_credential_provider_as_kwargs(self):
         self.channel.connection.client.credential_provider = redis.CredentialProvider()
@@ -1914,7 +1930,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
+                username=None, retry_on_timeout=None, client_name=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1937,7 +1953,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None, credential_provider=None)
+                username=None, retry_on_timeout=None, client_name=None)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1965,7 +1981,7 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name='kombu-worker', credential_provider=None)
+                username=None, retry_on_timeout=None, client_name='kombu-worker')
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
