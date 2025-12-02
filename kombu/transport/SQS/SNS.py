@@ -307,11 +307,9 @@ class SNS:
             session_token=session_token,
         )
 
-    """
-    ---------------------------------
-    SNS topic subscription management
-    ---------------------------------
-    """
+    # ---------------------------------
+    # SNS topic subscription management
+    # ---------------------------------
 
 
 class _SnsSubscription:
