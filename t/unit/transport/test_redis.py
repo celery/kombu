@@ -1934,7 +1934,10 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_getting_master_from_sentinel_single_node(self):
@@ -1957,7 +1960,10 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_getting_master_from_sentinel_with_client_name(self):
@@ -1985,7 +1991,70 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_with_acl_credentials(self):
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://myuser:mypassword@localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+
+            connection.channel()
+
+            patched.assert_called_once_with(
+                [
+                    ('localhost', 65532),
+                ],
+                connection_class=ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password='mypassword',
+                sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None,
+                username='myuser', retry_on_timeout=None, client_name=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username='myuser', password='mypassword'
+            )
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_with_password_only(self):
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://:mypassword@localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+
+            connection.channel()
+
+            patched.assert_called_once_with(
+                [
+                    ('localhost', 65532),
+                ],
+                connection_class=ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password='mypassword',
+                sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None,
+                username=None, retry_on_timeout=None, client_name=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password='mypassword'
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_can_create_connection(self):

@@ -1477,9 +1477,15 @@ class SentinelChannel(Channel):
                 "'master_name' transport option must be specified."
             )
 
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
+
         return sentinel_inst.master_for(
             master_name,
             redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
