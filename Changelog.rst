@@ -4,6 +4,21 @@
  Change history
 ================
 
+.. _version-5.6.1:
+
+5.6.1
+=====
+:release-date: 25 November, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- fix: ensure hub close does also remove global event loop reference (#2404)
+- fix: default value for SQS's receive message (#2405)
+- Feat: add support for credential_provider to redis broker (#2408)
+- Prepare for release: v5.6.1 (#2416)
+
 .. _version-5.6.0:
 
 5.6.0

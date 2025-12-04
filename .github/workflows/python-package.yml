@@ -41,7 +41,7 @@ jobs:
     - name: Install apt packages
       if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
       run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
-    - uses: actions/checkout@v5
+    - uses: actions/checkout@v6
     - name: Set up Python ${{ matrix.python-version }}
       uses: useblacksmith/setup-python@v6
       with:
@@ -107,7 +107,7 @@ jobs:
           -   name: Install apt packages
               run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
 
-          -   uses: actions/checkout@v5
+          -   uses: actions/checkout@v6
           -   name: Set up Python ${{ matrix.python-version }}
               uses: useblacksmith/setup-python@v6
               with:
