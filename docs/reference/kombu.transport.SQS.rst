@@ -75,7 +75,7 @@ to `basic_publish` method.
 Fair Queue Support (only available from version 5.7.0+)
 ------------------------
 
-Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups 
+Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups
 are processed in a balanced manner.
 
 Fair Queues are designed to prevent a single message group (or tenant) from monopolizing
