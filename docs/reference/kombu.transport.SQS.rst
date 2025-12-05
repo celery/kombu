@@ -88,7 +88,7 @@ keyword argument to the `publish` method::
     producer.publish(
         message,
         routing_key='my-fair-queue',
-        MessageGroupId='customer-123'  # Required for FIFO and Fair queues
+        MessageGroupId='customer-123'  # Required for FIFO queues; needed for Fair queue functionality on standard queues
     )
 
 Benefits of using Fair Queues with Kombu:
