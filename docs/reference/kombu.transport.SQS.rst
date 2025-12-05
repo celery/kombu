@@ -82,13 +82,13 @@ Fair Queues are designed to prevent a single message group (or tenant) from mono
 consumer resources, which can happen with standard queues that handle multi-tenant
 workloads with unbalanced message distribution.
 
-When publishing messages to a Fair Queue, you must provide a `MessageGroupId`. This can be done by passing it as a 
-keyword argument to the `publish` method::
+When publishing messages to a Fair Queue, you should provide a `MessageGroupId`. This can be done by passing it as a 
+keyword argument to the `publish` method. While the Kombu implementation only sends `MessageGroupId` if it is present, AWS requires it for FIFO and Fair Queues. If omitted, AWS will reject the message or fairness will not be guaranteed. For standard queues, `MessageGroupId` is optional.::
 
     producer.publish(
         message,
         routing_key='my-fair-queue',
-        MessageGroupId='customer-123'  # Required for FIFO and Fair queues
+        MessageGroupId='customer-123'  # Required for FIFO and Fair queues; optional for standard queues
     )
 
 Benefits of using Fair Queues with Kombu:
