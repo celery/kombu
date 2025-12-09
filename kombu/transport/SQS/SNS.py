@@ -32,6 +32,7 @@ class SNS:
     This class maintains caches of SNS subscriptions, clients, topic ARNs etc to
     enable efficient management of SNS topics and subscriptions.
     """
+
     def __init__(self, channel: Channel):
         self.channel = channel
         self._client = None
