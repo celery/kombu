@@ -705,6 +705,7 @@ class test_Channel:
         channel._stop_extender.wait = MagicMock(side_effect=[False, True])
 
         call_count = [0]
+        
         def modify_side_effect(*args, **kwargs):
             call_count[0] += 1
             if call_count[0] == 1:
