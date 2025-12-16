@@ -69,6 +69,7 @@ from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
+from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
@@ -88,9 +89,10 @@ except ImportError:  # pragma: no cover
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
-    from redis import sentinel
+    from redis import CredentialProvider, sentinel
 except ImportError:  # pragma: no cover
     sentinel = None
+    CredentialProvider = None
 
 
 logger = get_logger('kombu.transport.redis')
@@ -1148,6 +1150,22 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
+    def _process_credential_provider(self, credential_provider, connparams):
+        if credential_provider:
+            if isinstance(credential_provider, str):
+                credential_provider_cls = symbol_by_name(credential_provider)
+                credential_provider = credential_provider_cls()
+
+            if not isinstance(credential_provider, CredentialProvider):
+                raise ValueError(
+                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
+                )
+
+            connparams['credential_provider'] = credential_provider
+            # drop username and password if credential provider is configured
+            connparams.pop("username", None)
+            connparams.pop("password", None)
+
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
@@ -1165,6 +1183,8 @@ class Channel(virtual.Channel):
             'retry_on_timeout': self.retry_on_timeout,
             'client_name': self.client_name,
         }
+
+        self._process_credential_provider(conninfo.credential_provider, connparams)
 
         conn_class = self.connection_class
 
@@ -1204,6 +1224,10 @@ class Channel(virtual.Channel):
                 connparams.pop('socket_keepalive_options', None)
             connparams['username'] = username
             connparams['password'] = password
+
+            # credential provider as query string
+            credential_provider = query.pop("credential_provider", None)
+            self._process_credential_provider(credential_provider, connparams)
 
             connparams.pop('host', None)
             connparams.pop('port', None)
@@ -1453,9 +1477,15 @@ class SentinelChannel(Channel):
                 "'master_name' transport option must be specified."
             )
 
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
+
         return sentinel_inst.master_for(
             master_name,
             redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):

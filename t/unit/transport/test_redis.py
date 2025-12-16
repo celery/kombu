@@ -436,7 +436,7 @@ class test_Channel:
             client=Mock(
                 transport_options={},
                 hostname="127.0.0.1",
-                virtual_host=None)))
+                virtual_host=None, credential_provider=None)))
         # create the _connparams with overridden connection_class
         connparams = chan._connparams(asynchronous=True)
         # create redis.Connection
@@ -965,6 +965,38 @@ class test_Channel:
             self.channel.connection.client.virtual_host = 'dwqeq'
             self.channel._connparams()
 
+    def test_process_credential_provider(self):
+        connparams = {
+            "username": "test",
+            "password": "test"
+        }
+        credential_provider = "redis.CredentialProvider"
+        self.channel._process_credential_provider(credential_provider, connparams)
+        assert "username" not in connparams
+        assert "password" not in connparams
+        assert "credential_provider" in connparams
+
+        # test with nonexistent provider
+        credential_provider = "nonExist.CredentialProvider"
+        with pytest.raises(ImportError):
+            self.channel._process_credential_provider(credential_provider, connparams)
+
+        # check for ValueError when credential provider is not a subclass of CredentialProvider
+        credential_provider = "abc.ABC"
+        with pytest.raises(ValueError):
+            self.channel._process_credential_provider(credential_provider, connparams)
+
+        # test with provider instance
+        class MockCredentialProvider:
+            pass
+
+        with patch('kombu.transport.redis.CredentialProvider', new=MockCredentialProvider):
+            provider = MockCredentialProvider()
+            connparams = {"username": "test", "password": "test"}
+            self.channel._process_credential_provider(provider, connparams)
+            assert connparams['credential_provider'] is provider
+            assert "username" not in connparams
+
     def test_connparams_allows_slash_in_db(self):
         self.channel.connection.client.virtual_host = '/123'
         assert self.channel._connparams()['db'] == 123
@@ -994,6 +1026,52 @@ class test_Channel:
 
         assert connection_parameters['username'] == 'foo'
         assert connection_parameters['password'] == 'bar'
+
+    def test_connparams_no_credential_provider(self):
+        self.channel.connection.client.credential_provider = None
+        connection_parameters = self.channel._connparams()
+        assert 'credential_provider' not in connection_parameters
+
+    def test_connparams_client_credentials_with_credential_provider_as_kwargs(self):
+        self.channel.connection.client.credential_provider = redis.CredentialProvider()
+        connection_parameters = self.channel._connparams()
+        assert 'username' not in connection_parameters
+        assert 'password' not in connection_parameters
+        assert 'credential_provider' in connection_parameters
+
+        # test for non existent cred provider
+        self.channel.connection.client.credential_provider = "not_exist.CredentialProvider"
+        with pytest.raises(ImportError):
+            self.channel._connparams()
+
+        # check for ValueError when credential provider is not a subclass of CredentialProvider
+        class NonCredentialProvider:
+            pass
+        self.channel.connection.client.credential_provider = NonCredentialProvider()
+        with pytest.raises(ValueError):
+            self.channel._connparams()
+
+    def test_connparams_client_credentials_with_credential_provider_as_query_param(self):
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=redis.CredentialProvider'
+        connection_parameters = self.channel._connparams()
+
+        assert 'username' not in connection_parameters
+        assert 'password' not in connection_parameters
+        assert 'credential_provider' in connection_parameters
+
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=nonexit.CredentialProvider'
+
+        with pytest.raises(ImportError):
+            self.channel._connparams()
+
+        # check for ValueError when credential provider is not a subclass of CredentialProvider
+        self.channel.connection.client.hostname = \
+            'redis://foo:bar@127.0.0.1:6379/0?credential_provider=abc.ABC'
+
+        with pytest.raises(ValueError):
+            self.channel._connparams()
 
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
@@ -1856,7 +1934,10 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_getting_master_from_sentinel_single_node(self):
@@ -1879,7 +1960,10 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_getting_master_from_sentinel_with_client_name(self):
@@ -1907,7 +1991,70 @@ class test_RedisSentinel:
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
-            master_for.assert_called_with('not_important', ANY)
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password=None
+            )
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_with_acl_credentials(self):
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://myuser:mypassword@localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+
+            connection.channel()
+
+            patched.assert_called_once_with(
+                [
+                    ('localhost', 65532),
+                ],
+                connection_class=ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password='mypassword',
+                sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None,
+                username='myuser', retry_on_timeout=None, client_name=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username='myuser', password='mypassword'
+            )
+            master_for().connection_pool.get_connection.assert_called()
+
+    def test_getting_master_from_sentinel_with_password_only(self):
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://:mypassword@localhost:65532/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+
+            connection.channel()
+
+            patched.assert_called_once_with(
+                [
+                    ('localhost', 65532),
+                ],
+                connection_class=ANY, db=0, max_connections=10,
+                min_other_sentinels=0, password='mypassword',
+                sentinel_kwargs=None,
+                socket_connect_timeout=None, socket_keepalive=None,
+                socket_keepalive_options=None, socket_timeout=None,
+                username=None, retry_on_timeout=None, client_name=None)
+
+            master_for = patched.return_value.master_for
+            master_for.assert_called()
+            master_for.assert_called_with(
+                'not_important', ANY,
+                username=None, password='mypassword'
+            )
             master_for().connection_pool.get_connection.assert_called()
 
     def test_can_create_connection(self):
