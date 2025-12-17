@@ -646,7 +646,7 @@ class test_Channel:
     @pytest.mark.parametrize(
         "enable_exactly_once,expected_value",
         [
-            (None, False)  # default behaviour
+            (None, False),  # default behaviour
             (True, True),  # with exactly-once delivery
             (False, False),  # without exactly-once delivery
         ],
