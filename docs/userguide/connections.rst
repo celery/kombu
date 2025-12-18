@@ -147,6 +147,9 @@ All of these are valid URLs:
     # Using Pyro with name server running on 'localhost'
     pyro://localhost/kombu.broker
 
+    # Using Django
+    django:///
+
 
 The query part of the URL can also be used to set options, e.g.:
 

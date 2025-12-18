@@ -93,6 +93,8 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *Django*      | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 
 .. [#f1] Declarations only kept in memory, so exchanges/queues
@@ -264,4 +266,3 @@ There are some concepts you should be familiar with before starting:
                 zero or more words. For example `"*.stock.#"` matches the
                 routing keys `"usd.stock"` and `"eur.stock.db"` but not
                 `"stock.nasdaq"`.
-
