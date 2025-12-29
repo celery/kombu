@@ -1,0 +1,2 @@
+https://github.com/celery/py-amqp/zipball/main
+https://github.com/celery/vine/zipball/master

@@ -1,0 +1,23 @@
+include AUTHORS
+include Changelog
+include FAQ
+include INSTALL
+include LICENSE
+include MANIFEST.in
+include README.rst
+include README
+include THANKS
+include TODO
+include setup.cfg
+recursive-include extra *
+recursive-include docs *
+recursive-include kombu *.py
+recursive-include t *.py
+recursive-include requirements *.txt
+recursive-include funtests *.py setup.cfg
+recursive-include examples *.py
+
+recursive-exclude docs/_build *
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * .*.sw*

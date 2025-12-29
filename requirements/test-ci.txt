@@ -1,0 +1,19 @@
+pytest-cov==7.0.0
+codecov==2.1.13; sys_platform == 'win32'
+librabbitmq>=2.0.0; sys_platform == 'win32'
+-r extras/redis.txt
+pymongo>=4.1.1; sys_platform != 'win32'
+-r extras/yaml.txt
+-r extras/msgpack.txt
+-r extras/azureservicebus.txt
+-r extras/azurestoragequeues.txt
+boto3>=1.26.143; sys_platform != 'win32'
+pycurl>=7.43.0.5; sys_platform != 'win32' and platform_python_implementation=="CPython"
+urllib3>=1.26.16; sys_platform != 'win32'
+-r extras/consul.txt
+-r extras/zookeeper.txt
+-r extras/brotli.txt
+-r extras/zstd.txt
+-r extras/sqlalchemy.txt
+-r extras/etcd.txt
+-r extras/gcpubsub.txt

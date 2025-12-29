@@ -1,0 +1,33 @@
+[run]
+branch = 1
+cover_pylib = 0
+include=*kombu/*
+omit = kombu.tests.*
+
+[report]
+omit =
+    */python?.?/*
+    */site-packages/*
+    */pypy/*
+    *kombu/async/http/curl.py
+    *kombu/five.py
+    *kombu/transport/mongodb.py
+    *kombu/transport/filesystem.py
+    *kombu/transport/sqlalchemy/*
+    *kombu/utils.compat.py
+    *kombu/utils/eventio.py
+    *kombu/async/debug.py
+    *kombu/transport/amqplib.py
+    *kombu/transport/couchdb.py
+    *kombu/transport/beanstalk.py
+    *kombu/transport/sqlalchemy.py
+    *kombu/transport/zookeeper.py
+    *kombu/transport/zmq.py
+    *kombu/transport/django.py
+    *kombu/transport/pyro.py
+    *kombu/transport/azurestoragequeues.py
+    *kombu/transport/qpid*
+exclude_lines =
+    pragma: no cover
+
+    for infinity

@@ -1,0 +1,12 @@
+# redis transport
+redis>=4.5.2,!=5.0.2,!=4.5.5
+
+# MongoDB transport
+pymongo==4.15.3
+
+# Zookeeper transport
+kazoo==2.10.0
+
+# SQS transport
+boto3>=1.26.143
+

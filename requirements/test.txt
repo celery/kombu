@@ -1,0 +1,6 @@
+hypothesis<7
+Pyro4==4.82
+pytest-freezer==0.4.9
+pytest-sugar==1.1.1
+pytest==8.4.2
+pre-commit>=4.0.1

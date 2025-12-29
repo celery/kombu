@@ -1,0 +1,8 @@
+git+https://github.com/celery/sphinx_celery.git
+-r extras/redis.txt
+-r extras/mongodb.txt
+-r extras/sqlalchemy.txt
+-r extras/azureservicebus.txt
+# we cannot use directly extras/sqs.txt
+# since readthedocs cannot install pycurl
+boto3>=1.26.143

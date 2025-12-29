@@ -1,0 +1,32 @@
+========
+ THANKS
+========
+
+From ``carrot`` THANKS file
+===========================
+
+* Thanks to Barry Pederson <bp@barryp.org> for the py-amqplib library.
+* Thanks to Grégoire Cachet <gregoire@audacy.fr> for bug reports.
+* Thanks to Martin Mahner for the Sphinx theme.
+* Thanks to jcater for bug reports.
+* Thanks to sebest for bug reports.
+* Thanks to greut for bug reports
+
+From ``django-kombu`` THANKS file
+=================================
+
+* Thanks to Rajesh Dhawan and other authors of django-queue-service
+  for the database model implementation.
+  See http://code.google.com/p/django-queue-service/.
+
+From ``kombu-sqlalchemy`` THANKS file
+=====================================
+
+* Thanks to Rajesh Dhawan and other authors of django-queue-service
+  for the database model implementation.
+  See http://code.google.com/p/django-queue-service/.
+
+* Thanks to haridsv for the draft SQLAlchemy port (which can still
+  be found at http://github.com/haridsv/celery-alchemy-poc)
+
+

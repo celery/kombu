@@ -1,0 +1,10 @@
+default_context:
+
+    email:                     'ask@celeryproject.org'
+    full_name:                 'Ask Solem'
+    github_username:           'celery'
+    project_name:              'Kombu'
+    project_short_description: 'Messaging library for Python.'
+    project_slug:              'kombu'
+    version:                   '1.0.0'
+    year:                      '2009-2016'
