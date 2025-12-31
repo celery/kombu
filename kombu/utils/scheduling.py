@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from itertools import count
+from typing import (Any, Callable, Generic, Iterable, Optional, Sequence, Type,
+                    TypeVar)
 
 from .imports import symbol_by_name
 
@@ -16,8 +18,12 @@ CYCLE_ALIASES = {
     'sorted': 'kombu.utils.scheduling:sorted_cycle',
 }
 
+ResourceType = TypeVar('ResourceType')
+CallbackType = TypeVar('CallbackType')
+FunReturnType = TypeVar('FunReturnType')
 
-class FairCycle:
+
+class FairCycle(Generic[ResourceType, CallbackType, FunReturnType]):
     """Cycle between resources.
 
     Consume from a set of resources, where each resource gets
@@ -30,13 +36,16 @@ class FairCycle:
         predicate (type): Exception predicate.
     """
 
-    def __init__(self, fun, resources, predicate=Exception):
+    def __init__(self, fun: Callable[[ResourceType, CallbackType],
+                                     FunReturnType],
+                 resources: Sequence[ResourceType],
+                 predicate: Type[Exception] = Exception):
         self.fun = fun
         self.resources = resources
         self.predicate = predicate
         self.pos = 0
 
-    def _next(self):
+    def _next(self) -> ResourceType:
         while 1:
             try:
                 resource = self.resources[self.pos]
@@ -47,7 +56,7 @@ class FairCycle:
                 if not self.resources:
                     raise self.predicate()
 
-    def get(self, callback, **kwargs):
+    def get(self, callback: CallbackType, **kwargs: Any) -> FunReturnType:
         """Get from next resource."""
         for tried in count(0):  # for infinity
             resource = self._next()
@@ -58,30 +67,30 @@ class FairCycle:
                 if tried >= len(self.resources) - 1:
                     raise
 
-    def close(self):
+    def close(self) -> None:
         """Close cycle."""
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """``repr(cycle)``."""
         return '<FairCycle: {self.pos}/{size} {self.resources}>'.format(
             self=self, size=len(self.resources))
 
 
-class round_robin_cycle:
+class round_robin_cycle(Generic[ResourceType]):
     """Iterator that cycles between items in round-robin."""
 
-    def __init__(self, it=None):
+    def __init__(self, it: Optional[Sequence[ResourceType]] = None):
         self.items = it if it is not None else []
 
-    def update(self, it):
+    def update(self, it: Iterable[ResourceType]) -> None:
         """Update items from iterable."""
         self.items[:] = it
 
-    def consume(self, n):
+    def consume(self, n: int) -> Sequence[ResourceType]:
         """Consume n items."""
         return self.items[:n]
 
-    def rotate(self, last_used):
+    def rotate(self, last_used: int) -> None:
         """Move most recently used item to end of list."""
         items = self.items
         try:
@@ -91,17 +100,17 @@ class round_robin_cycle:
         return last_used
 
 
-class priority_cycle(round_robin_cycle):
+class priority_cycle(round_robin_cycle[ResourceType]):
     """Cycle that repeats items in order."""
 
-    def rotate(self, last_used):
+    def rotate(self, last_used: Any) -> None:
         """Unused in this implementation."""
 
 
-class sorted_cycle(priority_cycle):
+class sorted_cycle(priority_cycle[ResourceType]):
     """Cycle in sorted order."""
 
-    def consume(self, n):
+    def consume(self, n: int) -> Sequence[ResourceType]:
         """Consume n items."""
         return sorted(self.items[:n])
 
