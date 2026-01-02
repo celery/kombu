@@ -52,6 +52,7 @@ Transport Options
 * ``priority_steps``
 * ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
   The queue will be automatically deleted after this period of inactivity.
+* ``client_name``: (str) The name to use when connecting to Redis server.
 """
 
 from __future__ import annotations
@@ -72,6 +73,7 @@ from vine import promise
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
 from kombu.transport.base import to_rabbitmq_queue_arguments
+from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
@@ -91,9 +93,10 @@ except ImportError:  # pragma: no cover
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
-    from redis import sentinel
+    from redis import CredentialProvider, sentinel
 except ImportError:  # pragma: no cover
     sentinel = None
+    CredentialProvider = None
 
 
 logger = get_logger('kombu.transport.redis')
@@ -652,6 +655,7 @@ class Channel(virtual.Channel):
     retry_on_timeout = None
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
+    client_name = None
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -725,7 +729,8 @@ class Channel(virtual.Channel):
          'max_connections',
          'health_check_interval',
          'retry_on_timeout',
-         'priority_steps')  # <-- do not add comma here!
+         'priority_steps',
+         'client_name')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
@@ -744,6 +749,7 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
+        self.brpop_timeout = self.connection.brpop_timeout
 
         if self.fanout_prefix:
             if isinstance(self.fanout_prefix, str):
@@ -961,7 +967,9 @@ class Channel(virtual.Channel):
                         message, self._fanout_to_queue[exchange])
                     return True
 
-    def _brpop_start(self, timeout=1):
+    def _brpop_start(self, timeout=None):
+        if timeout is None:
+            timeout = self.brpop_timeout
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
@@ -1191,6 +1199,22 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
+    def _process_credential_provider(self, credential_provider, connparams):
+        if credential_provider:
+            if isinstance(credential_provider, str):
+                credential_provider_cls = symbol_by_name(credential_provider)
+                credential_provider = credential_provider_cls()
+
+            if not isinstance(credential_provider, CredentialProvider):
+                raise ValueError(
+                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
+                )
+
+            connparams['credential_provider'] = credential_provider
+            # drop username and password if credential provider is configured
+            connparams.pop("username", None)
+            connparams.pop("password", None)
+
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
@@ -1206,7 +1230,10 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
             'health_check_interval': self.health_check_interval,
             'retry_on_timeout': self.retry_on_timeout,
+            'client_name': self.client_name,
         }
+
+        self._process_credential_provider(conninfo.credential_provider, connparams)
 
         conn_class = self.connection_class
 
@@ -1246,6 +1273,10 @@ class Channel(virtual.Channel):
                 connparams.pop('socket_keepalive_options', None)
             connparams['username'] = username
             connparams['password'] = password
+
+            # credential provider as query string
+            credential_provider = query.pop("credential_provider", None)
+            self._process_credential_provider(credential_provider, connparams)
 
             connparams.pop('host', None)
             connparams.pop('port', None)
@@ -1346,6 +1377,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
+    brpop_timeout = 1
     default_port = DEFAULT_PORT
     driver_type = 'redis'
     driver_name = 'redis'
@@ -1365,6 +1397,9 @@ class Transport(virtual.Transport):
 
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+        # Use polling_interval to set brpop_timeout if provided, but do not modify polling_interval itself.
+        if self.polling_interval is not None:
+            self.brpop_timeout = self.polling_interval
 
     def driver_version(self):
         return redis.__version__
@@ -1491,9 +1526,15 @@ class SentinelChannel(Channel):
                 "'master_name' transport option must be specified."
             )
 
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
+
         return sentinel_inst.master_for(
             master_name,
             redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):

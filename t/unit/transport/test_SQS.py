@@ -10,7 +10,7 @@ import base64
 import os
 import random
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from queue import Empty
 from unittest.mock import Mock, patch
 
@@ -125,9 +125,11 @@ class SQSClientMock:
         QueueUrl=None,
         MaxNumberOfMessages=1,
         WaitTimeSeconds=10,
-        MessageAttributeNames=None,
-        MessageSystemAttributeNames=None
+        MessageAttributeNames=[],
+        MessageSystemAttributeNames=[],
     ):
+        assert isinstance(MessageAttributeNames, (list, tuple))
+        assert isinstance(MessageSystemAttributeNames, (list, tuple))
         self._receive_messages_calls += 1
         for q in self._queues.values():
             if q.url == QueueUrl:
@@ -1243,7 +1245,7 @@ class test_Channel:
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
 
-        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+        expiration_time = datetime.now(timezone.utc) + timedelta(seconds=sts_token_timeout)
 
         mock_generate_sts_session_token.side_effect = [
             {
@@ -1270,7 +1272,7 @@ class test_Channel:
         })
         channel = connection.channel()
         sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
-        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        channel.sts_expiration = datetime.now(timezone.utc) - timedelta(days=1)
         queue_name = 'queue-1'
 
         mock_generate_sts_session_token = Mock()
@@ -1304,14 +1306,14 @@ class test_Channel:
         })
         channel = connection.channel()
         sqs = SQS_Channel_sqs.__get__(channel, SQS.Channel)
-        channel.sts_expiration = datetime.utcnow() - timedelta(days=1)
+        channel.sts_expiration = datetime.now(timezone.utc) - timedelta(days=1)
         queue_name = 'queue-1'
 
         mock_generate_sts_session_token = Mock()
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
 
-        expiration_time = datetime.utcnow() + timedelta(seconds=sts_token_timeout)
+        expiration_time = datetime.now(timezone.utc) + timedelta(seconds=sts_token_timeout)
 
         mock_generate_sts_session_token.side_effect = [
             {
@@ -1337,7 +1339,7 @@ class test_Channel:
             'sts_role_arn': 'test::arn'
         })
         channel = connection.channel()
-        channel.sts_expiration = datetime.utcnow() + timedelta(days=1)
+        channel.sts_expiration = datetime.now(timezone.utc) + timedelta(days=1)
         queue_name = 'queue-1'
 
         mock_generate_sts_session_token = Mock()
@@ -1372,7 +1374,7 @@ class test_Channel:
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
         mock_generate_sts_session_token.return_value = {
-            'Expiration': datetime.utcnow() + timedelta(days=1),
+            'Expiration': datetime.now(timezone.utc) + timedelta(days=1),
             'SessionToken': 123,
             'AccessKeyId': 123,
             'SecretAccessKey': 123
