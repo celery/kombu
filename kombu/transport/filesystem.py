@@ -262,6 +262,29 @@ class Channel(virtual.Channel):
 
         raise Empty()
 
+    def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
+        super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
+
+        file = self.control_folder / f"{exchange}.exchange"
+        queue_val = exchange_queue_t(routing_key or "", pattern or "",
+                                     queue or "")
+        f_obj = None
+        try:
+            if file.exists():
+                f_obj = file.open("rb+", buffering=0)
+                lock(f_obj, LOCK_EX)
+                exchange_table = loads(bytes_to_str(f_obj.read()))
+                queues = [exchange_queue_t(*q) for q in exchange_table]
+                queues.remove(queue_val)
+                if len(queues) != len(exchange_table):
+                    f_obj.seek(0)
+                    f_obj.write(str_to_bytes(dumps(queues)))
+                    f_obj.truncate()
+        finally:
+            if f_obj is not None:
+                unlock(f_obj)
+                f_obj.close()
+
     def _purge(self, queue):
         """Remove all messages from `queue`."""
         count = 0
