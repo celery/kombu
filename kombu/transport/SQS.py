@@ -460,24 +460,21 @@ class Channel(virtual.Channel):
         kwargs = {'QueueUrl': q_url}
         if 'properties' in message:
             if 'message_attributes' in message['properties']:
-                # we don't want to want to have the attribute in the body
-                kwargs['MessageAttributes'] = \
-                    message['properties'].pop('message_attributes')
+                kwargs['MessageAttributes'] = message['properties'].pop('message_attributes')
+
             if queue.endswith('.fifo'):
-                if 'MessageGroupId' in message['properties']:
-                    kwargs['MessageGroupId'] = \
-                        message['properties']['MessageGroupId']
-                else:
-                    kwargs['MessageGroupId'] = 'default'
+                kwargs['MessageGroupId'] = message['properties'].get('MessageGroupId') or 'default'
+
                 if 'MessageDeduplicationId' in message['properties']:
-                    kwargs['MessageDeduplicationId'] = \
-                        message['properties']['MessageDeduplicationId']
+                    kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
                 else:
                     kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
             else:
-                if "DelaySeconds" in message['properties']:
-                    kwargs['DelaySeconds'] = \
-                        message['properties']['DelaySeconds']
+                if 'DelaySeconds' in message['properties']:
+                    kwargs['DelaySeconds'] = message['properties']['DelaySeconds']
+
+                if 'MessageGroupId' in message['properties']:
+                    kwargs['MessageGroupId'] = message['properties']['MessageGroupId']
 
         if self.sqs_base64_encoding:
             body = AsyncMessage().encode(dumps(message))
