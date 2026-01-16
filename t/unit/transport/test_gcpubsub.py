@@ -322,7 +322,7 @@ class test_Channel:
             subscription_path=subscription_path,
             topic_path=topic_path,
         )
-        
+
         assert result == subscription_path
         channel.subscriber.create_subscription.assert_called_once()
         # Verify update was called
@@ -401,7 +401,7 @@ class test_Channel:
             subscription_path=subscription_path,
             topic_path=topic_path,
         )
-        
+
         assert result == subscription_path
         channel.subscriber.update_subscription.assert_called_once()
 
