@@ -317,7 +317,7 @@ class Channel(virtual.Channel):
             'message_retention_duration': f'{msg_retention}s',
             **(filter_args or {}),
         }
-        
+
         try:
             logger.debug(
                 'creating subscription: %s, topic: %s, filter: %s',
@@ -338,7 +338,7 @@ class Channel(virtual.Channel):
                 ])
                 if filter_args:
                     update_mask.paths.append('filter')
-                
+
                 self.subscriber.update_subscription(
                     request={
                         'subscription': subscription,

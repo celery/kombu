@@ -305,7 +305,7 @@ class test_Channel:
         topic_path = "topic_path"
         channel.ack_deadline_seconds = 60
         channel.expiration_seconds = 86400
-        
+
         # Mock subscription already exists
         channel.subscriber.subscription_path = MagicMock(
             return_value=subscription_path
@@ -315,7 +315,7 @@ class test_Channel:
             side_effect=AlreadyExists("Subscription exists")
         )
         channel.subscriber.update_subscription = MagicMock()
-        
+
         result = channel._create_subscription(
             project_id=channel.project_id,
             topic_id=topic_id,
@@ -330,14 +330,14 @@ class test_Channel:
         update_call = channel.subscriber.update_subscription.call_args[1]
         assert 'subscription' in update_call['request']
         assert 'update_mask' in update_call['request']
-        
+
         # Verify the subscription object contains correct values
         subscription = update_call['request']['subscription']
         assert subscription.name == subscription_path
         assert subscription.ack_deadline_seconds == 60
         assert subscription.expiration_policy.ttl.total_seconds() == 86400
         assert subscription.message_retention_duration.total_seconds() == 86400
-        
+
         # Verify update mask includes all fields
         update_mask_paths = update_call['request']['update_mask'].paths
         assert 'ack_deadline_seconds' in update_mask_paths
@@ -351,7 +351,7 @@ class test_Channel:
         subscription_path = "subscription_path"
         topic_path = "topic_path"
         filter_args = {'filter': 'attributes.routing_key="test"'}
-        
+
         channel.subscriber.subscription_path = MagicMock(
             return_value=subscription_path
         )
@@ -360,7 +360,7 @@ class test_Channel:
             side_effect=AlreadyExists("Subscription exists")
         )
         channel.subscriber.update_subscription = MagicMock()
-        
+
         channel._create_subscription(
             project_id=channel.project_id,
             topic_id=topic_id,
@@ -368,7 +368,7 @@ class test_Channel:
             topic_path=topic_path,
             filter_args=filter_args,
         )
-        
+
         # Verify filter was included in update mask
         channel.subscriber.update_subscription.assert_called_once()
         update_call = channel.subscriber.update_subscription.call_args[1]
@@ -381,7 +381,7 @@ class test_Channel:
         topic_id = "topic_id"
         subscription_path = "subscription_path"
         topic_path = "topic_path"
-        
+
         channel.subscriber.subscription_path = MagicMock(
             return_value=subscription_path
         )
@@ -393,7 +393,7 @@ class test_Channel:
         channel.subscriber.update_subscription = MagicMock(
             side_effect=Exception("API Error")
         )
-        
+
         # Should not raise exception - just log warning
         result = channel._create_subscription(
             project_id=channel.project_id,
