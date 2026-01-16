@@ -79,6 +79,8 @@ def channel():
         channel.subscriber = MagicMock()
         channel.publisher = MagicMock()
         channel.closed = False
+        channel.ack_deadline_seconds = 240
+        channel.expiration_seconds = 86400
         with patch.object(
             Channel, 'conninfo', new_callable=MagicMock
         ), patch.object(
@@ -294,6 +296,114 @@ class test_Channel:
             'filter': 'attributes.routing_key="1111-2222"',
         }
         Subscription(request)
+
+    def test_create_subscription_updates_when_exists(self, channel):
+        """Test that subscription settings are always updated when subscription exists."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        channel.ack_deadline_seconds = 60
+        channel.expiration_seconds = 86400
+        
+        # Mock subscription already exists
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        channel.subscriber.update_subscription = MagicMock()
+        
+        result = channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+        )
+        
+        assert result == subscription_path
+        channel.subscriber.create_subscription.assert_called_once()
+        # Verify update was called
+        channel.subscriber.update_subscription.assert_called_once()
+        update_call = channel.subscriber.update_subscription.call_args[1]
+        assert 'subscription' in update_call['request']
+        assert 'update_mask' in update_call['request']
+        
+        # Verify the subscription object contains correct values
+        subscription = update_call['request']['subscription']
+        assert subscription.name == subscription_path
+        assert subscription.ack_deadline_seconds == 60
+        assert subscription.expiration_policy.ttl.total_seconds() == 86400
+        assert subscription.message_retention_duration.total_seconds() == 86400
+        
+        # Verify update mask includes all fields
+        update_mask_paths = update_call['request']['update_mask'].paths
+        assert 'ack_deadline_seconds' in update_mask_paths
+        assert 'expiration_policy.ttl' in update_mask_paths
+        assert 'message_retention_duration' in update_mask_paths
+
+    def test_create_subscription_with_filter(self, channel):
+        """Test that filter is included in update mask when present."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        filter_args = {'filter': 'attributes.routing_key="test"'}
+        
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        channel.subscriber.update_subscription = MagicMock()
+        
+        channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+            filter_args=filter_args,
+        )
+        
+        # Verify filter was included in update mask
+        channel.subscriber.update_subscription.assert_called_once()
+        update_call = channel.subscriber.update_subscription.call_args[1]
+        update_mask_paths = update_call['request']['update_mask'].paths
+        assert 'filter' in update_mask_paths
+
+    def test_create_subscription_handles_update_failure_gracefully(self, channel):
+        """Test that update failures don't crash the worker."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        # Mock update fails
+        channel.subscriber.update_subscription = MagicMock(
+            side_effect=Exception("API Error")
+        )
+        
+        # Should not raise exception - just log warning
+        result = channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+        )
+        
+        assert result == subscription_path
+        channel.subscriber.update_subscription.assert_called_once()
 
     def test_delete(self, channel):
         queue = "test_queue"
