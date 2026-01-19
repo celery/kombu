@@ -346,7 +346,7 @@ class Channel(virtual.Channel):
                     }
                 )
                 logger.info('subscription updated: %s', subscription_path)
-            except (GoogleAPICallError, PermissionDenied) as e:
+            except GoogleAPICallError as e:
                 logger.warning(
                     'failed to update subscription: %s, error: %s',
                     subscription_path,
