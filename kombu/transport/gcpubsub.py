@@ -55,7 +55,7 @@ from uuid import NAMESPACE_OID, uuid3
 from _socket import gethostname
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        GoogleAPICallError, PermissionDenied)
 from google.api_core.retry import Retry
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import query
@@ -346,9 +346,7 @@ class Channel(virtual.Channel):
                     }
                 )
                 logger.info('subscription updated: %s', subscription_path)
-            except Exception as e:
-                # Log error but don't fail - allow worker to continue
-                # with existing subscription settings
+            except (GoogleAPICallError, PermissionDenied) as e:
                 logger.warning(
                     'failed to update subscription: %s, error: %s',
                     subscription_path,

@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        GoogleAPICallError, PermissionDenied)
 from google.pubsub_v1.types.pubsub import Subscription
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
@@ -389,9 +389,9 @@ class test_Channel:
         channel.subscriber.create_subscription = MagicMock(
             side_effect=AlreadyExists("Subscription exists")
         )
-        # Mock update fails
+        # Mock update fails with Google API error
         channel.subscriber.update_subscription = MagicMock(
-            side_effect=Exception("API Error")
+            side_effect=GoogleAPICallError("API Error")
         )
 
         # Should not raise exception - just log warning
