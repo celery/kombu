@@ -334,6 +334,7 @@ class test_Channel:
         # Verify the subscription object contains correct values
         subscription = update_call['request']['subscription']
         assert subscription.name == subscription_path
+        assert subscription.topic == topic_path
         assert subscription.ack_deadline_seconds == 60
         assert subscription.expiration_policy.ttl.total_seconds() == 86400
         assert subscription.message_retention_duration.total_seconds() == 86400
