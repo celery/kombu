@@ -491,7 +491,7 @@ def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
     mock_renewer_cls.assert_called_once()
     assert channel.queue_service.get_queue_receiver.call_args.kwargs["auto_lock_renewer"] == mock_renewer_cls.return_value
 
-    # test for re-use of the first AutoLockRenewer
+    # test for reuse of the first AutoLockRenewer
     channel._get_asb_receiver("second_queue", recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
     assert mock_renewer_cls.call_count == 1
 
