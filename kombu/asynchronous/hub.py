@@ -274,6 +274,10 @@ class Hub:
         for item in todos:
             item()
 
+        # Clear global event loop variable if this hub is the current loop
+        if _current_loop is self:
+            set_event_loop(None)
+
     def _discard(self, fd):
         fd = fileno(fd)
         self.readers.pop(fd, None)
