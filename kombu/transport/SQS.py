@@ -463,7 +463,10 @@ class Channel(virtual.Channel):
                 kwargs['MessageAttributes'] = message['properties'].pop('message_attributes')
 
             if queue.endswith('.fifo'):
-                kwargs['MessageGroupId'] = message['properties'].get('MessageGroupId') or 'default'
+                message_group_id = message['properties'].get('MessageGroupId')
+                if message_group_id is None:
+                    message_group_id = 'default'
+                kwargs['MessageGroupId'] = message_group_id
 
                 if 'MessageDeduplicationId' in message['properties']:
                     kwargs['MessageDeduplicationId'] = message['properties']['MessageDeduplicationId']
