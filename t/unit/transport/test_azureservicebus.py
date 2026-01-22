@@ -491,6 +491,7 @@ def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
     # test if renewer is created
     channel._get_asb_receiver("first_queue", recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
     mock_renewer_cls.assert_called_once()
+    mock_renewer_cls.assert_called_once_with(max_lock_renewal_duration=channel.max_lock_renewal_duration)
     assert channel.queue_service.get_queue_receiver.call_args.kwargs[
         "auto_lock_renewer"
         ] == mock_renewer_cls.return_value
