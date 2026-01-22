@@ -467,3 +467,47 @@ def test_returning_da():
 def test_returning_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
     assert conn.as_uri(True) == URL_CREDS_MI_FQ
+
+def test_lock_renewal_config_initialization():
+    options = {
+        "use_lock_renewal": True,
+        "max_lock_renewal_duration": 1234.0
+    }
+    conn = Connection(URL_CREDS_MI_FQ, transport=azureservicebus.Transport, transport_options=options)
+    channel = conn.channel()
+
+    assert channel.use_lock_renewal is True
+    assert channel.max_lock_renewal_duration == 1234.0
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
+    """Test for creation, reuse, and only present in peek lock mode."""
+    channel = mock_queue.channel
+    channel.transport_options["use_lock_renewal"] = True
+    channel.queue_service.get_queue_receiver = MagicMock()
+
+    # test if renewer is created
+    channel._get_asb_receiver("first_queue", recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    mock_renewer_cls.assert_called_once()
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs["auto_lock_renewer"] == mock_renewer_cls.return_value
+
+    # test for re-use of the first AutoLockRenewer
+    channel._get_asb_receiver("second_queue", recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    assert mock_renewer_cls.call_count == 1
+
+    # check if renewer is not present if recv_mode is not peek lock
+    channel._get_asb_receiver("third_queue", recv_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs["auto_lock_renewer"] is None
+
+def test_channel_close_is_safe(mock_queue):
+    """Make sure renewer close is safe to call multiple times."""
+    channel = mock_queue.channel
+    renewer_mock = MagicMock()
+    channel._renewer = renewer_mock
+    
+    channel.close()
+    renewer_mock.close.assert_called_once()
+    assert channel._renewer is None
+    
+    channel.close()
+    assert renewer_mock.close.call_count == 1
