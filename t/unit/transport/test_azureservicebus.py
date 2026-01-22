@@ -485,6 +485,8 @@ def test_lock_renewal_config_initialization():
 def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
     """Test for creation, reuse, and only present in peek lock mode."""
     channel = mock_queue.channel
+    # Clear cached_property in case it was accessed during mock_queue setup.
+    channel.__dict__.pop('use_lock_renewal', None)
     channel.transport_options["use_lock_renewal"] = True
     channel.queue_service.get_queue_receiver = MagicMock()
 
