@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import uuid4
 
 try:
-    # Python 3.11 or later
+    # Python 3.14 or later
     from uuid import uuid7
 except ImportError:
     # Fallback for older Python versions
