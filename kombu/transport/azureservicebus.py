@@ -144,7 +144,7 @@ class Channel(virtual.Channel):
         self.qos.restore_at_shutdown = False
 
         self._renewer = None
-  
+
     def _try_parse_connection_string(self) -> None:
         self._namespace, self._credential = Transport.parse_uri(
             self.conninfo.hostname)
@@ -456,9 +456,10 @@ class Channel(virtual.Channel):
     def max_lock_renewal_duration(self) -> float:
         return float(
             self.transport_options.get(
-            'max_lock_renewal_duration', self.default_max_lock_renewal_duration
+                'max_lock_renewal_duration', self.default_max_lock_renewal_duration
             )
         )
+
 
 class Transport(virtual.Transport):
     """Azure Service Bus transport."""
