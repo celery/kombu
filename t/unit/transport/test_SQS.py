@@ -1183,6 +1183,41 @@ class test_Channel:
         assert sqs_queue_mock.send_message.call_args[1]['MessageGroupId'] == expected
         assert 'MessageDeduplicationId' in sqs_queue_mock.send_message.call_args[1]
 
+    @pytest.mark.parametrize('dedup_id,should_match', [
+        ('custom-dedup-id', True),
+        (None, False),
+    ])
+    def test_predefined_queues_put_to_fifo_queue_message_deduplication_id(
+            self, dedup_id, should_match):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        queue_name = 'queue-3.fifo'
+
+        exchange = Exchange('test_SQS', type='direct')
+        p = messaging.Producer(channel, exchange, routing_key=queue_name)
+
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+
+        if dedup_id is not None:
+            p.publish('message', MessageDeduplicationId=dedup_id)
+        else:
+            p.publish('message')
+
+        sqs_queue_mock.send_message.assert_called_once()
+        assert 'MessageDeduplicationId' in sqs_queue_mock.send_message.call_args[1]
+        if should_match:
+            assert sqs_queue_mock.send_message.call_args[1]['MessageDeduplicationId'] == dedup_id
+        else:
+            assert len(sqs_queue_mock.send_message.call_args[1]['MessageDeduplicationId']) == 36
+
     def test_predefined_queues_put_to_queue(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
