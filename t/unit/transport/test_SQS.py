@@ -1277,7 +1277,6 @@ class test_Channel:
             assert sqs_queue_mock.send_message.call_args[1]['MessageGroupId'] == message_group_id
         else:
             assert 'MessageGroupId' not in sqs_queue_mock.send_message.call_args[1]
-        # MessageDeduplicationId should NOT be set for standard queues
         assert 'MessageDeduplicationId' not in sqs_queue_mock.send_message.call_args[1]
 
     @pytest.mark.parametrize('predefined_queues', (
