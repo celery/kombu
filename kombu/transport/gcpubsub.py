@@ -35,6 +35,8 @@ Transport Options
 * ``retry_timeout_seconds``: (int) The maximum time to wait before retrying.
 * ``bulk_max_messages``: (int) The maximum number of messages to pull in bulk.
   Defaults to 100.
+* ``pubsub_api_transport``: (str) The transport protocol to use for
+  Pub/Sub API calls. Valid values are 'rest', 'grpc', or 'grpc_asyncio'. Defaults to 'rest'.
 """
 
 from __future__ import annotations
@@ -56,7 +58,7 @@ from uuid import NAMESPACE_OID, uuid3
 from _socket import gethostname
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        PermissionDenied, Conflict)
 from google.api_core.retry import Retry
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import query
@@ -171,6 +173,7 @@ class Channel(virtual.Channel):
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
     default_bulk_max_messages = 100
+    default_pubsub_api_transport = 'rest'
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -332,7 +335,7 @@ class Channel(virtual.Channel):
                     **(filter_args or {}),
                 }
             )
-        except AlreadyExists:
+        except (AlreadyExists, Conflict):
             pass
         return subscription_path
 
@@ -629,13 +632,13 @@ class Channel(virtual.Channel):
 
     @cached_property
     def subscriber(self):
-        return SubscriberClient()
+        return SubscriberClient(transport=self.pubsub_api_transport)
 
     @cached_property
     def publisher(self):
-        return PublisherClient()
+        return PublisherClient(transport=self.pubsub_api_transport)
 
-    @cached_property
+    @property
     def monitor(self):
         return monitoring_v3.MetricServiceClient()
 
@@ -680,6 +683,17 @@ class Channel(virtual.Channel):
         return self.transport_options.get(
             'bulk_max_messages', self.default_bulk_max_messages
         )
+
+    @cached_property
+    def pubsub_api_transport(self):
+        api_transport = self.transport_options.get(
+            'pubsub_api_transport', self.default_pubsub_api_transport
+        )
+        valid_transports = {'rest', 'grpc', 'grpc_asyncio'}
+        if api_transport not in valid_transports:
+            raise ValueError(f"pubsub_api_transport must be one of "
+                             f"{valid_transports}, got '{api_transport}'")
+        return api_transport
 
     def close(self):
         """Close the channel."""
