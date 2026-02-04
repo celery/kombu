@@ -1,0 +1,2 @@
+rocketmq-python-client>=5.0.6
+grpcio-tools>=1.67.0
