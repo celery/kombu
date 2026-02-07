@@ -2140,6 +2140,538 @@ class test_RedisSentinel:
             connection.close()
 
 
+class test_SentinelFanoutCompat:
+    """Tests for SentinelChannel backward-compatible fanout PUB/SUB.
+
+    Verifies that the SentinelChannel can communicate with both old
+    (< 5.4.0) and new (>= 5.4.0) kombu versions using Redis Sentinel.
+
+    The behavior is gated on the ``sentinel_fanout_compat`` transport
+    option (default False).
+
+    See: https://github.com/celery/kombu/issues/2152
+    """
+
+    def test_sentinel_fanout_compat_defaults_to_false(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={'master_name': 'not_important'},
+            )
+            channel = connection.channel()
+            assert channel.sentinel_fanout_compat is False
+
+    def test_sentinel_fanout_compat_can_be_enabled(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            assert channel.sentinel_fanout_compat is True
+
+    def test_legacy_keyprefix_stored_on_get_pool(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/1',
+                transport_options={'master_name': 'not_important'},
+            )
+            channel = connection.channel()
+            assert channel.keyprefix_fanout == '/1.'
+            assert channel._legacy_keyprefix_fanout == '/{db}.'
+
+    def test_keyprefix_fanout_db3(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/3',
+                transport_options={'master_name': 'not_important'},
+            )
+            channel = connection.channel()
+            assert channel.keyprefix_fanout == '/3.'
+            assert channel._legacy_keyprefix_fanout == '/{db}.'
+
+    # ---- sentinel_fanout_compat=True (explicit opt-in) ----
+
+    def test_put_fanout_publishes_to_both_topics(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_client = Mock()
+            channel._create_client = Mock(return_value=mock_client)
+
+            body = {'hello': 'world'}
+            channel._put_fanout('test_exchange', body, '')
+
+            topics = {
+                c.args[0]
+                for c in mock_client.publish.call_args_list
+            }
+            assert '/0.test_exchange' in topics
+            assert '/{db}.test_exchange' in topics
+
+    def test_subscribe_to_both_patterns(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            channel.subclient = Mock()
+            channel.active_fanout_queues.add('test_queue')
+            channel._fanout_queues['test_queue'] = (
+                'test_exchange', ''
+            )
+
+            channel._subscribe()
+
+            channel.subclient.psubscribe.assert_called()
+            keys = channel.subclient.psubscribe.call_args[0][0]
+            assert '/0.test_exchange' in keys
+            assert '/{db}.test_exchange' in keys
+
+    def test_dedup_prevents_double_delivery(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+
+            body = dumps({
+                'body': 'hello',
+                'properties': {'delivery_tag': 'tag-1'},
+            })
+            mock_sub = Mock()
+            channel._in_listen = mock_sub.connection
+            channel._fanout_to_queue['test_exchange'] = 'test_queue'
+            channel.connection = Mock()
+
+            # First reception via new topic
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', body
+            ]
+            result1 = channel._receive_one(mock_sub)
+
+            # Second reception via legacy topic (same payload)
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/{db}.*',
+                '/{db}.test_exchange', body
+            ]
+            result2 = channel._receive_one(mock_sub)
+
+            assert result1 is True
+            assert result2 is False
+            assert channel.connection._deliver.call_count == 1
+
+    def test_dedup_allows_same_command_with_different_tag(self):
+        """Repeated control commands get unique delivery_tags.
+
+        Two messages with the same body but different delivery_tags
+        should both be delivered — only true duplicates (same tag)
+        arriving via the second topic should be suppressed.
+        """
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+
+            body1 = dumps({
+                'body': 'ping',
+                'properties': {'delivery_tag': 'tag-aaa'},
+            })
+            body2 = dumps({
+                'body': 'ping',
+                'properties': {'delivery_tag': 'tag-bbb'},
+            })
+            mock_sub = Mock()
+            channel._in_listen = mock_sub.connection
+            channel._fanout_to_queue['test_exchange'] = 'test_queue'
+            channel.connection = Mock()
+
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', body1
+            ]
+            result1 = channel._receive_one(mock_sub)
+
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', body2
+            ]
+            result2 = channel._receive_one(mock_sub)
+
+            assert result1 is True
+            assert result2 is True
+            assert channel.connection._deliver.call_count == 2
+
+    def test_unsubscribe_from_both_patterns(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            channel.subclient = Mock()
+            channel.subclient.connection = Mock()
+            channel._fanout_queues['test_queue'] = (
+                'test_exchange', ''
+            )
+
+            channel._unsubscribe_from('test_queue')
+
+            unsub_topics = (
+                channel.subclient.unsubscribe.call_args[0][0]
+            )
+            assert '/0.test_exchange' in unsub_topics
+            assert '/{db}.test_exchange' in unsub_topics
+
+    # ---- sentinel_fanout_compat=False (default) ----
+
+    def test_put_fanout_only_new_topic_when_compat_off(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': False,
+                },
+            )
+            channel = connection.channel()
+            mock_client = Mock()
+            channel._create_client = Mock(return_value=mock_client)
+
+            channel._put_fanout('test_exchange', {'hello': 'world'}, '')
+
+            topics = {
+                c.args[0]
+                for c in mock_client.publish.call_args_list
+            }
+            assert '/0.test_exchange' in topics
+            assert '/{db}.test_exchange' not in topics
+
+    def test_subscribe_only_new_pattern_when_compat_off(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': False,
+                },
+            )
+            channel = connection.channel()
+            channel.subclient = Mock()
+            channel.active_fanout_queues.add('test_queue')
+            channel._fanout_queues['test_queue'] = (
+                'test_exchange', ''
+            )
+
+            channel._subscribe()
+
+            keys = channel.subclient.psubscribe.call_args[0][0]
+            assert '/0.test_exchange' in keys
+            assert '/{db}.test_exchange' not in keys
+
+    def test_unsubscribe_only_new_pattern_when_compat_off(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': False,
+                },
+            )
+            channel = connection.channel()
+            channel.subclient = Mock()
+            channel.subclient.connection = Mock()
+            channel._fanout_queues['test_queue'] = (
+                'test_exchange', ''
+            )
+
+            channel._unsubscribe_from('test_queue')
+
+            unsub_topics = (
+                channel.subclient.unsubscribe.call_args[0][0]
+            )
+            assert '/0.test_exchange' in unsub_topics
+            assert len(unsub_topics) == 1
+
+    def test_receive_one_no_dedup_when_compat_off(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': False,
+                },
+            )
+            channel = connection.channel()
+            assert len(channel._seen_fanout_payloads) == 0
+
+    # ---- edge-case / coverage tests ----
+
+    def test_receive_one_connection_error_resets_in_listen(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_sub = Mock()
+            mock_sub.parse_response.side_effect = (
+                channel.connection_errors[0]('gone')
+            )
+            channel._in_listen = mock_sub.connection
+
+            with pytest.raises(channel.connection_errors[0]):
+                channel._receive_one(mock_sub)
+
+            assert channel._in_listen is None
+
+    def test_receive_one_non_message_returns_none(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_sub = Mock()
+            # A 'subscribe' confirmation (not a 'message' type)
+            mock_sub.parse_response.return_value = [
+                'subscribe', '/0.test_exchange', 1
+            ]
+            channel._in_listen = mock_sub.connection
+
+            result = channel._receive_one(mock_sub)
+            assert result is None
+
+    def test_receive_one_non_list_response_returns_none(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_sub = Mock()
+            mock_sub.parse_response.return_value = None
+            channel._in_listen = mock_sub.connection
+
+            result = channel._receive_one(mock_sub)
+            assert result is None
+
+    def test_receive_one_empty_data_returns_none(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_sub = Mock()
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', None
+            ]
+            channel._in_listen = mock_sub.connection
+
+            result = channel._receive_one(mock_sub)
+            assert result is None
+
+    def test_receive_one_invalid_json_raises_empty(self):
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            mock_sub = Mock()
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', 'not-valid-json'
+            ]
+            channel._in_listen = mock_sub.connection
+            channel._fanout_to_queue['test_exchange'] = 'test_queue'
+            channel.connection = Mock()
+
+            with pytest.raises(Empty):
+                channel._receive_one(mock_sub)
+
+    def test_dedup_hash_fallback_for_messages_without_tag(self):
+        """Messages without delivery_tag fall back to hash dedup."""
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+
+            # Message with no properties/delivery_tag
+            body = dumps({'body': 'hello'})
+            mock_sub = Mock()
+            channel._in_listen = mock_sub.connection
+            channel._fanout_to_queue['test_exchange'] = 'test_queue'
+            channel.connection = Mock()
+
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/0.*', '/0.test_exchange', body
+            ]
+            result1 = channel._receive_one(mock_sub)
+
+            # Same bytes via legacy topic → deduped via hash
+            mock_sub.parse_response.return_value = [
+                'pmessage', '/{db}.*',
+                '/{db}.test_exchange', body
+            ]
+            result2 = channel._receive_one(mock_sub)
+
+            assert result1 is True
+            assert result2 is False
+
+    def test_dedup_evicts_old_entries(self):
+        """The dedup set evicts entries beyond _SEEN_FANOUT_MAX."""
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            channel._SEEN_FANOUT_MAX = 3
+
+            mock_sub = Mock()
+            channel._in_listen = mock_sub.connection
+            channel._fanout_to_queue['test_exchange'] = 'test_queue'
+            channel.connection = Mock()
+
+            for i in range(5):
+                body = dumps({
+                    'body': f'msg-{i}',
+                    'properties': {'delivery_tag': f'tag-{i}'},
+                })
+                mock_sub.parse_response.return_value = [
+                    'pmessage', '/0.*', '/0.test_exchange', body
+                ]
+                channel._receive_one(mock_sub)
+
+            # Only last 3 tags should remain in the set
+            assert len(channel._seen_fanout_payloads) == 3
+            assert 'tag-0' not in channel._seen_fanout_payloads
+            assert 'tag-1' not in channel._seen_fanout_payloads
+            assert 'tag-2' in channel._seen_fanout_payloads
+            assert 'tag-3' in channel._seen_fanout_payloads
+            assert 'tag-4' in channel._seen_fanout_payloads
+
+    def test_compat_not_enabled_when_prefixes_match(self):
+        """_compat_enabled is False when legacy prefix == current prefix."""
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            # Simulate the case where prefixes happen to match
+            channel._legacy_keyprefix_fanout = channel.keyprefix_fanout
+            assert channel._compat_enabled is False
+
+    def test_compat_not_enabled_when_legacy_prefix_none(self):
+        """_compat_enabled is False before _get_pool is called."""
+        from kombu.transport.redis import SentinelChannel
+
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                'sentinel://localhost:65532/0',
+                transport_options={
+                    'master_name': 'not_important',
+                    'sentinel_fanout_compat': True,
+                },
+            )
+            channel = connection.channel()
+            channel._legacy_keyprefix_fanout = None
+            assert channel._compat_enabled is False
+
+
 class test_GlobalKeyPrefixMixin:
 
     from kombu.transport.redis import GlobalKeyPrefixMixin

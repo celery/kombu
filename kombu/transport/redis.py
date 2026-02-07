@@ -50,6 +50,11 @@ Transport Options
 * ``retry_on_timeout``
 * ``priority_steps``
 * ``client_name``: (str) The name to use when connecting to Redis server.
+* ``sentinel_fanout_compat``: (bool) Sentinel-only. When True,
+  publishes and subscribes to both the new formatted fanout topic (e.g.
+  ``/0.exchange``) and the legacy literal topic (``/{db}.exchange``) used
+  by kombu < 5.4.0.  This allows mixed-version clusters to exchange
+  control commands during a rolling upgrade.  Defaults to False.
 """
 
 from __future__ import annotations
@@ -58,7 +63,7 @@ import functools
 import numbers
 import socket
 from bisect import bisect
-from collections import namedtuple
+from collections import deque, namedtuple
 from contextlib import contextmanager
 from importlib.metadata import version
 from queue import Empty
@@ -1440,10 +1445,34 @@ class SentinelChannel(Channel):
     from_transport_options = Channel.from_transport_options + (
         'master_name',
         'min_other_sentinels',
-        'sentinel_kwargs')
+        'sentinel_kwargs',
+        'sentinel_fanout_compat')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
     connection_class_ssl = SentinelManagedSSLConnection if sentinel else None
+
+    #: Transport option controlling backward-compatible fanout for
+    #: mixed-version sentinel clusters.
+    #:
+    #: When True, the channel publishes fanout messages to both the new
+    #: formatted topic (``/0.exchange``) and the legacy literal topic
+    #: (``/{db}.exchange``), and subscribes to both.  This allows
+    #: clusters with kombu < 5.4.0 and >= 5.4.0 workers to exchange
+    #: control commands (ping, shutdown, etc.) during a rolling upgrade.
+    #:
+    #: Defaults to False.  Set to True in ``transport_options`` if you
+    #: have a mixed-version cluster.
+    sentinel_fanout_compat = False
+
+    _legacy_keyprefix_fanout = None
+    _seen_fanout_payloads = None
+    _seen_fanout_payload_order = None
+    _SEEN_FANOUT_MAX = 1000
+
+    def __init__(self, *args, **kwargs):
+        self._seen_fanout_payloads = set()
+        self._seen_fanout_payload_order = deque()
+        super().__init__(*args, **kwargs)
 
     def _sentinel_managed_pool(self, asynchronous=False):
         connparams = self._connparams(asynchronous)
@@ -1490,8 +1519,136 @@ class SentinelChannel(Channel):
 
     def _get_pool(self, asynchronous=False):
         params = self._connparams(asynchronous=asynchronous)
+        if self._legacy_keyprefix_fanout is None:
+            self._legacy_keyprefix_fanout = self.keyprefix_fanout
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
+
+    # -- Backward-compatible fanout helpers (gated on sentinel_fanout_compat)
+
+    def _get_legacy_publish_topic(self, exchange, routing_key):
+        """Build the PUB/SUB topic using the legacy (unformatted) prefix."""
+        if routing_key and self.fanout_patterns:
+            return ''.join([
+                self._legacy_keyprefix_fanout,
+                exchange, '/', routing_key,
+            ])
+        return ''.join([self._legacy_keyprefix_fanout, exchange])
+
+    def _get_legacy_subscribe_topic(self, queue):
+        """Build the subscribe topic using the legacy prefix."""
+        exchange, routing_key = self._fanout_queues[queue]
+        return self._get_legacy_publish_topic(exchange, routing_key)
+
+    @property
+    def _compat_enabled(self):
+        """True when dual-publish/dual-subscribe is active."""
+        return (self.sentinel_fanout_compat
+                and self._legacy_keyprefix_fanout is not None
+                and self._legacy_keyprefix_fanout != self.keyprefix_fanout)
+
+    def _put_fanout(self, exchange, message, routing_key, **kwargs):
+        """Deliver fanout message.
+
+        When ``sentinel_fanout_compat`` is enabled, publishes to *both*
+        the new formatted topic and the legacy literal topic so that
+        workers on kombu < 5.4.0 still receive broadcast messages.
+        """
+        super()._put_fanout(exchange, message, routing_key, **kwargs)
+        if self._compat_enabled:
+            legacy_topic = self._get_legacy_publish_topic(
+                exchange, routing_key)
+            with self.conn_or_acquire() as client:
+                client.publish(legacy_topic, dumps(message))
+
+    def _subscribe(self):
+        """Subscribe to fanout PUB/SUB patterns.
+
+        When ``sentinel_fanout_compat`` is enabled, subscribes to both
+        the new formatted pattern and the legacy literal pattern.
+        """
+        keys = [self._get_subscribe_topic(queue)
+                for queue in self.active_fanout_queues]
+        if self._compat_enabled:
+            for queue in self.active_fanout_queues:
+                legacy_key = self._get_legacy_subscribe_topic(queue)
+                if legacy_key not in keys:
+                    keys.append(legacy_key)
+        if not keys:
+            return
+        c = self.subclient
+        if c.connection._sock is None:
+            c.connection.connect()
+        self._in_listen = c.connection
+        c.psubscribe(keys)
+
+    def _unsubscribe_from(self, queue):
+        """Unsubscribe from fanout topics for *queue*."""
+        topic = self._get_subscribe_topic(queue)
+        c = self.subclient
+        topics = [topic]
+        if self._compat_enabled:
+            legacy_topic = self._get_legacy_subscribe_topic(queue)
+            if legacy_topic != topic:
+                topics.append(legacy_topic)
+        if c.connection and c.connection._sock:
+            c.unsubscribe(topics)
+
+    def _receive_one(self, c):
+        """Receive one fanout message, with deduplication when compat is on.
+
+        When ``sentinel_fanout_compat`` is enabled we subscribe to both
+        the new and legacy topics, so the same message may arrive twice.
+        A bounded set of recent ``delivery_tag`` values is used to
+        deduplicate; every kombu message carries a unique delivery_tag,
+        so this is both collision-free and safe for repeated commands.
+        """
+        if not self.sentinel_fanout_compat:
+            return super()._receive_one(c)
+
+        response = None
+        try:
+            response = c.parse_response()
+        except self.connection_errors:
+            self._in_listen = None
+            raise
+        if isinstance(response, (list, tuple)):
+            payload = self._handle_message(c, response)
+            if bytes_to_str(payload['type']).endswith('message'):
+                channel = bytes_to_str(payload['channel'])
+                if payload['data']:
+                    if channel[0] == '/':
+                        _, _, channel = channel.partition('.')
+                    try:
+                        message = loads(bytes_to_str(payload['data']))
+                    except (TypeError, ValueError):
+                        warning(
+                            'Cannot process event on channel %r: %s',
+                            channel, repr(payload)[:4096], exc_info=1)
+                        raise Empty()
+                    # -- deduplicate using delivery_tag
+                    tag = message.get('properties', {}).get(
+                        'delivery_tag')
+                    if tag is None:
+                        # Fallback for non-standard messages: use
+                        # hash of the raw serialised bytes.
+                        raw = payload['data']
+                        if isinstance(raw, str):
+                            raw = raw.encode()
+                        tag = hash(raw)
+                    if tag in self._seen_fanout_payloads:
+                        return False
+                    self._seen_fanout_payloads.add(tag)
+                    self._seen_fanout_payload_order.append(tag)
+                    if len(self._seen_fanout_payload_order) > \
+                            self._SEEN_FANOUT_MAX:
+                        old = self._seen_fanout_payload_order.popleft()
+                        self._seen_fanout_payloads.discard(old)
+                    # -- deliver
+                    exchange = channel.split('/', 1)[0]
+                    self.connection._deliver(
+                        message, self._fanout_to_queue[exchange])
+                    return True
 
 
 class SentinelTransport(Transport):
