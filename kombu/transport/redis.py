@@ -1174,7 +1174,6 @@ class Channel(virtual.Channel):
             'virtual_host': conninfo.virtual_host,
             'username': conninfo.userid,
             'password': conninfo.password,
-            'credential_provider': conninfo.credential_provider,
             'max_connections': self.max_connections,
             'socket_timeout': self.socket_timeout,
             'socket_connect_timeout': self.socket_connect_timeout,
@@ -1478,9 +1477,15 @@ class SentinelChannel(Channel):
                 "'master_name' transport option must be specified."
             )
 
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
+
         return sentinel_inst.master_for(
             master_name,
             redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
