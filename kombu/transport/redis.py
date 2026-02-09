@@ -1065,6 +1065,11 @@ class Channel(virtual.Channel):
         expire = self._get_queue_expire(kwargs)
         if expire is not None:
             self._expires[queue] = expire
+        else:
+            # If the queue is re-declared without an expiration, ensure that
+            # any previous expiration configuration is cleared so that
+            # stale TTLs are not applied unexpectedly.
+            self._expires.pop(queue, None)
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
