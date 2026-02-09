@@ -50,9 +50,15 @@ Transport Options
 * ``health_check_interval``
 * ``retry_on_timeout``
 * ``priority_steps``
+* ``client_name``: (str) The name to use when connecting to Redis server.
+
+Queue Arguments
+===============
 * ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
   The queue will be automatically deleted after this period of inactivity.
-* ``client_name``: (str) The name to use when connecting to Redis server.
+  This is a per-queue argument and should be supplied via ``Queue(expires=...)``
+  or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
+  connection-level transport option.
 """
 
 from __future__ import annotations
