@@ -1066,7 +1066,7 @@ class Channel(virtual.Channel):
         if expire is not None:
             self._expires[queue] = expire
         else:
-            # If the queue is re-declared without an expiration, ensure that
+            # If the queue is redeclared without an expiration, ensure that
             # any previous expiration configuration is cleared so that
             # stale TTLs are not applied unexpectedly.
             self._expires.pop(queue, None)
