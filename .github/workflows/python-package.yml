@@ -90,13 +90,13 @@ jobs:
               ]
               experimental: [false]
               include:
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-amqp'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-redis'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-mongodb'
                   experimental: true
                 # - python-version: pypy3.10
