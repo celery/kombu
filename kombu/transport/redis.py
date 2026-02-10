@@ -1021,10 +1021,10 @@ class Channel(virtual.Channel):
             for pri in self.priority_steps:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
-                    self._maybe_update_queues_expire(queue)
+                    self._maybe_update_queues_expire(client, queue)
                     return loads(bytes_to_str(item))
 
-            self._maybe_update_queues_expire(queue)
+            self._maybe_update_queues_expire(client, queue)
             raise Empty()
 
     def _size(self, queue):
@@ -1049,11 +1049,17 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
         pri = self._get_message_priority(message, reverse=False)
+        key = self._q_for_pri(queue, pri)
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._q_for_pri(queue, pri), dumps(message))
-
-        self._maybe_update_queues_expire(queue)
+            if self._expires and queue in self._expires:
+                with client.pipeline() as pipe:
+                    pipe.lpush(key, dumps(message))
+                    for p in self.priority_steps:
+                        pipe.pexpire(self._q_for_pri(queue, p), self._expires[queue])
+                    pipe.execute()
+            else:
+                client.lpush(key, dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -1088,7 +1094,7 @@ class Channel(virtual.Channel):
                                        pattern or '',
                                        queue or '']))
 
-    def _maybe_update_queues_expire(self, queue):
+    def _maybe_update_queues_expire(self, client, queue):
         """Update expiration on queue keys.
 
         For each queue, set expiration time in milliseconds.
@@ -1097,11 +1103,10 @@ class Channel(virtual.Channel):
         if not self._expires or queue not in self._expires:
             return
 
-        with self.conn_or_acquire() as client:
-            with client.pipeline() as pipe:
-                for priority in self.priority_steps:
-                    pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
-                pipe.execute()
+        with client.pipeline() as pipe:
+            for priority in self.priority_steps:
+                pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
+            pipe.execute()
 
     def _get_queue_expire(self, args):
         """Get expiration header named `x-expires` of queue definition.

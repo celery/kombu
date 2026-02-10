@@ -1468,25 +1468,17 @@ class test_Channel:
             channel._expires = {'test_queue': 5000}
 
             client_mock = Mock()
-            client_mock.__enter__ = lambda self: client_mock
-            client_mock.__exit__ = lambda self, *args: None
-
             pipeline_mock = Mock()
             pipeline_mock.__enter__ = lambda self: pipeline_mock
             pipeline_mock.__exit__ = lambda self, *args: None
-
             client_mock.pipeline.return_value = pipeline_mock
 
-            channel.conn_or_acquire = Mock(return_value=client_mock)
-
-            channel._maybe_update_queues_expire('test_queue')
+            channel._maybe_update_queues_expire(client_mock, 'test_queue')
 
             expected_calls = [
                 call.pexpire('test_queue', 5000)
             ]
-
             actual_calls = pipeline_mock.method_calls
-
             for expected_call in expected_calls:
                 assert expected_call in actual_calls
 
