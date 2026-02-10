@@ -33,14 +33,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-        os: ["blacksmith-4vcpu-ubuntu-2204"]
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        os: ["blacksmith-4vcpu-ubuntu-2404"]
+
 
     steps:
     - name: Install apt packages
       if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
-      run: sudo apt-get update && sudo apt-get install libssl-dev
-    - uses: actions/checkout@v4
+      run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+    - uses: actions/checkout@v6
     - name: Set up Python ${{ matrix.python-version }}
       uses: useblacksmith/setup-python@v6
       with:
@@ -54,12 +55,18 @@ jobs:
     - name: >
         Run tox for
         "${{ matrix.python-version }}-unit"
-      timeout-minutes: 5
+      timeout-minutes: 10
       run: >
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
 
-    - uses: codecov/codecov-action@v4
+    - name: Upload test results to Codecov
+      if: ${{ !cancelled() }} # Run even if tests fail
+      uses: codecov/test-results-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+
+    - uses: codecov/codecov-action@v5
       with:
         fail_ci_if_error: false # optional (default = false)
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -70,11 +77,11 @@ jobs:
       - Unit
       if: needs.Unit.result == 'success'
 
-      runs-on: blacksmith-4vcpu-ubuntu-2204
+      runs-on: blacksmith-4vcpu-ubuntu-2404
       strategy:
           fail-fast: false
           matrix:
-              python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+              python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
               toxenv: [
                   'py-amqp',
                   'py-redis',
@@ -83,13 +90,13 @@ jobs:
               ]
               experimental: [false]
               include:
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-amqp'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-redis'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-mongodb'
                   experimental: true
                 # - python-version: pypy3.10
@@ -98,9 +105,9 @@ jobs:
 
       steps:
           -   name: Install apt packages
-              run: sudo apt-get update && sudo apt-get install libssl-dev
+              run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
 
-          -   uses: actions/checkout@v4
+          -   uses: actions/checkout@v6
           -   name: Set up Python ${{ matrix.python-version }}
               uses: useblacksmith/setup-python@v6
               with:

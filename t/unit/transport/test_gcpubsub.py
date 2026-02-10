@@ -9,6 +9,7 @@ import pytest
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         NotFound, PermissionDenied)
+from google.pubsub_v1.types.pubsub import Subscription
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
                                       Transport, UnackedIds)
@@ -279,6 +280,17 @@ class test_Channel:
         )
         assert result == subscription_path
         channel.subscriber.create_subscription.assert_called_once()
+
+    def test_create_subscription_protobuf_compat(self):
+        request = {
+            'name': 'projects/my_project/subscriptions/kombu-1111-2222',
+            'topic': 'projects/jether-fox/topics/reply.celery.pidbox',
+            'ack_deadline_seconds': 240,
+            'expiration_policy': {'ttl': '86400s'},
+            'message_retention_duration': '86400s',
+            'filter': 'attributes.routing_key="1111-2222"',
+        }
+        Subscription(request)
 
     def test_delete(self, channel):
         queue = "test_queue"
@@ -582,6 +594,131 @@ class test_Channel:
             channel.subscriber.modify_ack_deadline.call_count
             == modify_ack_deadline_calls
         )
+
+    def test_extend_unacked_deadline_handles_exception(self, channel):
+        """Test that exceptions in modify_ack_deadline don't crash the thread."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1", "ack_id2"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=[Exception("Test error"), None]
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The thread continues processing and logs the error
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+            assert error_call_args[1]['exc_info'] is True
+
+    @pytest.mark.parametrize(
+        "exception_class,exception_message",
+        [
+            (DeadlineExceeded, "Timeout"),
+            (PermissionDenied, "Access denied"),
+        ],
+    )
+    def test_extend_unacked_deadline_handles_specific_exceptions(
+        self, channel, exception_class, exception_message
+    ):
+        """Test handling of specific exception types."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises an exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=exception_class(exception_message)
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The error is logged appropriately
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+
+    def test_extend_unacked_deadline_continues_after_exception(self, channel):
+        """Test that the thread continues processing other queues after exception."""
+        # Given: Two queues with unacked messages, first raises exception, second succeeds
+        queue1 = "test_queue1"
+        queue2 = "test_queue2"
+        subscription_path1 = (
+            "projects/project-id/subscriptions/test_subscription1"
+        )
+        subscription_path2 = (
+            "projects/project-id/subscriptions/test_subscription2"
+        )
+        ack_ids = ["ack_id1"]
+
+        qdesc1 = QueueDescriptor(
+            name=queue1,
+            topic_path="projects/project-id/topics/test_topic1",
+            subscription_id="test_subscription1",
+            subscription_path=subscription_path1,
+        )
+        qdesc2 = QueueDescriptor(
+            name=queue2,
+            topic_path="projects/project-id/topics/test_topic2",
+            subscription_id="test_subscription2",
+            subscription_path=subscription_path2,
+        )
+
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue1)] = qdesc1
+        channel._queue_cache[channel.entity_name(queue2)] = qdesc2
+        qdesc1.unacked_ids.extend(ack_ids)
+        qdesc2.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+
+        call_count = [0]
+
+        def modify_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise Exception("First queue error")
+            return None
+
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=modify_side_effect
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger'):
+            channel._extend_unacked_deadline()
+
+            # Then: Both queues are processed despite the first one failing
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
 
     def test_after_reply_message_received(self, channel):
         queue = 'test-queue'

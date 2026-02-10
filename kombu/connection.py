@@ -171,7 +171,7 @@ class Connection:
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
+                 alternates=None, credential_provider=None, **kwargs):
         alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -179,7 +179,8 @@ class Connection:
             'password': password, 'virtual_host': virtual_host,
             'port': port, 'insist': insist, 'ssl': ssl,
             'transport': transport, 'connect_timeout': connect_timeout,
-            'login_method': login_method, 'heartbeat': heartbeat
+            'login_method': login_method, 'heartbeat': heartbeat,
+            'credential_provider': credential_provider
         }
 
         if hostname and not isinstance(hostname, str):
@@ -260,7 +261,7 @@ class Connection:
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
                      insist, ssl, transport, connect_timeout,
-                     login_method, heartbeat):
+                     login_method, heartbeat, credential_provider):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -281,6 +282,7 @@ class Connection:
         self.ssl = ssl
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
+        self.credential_provider = credential_provider
 
     def register_with_event_loop(self, loop):
         self.transport.register_with_event_loop(self.connection, loop)
@@ -692,6 +694,7 @@ class Connection:
             ('heartbeat', self.heartbeat),
             ('failover_strategy', self._failover_strategy),
             ('alternates', self.alt),
+            ('credential_provider', self.credential_provider),
         )
         return info
 
@@ -1035,6 +1038,26 @@ class Connection:
 BrokerConnection = Connection
 
 
+class PooledConnection(Connection):
+    """Wraps :class:`kombu.Connection`.
+
+    This wrapper modifies :meth:`kombu.Connection.__exit__` to close the connection
+    in case any exception occurred while the context was active.
+    """
+
+    def __init__(self, pool, **kwargs):
+        self._pool = pool
+        super().__init__(**kwargs)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None and self._pool.limit:
+            self._pool.replace(self)
+        return super().__exit__(exc_type, exc_val, exc_tb)
+
+
 class ConnectionPool(Resource):
     """Pool of connections."""
 
@@ -1046,7 +1069,7 @@ class ConnectionPool(Resource):
         super().__init__(limit=limit)
 
     def new(self):
-        return self.connection.clone()
+        return PooledConnection(self, **dict(self.connection._info(resolve=False)))
 
     def release_resource(self, resource):
         try:

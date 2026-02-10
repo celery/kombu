@@ -5,7 +5,7 @@ from unittest.mock import Mock
 import pytest
 
 from kombu import Connection, Producer, pools
-from kombu.connection import ConnectionPool
+from kombu.connection import ConnectionPool, PooledConnection
 from kombu.utils.collections import eqhash
 
 
@@ -36,6 +36,18 @@ class test_ProducerPool:
         with pytest.raises(IOError):
             self.pool.create_producer()
         conn.release.assert_called_with()
+
+    def test_exception_during_connection_use(self):
+        """Tests that the connection is closed in case of an exception."""
+        with pytest.raises(IOError):
+            with self.pool.acquire() as producer:
+                producer.__connection__ = Mock(spec=PooledConnection)
+                producer.__connection__._pool = self.connections
+                producer.publish = Mock()
+                producer.publish.side_effect = IOError()
+                producer.publish("test data")
+
+        self.connections.replace.assert_called_once()
 
     def test_prepare_release_connection_on_error(self):
         pp = Mock()
