@@ -55,7 +55,7 @@ from uuid import NAMESPACE_OID, uuid3
 from _socket import gethostname
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        NotFound, PermissionDenied)
 from google.api_core.retry import Retry
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import query
@@ -280,12 +280,9 @@ class Channel(virtual.Channel):
         return topic_path
 
     def _is_topic_exists(self, topic_path: str) -> bool:
-        topics = self.publisher.list_topics(
-            request={"project": f'projects/{self.project_id}'}
-        )
-        for t in topics:
-            if t.name == topic_path:
-                return True
+        with suppress(NotFound):
+            self.publisher.get_topic(request={"topic": topic_path})
+            return True
         return False
 
     def _create_subscription(
