@@ -1603,7 +1603,7 @@ class SentinelChannel(Channel):
         deduplicate; every kombu message carries a unique delivery_tag,
         so this is both collision-free and safe for repeated commands.
         """
-        if not self.sentinel_fanout_compat:
+        if not (self.sentinel_fanout_compat and self._compat_enabled):
             return super()._receive_one(c)
 
         response = None
