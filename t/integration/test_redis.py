@@ -287,11 +287,13 @@ class test_RedisQueueExpiration:
                     serializer='json'
                 )
 
-        # Check if expiration was set on queue key
         keyprefix = connection.transport_options.get('global_keyprefix', '')
         queue_key = f"{keyprefix}{test_queue.name}"
         ttl = redis_client.pttl(queue_key)
         assert ttl > 0 and ttl <= expires_ms, f"Expected TTL to be set but got {ttl}"
+
+        sleep(expires_sec + 5)
+        assert redis_client.pttl(queue_key) == -2, "Queue key should be gone after TTL"
 
     def test_expiration_gets_reset_on_put(self, connection, redis_client):
         """Test that expiration gets reset when putting new message to queue."""
