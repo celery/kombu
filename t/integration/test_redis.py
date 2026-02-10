@@ -405,8 +405,9 @@ class test_RedisQueueExpiration:
                         priority=priority
                     )
 
-        # Check if expiration was set on all priority queue keys
-        priority_keys = [key for key in redis_client.keys("*") if test_queue.name in key]
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        pattern = f"{keyprefix}{test_queue.name}*"
+        priority_keys = list(redis_client.scan_iter(match=pattern))
         assert priority_keys, "Expected to find queue keys with priorities"
 
         for key in priority_keys:
