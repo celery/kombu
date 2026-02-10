@@ -712,8 +712,6 @@ class Channel(virtual.Channel):
     _async_pool = None
     _pool = None
 
-    _expires = {}
-
     from_transport_options = (
         virtual.Channel.from_transport_options +
         ('sep',
@@ -748,6 +746,7 @@ class Channel(virtual.Channel):
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
         self._registered = False
+        self._expires = {}
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
