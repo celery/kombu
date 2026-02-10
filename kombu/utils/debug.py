@@ -78,8 +78,8 @@ class Logwrapped:
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None
-    ) -> None:
-        self.instance.__exit__(exc_type, exc_val, exc_tb)
+    ) -> bool | None:
+        return self.instance.__exit__(exc_type, exc_val, exc_tb)
 
     def __repr__(self) -> str:
         return repr(self.instance)

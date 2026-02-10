@@ -92,3 +92,24 @@ class test_Logwrapped:
             args = instance.__exit__.call_args[0]
             assert args[0] is TestError
             assert isinstance(args[1], TestError)
+
+    def test_context_manager_suppresses_exception(self):
+        """Test that Logwrapped suppresses exceptions when __exit__ returns True."""
+        with patch('kombu.utils.debug.get_logger'):
+            instance = Mock()
+            instance.__enter__ = Mock(return_value=instance)
+            instance.__exit__ = Mock(return_value=True)
+
+            W = Logwrapped(instance, 'kombu.test')
+
+            class TestError(Exception):
+                pass
+
+            # Exception should be suppressed because __exit__ returns True
+            with W:
+                raise TestError("this should be suppressed")
+
+            instance.__exit__.assert_called_once()
+            args = instance.__exit__.call_args[0]
+            assert args[0] is TestError
+            assert isinstance(args[1], TestError)
