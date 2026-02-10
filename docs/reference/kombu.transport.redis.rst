@@ -35,6 +35,16 @@
     .. versionadded:: 5.7.0
     Supports Queue TTL
 
+    Queue arguments
+    ---------------
+    The following queue argument is supported. Pass it per-queue via
+    ``Queue(expires=...)`` or ``Queue(..., queue_arguments={'x-expires': ...})``,
+    not as a connection-level transport option.
+
+    ``x-expires`` (int)
+        Time in milliseconds for the queue to expire if there is no activity.
+        The queue will be automatically deleted after this period of inactivity.
+
     Channel
     -------
 
