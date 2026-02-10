@@ -1614,6 +1614,8 @@ class SentinelChannel(Channel):
             raise
         if isinstance(response, (list, tuple)):
             payload = self._handle_message(c, response)
+            if payload is None:
+                return None
             if bytes_to_str(payload['type']).endswith('message'):
                 channel = bytes_to_str(payload['channel'])
                 if payload['data']:
