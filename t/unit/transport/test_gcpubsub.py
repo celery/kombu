@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, call, patch
 import pytest
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        NotFound, PermissionDenied)
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
                                       Transport, UnackedIds)
@@ -242,26 +242,23 @@ class test_Channel:
 
     def test_is_topic_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        mock_topic = MagicMock()
-        mock_topic.name = topic_path
-        channel.publisher.list_topics.return_value = [mock_topic]
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is True
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_is_topic_not_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        channel.publisher.list_topics.return_value = []
+        channel.publisher.get_topic.side_effect = NotFound("not found")
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is False
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_create_subscription(self, channel):
