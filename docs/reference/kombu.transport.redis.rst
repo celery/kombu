@@ -32,6 +32,9 @@
     while the queue is empty.  
     The default remains **1 second** to stay backward-compatible.
 
+    .. versionadded:: 5.7.0
+    Supports Queue TTL
+
     Channel
     -------
 
