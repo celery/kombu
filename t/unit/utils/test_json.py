@@ -101,7 +101,12 @@ class test_JSONEncoder:
 
         register_type(MyDecimal, "mydecimal", str, MyDecimal)
         original = {'md': MyDecimal('3314132.13363235235324234123213213214134')}
-        loaded_value = loads(dumps(original))
+        serialized_str = dumps(original)
+        # Ensure our custom marker is used instead of the default Decimal handler
+        assert '"mydecimal"' in serialized_str
+        loaded_value = loads(serialized_str)
+        # Ensure the decoded value is of the registered subclass, not just equal
+        assert isinstance(loaded_value['md'], MyDecimal)
         assert original == loaded_value
 
     def test_register_type_with_new_type(self):
