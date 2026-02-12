@@ -4,7 +4,7 @@ import sys
 import uuid
 from collections import namedtuple
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -36,7 +36,7 @@ class test_JSONEncoder:
 
     @pytest.mark.freeze_time("2015-10-21")
     def test_datetime(self):
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         now_utc = now.replace(tzinfo=ZoneInfo("UTC"))
 
         original = {
@@ -113,7 +113,7 @@ class test_JSONEncoder:
             lambda o: o.isoformat(),
             lambda o: "should never be used"
         )
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         serialized_str = dumps({'now': now})
         deserialized_value = loads(serialized_str)
 
