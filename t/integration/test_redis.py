@@ -40,6 +40,20 @@ def connection(request):
 
 
 @pytest.fixture()
+def redis_client(connection):
+    """Direct Redis client for verification."""
+    conn_info = connection.info()
+    host = conn_info['hostname'] or 'localhost'
+    port = conn_info['port'] or 6379
+
+    return redis.Redis(
+        host=host,
+        port=port,
+        decode_responses=True
+    )
+
+
+@pytest.fixture()
 def invalid_connection():
     return kombu.Connection('redis://localhost:12345')
 
@@ -243,3 +257,161 @@ def test_RedisConnection_check_hostname(monkeypatch):
         # note the host/port here is irrelevant because
         # connect will raise a CertificateError due to hostname mismatch
         kombu.Connection('rediss://localhost:12345?ssl_check_hostname=true').connect()
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisQueueExpiration:
+    """Integration tests for Redis queue expiration feature."""
+
+    def test_queue_expiration_set(self, connection, redis_client):
+        """Test that expiration is set correctly on queue using direct expires parameter."""
+        expires_ms = 2000
+        expires_sec = expires_ms / 1000
+
+        test_queue = kombu.Queue(
+            'expire_test_queue',
+            routing_key='expire_test_queue',
+            expires=expires_sec
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                producer.publish(
+                    {'msg': 'test message'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='json'
+                )
+
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        queue_key = f"{keyprefix}{test_queue.name}"
+        ttl = redis_client.pttl(queue_key)
+        assert ttl > 0 and ttl <= expires_ms, f"Expected TTL to be set but got {ttl}"
+
+        sleep(expires_sec + 5)
+        assert redis_client.pttl(queue_key) == -2, "Queue key should be gone after TTL"
+
+    def test_expiration_gets_reset_on_put(self, connection, redis_client):
+        """Test that expiration gets reset when putting new message to queue."""
+        expires_ms = 5000
+        expires_sec = expires_ms / 1000
+
+        test_queue = kombu.Queue(
+            'expire_reset_test_queue',
+            routing_key='expire_reset_test_queue',
+            expires=expires_sec
+        )
+
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        queue_key = f"{keyprefix}{test_queue.name}"
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                producer.publish(
+                    {'msg': 'first message'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='json'
+                )
+
+                sleep(expires_ms / 2000)  # Wait for half the TTL
+                producer.publish(
+                    {'msg': 'second message'},
+                    retry=True,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    declare=[test_queue],
+                    serializer='json'
+                )
+
+        ttl = redis_client.pttl(queue_key)
+        assert ttl > 0, "TTL should be updated after publishing a new message"
+
+    def test_expiration_gets_reset_on_get(self, connection, redis_client):
+        """Test that expiration gets reset when getting a message from queue."""
+        expires_ms = 5000
+        expires_sec = expires_ms / 1000
+
+        test_queue = kombu.Queue(
+            'expire_get_test_queue',
+            routing_key='expire_get_test_queue',
+            expires=expires_sec
+        )
+
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        queue_key = f"{keyprefix}{test_queue.name}"
+
+        received_messages = []
+
+        def callback(body, message):
+            received_messages.append(body)
+            message.ack()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                consumer = kombu.Consumer(
+                    conn, [test_queue], accept=['json']
+                )
+                consumer.register_callback(callback)
+
+                for i in range(3):
+                    producer.publish(
+                        {'msg': f'message {i}'},
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='json'
+                    )
+
+                # Wait for some time but not enough for queue to expire
+                sleep(expires_ms / 2000)  # Wait for half the TTL
+                with consumer:
+                    conn.drain_events(timeout=1)
+
+        assert len(received_messages) == 1, "Should have received one message"
+        ttl = redis_client.pttl(queue_key)
+        assert ttl > 0, "TTL should be updated after consuming a message"
+
+    def test_queue_expires_for_all_priorities(self, connection, redis_client):
+        """Test that expiration is set for all priority queues."""
+        expires_ms = 2000
+        expires_sec = expires_ms / 1000
+
+        test_queue = kombu.Queue(
+            'expire_priority_test_queue',
+            routing_key='expire_priority_test_queue',
+            expires=expires_sec,
+            max_priority=10
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for priority in [0, 3, 6, 9]:
+                    producer.publish(
+                        {'msg': f'priority {priority} message'},
+                        retry=True,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                        serializer='json',
+                        priority=priority
+                    )
+
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        pattern = f"{keyprefix}{test_queue.name}*"
+        priority_keys = list(redis_client.scan_iter(match=pattern))
+        assert priority_keys, "Expected to find queue keys with priorities"
+
+        for key in priority_keys:
+            ttl = redis_client.pttl(key)
+            assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
