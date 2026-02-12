@@ -360,6 +360,9 @@ class QoS:
             e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
             with a single ``prefetch_count`` keyword argument.
         initial_value (int): Initial prefetch count value..
+        max_prefetch (int or None): Maximum allowed prefetch count. If specified
+            as an integer, increment_eventually will not allow the value to exceed this limit.
+            If None (the default), there is no upper limit on the prefetch count.
 
     Example:
     -------
@@ -396,10 +399,11 @@ class QoS:
 
     prev = None
 
-    def __init__(self, callback, initial_value):
+    def __init__(self, callback, initial_value, max_prefetch=None):
         self.callback = callback
         self._mutex = threading.RLock()
         self.value = initial_value or 0
+        self.max_prefetch = max_prefetch
 
     def increment_eventually(self, n=1):
         """Increment the value, but do not update the channels QoS.
@@ -407,11 +411,15 @@ class QoS:
         Note:
         ----
             The MainThread will be responsible for calling :meth:`update`
-            when necessary.
+            when necessary. If max_prefetch is set, the value will not
+            exceed this limit.
         """
         with self._mutex:
             if self.value:
-                self.value = self.value + max(n, 0)
+                new_value = self.value + max(n, 0)
+                if self.max_prefetch is not None and new_value > self.max_prefetch:
+                    new_value = self.max_prefetch
+                self.value = new_value
         return self.value
 
     def decrement_eventually(self, n=1):

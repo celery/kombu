@@ -209,7 +209,13 @@ class Channel(virtual.Channel):
         return count
 
     def _size(self, queue):
-        return self._query_all(queue).count()
+        obj = self._get_or_create(queue)
+        return (
+            self.session.query(self.message_cls)
+            .filter(self.message_cls.queue_id == obj.id)
+            .filter(self.message_cls.visible == True)
+            .count()
+        )
 
     def _declarative_cls(self, name, base, ns):
         if name not in class_registry:

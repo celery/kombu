@@ -516,3 +516,81 @@ class test_QoS:
         qos.set(12)
         assert qos.prev == 12
         qos.set(qos.prev)
+
+    def test_qos_max_prefetch_limit(self):
+        """Test that max_prefetch limits increment_eventually."""
+        qos = self._QoS(5)
+        qos.max_prefetch = 10
+
+        # Normal increment should work
+        assert qos.increment_eventually() == 6
+        assert qos.increment_eventually(3) == 9
+
+        # Should reach the limit
+        assert qos.increment_eventually(2) == 10
+
+        # Should not exceed the limit
+        assert qos.increment_eventually() == 10
+        assert qos.increment_eventually(5) == 10
+
+        # Decrement should still work
+        assert qos.decrement_eventually(2) == 8
+
+        # Can increment again within limit
+        assert qos.increment_eventually() == 9
+
+    def test_qos_max_prefetch_no_limit(self):
+        """Test that QoS works normally when max_prefetch is None."""
+        qos = self._QoS(5)
+        qos.max_prefetch = None
+
+        # Should increment normally without limit
+        assert qos.increment_eventually() == 6
+        assert qos.increment_eventually(100) == 106
+        assert qos.increment_eventually(1000) == 1106
+
+    def test_qos_max_prefetch_zero_initial(self):
+        """Test max_prefetch with zero initial value (disabled QoS)."""
+        qos = self._QoS(0)
+        qos.max_prefetch = 5
+
+        # Zero value should remain zero regardless of max_prefetch
+        assert qos.increment_eventually() == 0
+        assert qos.increment_eventually(10) == 0
+
+    def test_qos_max_prefetch_constructor(self):
+        """Test that max_prefetch can be set via constructor."""
+        callback = Mock()
+        qos = QoS(callback, 5, max_prefetch=10)
+
+        assert qos.max_prefetch == 10
+        assert qos.value == 5
+
+    def test_qos_max_prefetch_thread_safety(self):
+        """Test that max_prefetch enforcement is thread-safe."""
+        qos = self._QoS(8)
+        qos.max_prefetch = 10
+
+        def increment_to_limit():
+            for i in range(100):  # Try to increment many times
+                qos.increment_eventually()
+
+        from threading import Thread
+        threads = [Thread(target=increment_to_limit) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Should never exceed max_prefetch despite multiple threads
+        assert qos.value == 10
+
+    def test_qos_max_prefetch_negative_increment(self):
+        """Test that negative increments are handled with max_prefetch."""
+        qos = self._QoS(5)
+        qos.max_prefetch = 10
+
+        # Negative increments should be treated as 0 (existing behavior)
+        assert qos.increment_eventually(-5) == 5
+        assert qos.increment_eventually(8) == 10  # Should hit limit
+        assert qos.increment_eventually(-2) == 10  # Should stay at limit

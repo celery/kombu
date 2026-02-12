@@ -42,7 +42,9 @@ class test_SqlAlchemy:
             assert channel.queue_cls.__table__.name == 'kombu_queue'
             assert channel.message_cls.__table__.name == 'kombu_message'
 
+            assert channel._size('celery') == 0
             channel._put('celery', 'DATA_SIMPLE_QUEUEING')
+            assert channel._size('celery') == 1
             assert channel._get('celery') == 'DATA_SIMPLE_QUEUEING'
         finally:
             conn.release()
