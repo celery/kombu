@@ -590,13 +590,22 @@ class Channel(virtual.Channel):
                     len(qdesc.unacked_ids),
                     list(qdesc.unacked_ids),
                 )
-                self.subscriber.modify_ack_deadline(
-                    request={
-                        "subscription": qdesc.subscription_path,
-                        "ack_ids": list(qdesc.unacked_ids),
-                        "ack_deadline_seconds": self.ack_deadline_seconds,
-                    }
-                )
+                try:
+                    self.subscriber.modify_ack_deadline(
+                        request={
+                            "subscription": qdesc.subscription_path,
+                            "ack_ids": list(qdesc.unacked_ids),
+                            "ack_deadline_seconds": self.ack_deadline_seconds,
+                        }
+                    )
+                except Exception as exc:
+                    logger.error(
+                        'thread [%s]: failed to extend ack deadline for %s: %s',
+                        thread_id,
+                        qdesc.subscription_path,
+                        exc,
+                        exc_info=True,
+                    )
         logger.info(
             'unacked deadline extension thread [%s] stopped', thread_id
         )
