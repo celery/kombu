@@ -356,6 +356,7 @@ class Channel(virtual.Channel):
             qdesc.topic_path,
             encoded_message.encode("utf-8"),
             routing_key=routing_key,
+            retry=Retry(deadline=self.retry_timeout_seconds),
         )
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
