@@ -93,6 +93,32 @@ sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
 to 900 seconds. After the mentioned period, a new token will be created.
 
+--------------------
+Predefined Exchanges
+--------------------
+When using a fanout exchange with this transport, messages are sent to an AWS SNS, which then forwards the messages
+to all subscribed queues.
+
+The default behavior of this transport is to create the SNS topic when the exchange is first declared.
+However, it is also possible to use a predefined SNS topic instead of letting the transport create it.
+
+.. code-block:: python
+
+    transport_options = {
+      'predefined_exchanges': {
+        'exchange-1': {
+          'arn': 'arn:aws:sns:us-east-1:xxx:exchange-1',
+          'access_key_id': 'a',
+          'secret_access_key': 'b',
+        },
+        'exchange-2.fifo': {
+          'arn': 'arn:aws:sns:us-east-1:xxx:exchange-2',
+          'access_key_id': 'c',
+          'secret_access_key': 'd',
+        },
+      }
+    }
+
 .. versionadded:: 5.6.0
     sts_token_buffer_time (seconds) is the time by which you want to refresh your token
     earlier than its actual expiration time, defaults to 0 (no time buffer will be added),
@@ -135,7 +161,6 @@ Features
 * Supports TTL: No
 """
 
-
 from __future__ import annotations
 
 import base64
@@ -147,23 +172,29 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from queue import Empty
-from typing import Any
+from typing import Any, Literal
 
-from botocore.client import Config
+from botocore.client import BaseClient, Config
 from botocore.exceptions import ClientError
 from vine import ensure_promise, promise, transform
 
 from kombu.asynchronous import get_event_loop
-from kombu.asynchronous.aws.ext import boto3, exceptions
+from kombu.asynchronous.aws.ext import boto3
+from kombu.asynchronous.aws.ext import exceptions as aws_exceptions
 from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 from kombu.asynchronous.aws.sqs.message import AsyncMessage
 from kombu.log import get_logger
+from kombu.transport import virtual
+from kombu.transport.SQS.exceptions import (AccessDeniedQueueException,
+                                            DoesNotExistQueueException,
+                                            InvalidQueueException,
+                                            UndefinedQueueException)
 from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
-from . import virtual
+from .SNS import SNS
 
 logger = get_logger(__name__)
 
@@ -177,33 +208,15 @@ CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 #: SQS bulk get supports a maximum of 10 messages at a time.
 SQS_MAX_MESSAGES = 10
 
+_SUPPORTED_BOTO_SERVICES = Literal["sqs", "sns"]
+
 
 def maybe_int(x):
     """Try to convert x' to int, or return x' if that fails."""
     try:
         return int(x)
-    except ValueError:
+    except (TypeError, ValueError):
         return x
-
-
-class UndefinedQueueException(Exception):
-    """Predefined queues are being used and an undefined queue was used."""
-
-
-class InvalidQueueException(Exception):
-    """Predefined queues are being used and configuration is not valid."""
-
-
-class AccessDeniedQueueException(Exception):
-    """Raised when access to the AWS queue is denied.
-
-    This may occur if the permissions are not correctly set or the
-    credentials are invalid.
-    """
-
-
-class DoesNotExistQueueException(Exception):
-    """The specified queue doesn't exist."""
 
 
 class QoS(virtual.QoS):
@@ -253,7 +266,7 @@ class QoS(virtual.QoS):
         task_name = message_headers['task']
         number_of_retries = int(
             message.properties['delivery_info']['sqs_message']
-                              ['Attributes']['ApproximateReceiveCount'])
+            ['Attributes']['ApproximateReceiveCount'])
         return task_name, number_of_retries
 
 
@@ -267,12 +280,15 @@ class Channel(virtual.Channel):
     _asynsqs = None
     _predefined_queue_async_clients = {}  # A client for each predefined queue
     _sqs = None
+    _fanout = None
     _predefined_queue_clients = {}  # A client for each predefined queue
     _queue_cache = {}  # SQS queue name => SQS queue URL
     _noack_queues = set()
+
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
-    B64_REGEX = re.compile(rb'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
+    B64_REGEX = re.compile(
+        rb'^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$')
 
     def __init__(self, *args, **kwargs):
         if boto3 is None:
@@ -319,20 +335,26 @@ class Channel(virtual.Channel):
             queue_name = url.split('/')[-1]
             self._queue_cache[queue_name] = url
 
-    def basic_consume(self, queue, no_ack, *args, **kwargs):
+    def basic_consume(self, queue, no_ack, callback, consumer_tag, **kwargs):
+        # If using a Fanout exchange, then subscribe to the queue to SNS
+        self._subscribe_queue_to_fanout_exchange_if_required(queue)
+
         if no_ack:
             self._noack_queues.add(queue)
         if self.hub:
             self._loop1(queue)
-        return super().basic_consume(
-            queue, no_ack, *args, **kwargs
-        )
+        return super().basic_consume(queue, no_ack, callback, consumer_tag, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         if consumer_tag in self._consumers:
             queue = self._tag_to_queue[consumer_tag]
             self._noack_queues.discard(queue)
         return super().basic_cancel(consumer_tag)
+
+    def _queue_bind(self, exchange, routing_key, pattern, queue):
+        # If the exchange is a fanout exchange, initialise the SNS topic
+        if self._exchange_is_fanout(exchange):
+            self.fanout.initialise_exchange(exchange)
 
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return a single payload message from one of our queues.
@@ -391,9 +413,9 @@ class Channel(virtual.Channel):
         except KeyError:
             if self.predefined_queues:
                 raise UndefinedQueueException((
-                    "Queue with name '{}' must be "
-                    "defined in 'predefined_queues'."
-                ).format(sqs_qname))
+                                                  "Queue with name '{}' must be "
+                                                  "defined in 'predefined_queues'."
+                                              ).format(sqs_qname))
 
             raise DoesNotExistQueueException(
                 f"Queue with name '{sqs_qname}' doesn't exist in SQS"
@@ -417,15 +439,17 @@ class Channel(virtual.Channel):
                 attributes['FifoQueue'] = 'true'
 
             resp = self._create_queue(sqs_qname, attributes)
-            self._queue_cache[sqs_qname] = resp['QueueUrl']
-            return resp['QueueUrl']
+            queue_url = self._queue_cache[sqs_qname] = resp["QueueUrl"]
+            return queue_url
 
     def _create_queue(self, queue_name, attributes):
         """Create an SQS queue with a given name and nominal attributes."""
         # Allow specifying additional boto create_queue Attributes
         # via transport options
         if self.predefined_queues:
-            return None
+            raise UndefinedQueueException(
+                f"Queue with name '{queue_name}' must be defined in 'predefined_queues'."
+            )
 
         attributes.update(
             self.transport_options.get('sqs-creation-attributes') or {},
@@ -443,8 +467,13 @@ class Channel(virtual.Channel):
 
         return self.sqs(queue=queue_name).create_queue(**create_params)
 
-    def _delete(self, queue, *args, **kwargs):
-        """Delete queue by name."""
+    def _delete(self, queue, exchange: str | None = None, *args, **kwargs):
+        """Delete queue by name.
+
+        :param queue: The queue name
+        :param exchange: The exchange name, if any
+        :return: None
+        """
         if self.predefined_queues:
             return
 
@@ -452,6 +481,12 @@ class Channel(virtual.Channel):
         self.sqs().delete_queue(
             QueueUrl=q_url,
         )
+        # If the exchange is a fanout exchange, unsubscribe the queue to the SNS topic
+        if exchange and self._exchange_is_fanout(exchange):
+            self.fanout.subscriptions.unsubscribe_queue(
+                queue_name=queue, exchange_name=exchange
+            )
+
         self._queue_cache.pop(queue, None)
 
     def _put(self, queue, message, **kwargs):
@@ -545,20 +580,19 @@ class Channel(virtual.Channel):
         """
         q_url: str = self._new_queue(queue)
         client = self.sqs(queue=queue)
-
-        message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames') or []
-
-        message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames') or []
+        msg_attrs = self.get_message_attributes
 
         params: dict[str, Any] = {
             'QueueUrl': q_url,
             'MaxNumberOfMessages': max_number_of_messages,
             'WaitTimeSeconds': wait_time_seconds or self.wait_time_seconds,
-            'MessageAttributeNames': message_attribute_names,
-            'MessageSystemAttributeNames': message_system_attribute_names
         }
+
+        if msg_sys_attrs := msg_attrs.get('MessageSystemAttributeNames'):
+            params['MessageSystemAttributeNames'] = msg_sys_attrs
+
+        if msg_attrs := msg_attrs.get('MessageAttributeNames'):
+            params['MessageAttributeNames'] = msg_attrs
 
         return client.receive_message(**params)
 
@@ -600,12 +634,13 @@ class Channel(virtual.Channel):
                 max_number_of_messages=max_count
             )
 
-            if resp.get('Messages'):
-                for m in resp['Messages']:
-                    m['Body'] = AsyncMessage(body=m['Body']).decode()
-                for msg in self._messages_to_python(resp['Messages'], queue):
+            if messages := resp.get("Messages"):
+                for m in messages:
+                    m["Body"] = AsyncMessage(body=m["Body"]).decode()
+                for msg in self._messages_to_python(messages, queue):
                     self.connection._deliver(msg, queue)
                 return
+
         raise Empty()
 
     def _get(self, queue):
@@ -616,10 +651,10 @@ class Channel(virtual.Channel):
             max_number_of_messages=1
         )
 
-        if resp.get('Messages'):
-            body = AsyncMessage(body=resp['Messages'][0]['Body']).decode()
-            resp['Messages'][0]['Body'] = body
-            return self._messages_to_python(resp['Messages'], queue)[0]
+        if messages := resp.get("Messages"):
+            body = AsyncMessage(body=messages[0]["Body"]).decode()
+            messages[0]["Body"] = body
+            return self._messages_to_python(messages, queue)[0]
         raise Empty()
 
     def _loop1(self, queue, _=None):
@@ -707,7 +742,7 @@ class Channel(virtual.Channel):
                 if exception.response['Error']['Code'] == 'AccessDenied':
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
-                        )
+                    )
                 super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
@@ -718,7 +753,8 @@ class Channel(virtual.Channel):
         c = self.sqs(queue=self.canonical_queue_name(queue))
         resp = c.get_queue_attributes(
             QueueUrl=q_url,
-            AttributeNames=['ApproximateNumberOfMessages'])
+            AttributeNames=['ApproximateNumberOfMessages']
+        )
         return int(resp['Attributes']['ApproximateNumberOfMessages'])
 
     def _purge(self, queue):
@@ -743,9 +779,34 @@ class Channel(virtual.Channel):
         #         if "can't set attribute" not in str(exc):
         #             raise
 
-    def new_sqs_client(self, region, access_key_id,
-                       secret_access_key, session_token=None):
-        session = boto3.session.Session(
+    def new_sqs_client(
+        self, region, access_key_id, secret_access_key, session_token=None
+    ):
+        """Create a new SQS client.
+
+        :param region: The AWS region to use.
+        :param access_key_id: The AWS access key ID for authenticating with boto.
+        :param secret_access_key: The AWS secret access key for authenticating with boto.
+        :param session_token: The AWS session token for authenticating with boto, if required.
+        :returns: A Boto SQS client.
+        """
+        return self._new_boto_client(
+            service="sqs",
+            region=region,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+            session_token=session_token,
+        )
+
+    def _new_boto_client(
+        self,
+        service: _SUPPORTED_BOTO_SERVICES,
+        region,
+        access_key_id,
+        secret_access_key,
+        session_token=None,
+    ):
+        session = boto3.Session(
             region_name=region,
             aws_access_key_id=access_key_id,
             aws_secret_access_key=secret_access_key,
@@ -759,35 +820,40 @@ class Channel(virtual.Channel):
             client_kwargs['endpoint_url'] = self.endpoint_url
         client_config = self.transport_options.get('client-config') or {}
         config = Config(**client_config)
-        return session.client('sqs', config=config, **client_kwargs)
+        return session.client(service, config=config, **client_kwargs)
 
     def sqs(self, queue=None):
+        # If a queue has been provided, check if the queue has been defined already. Reuse it's client if possible.
         if queue is not None and self.predefined_queues:
-
+            # Raise if queue is not defined
             if queue not in self.predefined_queues:
                 raise UndefinedQueueException(
-                    f"Queue with name '{queue}' must be defined"
-                    " in 'predefined_queues'.")
-            q = self.predefined_queues[queue]
-            if self.transport_options.get('sts_role_arn'):
-                return self._handle_sts_session(queue, q)
-            if not self.transport_options.get('sts_role_arn'):
-                if queue in self._predefined_queue_clients:
-                    return self._predefined_queue_clients[queue]
-                else:
-                    c = self._predefined_queue_clients[queue] = \
-                        self.new_sqs_client(
-                            region=q.get('region', self.region),
-                            access_key_id=q.get(
-                                'access_key_id', self.conninfo.userid),
-                            secret_access_key=q.get(
-                                'secret_access_key', self.conninfo.password)
-                    )
-                    return c
+                    f"Queue with name '{queue}' must be defined in 'predefined_queues'."
+                )
 
+            q = self.predefined_queues[queue]
+
+            # Handle authenticating boto client with tokens
+            if self.transport_options.get("sts_role_arn"):
+                return self._handle_sts_session(queue, q)
+
+            # If the queue has already been defined, then return the client for the queue
+            if c := self._predefined_queue_clients.get(queue):
+                return c
+
+            # Create client, add it to the queue map and return
+            c = self._predefined_queue_clients[queue] = self.new_sqs_client(
+                region=q.get("region", self.region),
+                access_key_id=q.get("access_key_id", self.conninfo.userid),
+                secret_access_key=q.get("secret_access_key", self.conninfo.password),
+            )
+            return c
+
+        # If SQS client has been initialised, return it
         if self._sqs is not None:
             return self._sqs
 
+        # Initialise a new SQS client and return it
         c = self._sqs = self.new_sqs_client(
             region=self.region,
             access_key_id=self.conninfo.userid,
@@ -795,19 +861,87 @@ class Channel(virtual.Channel):
         )
         return c
 
-    def _handle_sts_session(self, queue, q):
-        region = q.get('region', self.region)
-        if not hasattr(self, 'sts_expiration'):  # STS token - token init
-            return self._new_predefined_queue_client_with_sts_session(queue, region)
-        # STS token - refresh if expired
-        elif self.sts_expiration.replace(tzinfo=None) < datetime.now(timezone.utc).replace(tzinfo=None):
-            return self._new_predefined_queue_client_with_sts_session(queue, region)
-        else:  # STS token - ruse existing
-            if queue not in self._predefined_queue_clients:
-                return self._new_predefined_queue_client_with_sts_session(queue, region)
-            return self._predefined_queue_clients[queue]
+    @property
+    def fanout(self) -> SNS:
+        """Provides SNS fanout functionality.
 
-    def generate_sts_session_token_with_buffer(self, role_arn, token_expiry_seconds, token_buffer_seconds=0):
+        This method returns the fanout instance. If an instance of the fanout class
+        has not been initialised, then initialise it.
+
+        :returns: An instance of SNS fanout class.
+        """
+        # If an SNS class has not been initialised, then initialise it
+        if not self._fanout:
+            self._fanout = SNS(self)
+        return self._fanout
+
+    def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:
+        """Removes any stale SNS topic subscriptions.
+
+        This method will check that any SQS subscriptions on the SNS topic are associated with SQS queues. If not,
+        it will remove the stale subscription. This method will only work if the 'supports_fanout' property is True.
+
+        :param exchange_name: The exchange to check for stale subscriptions
+        :return: None
+        """
+        if self._exchange_is_fanout(exchange_name):
+            return self.fanout.subscriptions.cleanup(exchange_name)
+        return None
+
+    def _handle_sts_session(self, queue: str, q):
+        """Checks if the STS token needs renewing for SQS.
+
+        :param queue: The queue name
+        :param q: The queue object
+        :returns: The SQS client with a refreshed STS token
+        """
+        region = q.get("region", self.region)
+
+        # Check if a token refresh is needed
+        if self.is_sts_token_refresh_required(
+            name=queue,
+            client_map=self._predefined_queue_clients,
+            expire_time=getattr(self, "sts_expiration", None),
+        ):
+            return self._new_predefined_queue_client_with_sts_session(queue, region)
+
+        # If token refresh is not required, return existing client
+        return self._predefined_queue_clients[queue]
+
+    @staticmethod
+    def is_sts_token_refresh_required(
+        name: Any,
+        client_map: dict[str, BaseClient],
+        expire_time: datetime | None = None,
+    ) -> bool:
+        """Checks if the STS token needs renewing.
+
+        This method will check different STS expiry times depending on the service the token was used for.
+
+        :param name: Either the queue name or exchange name
+        :param client_map: Map of client names to boto3 clients. Either the queue or exchange map
+        :param expire_time: The datetime when the token expires.
+        :returns: True if the token needs renewing, False otherwise.
+        """
+        # Get the expiry time of the STS token depending on the service
+        if not expire_time:  # STS token - token init
+            return True
+        # STS token - refresh if expired
+        elif (
+            expire_time.replace(tzinfo=None) <
+            datetime.now(timezone.utc).replace(tzinfo=None)
+        ):
+            return True
+        # STS token = refresh if exchange or queue is not in client map
+        elif not client_map.get(name):
+            return True
+        # STS token - reuse existing
+        else:
+            return False
+
+    def generate_sts_session_token_with_buffer(
+        self, role_arn, token_expiry_seconds, token_buffer_seconds=0
+    ):
         """Generate STS session credentials with an optional expiration buffer.
 
         The buffer is only applied if it is less than `token_expiry_seconds` to prevent an expired token.
@@ -818,22 +952,29 @@ class Channel(virtual.Channel):
         return credentials
 
     def _new_predefined_queue_client_with_sts_session(self, queue, region):
-        sts_creds = self.generate_sts_session_token_with_buffer(
-            self.transport_options.get('sts_role_arn'),
-            self.transport_options.get('sts_token_timeout', 900),
-            self.transport_options.get('sts_token_buffer_time', 0),
-        )
-        self.sts_expiration = sts_creds['Expiration']
+        # Handle STS token refresh
+        sts_creds = self.get_sts_credentials()
+        self.sts_expiration = sts_creds["Expiration"]
+
+        # Get new client and return it
         c = self._predefined_queue_clients[queue] = self.new_sqs_client(
             region=region,
-            access_key_id=sts_creds['AccessKeyId'],
-            secret_access_key=sts_creds['SecretAccessKey'],
-            session_token=sts_creds['SessionToken'],
+            access_key_id=sts_creds["AccessKeyId"],
+            secret_access_key=sts_creds["SecretAccessKey"],
+            session_token=sts_creds["SessionToken"],
         )
         return c
 
-    def generate_sts_session_token(self, role_arn, token_expiry_seconds):
-        sts_client = boto3.client('sts')
+    def get_sts_credentials(self):
+        return self.generate_sts_session_token_with_buffer(
+            self.transport_options.get("sts_role_arn"),
+            self.transport_options.get("sts_token_timeout", 900),
+            self.transport_options.get("sts_token_buffer_time", 0),
+        )
+
+    @staticmethod
+    def generate_sts_session_token(role_arn: str, token_expiry_seconds: int):
+        sts_client = boto3.client("sts")
         sts_policy = sts_client.assume_role(
             RoleArn=role_arn,
             RoleSessionName='Celery',
@@ -843,26 +984,28 @@ class Channel(virtual.Channel):
 
     def asynsqs(self, queue=None):
         message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames')
+            "MessageSystemAttributeNames"
+        )
         message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames')
+            "MessageAttributeNames"
+        )
 
         if queue is not None and self.predefined_queues:
-            if queue in self._predefined_queue_async_clients and \
-               not hasattr(self, 'sts_expiration'):
+            if queue in self._predefined_queue_async_clients and not hasattr(
+                self, "sts_expiration"
+            ):
                 return self._predefined_queue_async_clients[queue]
-            if queue not in self.predefined_queues:
-                raise UndefinedQueueException((
-                    "Queue with name '{}' must be defined in "
-                    "'predefined_queues'."
-                ).format(queue))
-            q = self.predefined_queues[queue]
-            c = self._predefined_queue_async_clients[queue] = \
-                AsyncSQSConnection(
-                    sqs_connection=self.sqs(queue=queue),
-                    region=q.get('region', self.region),
-                    message_system_attribute_names=message_system_attribute_names,
-                    message_attribute_names=message_attribute_names
+
+            if not (q := self.predefined_queues.get(queue)):
+                raise UndefinedQueueException(
+                    f"Queue with name '{queue}' must be defined in 'predefined_queues'."
+                )
+
+            c = self._predefined_queue_async_clients[queue] = AsyncSQSConnection(
+                sqs_connection=self.sqs(queue=queue),
+                region=q.get("region", self.region),
+                message_system_attribute_names=message_system_attribute_names,
+                message_attribute_names=message_attribute_names,
             )
             return c
 
@@ -893,7 +1036,12 @@ class Channel(virtual.Channel):
     @cached_property
     def predefined_queues(self):
         """Map of queue_name to predefined queue settings."""
-        return self.transport_options.get('predefined_queues', {})
+        return self.transport_options.get("predefined_queues", {})
+
+    @cached_property
+    def predefined_exchanges(self):
+        """Map of exchange_name to predefined SNS client."""
+        return self.transport_options.get("predefined_exchanges", {})
 
     @cached_property
     def queue_name_prefix(self):
@@ -901,7 +1049,7 @@ class Channel(virtual.Channel):
 
     @cached_property
     def supports_fanout(self):
-        return False
+        return self.transport_options.get("supports_fanout", False)
 
     @cached_property
     def region(self):
@@ -928,17 +1076,14 @@ class Channel(virtual.Channel):
             if self.conninfo.port is not None:
                 port = f':{self.conninfo.port}'
             else:
-                port = ''
-            return '{}://{}{}'.format(
-                scheme,
-                self.conninfo.hostname,
-                port
-            )
+                port = ""
+            return f"{scheme}://{self.conninfo.hostname}{port}"
 
     @cached_property
     def wait_time_seconds(self) -> int:
-        return self.transport_options.get('wait_time_seconds',
-                                          self.default_wait_time_seconds)
+        return self.transport_options.get(
+            "wait_time_seconds", self.default_wait_time_seconds
+        )
 
     @cached_property
     def sqs_base64_encoding(self):
@@ -972,7 +1117,8 @@ class Channel(virtual.Channel):
             }
 
         if isinstance(fetch, list):
-            message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in fetch] else (
+            message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                                fetch] else (
                 list(set(fetch + [APPROXIMATE_RECEIVE_COUNT]))
             )
 
@@ -981,21 +1127,104 @@ class Channel(virtual.Channel):
             attrs = fetch.get('MessageAttributeNames', None)
 
             if isinstance(system, list):
-                message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in system] else (
+                message_system_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                                    system] else (
                     list(set(system + [APPROXIMATE_RECEIVE_COUNT]))
                 )
 
             if isinstance(attrs, list) and attrs:
-                message_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in attrs] else (
+                message_attrs = ['ALL'] if 'ALL'.lower() in [s.lower() for s in
+                                                             attrs] else (
                     list(set(attrs))
                 )
 
         return {
-            'MessageAttributeNames': sorted(message_attrs) if message_attrs else [],
-            'MessageSystemAttributeNames': (
-                sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
-            )
+            "MessageAttributeNames": sorted(message_attrs) if message_attrs else [],
+            "MessageSystemAttributeNames": (
+                sorted(message_system_attrs)
+                if message_system_attrs
+                else [APPROXIMATE_RECEIVE_COUNT]
+            ),
         }
+
+    def _put_fanout(self, exchange: str, message: dict, routing_key, **kwargs):
+        """Add a message to fanout queues by adding a notification to an SNS topic, with subscribed SQS queues.
+
+        :param exchange: The name of the exchange to add the notification to.
+        :param message: The message to be added.
+        :param routing_key: The routing key to use for the notification.
+        :param kwargs: Additional parameters
+        :return: None
+        """
+        # Extract properties and message attributes from message for SNS parameters
+        request_params = {}
+        properties = message.get("properties", {})
+        message_attrs = properties.get("message_attributes")
+
+        # If the exchange is a FIFO topic, then add required MessageGroupId and
+        # MessageDeduplicationId attributes
+        if exchange.endswith(".fifo"):
+            request_params["MessageGroupId"] = properties.get(
+                "MessageGroupId", "default"
+            )
+            request_params["MessageDeduplicationId"] = properties.get(
+                "MessageDeduplicationId", str(uuid.uuid4())
+            )
+
+        # Add the message to the SNS topic
+        self.fanout.publish(
+            exchange_name=exchange,
+            message=dumps(message),
+            message_attributes=message_attrs,
+            request_params=request_params,
+        )
+
+    def _subscribe_queue_to_fanout_exchange_if_required(self, queue_name: str) -> None:
+        """Subscribe the given queue to the SNS topic if this is a fanout exchange.
+
+        :param queue_name: The name of the queue to subscribe.
+        :return: None
+        """
+        try:
+            # Get the exchange name for the queue and get the exchange type
+            exchange_name = self._get_exchange_for_queue(queue_name)
+
+            # If the exchange is a fanout type and the transport supports it,
+            # subscribe the queue to the topic
+            if self._exchange_is_fanout(exchange_name):
+                self.fanout.subscriptions.subscribe_queue(
+                    queue_name=queue_name, exchange_name=exchange_name
+                )
+
+        except UndefinedQueueException as e:
+            logger.debug(
+                f"Not subscribing queue '{queue_name}' to fanout exchange: {e}"
+            )
+
+    def _exchange_is_fanout(self, exchange_name: str) -> bool:
+        """Check if the given exchange is a fanout type.
+
+        :param exchange_name: The name of the exchange to check.
+        :return: True if the exchange is a fanout type and the transport supports it,
+        False otherwise.
+        """
+        try:
+            exchange_type = self.state.exchanges[exchange_name]["type"]
+            return exchange_type == "fanout" and self.supports_fanout
+        except KeyError:
+            return False
+
+    def _get_exchange_for_queue(self, queue_name: str) -> str:
+        """Get the exchange name for the given queue.
+
+        :param queue_name: The name of the queue to get the exchange for.
+        :return: The name of the exchange for the given queue.
+        :raises UndefinedQueueException: If the queue has not been defined.
+        """
+        try:
+            return list(self.state.queue_index[queue_name])[0].exchange
+        except (KeyError, IndexError):
+            raise UndefinedQueueException(f"Queue '{queue_name}' has not been defined.")
 
     # —————————————————————————————————————————————————————————————
     # _message_to_python helper methods (extracted for testing/readability)
@@ -1078,7 +1307,7 @@ class Channel(virtual.Channel):
         # add SQS metadata
         di.update({
             'sqs_message': message,
-            'sqs_queue':   q_url,
+            'sqs_queue': q_url,
         })
         props['delivery_tag'] = message['ReceiptHandle']
 
@@ -1168,10 +1397,10 @@ class Transport(virtual.Transport):
     default_port = None
     connection_errors = (
         virtual.Transport.connection_errors +
-        (exceptions.BotoCoreError, socket.error)
+        (aws_exceptions.BotoCoreError, socket.error)
     )
     channel_errors = (
-        virtual.Transport.channel_errors + (exceptions.BotoCoreError,)
+        virtual.Transport.channel_errors + (aws_exceptions.BotoCoreError,)
     )
     driver_type = 'sqs'
     driver_name = 'sqs'

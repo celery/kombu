@@ -7,16 +7,20 @@ slightly.
 from __future__ import annotations
 
 import base64
+import logging
 import os
 import random
 import string
 from datetime import datetime, timedelta, timezone
 from queue import Empty
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
 from kombu import Connection, Exchange, Queue, messaging
+from kombu.transport.SQS import UndefinedQueueException, maybe_int
+
+from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
 
@@ -25,27 +29,6 @@ from botocore.exceptions import ClientError  # noqa
 from kombu.transport import SQS  # noqa
 
 SQS_Channel_sqs = SQS.Channel.sqs
-
-
-example_predefined_queues = {
-    'queue-1': {
-        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
-        'access_key_id': 'a',
-        'secret_access_key': 'b',
-        'backoff_tasks': ['svc.tasks.tasks.task1'],
-        'backoff_policy': {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640}
-    },
-    'queue-2': {
-        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-2',
-        'access_key_id': 'c',
-        'secret_access_key': 'd',
-    },
-    'queue-3.fifo': {
-        'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-3.fifo',
-        'access_key_id': 'e',
-        'secret_access_key': 'f',
-    }
-}
 
 
 class SQSMessageMock:
@@ -163,6 +146,16 @@ class SQSClientMock:
         del self._queues[queue_name]
 
 
+class test_MaybeInt:
+    @pytest.mark.parametrize("input_value", [100, "100", 100.0])
+    def test_working(self, input_value):
+        assert maybe_int(input_value) == 100
+
+    @pytest.mark.parametrize("input_value", [None, "hello", Mock(), "100.0"])
+    def test_nan(self, input_value):
+        assert maybe_int(input_value) is input_value
+
+
 class test_Channel:
 
     def handleMessageCallback(self, message):
@@ -240,12 +233,14 @@ class test_Channel:
     def test_region(self):
         _environ = dict(os.environ)
 
-        # when the region is unspecified
-        connection = Connection(transport=SQS.Transport)
-        channel = connection.channel()
-        assert channel.transport_options.get('region') is None
-        # the default region is us-east-1
-        assert channel.region == 'us-east-1'
+        # when the region is unspecified, and Boto3 also does not have a region set
+        with patch("kombu.transport.SQS.boto3.Session") as boto_session_mock:
+            boto_session_mock().region_name = None
+            connection = Connection(transport=SQS.Transport)
+            channel = connection.channel()
+            assert channel.transport_options.get("region") is None
+            # the default region is us-east-1
+            assert channel.region == "us-east-1"
 
         # when boto3 picks a region
         os.environ['AWS_DEFAULT_REGION'] = 'us-east-2'
@@ -284,20 +279,85 @@ class test_Channel:
     def test_entity_name(self):
         assert self.channel.entity_name('foo') == 'foo'
         assert self.channel.entity_name('foo.bar-baz*qux_quux') == \
-            'foo-bar-baz_qux_quux'
+               'foo-bar-baz_qux_quux'
         assert self.channel.entity_name('abcdef.fifo') == 'abcdef.fifo'
+
+    @patch('kombu.transport.virtual.base.Channel.basic_consume')
+    @patch('kombu.transport.SQS.Channel._noack_queues')
+    def test_basic_consume_no_ack(self, noack_queues_mock, basic_consume_mock):
+        # Arrange
+        channel = self.connection.channel()
+
+        # Act
+        channel.basic_consume(
+            self.queue_name,
+            no_ack=True,
+            callback=self.handleMessageCallback,
+            consumer_tag='unittest'
+        )
+
+        # Assert
+        assert noack_queues_mock.add.call_args_list == [call(self.queue_name)]
+        assert basic_consume_mock.call_args_list == [
+            call(self.queue_name, True, self.handleMessageCallback, 'unittest')
+        ]
+
+    @patch('kombu.transport.virtual.base.Channel.basic_cancel')
+    @patch('kombu.transport.SQS.Channel._noack_queues')
+    def test_basic_cancel(self, noack_queues_mock, basic_consume_mock):
+        # Arrange
+        consumer_tag = 'unittest'
+        channel = self.connection.channel()
+        channel._consumers.add(consumer_tag)
+        channel._tag_to_queue[consumer_tag] = 'test-queue'
+
+        # Act
+        channel.basic_cancel(consumer_tag)
+
+        # Assert
+        assert noack_queues_mock.discard.call_args_list == [call("test-queue")]
+        assert basic_consume_mock.call_args_list == [call(consumer_tag)]
 
     def test_resolve_queue_url(self):
         queue_name = 'unittest_queue'
         assert self.sqs_conn_mock._queues[queue_name].url == \
-            self.channel._resolve_queue_url(queue_name)
+               self.channel._resolve_queue_url(queue_name)
 
     def test_new_queue(self):
         queue_name = 'new_unittest_queue'
-        self.channel._new_queue(queue_name)
-        assert queue_name in self.sqs_conn_mock._queues.keys()
-        # For cleanup purposes, delete the queue and the queue file
-        self.channel._delete(queue_name)
+        try:
+            self.channel._new_queue(queue_name)
+            assert queue_name in self.sqs_conn_mock._queues.keys()
+        finally:
+            # For cleanup purposes, delete the queue and the queue file
+            self.channel._delete(queue_name)
+
+    def test_new_fifo_queue(self):
+        queue_name = 'new_unittest_queue.fifo'
+        try:
+            self.channel._new_queue(queue_name)
+
+            queue: QueueMock = self.sqs_conn_mock._queues[queue_name]
+            assert isinstance(queue, QueueMock)
+            assert queue.url == 'https://sqs.us-east-1.amazonaws.com/xxx/' + queue_name
+            assert queue.creation_attributes == {'VisibilityTimeout': str(self.channel.visibility_timeout),
+                                                 'FifoQueue': 'true'}
+
+        finally:
+            # For cleanup purposes, delete the queue and the queue file
+            self.channel._delete(queue_name)
+
+    def test_create_queue_with_predefined_queues(self):
+        queue_name = 'new_unittest_queue'
+        try:
+            with pytest.raises(
+                UndefinedQueueException,
+                match=f"Queue with name '{queue_name}' must be defined in 'predefined_queues'."
+            ):
+                self.channel.predefined_queues = example_predefined_queues
+                self.channel._create_queue(queue_name, {})
+        finally:
+            self.channel.predefined_queues = set()
 
     def test_new_queue_custom_creation_attributes(self):
         self.connection.transport_options['sqs-creation-attributes'] = {
@@ -370,6 +430,63 @@ class test_Channel:
         assert queue_name not in self.channel._queue_cache
         assert queue_name not in self.sqs_conn_mock._queues
 
+    def test_delete_with_predefined_queues(self):
+        queue_name = 'new_unittest_queue'
+        try:
+            self.channel.predefined_queues = example_predefined_queues
+            assert self.channel._delete(queue_name) is None
+        finally:
+            self.channel.predefined_queues = set()
+
+    def test_delete_with_no_exchange(
+        self, mock_fanout, channel_fixture, connection_fixture
+    ):
+        # Arrange
+        queue_name = "queue-1"
+        channel_fixture.supports_fanout = True
+        channel_fixture.predefined_queues = {}
+        self.sqs_conn_mock._queues[queue_name] = QueueMock(
+            url="https://sqs.us-east-1.amazonaws.com/xxx/queue-1"
+        )
+        channel_fixture._new_queue(queue_name)
+        assert queue_name in channel_fixture._queue_cache
+
+        # Act
+        channel_fixture._delete(queue_name)
+
+        # Assert
+        assert mock_fanout.unsubscribe_queue.call_count == 0
+        assert queue_name not in channel_fixture._queue_cache
+        assert queue_name not in self.sqs_conn_mock._queues
+
+    def test_delete_with_fanout_exchange(
+        self, mock_fanout, channel_fixture, connection_fixture
+    ):
+        # Arrange
+        queue_name = "queue-1"
+        channel_fixture.supports_fanout = True
+        channel_fixture.predefined_queues = {}
+        self.sqs_conn_mock._queues[queue_name] = QueueMock(
+            url="https://sqs.us-east-1.amazonaws.com/xxx/queue-1"
+        )
+
+        # Declare fanout exchange and queue
+        exchange_name = "test_SQS_fanout"
+        exchange = Exchange(exchange_name, type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+        assert queue_name in channel_fixture._queue_cache
+
+        # Act
+        channel_fixture._delete(queue_name, exchange_name)
+
+        # Assert
+        assert mock_fanout.subscriptions.unsubscribe_queue.call_args_list == [
+            call(queue_name="queue-1", exchange_name="test_SQS_fanout")
+        ]
+        assert queue_name not in channel_fixture._queue_cache
+        assert queue_name not in self.sqs_conn_mock._queues
+
     def test_get_from_sqs(self):
         # Test getting a single message
         message = 'my test message'
@@ -421,17 +538,17 @@ class test_Channel:
 
             # json/dict (encoded and raw)
             (
-                b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
-                b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}',
-                b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
-                b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
+                    b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
+                    b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}',
+                    b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
+                    b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
             ),
             (
-                base64.b64encode(
+                    base64.b64encode(
+                        b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
+                        b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'),
                     b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
-                    b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'),
-                b'{"id": "4cc7438e-afd4-4f8f-a2f3-f46567e7ca77","task": "celery.task.PingTask",'
-                b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
+                    b'"args": [],"kwargs": {},"retries": 0,"eta": "2009-11-17T12:30:56.527191"}'
             )
 
         ],
@@ -478,23 +595,24 @@ class test_Channel:
         [
             # No 'properties'
             (
-                {},
-                "raw string",
-                {"ReceiptHandle": "RH"},
-                "http://queue.url",
-                True,
+                    {},
+                    "raw string",
+                    {"ReceiptHandle": "RH"},
+                    "http://queue.url",
+                    True,
             ),
             # Existing 'properties'
             (
-                {"properties": {"delivery_info": {"foo": "bar"}}},
-                "ignored",
-                {"ReceiptHandle": "TAG"},
-                "https://q.url",
-                False,
+                    {"properties": {"delivery_info": {"foo": "bar"}}},
+                    "ignored",
+                    {"ReceiptHandle": "TAG"},
+                    "https://q.url",
+                    False,
             ),
         ],
     )
-    def test_envelope_payload(self, initial_payload, raw_text, message, q_url, expect_body):
+    def test_envelope_payload(self, initial_payload, raw_text, message, q_url,
+                              expect_body):
         payload = initial_payload.copy()
         result = self.channel._envelope_payload(payload, raw_text, message, q_url)
 
@@ -530,14 +648,16 @@ class test_Channel:
         # Get the messages now
         kombu_messages = []
         for m in self.sqs_conn_mock.receive_message(
-                QueueUrl=q_url,
-                MaxNumberOfMessages=kombu_message_count)['Messages']:
+            QueueUrl=q_url,
+            MaxNumberOfMessages=kombu_message_count
+        )['Messages']:
             m['Body'] = Message(body=m['Body']).decode()
             kombu_messages.append(m)
         json_messages = []
         for m in self.sqs_conn_mock.receive_message(
-                QueueUrl=q_url,
-                MaxNumberOfMessages=json_message_count)['Messages']:
+            QueueUrl=q_url,
+            MaxNumberOfMessages=json_message_count
+        )['Messages']:
             m['Body'] = Message(body=m['Body']).decode()
             json_messages.append(m)
 
@@ -683,110 +803,185 @@ class test_Channel:
             'WaitTimeSeconds': self.channel.wait_time_seconds,
         }
         assert get_list_args[3] == \
-            self.channel.sqs().get_queue_url(self.queue_name).url
+               self.channel.sqs().get_queue_url(self.queue_name).url
         assert get_list_kwargs['parent'] == self.queue_name
         assert get_list_kwargs['protocol_params'] == {
             'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
             'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
 
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_predefined_queue_creates_queue_existing_client(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-1'
+
+        mock_async_instance = Mock(name='async_sqs_instance')
+        mock_async_sqs.side_effect = AssertionError("This should not have been called")
+
+        self.channel.predefined_queues = example_predefined_queues
+        self.channel._predefined_queue_async_clients[queue_name] = mock_async_instance
+
+        # Act
+        result = self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert result is mock_async_instance
+        assert mock_async_sqs.call_count == 0
+
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_predefined_queue_creates_queue_no_existing_client(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-1'
+        expected_queue_mock = self.channel.sqs(queue_name)
+
+        mock_async_instance = Mock(name='async_sqs_instance')
+        mock_async_sqs.return_value = mock_async_instance
+
+        self.channel.predefined_queues = example_predefined_queues
+        self.channel._predefined_queue_async_clients = {}
+
+        # Act
+        result = self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert result is mock_async_instance
+        assert mock_async_sqs.call_args_list == [
+            call(
+                sqs_connection=expected_queue_mock,
+                region='us-east-1',
+                message_system_attribute_names=['ApproximateReceiveCount'],
+                message_attribute_names=[]
+            )
+        ]
+
+    @patch('kombu.transport.SQS.AsyncSQSConnection')
+    def test_asynsqs_with_defined_queues_but_missing(self, mock_async_sqs):
+        # Arrange
+        queue_name = 'queue-6'
+
+        self.channel.predefined_queues = example_predefined_queues
+
+        # Act
+        with pytest.raises(
+            UndefinedQueueException,
+            match="Queue with name 'queue-6' must be defined in 'predefined_queues'."
+        ):
+            self.channel.asynsqs(queue=queue_name)
+
+        # Assert
+        assert mock_async_sqs.call_count == 0
+
     @pytest.mark.parametrize('fetch_attributes,expected', [
         # as a list for backwards compatibility
         (
-            None,
-            {'message_system_attribute_names': ['ApproximateReceiveCount'], 'message_attribute_names': []}
+                None,
+                {'message_system_attribute_names': ['ApproximateReceiveCount'],
+                 'message_attribute_names': []}
         ),
         (
-            'incorrect_value',
-            {'message_system_attribute_names': ['ApproximateReceiveCount'], 'message_attribute_names': []}
+                'incorrect_value',
+                {'message_system_attribute_names': ['ApproximateReceiveCount'],
+                 'message_attribute_names': []}
         ),
         (
-            [],
-            {'message_system_attribute_names': ['ApproximateReceiveCount'], 'message_attribute_names': []}
+                [],
+                {'message_system_attribute_names': ['ApproximateReceiveCount'],
+                 'message_attribute_names': []}
         ),
         (
-            ['ALL'],
-            {'message_system_attribute_names': ['ALL'], 'message_attribute_names': []}
+                ['ALL'],
+                {'message_system_attribute_names': ['ALL'],
+                 'message_attribute_names': []}
         ),
         (
-            ['SenderId', 'SentTimestamp'],
-            {
-                'message_system_attribute_names': ['SenderId', 'ApproximateReceiveCount', 'SentTimestamp'],
-                'message_attribute_names': []
-            }
+                ['SenderId', 'SentTimestamp'],
+                {
+                    'message_system_attribute_names': ['SenderId',
+                                                       'ApproximateReceiveCount',
+                                                       'SentTimestamp'],
+                    'message_attribute_names': []
+                }
         ),
         # As a dict using only System Attributes
         (
-            {'MessageSystemAttributeNames': ['All']},
-            {
-                'message_system_attribute_names': ['ALL'],
-                'message_attribute_names': []
-            }
+                {'MessageSystemAttributeNames': ['All']},
+                {
+                    'message_system_attribute_names': ['ALL'],
+                    'message_attribute_names': []
+                }
         ),
         (
-            {'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp']},
-            {
-                'message_system_attribute_names': ['SenderId', 'ApproximateReceiveCount', 'SentTimestamp'],
-                'message_attribute_names': []
-            }
+                {'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp']},
+                {
+                    'message_system_attribute_names': ['SenderId',
+                                                       'ApproximateReceiveCount',
+                                                       'SentTimestamp'],
+                    'message_attribute_names': []
+                }
         ),
         (
-            {'MessageSystemAttributeNames_BAD_KEY': ['That', 'This']},
-            {
-                'message_system_attribute_names': ['ApproximateReceiveCount'],
-                'message_attribute_names': []
-            }
+                {'MessageSystemAttributeNames_BAD_KEY': ['That', 'This']},
+                {
+                    'message_system_attribute_names': ['ApproximateReceiveCount'],
+                    'message_attribute_names': []
+                }
         ),
         # As a dict using only Message Attributes
         (
-            {'MessageAttributeNames': ['All']},
-            {
-                'message_system_attribute_names': ['ApproximateReceiveCount'],
-                'message_attribute_names': ["ALL"]
-            }
+                {'MessageAttributeNames': ['All']},
+                {
+                    'message_system_attribute_names': ['ApproximateReceiveCount'],
+                    'message_attribute_names': ["ALL"]
+                }
         ),
         (
-            {'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
-            {
-                'message_system_attribute_names': ['ApproximateReceiveCount'],
-                'message_attribute_names': ['CustomProp', 'CustomProp2']
-            }
+                {'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
+                {
+                    'message_system_attribute_names': ['ApproximateReceiveCount'],
+                    'message_attribute_names': ['CustomProp', 'CustomProp2']
+                }
         ),
         (
-            {'MessageAttributeNames_BAD_KEY': ['That', 'This']},
-            {
-                'message_system_attribute_names': ['ApproximateReceiveCount'],
-                'message_attribute_names': []
-            }
+                {'MessageAttributeNames_BAD_KEY': ['That', 'This']},
+                {
+                    'message_system_attribute_names': ['ApproximateReceiveCount'],
+                    'message_attribute_names': []
+                }
         ),
         # all together now...
         (
-            {
-                'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
-                'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
-            {
-                'message_system_attribute_names': ['SenderId', 'SentTimestamp', 'ApproximateReceiveCount'],
-                'message_attribute_names': ['CustomProp', 'CustomProp2']
-            }
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']},
+                {
+                    'message_system_attribute_names': ['SenderId', 'SentTimestamp',
+                                                       'ApproximateReceiveCount'],
+                    'message_attribute_names': ['CustomProp', 'CustomProp2']
+                }
         ),
     ])
     @pytest.mark.usefixtures('hub')
     def test_fetch_message_attributes(self, fetch_attributes, expected):
-        self.connection.transport_options['fetch_message_attributes'] = fetch_attributes  # type: ignore
+        self.connection.transport_options[
+            'fetch_message_attributes'] = fetch_attributes  # type: ignore
         async_sqs_conn = self.channel.asynsqs(self.queue_name)
-        assert async_sqs_conn.message_system_attribute_names == sorted(expected['message_system_attribute_names'])
-        assert async_sqs_conn.message_attribute_names == expected['message_attribute_names']
+        assert async_sqs_conn.message_system_attribute_names == sorted(
+            expected['message_system_attribute_names'])
+        assert async_sqs_conn.message_attribute_names == expected[
+            'message_attribute_names']
 
     @pytest.mark.usefixtures('hub')
     def test_fetch_message_attributes_does_not_exist(self):
         self.connection.transport_options = {}
         async_sqs_conn = self.channel.asynsqs(self.queue_name)
-        assert async_sqs_conn.message_system_attribute_names == ['ApproximateReceiveCount']
+        assert async_sqs_conn.message_system_attribute_names == [
+            'ApproximateReceiveCount']
         assert async_sqs_conn.message_attribute_names == []
 
     def test_drain_events_with_empty_list(self):
         def mock_can_consume():
             return False
+
         self.channel.qos.can_consume = mock_can_consume
         with pytest.raises(Empty):
             self.channel.drain_events()
@@ -805,6 +1000,7 @@ class test_Channel:
         def on_message_delivered(message, queue):
             current_delivery_tag[0] += 1
             self.channel.qos.append(message, current_delivery_tag[0])
+
         self.channel.connection._deliver.side_effect = on_message_delivered
 
         # Now, generate all the messages
@@ -839,6 +1035,7 @@ class test_Channel:
         def on_message_delivered(message, queue):
             current_delivery_tag[0] += 1
             self.channel.qos.append(message, current_delivery_tag[0])
+
         self.channel.connection._deliver.side_effect = on_message_delivered
 
         # Now, generate all the messages
@@ -1073,7 +1270,8 @@ class test_Channel:
         channel = connection.channel()
 
         def apply_backoff_policy(
-                queue_name, delivery_tag, retry_policy, backoff_tasks):
+            queue_name, delivery_tag, retry_policy, backoff_tasks
+        ):
             return None
 
         mock_apply_policy = Mock(side_effect=apply_backoff_policy)
@@ -1100,14 +1298,6 @@ class test_Channel:
         })
         channel = connection.channel()
 
-        def extract_task_name_and_number_of_retries(delivery_tag):
-            return 'svc.tasks.tasks.task1', 2
-
-        mock_extract_task_name_and_number_of_retries = Mock(
-            side_effect=extract_task_name_and_number_of_retries)
-        channel.qos.extract_task_name_and_number_of_retries = \
-            mock_extract_task_name_and_number_of_retries
-
         queue_name = "queue-1"
 
         exchange = Exchange('test_SQS', type='direct')
@@ -1116,6 +1306,8 @@ class test_Channel:
 
         message_mock = Mock()
         message_mock.delivery_info = {'routing_key': queue_name}
+        message_mock.headers = {"task": "svc.tasks.tasks.task1"}
+        message_mock.properties = {"delivery_info": {"sqs_message": {"Attributes": {"ApproximateReceiveCount": 2}}}}
         channel.qos._delivered['test_message_id'] = message_mock
 
         channel.sqs = Mock()
@@ -1149,7 +1341,7 @@ class test_Channel:
         sqs_queue_mock.send_message.assert_called_once()
         assert 'MessageGroupId' in sqs_queue_mock.send_message.call_args[1]
         assert 'MessageDeduplicationId' in \
-            sqs_queue_mock.send_message.call_args[1]
+               sqs_queue_mock.send_message.call_args[1]
 
     def test_predefined_queues_put_with_message_group_id(self):
         connection = Connection(transport=SQS.Transport, transport_options={
@@ -1365,20 +1557,20 @@ class test_Channel:
         assert sqs_queue_mock.send_message.call_args[1]['DelaySeconds'] == 10
 
     @pytest.mark.parametrize('predefined_queues', (
-        {
-            'invalid-fifo-queue-name': {
-                'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue.fifo',
-                'access_key_id': 'a',
-                'secret_access_key': 'b'
+            {
+                'invalid-fifo-queue-name': {
+                    'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue.fifo',
+                    'access_key_id': 'a',
+                    'secret_access_key': 'b'
+                }
+            },
+            {
+                'standard-queue.fifo': {
+                    'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue',
+                    'access_key_id': 'a',
+                    'secret_access_key': 'b'
+                }
             }
-        },
-        {
-            'standard-queue.fifo': {
-                'url': 'https://sqs.us-east-1.amazonaws.com/xxx/queue',
-                'access_key_id': 'a',
-                'secret_access_key': 'b'
-            }
-        }
     ))
     def test_predefined_queues_invalid_configuration(self, predefined_queues):
         connection = Connection(transport=SQS.Transport, transport_options={
@@ -1434,7 +1626,8 @@ class test_Channel:
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
 
-        expiration_time = datetime.now(timezone.utc) + timedelta(seconds=sts_token_timeout)
+        expiration_time = datetime.now(timezone.utc) + timedelta(
+            seconds=sts_token_timeout)
 
         mock_generate_sts_session_token.side_effect = [
             {
@@ -1451,7 +1644,8 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_called_once()
-        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
+        assert channel.sts_expiration == expiration_time - timedelta(
+            seconds=sts_token_buffer_time)
 
     def test_sts_session_expired(self):
         # Arrange
@@ -1502,7 +1696,8 @@ class test_Channel:
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
 
-        expiration_time = datetime.now(timezone.utc) + timedelta(seconds=sts_token_timeout)
+        expiration_time = datetime.now(timezone.utc) + timedelta(
+            seconds=sts_token_timeout)
 
         mock_generate_sts_session_token.side_effect = [
             {
@@ -1519,7 +1714,8 @@ class test_Channel:
 
         # Assert
         mock_generate_sts_session_token.assert_called_once()
-        assert channel.sts_expiration == expiration_time - timedelta(seconds=sts_token_buffer_time)
+        assert channel.sts_expiration == expiration_time - timedelta(
+            seconds=sts_token_buffer_time)
 
     def test_sts_session_not_expired(self):
         # Arrange
@@ -1572,12 +1768,15 @@ class test_Channel:
         channel.generate_sts_session_token = mock_generate_sts_session_token
 
         # Act
-        sqs(queue='queue-1')
-        sqs(queue='queue-2')
+        sqs(queue="queue-1")
+        sqs(queue="queue-2")
+
+        # Call queue a second time to check new STS token is not generated
+        sqs(queue="queue-2")
 
         # Assert
-        mock_generate_sts_session_token.assert_called()
-        mock_new_sqs_client.assert_called()
+        assert mock_generate_sts_session_token.call_count == 2
+        assert mock_new_sqs_client.call_count == 2
 
     def test_message_attribute(self):
         message = 'my test message'
@@ -1585,8 +1784,492 @@ class test_Channel:
             'Attribute1': {'DataType': 'String',
                            'StringValue': 'STRING_VALUE'}
         }
-        )
+                              )
         output_message = self.queue(self.channel).get()
         assert message == output_message.payload
         # It's not propagated to the properties
-        assert 'message_attributes' not in output_message.properties
+        assert "message_attributes" not in output_message.properties
+
+    def test_exchange_is_fanout_no_defined_queues(self, channel_fixture):
+        # Act & assert
+        assert channel_fixture._exchange_is_fanout("queue-1") is False
+
+    def test_exchange_is_fanout_with_fanout_exchange(
+        self, channel_fixture: SQS.Channel, mock_fanout
+    ):
+        # Arrange
+        channel_fixture.supports_fanout = True
+
+        # One fanout exchange and queue
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # One direct exchange and queue
+        exchange = Exchange("test_SQS", type="direct")
+        queue = Queue("queue-2", exchange)
+        queue(channel_fixture).declare()
+
+        # Act & Assert
+        assert channel_fixture._exchange_is_fanout("test_SQS_fanout") is True
+        assert channel_fixture._exchange_is_fanout("test_SQS") is False
+
+    def test_get_exchange_for_queue_with_defined_queue(
+        self, channel_fixture: SQS.Channel, mock_fanout
+    ):
+        # Arrange
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        result = channel_fixture._get_exchange_for_queue("queue-1")
+
+        # Assert
+        assert result == "test_SQS_fanout"
+
+    def test_get_exchange_for_queue_with_queue_not_defined(
+        self, channel_fixture: SQS.Channel, mock_fanout
+    ):
+        # Arrange
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        with pytest.raises(
+            UndefinedQueueException, match="Queue 'queue-2' has not been defined."
+        ):
+            channel_fixture._get_exchange_for_queue("queue-2")
+
+    def test_remove_stale_sns_subscriptions_no_defined_queues(
+        self, mock_fanout, channel_fixture
+    ):
+        # Arrange
+        mock_fanout.subscriptions.cleanup.return_value = "This should not be returned"
+
+        # Act
+        result = channel_fixture.remove_stale_sns_subscriptions("queue-1")
+
+        # Assert
+        assert result is None
+        assert mock_fanout.subscriptions.cleanup.call_count == 0
+
+    def test_remove_stale_sns_subscriptions_with_fanout_exchange(
+        self, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        # Arrange
+        mock_fanout.subscriptions.cleanup.return_value = None
+        channel_fixture.supports_fanout = True
+
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        result = channel_fixture.remove_stale_sns_subscriptions("test_SQS_fanout")
+
+        # Assert
+        assert result is None
+        assert mock_fanout.subscriptions.cleanup.call_count == 1
+
+    def test_subscribe_queue_to_fanout_exchange_if_required_with_fanout(
+        self, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        # Arrange
+        mock_fanout.subscriptions.subscribe_queue.return_value = None
+        channel_fixture.supports_fanout = True
+
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        result = channel_fixture._subscribe_queue_to_fanout_exchange_if_required(
+            "queue-1"
+        )
+
+        # Assert
+        assert result is None
+        assert mock_fanout.subscriptions.subscribe_queue.call_args_list == [
+            call(queue_name="queue-1", exchange_name="test_SQS_fanout")
+        ]
+
+    def test_subscribe_queue_to_fanout_exchange_if_required_without_fanout(
+        self, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        # Arrange
+        mock_fanout.cleanup.return_value = None
+        channel_fixture.supports_fanout = True
+
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        exchange = Exchange("test_SQS", type="direct")
+        queue = Queue("queue-2", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        result = channel_fixture._subscribe_queue_to_fanout_exchange_if_required(
+            "queue-2"
+        )
+
+        # Assert
+        assert result is None
+        assert mock_fanout.subscribe_queue.call_count == 0
+
+    def test_subscribe_queue_to_fanout_exchange_if_required_not_defined(
+        self, mock_fanout, channel_fixture: SQS.Channel, caplog
+    ):
+        # Arrange
+        caplog.set_level(logging.DEBUG)
+        mock_fanout.cleanup.return_value = None
+        channel_fixture.supports_fanout = True
+
+        exchange = Exchange("test_SQS_fanout", type="fanout")
+        queue = Queue("queue-1", exchange)
+        queue(channel_fixture).declare()
+
+        # Act
+        result = channel_fixture._subscribe_queue_to_fanout_exchange_if_required(
+            "queue-2"
+        )
+
+        # Assert
+        assert result is None
+        assert mock_fanout.subscribe_queue.call_count == 0
+        assert (
+                   "Not subscribing queue 'queue-2' to fanout exchange: Queue 'queue-2' has"
+                   " not been defined."
+               ) in caplog.text
+
+    @patch(
+        "kombu.transport.SQS.uuid.uuid4",
+        return_value="70c8cdfc-9bec-4d20-bbe1-3c155b794467",
+    )
+    def test_put_fanout_fifo_queue(
+        self, _uuid_mock, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        # Arrange
+        message = {"key1": "This is a value", "key2": 123, "key3": True}
+
+        # Act
+        channel_fixture._put_fanout("queue-1.fifo", message, "")
+
+        # Assert
+        assert mock_fanout.publish.call_args_list == [
+            call(
+                exchange_name="queue-1.fifo",
+                message='{"key1": "This is a value", "key2": 123, "key3": true}',
+                message_attributes=None,
+                request_params={
+                    "MessageGroupId": "default",
+                    "MessageDeduplicationId": "70c8cdfc-9bec-4d20-bbe1-3c155b794467",
+                },
+            )
+        ]
+
+    def test_put_fanout_fifo_queue_custom_msg_groups(
+        self, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        # Arrange
+        message = {
+            "key1": "This is a value",
+            "key2": 123,
+            "key3": True,
+            "properties": {
+                "MessageGroupId": "ThisIsNotDefault",
+                "MessageDeduplicationId": "MyDedupId",
+            },
+        }
+
+        # Act
+        channel_fixture._put_fanout("queue-1.fifo", message, "")
+
+        # Assert
+        assert mock_fanout.publish.call_args_list == [
+            call(
+                exchange_name="queue-1.fifo",
+                message=(
+                    '{"key1": "This is a value", "key2": 123, "key3": true,'
+                    ' "properties": {"MessageGroupId": "ThisIsNotDefault", '
+                    '"MessageDeduplicationId": "MyDedupId"}}'
+                ),
+                message_attributes=None,
+                request_params={
+                    "MessageGroupId": "ThisIsNotDefault",
+                    "MessageDeduplicationId": "MyDedupId",
+                },
+            )
+        ]
+
+    def test_put_fanout_non_fifo_queue(self, mock_fanout, channel_fixture: SQS.Channel):
+        # Arrange
+        message = {"key1": "This is a value", "key2": 123, "key3": True}
+
+        # Act
+        channel_fixture._put_fanout("queue-1", message, "")
+
+        # Assert
+        assert mock_fanout.publish.call_args_list == [
+            call(
+                exchange_name="queue-1",
+                message='{"key1": "This is a value", "key2": 123, "key3": true}',
+                message_attributes=None,
+                request_params={},
+            )
+        ]
+
+    def test_put_fanout_with_msg_attrs(self, mock_fanout, channel_fixture: SQS.Channel):
+        # Arrange
+        message = {
+            "key1": "This is a value",
+            "key2": 123,
+            "key3": True,
+            "properties": {
+                "message_attributes": {"attr1": "my-attribute-value", "attr2": 123},
+            },
+        }
+
+        # Act
+        channel_fixture._put_fanout("queue-1", message, "")
+
+        # Assert
+        assert mock_fanout.publish.call_args_list == [
+            call(
+                exchange_name="queue-1",
+                message=(
+                    '{"key1": "This is a value", "key2": 123, "key3": true, '
+                    '"properties": {"message_attributes": {"attr1": '
+                    '"my-attribute-value", "attr2": 123}}}'
+                ),
+                message_attributes={"attr1": "my-attribute-value", "attr2": 123},
+                request_params={},
+            )
+        ]
+
+    @pytest.mark.parametrize(
+        "sf_transport_value, expected_result",
+        [(True, True), (False, False), (None, False)],
+    )
+    def test_supports_fanout(
+        self, sf_transport_value, expected_result, channel_fixture
+    ):
+        # Arrange
+        if sf_transport_value is not None:
+            channel_fixture.transport_options["supports_fanout"] = sf_transport_value
+
+        # Act & Assert
+        assert channel_fixture.supports_fanout == expected_result
+
+    def test_sqs_client_already_initialised(self, channel_fixture, mock_new_sqs_client):
+        # Arrange
+        sqs_client_mock = Mock(name="My SQS client")
+        channel_fixture._sqs = sqs_client_mock
+
+        # Act
+        result = SQS_Channel_sqs.__get__(channel_fixture, SQS.Channel)()
+
+        # Assert
+        assert result is sqs_client_mock
+        assert mock_new_sqs_client.call_count == 0
+
+    def test_sqs_client_predefined_queue_not_defined(
+        self, channel_fixture, mock_new_sqs_client
+    ):
+        # Arrange
+        channel_fixture._sqs = None
+
+        # Act
+        with pytest.raises(
+            UndefinedQueueException,
+            match="Queue with name 'queue-4' must be defined in 'predefined_queues'.",
+        ):
+            SQS_Channel_sqs.__get__(channel_fixture, SQS.Channel)(queue="queue-4")
+
+        # Assert
+        assert mock_new_sqs_client.call_count == 0
+
+    def test_sqs_client_predefined_queue_already_has_client(
+        self, channel_fixture, mock_new_sqs_client
+    ):
+        # Arrange
+        mock_client = Mock(name="My SQS client")
+        channel_fixture._sqs = None
+        channel_fixture._predefined_queue_clients["queue-1"] = mock_client
+
+        # Act
+        result = SQS_Channel_sqs.__get__(channel_fixture, SQS.Channel)(queue="queue-1")
+
+        # Assert
+        assert result == mock_client
+        assert mock_new_sqs_client.call_count == 0
+
+    def test_sqs_client_predefined_queue_does_not_have_client(
+        self, channel_fixture, mock_new_sqs_client
+    ):
+        # Arrange
+        queue_2_client = Mock(name="My new SQS client")
+        queue_1_client = Mock(name="A different SQS client")
+        channel_fixture._sqs = None
+        channel_fixture._predefined_queue_clients = {"queue-1": queue_1_client}
+        mock_new_sqs_client.return_value = queue_2_client
+
+        # Act
+        result = SQS_Channel_sqs.__get__(channel_fixture, SQS.Channel)(queue="queue-2")
+
+        # Assert
+        assert channel_fixture._predefined_queue_clients == {
+            "queue-1": queue_1_client,
+            "queue-2": queue_2_client,
+        }
+        assert result == queue_2_client
+        assert mock_new_sqs_client.call_args_list == [
+            call(region="some-aws-region", access_key_id="c", secret_access_key="d")
+        ]
+
+    def test_fanout_instance_already_initialised(self, channel_fixture):
+        # Arrange
+        sns_fanout_mock = Mock(name="SNS Fanout Class")
+        channel_fixture._fanout = sns_fanout_mock
+
+        # Act
+        result = channel_fixture.fanout
+
+        # Assert
+        assert result is sns_fanout_mock
+
+    def test_fanout_client_not_initialised(self, channel_fixture):
+        with patch("kombu.transport.SQS.SNS") as fan_mock:
+            # Arrange
+            channel_fixture._fanout = None
+
+            # Act
+            result = channel_fixture.fanout
+
+            # Assert
+            assert fan_mock.call_args_list == [call(channel_fixture)]
+            assert result == fan_mock()
+
+    @pytest.mark.parametrize("exchanges", [None, example_predefined_exchanges])
+    def test_predefined_exchanges(self, exchanges, channel_fixture):
+        # Arrange
+        if exchanges is None:
+            channel_fixture.transport_options.pop("predefined_exchanges", None)
+        else:
+            channel_fixture.transport_options["predefined_exchanges"] = exchanges
+
+        # Act & Assert
+        expected_result = exchanges if exchanges is not None else {}
+        assert channel_fixture.predefined_exchanges == expected_result
+
+    @pytest.mark.parametrize('fetch_attributes, call_args', [
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': []
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['SenderId', 'SentTimestamp'],
+                    'MessageAttributeNames': None
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount', 'SenderId', 'SentTimestamp'],
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': [],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageSystemAttributeNames': None,
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        ),
+        (
+                {
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+                {
+                    'MessageSystemAttributeNames': ['ApproximateReceiveCount'],
+                    'MessageAttributeNames': ['CustomProp', 'CustomProp2']
+                },
+        )
+    ])
+    def test_receive_message(self, fetch_attributes, call_args):
+        # Arrange
+        self.connection.transport_options["fetch_message_attributes"] = fetch_attributes
+
+        with patch.object(self.sqs_conn_mock, 'receive_message', wraps=self.sqs_conn_mock.receive_message,
+                          name="RxSpy") as rx_spy:
+            self.sqs_conn_mock.send_message(QueueUrl=f'https://sqs.us-east-1.amazonaws.com/xxx/{self.queue_name}',
+                                            MessageBody='This is a test')
+
+            # Act
+            result = self.channel._receive_message(self.queue_name)
+
+            # Assert
+            assert 1 == len(result["Messages"])
+            assert 'This is a test' == result["Messages"][0]['Body']
+            assert rx_spy.call_args_list == [
+                call(
+                    QueueUrl=f'https://sqs.us-east-1.amazonaws.com/xxx/{self.queue_name}',
+                    MaxNumberOfMessages=1, WaitTimeSeconds=10,
+                    **call_args
+                )]
+
+    @pytest.mark.freeze_time("2025-11-05 14:57:12")
+    def test_generate_sts_session_token(self, mock_boto_client):
+        # Arrange
+        role_arn = "arn:aws:iam::123456789012:role/role-a"
+        token_expiry = 123
+
+        # Act
+        session_token = self.channel.generate_sts_session_token(role_arn, token_expiry)
+
+        # Assert
+        assert session_token == {
+            'AccessKeyId': 'AKIAIOSFODNN7EXAMPLE',
+            'Expiration': datetime(2025, 11, 5, 14, 57, 12) + timedelta(seconds=token_expiry),
+            'SecretAccessKey': 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYzEXAMPLEKEY',
+            'SessionToken': 'AQoDYXdzEPT//////////wEXAMPLEtc764bNrC9SAPBSM22wDOk4x4HIZ8j4FZTwdQWLWsKWHGBuFq'
+                            'wAeMicRXmxfpSPfIeoIYRqTflfKD8YUuwthAx7mSEI/qkPpKPi/kMcGdQrmGdeehM4IC1NtBmUpp2wU'
+                            'E8phUZampKsburEDy0KPkyQDYwT7WZ0wq5VSXDvp75YU9HFvlRd8Tx6q6fE8YQcHNVXAkiY9q6d+xo'
+                            '0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSI'
+                            'lTJabIQwj2ICCR/oLxBA==',
+        }
