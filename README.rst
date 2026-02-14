@@ -9,7 +9,7 @@
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
 :DeepWiki: |deepwiki|
-:Keywords: messaging, amqp, rabbitmq, redis, mongodb, python, queue
+:Keywords: messaging, amqp, rabbitmq, redis, valkey, mongodb, python, queue
 
 About
 =====
@@ -33,7 +33,7 @@ Features
     * AMQP transport using the `py-amqp`_, or `qpid-python`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
-      transports. There is already built-in support for `Redis`_,
+      transports. There is already built-in support for `Redis`_, `Valkey`_,
       `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
@@ -60,6 +60,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`py-amqp`: https://pypi.org/project/amqp/
 .. _`qpid-python`: https://pypi.org/project/qpid-python/
 .. _`Redis`: https://redis.io
+.. _`Valkey`: https://valkey.io
 .. _`Amazon SQS`: https://aws.amazon.com/sqs/
 .. _`Zookeeper`: https://zookeeper.apache.org/
 .. _`Rabbits and warrens`: http://web.archive.org/web/20160323134044/http://blogs.digitar.com/jjww/2009/01/rabbits-and-warrens/
@@ -84,6 +85,8 @@ Transport Comparison
 | *qpid*        | Native   | Yes        | Yes        | Yes           | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *valkey*      | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *mongodb*     | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
