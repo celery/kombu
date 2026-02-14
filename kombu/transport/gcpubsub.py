@@ -35,6 +35,9 @@ Transport Options
 * ``retry_timeout_seconds``: (int) The maximum time to wait before retrying.
 * ``bulk_max_messages``: (int) The maximum number of messages to pull in bulk.
   Defaults to 32.
+* ``enable_exactly_once_delivery``: (bool) Enable exactly-once delivery for
+  subscriptions. When enabled, Pub/Sub provides message deduplication.
+  Defaults to False.
 """
 
 from __future__ import annotations
@@ -162,6 +165,7 @@ class Channel(virtual.Channel):
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
     default_bulk_max_messages = 32
+    default_enable_exactly_once_delivery = False
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -316,11 +320,10 @@ class Channel(virtual.Channel):
                 request={
                     "name": subscription_path,
                     "topic": topic_path,
-                    'ack_deadline_seconds': self.ack_deadline_seconds,
-                    'expiration_policy': {
-                        'ttl': f'{self.expiration_seconds}s'
-                    },
-                    'message_retention_duration': f'{msg_retention}s',
+                    "ack_deadline_seconds": self.ack_deadline_seconds,
+                    "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
+                    "message_retention_duration": f"{msg_retention}s",
+                    "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
                     **(filter_args or {}),
                 }
             )
@@ -670,6 +673,13 @@ class Channel(virtual.Channel):
     def bulk_max_messages(self):
         return self.transport_options.get(
             'bulk_max_messages', self.default_bulk_max_messages
+        )
+
+    @cached_property
+    def enable_exactly_once_delivery(self):
+        return self.transport_options.get(
+            'enable_exactly_once_delivery',
+            self.default_enable_exactly_once_delivery
         )
 
     def close(self):
