@@ -631,7 +631,10 @@ class Queue(MaybeChannelBound):
         for B in self.bindings:
             channel = channel or self.channel
             B.declare(channel)
-            B.bind(self, nowait=nowait, channel=channel)
+            if(isinstance(B, Exchange)):
+                B.bind(channel)
+            else:
+                B.bind(self, nowait=nowait, channel=channel)
 
     def queue_declare(self, nowait=False, passive=False, channel=None):
         """Declare queue on the server.
