@@ -53,6 +53,9 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
+* ``use_lock_renewal`` - Use Azure SDK Auto Lock Renewal. Works only if receive mode ``PEEK_LOCK`` is in use.
+* ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
+  should be maintained for. Default ``3600.0`` (1 hour)
 """
 
 from __future__ import annotations
@@ -64,9 +67,9 @@ from typing import Any
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
-                              ServiceBusReceiveMode, ServiceBusReceiver,
-                              ServiceBusSender)
+from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
+                              ServiceBusMessage, ServiceBusReceiveMode,
+                              ServiceBusReceiver, ServiceBusSender)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
@@ -121,6 +124,9 @@ class Channel(virtual.Channel):
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
+    default_use_lock_renewal: bool = False
+    default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
+
     domain_format: str = 'kombu%(vhost)s'
     _queue_cache: dict[str, SendReceive] = {}
     _noack_queues: set[str] = set()
@@ -136,6 +142,8 @@ class Channel(virtual.Channel):
         self._try_parse_connection_string()
 
         self.qos.restore_at_shutdown = False
+
+        self._renewer = None
 
     def _try_parse_connection_string(self) -> None:
         self._namespace, self._credential = Transport.parse_uri(
@@ -203,9 +211,16 @@ class Channel(virtual.Channel):
         cache_key = queue_cache_key or queue
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
+            auto_lock_renewer = None
+            if self.use_lock_renewal and recv_mode == ServiceBusReceiveMode.PEEK_LOCK:
+                if self._renewer is None:
+                    self._renewer = AutoLockRenewer(
+                        max_lock_renewal_duration=self.max_lock_renewal_duration
+                    )
+                auto_lock_renewer = self._renewer
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
-                keep_alive=self.uamqp_keep_alive_interval)
+                keep_alive=self.uamqp_keep_alive_interval, auto_lock_renewer=auto_lock_renewer)
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 
@@ -347,6 +362,9 @@ class Channel(virtual.Channel):
         # receivers and senders spawn threads so clean them up
         if not self.closed:
             self.closed = True
+            if self._renewer:
+                self._renewer.close()
+                self._renewer = None
             for queue_obj in self._queue_cache.values():
                 queue_obj.close()
             self._queue_cache.clear()
@@ -427,6 +445,20 @@ class Channel(virtual.Channel):
     def retry_backoff_max(self) -> int:
         return self.transport_options.get(
             'retry_backoff_max', self.default_retry_backoff_max)
+
+    @cached_property
+    def use_lock_renewal(self) -> bool:
+        return self.transport_options.get(
+            'use_lock_renewal', self.default_use_lock_renewal
+        )
+
+    @cached_property
+    def max_lock_renewal_duration(self) -> float:
+        return float(
+            self.transport_options.get(
+                'max_lock_renewal_duration', self.default_max_lock_renewal_duration
+            )
+        )
 
 
 class Transport(virtual.Transport):
