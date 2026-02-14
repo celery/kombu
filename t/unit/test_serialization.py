@@ -241,6 +241,25 @@ class test_Serialization:
         )
         assert a == b
 
+    def test_yaml_dumps__yaml__(self):
+        pytest.importorskip('yaml')
+        register_yaml()
+        from kombu.utils.yaml import register_yaml_decoder
+
+        @register_yaml_decoder
+        class Custom:
+            def __init__(self, a):
+                self.a = a
+
+            def __yaml__(self):
+                return {'a': self.a}
+
+        custom = Custom(a=1)
+        test_data = py_data.copy()
+        test_data['custom'] = custom
+        _, _, yaml_str = dumps(test_data, serializer='yaml')
+        assert 'custom:\n  a: 1\n' in yaml_str
+
     def test_pickle_loads(self):
         assert loads(
             pickle_data,

@@ -102,3 +102,4 @@ Kombu utils
     kombu.utils.time
     kombu.utils.url
     kombu.utils.uuid
+    kombu.utils.yaml
