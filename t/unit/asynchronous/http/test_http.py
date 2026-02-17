@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+from typing import TYPE_CHECKING
 from unittest.mock import Mock
 
 import pytest
@@ -12,17 +13,20 @@ from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
 from t.mocks import PromiseMock
 
+if TYPE_CHECKING:
+    from kombu.asynchronous import Hub
+
 
 class test_Headers:
 
-    def test_normalize(self):
+    def test_normalize(self) -> None:
         assert normalize_header('accept-encoding') == 'Accept-Encoding'
 
 
 @pytest.mark.usefixtures('hub')
 class test_Request:
 
-    def test_init(self):
+    def test_init(self) -> None:
         x = http.Request('http://foo', method='POST')
         assert x.url == 'http://foo'
         assert x.method == 'POST'
@@ -36,7 +40,7 @@ class test_Request:
         assert x.headers is h
         assert isinstance(x.on_ready, promise)
 
-    def test_then(self):
+    def test_then(self) -> None:
         callback = PromiseMock(name='callback')
         x = http.Request('http://foo')
         x.then(callback)
@@ -48,7 +52,7 @@ class test_Request:
 @pytest.mark.usefixtures('hub')
 class test_Response:
 
-    def test_init(self):
+    def test_init(self) -> None:
         req = http.Request('http://foo')
         r = http.Response(req, 200)
 
@@ -56,7 +60,7 @@ class test_Response:
         assert r.effective_url == 'http://foo'
         r.raise_for_error()
 
-    def test_raise_for_error(self):
+    def test_raise_for_error(self) -> None:
         req = http.Request('http://foo')
         r = http.Response(req, 404)
         assert r.status == 'Not Found'
@@ -65,7 +69,7 @@ class test_Response:
         with pytest.raises(HttpError):
             r.raise_for_error()
 
-    def test_get_body(self):
+    def test_get_body(self) -> None:
         req = http.Request('http://foo')
         req.buffer = BytesIO()
         req.buffer.write(b'hello')
@@ -83,15 +87,15 @@ class test_Response:
 class test_BaseClient:
 
     @pytest.fixture(autouse=True)
-    def setup_hub(self, hub):
+    def setup_hub(self, hub: Hub) -> None:
         self.hub = hub
 
-    def test_init(self):
+    def test_init(self) -> None:
         c = BaseClient(Mock(name='hub'))
         assert c.hub
         assert c._header_parser
 
-    def test_perform(self):
+    def test_perform(self) -> None:
         c = BaseClient(Mock(name='hub'))
         c.add_request = Mock(name='add_request')
 
@@ -103,12 +107,12 @@ class test_BaseClient:
         c.perform(req)
         c.add_request.assert_called_with(req)
 
-    def test_add_request(self):
+    def test_add_request(self) -> None:
         c = BaseClient(Mock(name='hub'))
         with pytest.raises(NotImplementedError):
             c.add_request(Mock(name='request'))
 
-    def test_header_parser(self):
+    def test_header_parser(self) -> None:
         c = BaseClient(Mock(name='hub'))
         parser = c._header_parser
         headers = http.Headers()
@@ -132,10 +136,10 @@ class test_BaseClient:
         assert (headers['People'] ==
                 'George Costanza Jerry Seinfeld Elaine Benes Cosmo Kramer')
 
-    def test_close(self):
+    def test_close(self) -> None:
         BaseClient(Mock(name='hub')).close()
 
-    def test_as_context(self):
+    def test_as_context(self) -> None:
         c = BaseClient(Mock(name='hub'))
         c.close = Mock(name='close')
         with c:
@@ -146,7 +150,7 @@ class test_BaseClient:
 @t.skip.if_pypy
 class test_Client:
 
-    def test_get_client(self, hub):
+    def test_get_client(self, hub: Hub) -> None:
         pytest.importorskip('pycurl')
         client = http.get_client()
         assert client.hub is hub
