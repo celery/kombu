@@ -24,7 +24,7 @@ from kombu import exceptions
 
 from .log import get_logger
 from .resource import Resource
-from .transport import get_transport_cls, supports_librabbitmq
+from .transport import get_transport_cls
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
@@ -263,8 +263,6 @@ class Connection:
                      insist, ssl, transport, connect_timeout,
                      login_method, heartbeat, credential_provider):
         transport = transport or 'amqp'
-        if transport == 'amqp' and supports_librabbitmq():
-            transport = 'librabbitmq'
         if transport == 'rediss' and ssl_available and not ssl:
             logger.warning(
                 'Secure redis scheme specified (rediss) with no ssl '
