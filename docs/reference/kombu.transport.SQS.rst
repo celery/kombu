@@ -23,6 +23,7 @@
         :members:
         :undoc-members:
 
+
 Back-off policy
 ------------------------
 Back-off policy is using SQS visibility timeout mechanism altering the time difference between task retries.
@@ -100,3 +101,22 @@ Benefits of using Fair Queues with Kombu:
 
 For more information, refer to the AWS documentation on Fair Queues: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html
 
+
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.exceptions``
+================================================
+
+.. automodule:: kombu.transport.SQS.exceptions
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.SNS``
+================================================
+
+.. automodule:: kombu.transport.SQS.SNS
+   :members:
+   :show-inheritance:
+   :undoc-members:
