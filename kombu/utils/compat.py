@@ -118,7 +118,7 @@ def nested(*managers):  # pragma: no cover
                 vars.append(enter())
                 exits.append(exit)
             yield vars
-        except:
+        except Exception:
             exc = sys.exc_info()
         finally:
             while exits:
@@ -126,7 +126,7 @@ def nested(*managers):  # pragma: no cover
                 try:
                     if exit(*exc):
                         exc = (None, None, None)
-                except:
+                except Exception:
                     exc = sys.exc_info()
             if exc != (None, None, None):
                 # Don't rely on sys.exc_info() still containing
