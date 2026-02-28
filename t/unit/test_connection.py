@@ -297,6 +297,23 @@ class test_Connection:
             assert cb(KeyError(), intervals, 0) == 0
             errback.assert_called()
 
+    def test_ensure_connection_switches_host_even_if_errback_raises(self):
+        """Verify host is switched even when errback raises an exception."""
+        c = Connection('amqp://A;amqp://B')
+
+        with patch('kombu.connection.retry_over_time') as rot:
+            errback = Mock(side_effect=TimeoutError('stop'))
+            c.ensure_connection(errback=errback)
+            rot.assert_called()
+
+            args = rot.call_args[0]
+            cb = args[4]
+
+            with patch.object(c, 'maybe_switch_next') as switch_mock:
+                with pytest.raises(TimeoutError):
+                    cb(KeyError(), iter([1, 2]), 0)
+                switch_mock.assert_called_once()
+
     def test_supports_heartbeats(self):
         c = Connection(transport=Mock)
         c.transport.implements.heartbeats = False
@@ -496,6 +513,39 @@ class test_Connection:
         ensured = self.conn.ensure(self.conn, publish)
         with pytest.raises(OperationalError):
             ensured()
+
+    def test_ensure_switches_host_on_conn_error(self):
+        """Verify ensure() calls maybe_switch_next on connection errors.
+
+        When a connection error occurs (e.g. PRECONDITION_FAILED for a
+        missing stream queue replica), ensure() should cycle to the next
+        host before retrying.
+        """
+        class _ConnectionError(Exception):
+            pass
+
+        tries = 0
+
+        def publish():
+            nonlocal tries
+            tries += 1
+            if tries <= 1:
+                raise _ConnectionError('PRECONDITION_FAILED')
+            return 'ok'
+
+        c = Connection('amqp://A;amqp://B', transport=Transport)
+        c.get_transport_cls().connection_errors = (_ConnectionError,)
+        c.get_transport_cls().channel_errors = ()
+
+        with patch.object(c, 'maybe_switch_next') as switch_mock, \
+                patch.object(c, '_ensure_connection'), \
+                patch.object(c, 'collect'):
+            c._default_channel = Mock()
+            obj = Mock()
+            ensured = c.ensure(obj, publish, max_retries=3)
+            ensured()
+
+            switch_mock.assert_called_once()
 
     def test_ensure_retry_errors_is_limited_by_max_retries(self):
         class _MessageNacked(Exception):
