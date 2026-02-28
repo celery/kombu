@@ -6,7 +6,7 @@ repos:
         args: ["--py38-plus"]
 
   - repo: https://github.com/PyCQA/autoflake
-    rev: v2.3.1
+    rev: v2.3.3
     hooks:
       - id: autoflake
         args: ["--in-place", "--ignore-pass-after-docstring"]
@@ -38,7 +38,7 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
+    rev: 8.0.0
     hooks:
       - id: isort
 
