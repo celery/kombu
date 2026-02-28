@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import tempfile
 import shutil
+import tempfile
 from queue import Empty
 from unittest.mock import call, patch
 
