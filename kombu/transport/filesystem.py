@@ -275,8 +275,13 @@ class Channel(virtual.Channel):
                 lock(f_obj, LOCK_EX)
                 exchange_table = loads(bytes_to_str(f_obj.read()))
                 queues = [exchange_queue_t(*q) for q in exchange_table]
-                queues.remove(queue_val)
-                if len(queues) != len(exchange_table):
+                original_len = len(queues)
+                try:
+                    queues.remove(queue_val)
+                except ValueError:
+                    # queue_val was not present; nothing to remove
+                    pass
+                if len(queues) != original_len:
                     f_obj.seek(0)
                     f_obj.write(str_to_bytes(dumps(queues)))
                     f_obj.truncate()
