@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import shutil
 import tempfile
 from queue import Empty
@@ -9,14 +10,35 @@ import pytest
 
 import t.skip
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.transport.filesystem import Channel
+from kombu.transport.virtual import Channel
+from typing import Generator
+
+
+class WithJanitorMixin:
+    def _remove_temporary_folders(self):
+        try:
+            shutil.rmtree(self.data_folder_in)
+            shutil.rmtree(self.data_folder_out)
+            shutil.rmtree(self.control_folder)
+        except OSError:
+            pass
+
+@contextlib.contextmanager
+def managed_consumer(channel, queues=None, *args, **kwargs) -> Generator[Consumer]:
+    consumer = Consumer(channel, queues, *args, **kwargs)
+    try:
+        yield consumer
+    finally:
+        for q in consumer.queues:
+            q: Queue
+            q(consumer.channel).delete()
 
 
 @t.skip.if_win32
-class test_FilesystemTransport:
+class test_FilesystemTransport(WithJanitorMixin):
 
     def setup_method(self):
-        self.channels = set()
+        self.channels: set[Channel] = set()
         try:
             self.data_folder_in = tempfile.mkdtemp()
             self.data_folder_out = tempfile.mkdtemp()
@@ -58,15 +80,9 @@ class test_FilesystemTransport:
             except AttributeError:
                 pass
 
-        # clean-up temporary folders
-        try:
-            shutil.rmtree(self.data_folder_in)
-            shutil.rmtree(self.data_folder_out)
-            shutil.rmtree(self.control_folder)
-        except OSError:
-            pass
+        self._remove_temporary_folders()
 
-    def _add_channel(self, channel):
+    def _add_channel(self, channel) -> Channel:
         self.channels.add(channel)
         return channel
 
@@ -76,12 +92,10 @@ class test_FilesystemTransport:
         return tuple(map(lambda v: v or '', bind))
 
     def test_produce_consume_noack(self):
-        try:
-            consumer_channel = self._add_channel(self.c.channel())
-            producer = Producer(self._add_channel(self.p.channel()), self.e)
-            consumer = Consumer(consumer_channel, self.q,
-                                no_ack=True)
-
+        consumer_channel = self._add_channel(self.c.channel())
+        producer = Producer(self._add_channel(self.p.channel()), self.e)
+        with managed_consumer(consumer_channel, self.q,
+                              no_ack=True) as consumer:
             for i in range(10):
                 producer.publish({'foo': i},
                                  routing_key='test_transport_filesystem')
@@ -100,17 +114,15 @@ class test_FilesystemTransport:
                 self.c.drain_events()
 
             assert len(_received) == 10
-        finally:
-            # queue bindings must not leak between test cases
-            self.q(consumer_channel).delete()
 
     def test_produce_consume(self):
-        try:
-            producer_channel = self._add_channel(self.p.channel())
-            consumer_channel = self._add_channel(self.c.channel())
-            producer = Producer(producer_channel, self.e)
-            consumer1 = Consumer(consumer_channel, self.q)
-            consumer2 = Consumer(consumer_channel, self.q2)
+        producer_channel = self._add_channel(self.p.channel())
+        consumer_channel = self._add_channel(self.c.channel())
+        producer = Producer(producer_channel, self.e)
+        with (
+            managed_consumer(consumer_channel, self.q) as consumer1,
+            managed_consumer(consumer_channel, self.q2) as consumer2,
+        ):
             self.q2(consumer_channel).declare()
 
             for i in range(10):
@@ -157,7 +169,7 @@ class test_FilesystemTransport:
                                  routing_key='test_transport_filesystem')
             assert self.q(consumer_channel).get()
 
-            # assert q2 is in consumer_channel's table
+            # assert q and q2 are in consumer_channel's table
             consumer_channel_table: list[tuple] = consumer_channel.get_table(self.e_name)
             assert len(consumer_channel_table) == 2
             assert self._prepare_bind(consumer_channel, self.q) in consumer_channel_table
@@ -181,14 +193,10 @@ class test_FilesystemTransport:
             assert self.q2(consumer_channel).get()
             self.q2(consumer_channel).purge()
             assert self.q2(consumer_channel).get() is None
-        finally:
-            # queue bindings must not leak between test cases
-            self.q(consumer_channel).delete()
-            self.q2(consumer_channel).delete()
 
 
 @t.skip.if_win32
-class test_FilesystemFanout:
+class test_FilesystemFanout(WithJanitorMixin):
     def setup_method(self):
         try:
             self.data_folder_in = tempfile.mkdtemp()
@@ -231,13 +239,8 @@ class test_FilesystemFanout:
             except AttributeError:
                 pass
 
-        # clean-up temporary folders
-        try:
-            shutil.rmtree(self.data_folder_in)
-            shutil.rmtree(self.data_folder_out)
-            shutil.rmtree(self.control_folder)
-        except OSError:
-            pass
+        self._remove_temporary_folders()
+
 
     def test_produce_consume(self):
 
@@ -289,7 +292,7 @@ class test_FilesystemFanout:
 
 
 @t.skip.if_win32
-class test_FilesystemLock:
+class test_FilesystemLock(WithJanitorMixin):
     def setup_method(self):
         try:
             self.data_folder_in = tempfile.mkdtemp()
@@ -331,13 +334,7 @@ class test_FilesystemLock:
             except AttributeError:
                 pass
 
-        # clean-up temporary folders
-        try:
-            shutil.rmtree(self.data_folder_in)
-            shutil.rmtree(self.data_folder_out)
-            shutil.rmtree(self.control_folder)
-        except OSError:
-            pass
+        self._remove_temporary_folders()
 
     def test_lock_during_process(self):
         pytest.importorskip('fcntl')
