@@ -4,6 +4,7 @@ import contextlib
 import shutil
 import tempfile
 from queue import Empty
+from typing import Generator
 from unittest.mock import call, patch
 
 import pytest
@@ -11,7 +12,6 @@ import pytest
 import t.skip
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.transport.virtual import Channel
-from typing import Generator
 
 
 class WithJanitorMixin:
