@@ -23,6 +23,7 @@ class WithJanitorMixin:
         except OSError:
             pass
 
+
 @contextlib.contextmanager
 def managed_consumer(channel, queues=None, *args, **kwargs) -> Generator[Consumer]:
     consumer = Consumer(channel, queues, *args, **kwargs)
@@ -240,7 +241,6 @@ class test_FilesystemFanout(WithJanitorMixin):
                 pass
 
         self._remove_temporary_folders()
-
 
     def test_produce_consume(self):
 
