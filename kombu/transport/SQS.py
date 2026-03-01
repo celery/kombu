@@ -463,11 +463,13 @@ class Channel(virtual.Channel):
                 # we don't want to want to have the attribute in the body
                 kwargs['MessageAttributes'] = \
                     message['properties'].pop('message_attributes')
+            # Support SQS fair queue system.
+            if 'MessageGroupId' in message['properties']:
+                kwargs['MessageGroupId'] = \
+                    message['properties']['MessageGroupId']
+            # Support FIFO queues.
             if queue.endswith('.fifo'):
-                if 'MessageGroupId' in message['properties']:
-                    kwargs['MessageGroupId'] = \
-                        message['properties']['MessageGroupId']
-                else:
+                if 'MessageGroupId' not in kwargs:
                     kwargs['MessageGroupId'] = 'default'
                 if 'MessageDeduplicationId' in message['properties']:
                     kwargs['MessageDeduplicationId'] = \
@@ -545,9 +547,10 @@ class Channel(virtual.Channel):
         client = self.sqs(queue=queue)
 
         message_system_attribute_names = self.get_message_attributes.get(
-            'MessageSystemAttributeNames')
+            'MessageSystemAttributeNames') or []
+
         message_attribute_names = self.get_message_attributes.get(
-            'MessageAttributeNames')
+            'MessageAttributeNames') or []
 
         params: dict[str, Any] = {
             'QueueUrl': q_url,
@@ -964,7 +967,7 @@ class Channel(virtual.Channel):
 
         if fetch is None or isinstance(fetch, str):
             return {
-                'MessageAttributeNames': None,
+                'MessageAttributeNames': [],
                 'MessageSystemAttributeNames': [APPROXIMATE_RECEIVE_COUNT],
             }
 
@@ -988,7 +991,7 @@ class Channel(virtual.Channel):
                 )
 
         return {
-            'MessageAttributeNames': sorted(message_attrs) if message_attrs else None,
+            'MessageAttributeNames': sorted(message_attrs) if message_attrs else [],
             'MessageSystemAttributeNames': (
                 sorted(message_system_attrs) if message_system_attrs else [APPROXIMATE_RECEIVE_COUNT]
             )
