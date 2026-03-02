@@ -846,7 +846,13 @@ def _ack_rocketmq_message(consumer: SimpleConsumer, message: RocketmqMessage,
     :raises KombuError: If acknowledgment fails and `raise_exception` is True.
     """
     if not consumer or not consumer.is_running:
-        logger.warning(f'unexpected condition: consumer is None or not running. {message}')
+        logger.warning(
+            f'unexpected condition: consumer is None or not running. {message}'
+        )
+        if raise_exception:
+            raise KombuError(
+                'rocketmq ack message failed: consumer is None or not running'
+            )
         return
     try:
         retry_over_time(
