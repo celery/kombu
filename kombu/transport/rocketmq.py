@@ -606,6 +606,8 @@ class Channel(virtual.Channel):
             lambda: consumer.receive(max_count, self.invisible_time), Exception,
             max_retries=1, interval_start=2, interval_step=0, timeout=self.await_duration * 2 + 3
         )
+        if not messages:
+            raise Empty()
 
         for message in messages:
             if message.topic in self._auto_ack_topics:
