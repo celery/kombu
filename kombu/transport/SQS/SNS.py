@@ -125,12 +125,19 @@ class SNS:
         if self.channel.predefined_exchanges:
             return self._handle_getting_topic_arn_for_predefined_exchanges(exchange_name)
 
+<<<<<<< HEAD
         # If predefined_caches are not used, then create a new
         #  SNS topic/retrieve the ARN from AWS SNS and cache it
+=======
+        # If predefined_exchanges are not used, then create a new SNS topic/retrieve the ARN from AWS SNS and cache it
+>>>>>>> 2e989845e7676783c371715de50612f49ee85303
         with self._lock:
-            arn = self._topic_arn_cache[exchange_name] = self._create_sns_topic(
-                exchange_name
-            )
+            # Re-check the cache after acquiring the lock to avoid redundant topic creation
+            if topic_arn := self._topic_arn_cache.get(exchange_name):
+                return topic_arn
+
+            arn = self._create_sns_topic(exchange_name)
+            self._topic_arn_cache[exchange_name] = arn
             return arn
 
     def _handle_getting_topic_arn_for_predefined_exchanges(self, exchange_name: str) -> str:
@@ -482,7 +489,7 @@ class _SnsSubscription:
         :param queue_arn: The ARN of the SQS queue
         :return: None
         """
-        sqs_client = self.sns.channel.sqs()
+        sqs_client = self.sns.channel.sqs(queue=queue_name)
         queue_url = self.sns.channel._resolve_queue_url(queue_name)
 
         existing_policy = self._get_existing_queue_policy(sqs_client, queue_name, queue_url)
@@ -698,7 +705,7 @@ class _SnsSubscription:
         :return: The attributes of the queue
         :raises: KombuError if the attributes cannot be retrieved
         """
-        response = self.sns.channel.sqs().get_queue_attributes(
+        response = self.sns.channel.sqs(queue=queue_name).get_queue_attributes(
                 QueueUrl=queue_url, AttributeNames=["QueueArn"]
             )
         if (status_code := response["ResponseMetadata"]["HTTPStatusCode"]) == 200:

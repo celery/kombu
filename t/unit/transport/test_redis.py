@@ -728,6 +728,34 @@ class test_Channel:
         assert 'txconfanq' in self.channel.active_fanout_queues
         assert self.channel._fanout_to_queue.get('txconfan') == 'txconfanq'
 
+    def test_priority_cycle_preserves_queue_order(self):
+        """Regression test for https://github.com/celery/kombu/issues/801.
+
+        The priority queue_order_strategy relies on active_queues preserving
+        insertion order so that the queue cycle matches the order queues were
+        consumed.
+
+        Queue names are chosen so that alphabetical order (high, low, medium)
+        differs from the intended consumption order (high, medium, low),
+        ensuring the test fails if ordering is lost.
+        """
+        with Connection(
+            transport=Transport,
+            transport_options={
+                'queue_order_strategy': 'priority',
+                'fanout_patterns': True,
+            },
+        ) as conn:
+            channel = conn.default_channel
+            queues = ['priority.high', 'priority.medium', 'priority.low']
+            for queue in queues:
+                channel.exchange_declare(exchange=queue)
+                channel.queue_declare(queue=queue)
+                channel.queue_bind(queue=queue, exchange=queue, routing_key=queue)
+            for queue in queues:
+                channel.basic_consume(queue, False, None, queue)
+            assert channel._queue_cycle.items == queues
+
     def test_basic_cancel_unknown_delivery_tag(self):
         assert self.channel.basic_cancel('txaseqwewq') is None
 
