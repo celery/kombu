@@ -26,7 +26,7 @@
     Message
     -------
 
-    .. autoclass:: Message
+    .. autoclass:: kombu.transport.virtual.Message
         :members:
         :undoc-members:
 
