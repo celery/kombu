@@ -342,7 +342,7 @@ class Channel(virtual.Channel):
             self._noack_queues.add(queue)
         if self.hub:
             self._loop1(queue)
-        return super().basic_consume(queue, no_ack, callback, consumer_tag, **kwargs)
+        return super().basic_consume(queue, no_ack, callback, consumer_tag, *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
         if consumer_tag in self._consumers:

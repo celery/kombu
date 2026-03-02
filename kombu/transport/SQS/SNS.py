@@ -147,11 +147,9 @@ class SNS:
             if topic_arn := self._topic_arn_cache.get(exchange_name):
                 return topic_arn
 
-            topic_arn = self._topic_arn_cache[exchange_name] = (
-                self.channel.predefined_exchanges.get(exchange_name, {}).get("arn")
-            )
-            if topic_arn:
-                return topic_arn
+            if pre_defined_exchange_arn := self.channel.predefined_exchanges.get(exchange_name, {}).get("arn"):
+                self._topic_arn_cache[exchange_name] = pre_defined_exchange_arn
+                return pre_defined_exchange_arn
 
         # If pre-defined exchanges do not have the exchange, then raise an exception
         raise UndefinedExchangeException(
