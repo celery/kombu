@@ -3,12 +3,12 @@ from __future__ import annotations
 from concurrent.futures import Future
 from datetime import datetime
 from queue import Empty
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, PropertyMock, call, patch
 
 import pytest
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        NotFound, PermissionDenied)
 from google.pubsub_v1.types.pubsub import Subscription
 
 from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
@@ -243,26 +243,23 @@ class test_Channel:
 
     def test_is_topic_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        mock_topic = MagicMock()
-        mock_topic.name = topic_path
-        channel.publisher.list_topics.return_value = [mock_topic]
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is True
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_is_topic_not_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        channel.publisher.list_topics.return_value = []
+        channel.publisher.get_topic.side_effect = NotFound("not found")
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is False
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_create_subscription(self, channel):
@@ -598,6 +595,131 @@ class test_Channel:
             == modify_ack_deadline_calls
         )
 
+    def test_extend_unacked_deadline_handles_exception(self, channel):
+        """Test that exceptions in modify_ack_deadline don't crash the thread."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1", "ack_id2"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=[Exception("Test error"), None]
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The thread continues processing and logs the error
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+            assert error_call_args[1]['exc_info'] is True
+
+    @pytest.mark.parametrize(
+        "exception_class,exception_message",
+        [
+            (DeadlineExceeded, "Timeout"),
+            (PermissionDenied, "Access denied"),
+        ],
+    )
+    def test_extend_unacked_deadline_handles_specific_exceptions(
+        self, channel, exception_class, exception_message
+    ):
+        """Test handling of specific exception types."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises an exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=exception_class(exception_message)
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The error is logged appropriately
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+
+    def test_extend_unacked_deadline_continues_after_exception(self, channel):
+        """Test that the thread continues processing other queues after exception."""
+        # Given: Two queues with unacked messages, first raises exception, second succeeds
+        queue1 = "test_queue1"
+        queue2 = "test_queue2"
+        subscription_path1 = (
+            "projects/project-id/subscriptions/test_subscription1"
+        )
+        subscription_path2 = (
+            "projects/project-id/subscriptions/test_subscription2"
+        )
+        ack_ids = ["ack_id1"]
+
+        qdesc1 = QueueDescriptor(
+            name=queue1,
+            topic_path="projects/project-id/topics/test_topic1",
+            subscription_id="test_subscription1",
+            subscription_path=subscription_path1,
+        )
+        qdesc2 = QueueDescriptor(
+            name=queue2,
+            topic_path="projects/project-id/topics/test_topic2",
+            subscription_id="test_subscription2",
+            subscription_path=subscription_path2,
+        )
+
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue1)] = qdesc1
+        channel._queue_cache[channel.entity_name(queue2)] = qdesc2
+        qdesc1.unacked_ids.extend(ack_ids)
+        qdesc2.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+
+        call_count = [0]
+
+        def modify_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise Exception("First queue error")
+            return None
+
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=modify_side_effect
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger'):
+            channel._extend_unacked_deadline()
+
+            # Then: Both queues are processed despite the first one failing
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
+
     def test_after_reply_message_received(self, channel):
         queue = 'test-queue'
         subscription_path = f'projects/test-project/subscriptions/{queue}'
@@ -621,6 +743,78 @@ class test_Channel:
         assert channel.bulk_max_messages == channel.transport_options.get(
             'bulk_max_messages'
         )
+
+    @pytest.mark.parametrize(
+        "transport_options,expected_value",
+        [
+            ({}, False),  # default
+            ({'enable_exactly_once_delivery': True}, True),  # enabled
+            ({'enable_exactly_once_delivery': False}, False),  # disabled
+        ],
+    )
+    def test_enable_exactly_once_delivery(
+        self, channel, transport_options, expected_value
+    ):
+        """Test enable_exactly_once_delivery property with different configurations."""
+        # Given: A channel with specific transport_options
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock, return_value=transport_options
+        ):
+            # When: Accessing the enable_exactly_once_delivery property
+            # Then: It should return the expected value
+            assert channel.enable_exactly_once_delivery is expected_value
+
+    @pytest.mark.parametrize(
+        "enable_exactly_once,expected_value",
+        [
+            (None, False),  # default behaviour
+            (True, True),  # with exactly-once delivery
+            (False, False),  # without exactly-once delivery
+        ],
+    )
+    def test_create_subscription_exactly_once_delivery(
+        self, channel, enable_exactly_once, expected_value
+    ):
+        """Test that create_subscription correctly handles exactly-once delivery setting."""
+        # Given: A channel with specified exactly-once delivery configuration
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock()
+
+        transport_opts = {
+            'ack_deadline_seconds': 240,
+            'expiration_seconds': 86400,
+        }
+        if enable_exactly_once is not None:
+            transport_opts['enable_exactly_once_delivery'] = enable_exactly_once
+
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock,
+            return_value=transport_opts
+        ):
+            # When: Creating a subscription
+            result = channel._create_subscription(
+                project_id=channel.project_id,
+                topic_id=topic_id,
+                subscription_path=subscription_path,
+                topic_path=topic_path,
+            )
+
+            # Then: The subscription should be created with correct exactly-once delivery setting
+            assert result == subscription_path
+            channel.subscriber.create_subscription.assert_called_once()
+            call_args = channel.subscriber.create_subscription.call_args
+            request_config = call_args[1]['request']
+            assert request_config['enable_exactly_once_delivery'] is expected_value
 
     def test_close(self, channel):
         channel._tmp_subscriptions = {'sub1', 'sub2'}
