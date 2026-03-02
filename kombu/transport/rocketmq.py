@@ -612,7 +612,10 @@ class Channel(virtual.Channel):
                 _ack_rocketmq_message(consumer, message, False)
             amqp_queue = self.connection._topic_to_queue[message.topic]
             payload = _rocketmq_message_to_payload(message, consumer.consumer_group, amqp_queue)
-            self.connection._deliver(payload, amqp_queue)
+            if callback is not None:
+                callback(payload, amqp_queue)
+            else:
+                self.connection._deliver(payload, amqp_queue)
 
     def _get(self, queue, callback=None) -> dict:
         """Get a message from the queue synchronously.
