@@ -1338,12 +1338,12 @@ class test_SnsSubscription:
         subscriptions = [
             {
                 "Protocol":        "SqS",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-1",
+                "Endpoint":        "arn:aws:sqs:us-east-2:444455556666:my-queue-1",
                 "SubscriptionArn": "arn-1",
             },  # Test case-sensitivity
             {
                 "Protocol":        "sqs",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-2",
+                "Endpoint":        "arn:aws:sqs:us-east-2:444455556666:my-queue-2",
                 "SubscriptionArn": "arn-2",
             },  # Test case-sensitivity
             {
@@ -1353,22 +1353,22 @@ class test_SnsSubscription:
             },  # This should be filtered out
             {
                 "Protocol":        "sqs",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-3",
+                "Endpoint":        "arn:aws:sqs:us-west-2:123456789012:my-queue-3",
                 "SubscriptionArn": "arn-3",
             },
             {
                 "Protocol":        "sqs",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-4",
+                "Endpoint":        "arn:aws:sqs:us-west-2:123456789012:my-queue-4",
                 "SubscriptionArn": "arn-4",
             },
             {
                 "Protocol":        "sqs",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-5",
+                "Endpoint":        "arn:aws:sqs:us-west-2:123456789012:my-queue-5",
                 "SubscriptionArn": "arn-5",
             },
             {
                 "Protocol":        "SQS",
-                "Endpoint":        "https://sqs.us-west-2.amazonaws.com/123456789012/my-queue-6",
+                "Endpoint":        "arn:aws:sqs:us-west-2:123456789012:my-queue-6",
                 "SubscriptionArn": "arn-6",
             },
         ]
@@ -1400,12 +1400,12 @@ class test_SnsSubscription:
         # Assert
         assert result == ["arn-2", "arn-4", "arn-5"]
         assert sqs_mock.return_value.get_queue_url.call_args_list == [
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-1"),
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-2"),
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-3"),
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-4"),
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-5"),
-            call(QueueName="//sqs.us-west-2.amazonaws.com/123456789012/my-queue-6"),
+            call(QueueName="my-queue-1"),
+            call(QueueName="my-queue-2"),
+            call(QueueName="my-queue-3"),
+            call(QueueName="my-queue-4"),
+            call(QueueName="my-queue-5"),
+            call(QueueName="my-queue-6"),
         ]
 
     @pytest.mark.parametrize(
