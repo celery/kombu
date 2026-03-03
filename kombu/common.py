@@ -16,6 +16,7 @@ from amqp import ChannelError, RecoverableConnectionError
 from .entity import Exchange, Queue
 from .log import get_logger
 from .serialization import registry as serializers
+from .utils.compat import ConcurrentObjectUseError
 from .utils.uuid import uuid
 
 __all__ = ('Broadcast', 'maybe_declare', 'uuid',
@@ -286,9 +287,13 @@ def _ensure_errback(exc, interval):
 
 @contextmanager
 def _ignore_errors(conn):
+    errors = conn.connection_errors + conn.channel_errors
+    if ConcurrentObjectUseError is not None:
+        errors += (ConcurrentObjectUseError,)
+
     try:
         yield
-    except conn.connection_errors + conn.channel_errors:
+    except errors:
         pass
 
 
