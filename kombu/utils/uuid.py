@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from typing import Literal
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 try:
     # Python 3.14 or later
     from uuid import uuid7
 except ImportError:
     # Fallback for older Python versions
-    def uuid7():
+    def uuid7() -> UUID:
         """Fallback to UUID4 if UUID7 is not available."""
         return uuid4()
 
