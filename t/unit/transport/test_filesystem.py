@@ -31,7 +31,8 @@ def managed_consumer(channel, queues=None, *args, **kwargs) -> Generator[Consume
     finally:
         for q in consumer.queues:
             q: Queue
-            q(consumer.channel).delete()
+            with contextlib.suppress(Exception):
+                q(consumer.channel).delete()
 
 
 @t.skip.if_win32
