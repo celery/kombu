@@ -839,6 +839,40 @@ class test_Connection:
         callback.assert_called()
 
 
+class test_Connection_callable_password:
+
+    def test_connection_preserves_callable_password(self):
+        """Callable password is stored without coercion."""
+        password_func = Mock(return_value='secret')
+        conn = Connection(port=5672, transport=Transport,
+                          password=password_func)
+        assert conn.password is password_func
+
+    def test_clone_preserves_callable_password(self):
+        """Cloned connection preserves callable password."""
+        password_func = Mock(return_value='secret')
+        conn = Connection(port=5672, transport=Transport,
+                          password=password_func)
+        cloned = conn.clone()
+        assert cloned.password is password_func
+
+    def test_as_uri_resolves_callable(self):
+        """as_uri() resolves callable password without crashing."""
+        password_func = Mock(return_value='secret_token')
+        conn = Connection(
+            'amqp://user@localhost:5672//',
+            password=password_func,
+            transport=Transport,
+        )
+        # Without include_password, password is masked
+        uri = conn.as_uri()
+        assert '**' in uri
+        # With include_password, the resolved password appears
+        uri_with_pass = conn.as_uri(include_password=True)
+        assert 'secret_token' in uri_with_pass
+        password_func.assert_called()
+
+
 class test_Connection_with_transport_options:
 
     transport_options = {'pool_recycler': 3600, 'echo': True}
