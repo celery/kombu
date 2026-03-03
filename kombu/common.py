@@ -288,7 +288,7 @@ def _ensure_errback(exc, interval):
 @contextmanager
 def _ignore_errors(conn):
     errors = conn.connection_errors + conn.channel_errors
-    if ConcurrentObjectUseError:
+    if ConcurrentObjectUseError is not None:
         errors += (ConcurrentObjectUseError,)
 
     try:
