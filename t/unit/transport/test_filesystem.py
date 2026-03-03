@@ -16,12 +16,11 @@ from kombu.transport.virtual import Channel
 
 class WithJanitorMixin:
     def _remove_temporary_folders(self):
-        try:
-            shutil.rmtree(self.data_folder_in)
-            shutil.rmtree(self.data_folder_out)
-            shutil.rmtree(self.control_folder)
-        except OSError:
-            pass
+        for path in (self.data_folder_in, self.data_folder_out, self.control_folder):
+            try:
+                shutil.rmtree(path)
+            except OSError:
+                pass
 
 
 @contextlib.contextmanager
