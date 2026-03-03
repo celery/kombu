@@ -270,21 +270,24 @@ class Channel(virtual.Channel):
                                      queue or "")
         f_obj = None
         try:
-            if file.exists():
+            try:
                 f_obj = file.open("rb+", buffering=0)
-                lock(f_obj, LOCK_EX)
-                exchange_table = loads(bytes_to_str(f_obj.read()))
-                queues = [exchange_queue_t(*q) for q in exchange_table]
-                original_len = len(queues)
-                try:
-                    queues.remove(queue_val)
-                except ValueError:
-                    # queue_val was not present; nothing to remove
-                    pass
-                if len(queues) != original_len:
-                    f_obj.seek(0)
-                    f_obj.write(str_to_bytes(dumps(queues)))
-                    f_obj.truncate()
+            except FileNotFoundError:
+                # Exchange file was removed concurrently; nothing to update.
+                return
+            lock(f_obj, LOCK_EX)
+            exchange_table = loads(bytes_to_str(f_obj.read()))
+            queues = [exchange_queue_t(*q) for q in exchange_table]
+            original_len = len(queues)
+            try:
+                queues.remove(queue_val)
+            except ValueError:
+                # queue_val was not present; nothing to remove
+                pass
+            if len(queues) != original_len:
+                f_obj.seek(0)
+                f_obj.write(str_to_bytes(dumps(queues)))
+                f_obj.truncate()
         finally:
             if f_obj is not None:
                 unlock(f_obj)
