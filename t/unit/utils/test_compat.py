@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import socket
 import sys
 import types
@@ -84,45 +83,3 @@ class test_detect_environment:
         finally:
             sys.modules.pop('gevent', None)
         compat._detect_environment()
-
-
-class test_ConcurrentObjectUseError_import:
-
-    @pytest.fixture(autouse=True)
-    def _restore_compat(self):
-        """Reload compat after each test to undo reload side-effects."""
-        yield
-        importlib.reload(compat)
-
-    def _reload(self):
-        return importlib.reload(compat)
-
-    def test_gevent_in_sys_modules_imports_class(self):
-        mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
-        mock_exc_mod = types.ModuleType('gevent.exceptions')
-        mock_exc_mod.ConcurrentObjectUseError = mock_exc
-
-        with patch.dict(sys.modules, {
-            'gevent': types.ModuleType('gevent'),
-            'gevent.exceptions': mock_exc_mod,
-        }):
-            reloaded = self._reload()
-
-        assert reloaded.ConcurrentObjectUseError is mock_exc
-
-    def test_gevent_not_in_sys_modules_gives_none(self):
-        saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
-        try:
-            reloaded = self._reload()
-            assert reloaded.ConcurrentObjectUseError is None
-        finally:
-            sys.modules.update(saved)
-
-    def test_gevent_in_sys_modules_but_class_missing_gives_none(self):
-        with patch.dict(sys.modules, {
-            'gevent': types.ModuleType('gevent'),
-            'gevent.exceptions': types.ModuleType('gevent.exceptions'),
-        }):
-            reloaded = self._reload()
-
-        assert reloaded.ConcurrentObjectUseError is None

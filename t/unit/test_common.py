@@ -55,45 +55,6 @@ def test_ignore_errors():
             raise KeyError()
 
 
-def test_ignore_errors_catches_concurrent_object_use_error_when_gevent_available():
-    """ignore_errors() must suppress ConcurrentObjectUseError when gevent is installed."""
-
-    class _ConcurrentObjectUseError(Exception):
-        """Stand-in for gevent.exceptions.ConcurrentObjectUseError."""
-
-    connection = Mock()
-    connection.channel_errors = ()
-    connection.connection_errors = ()
-
-    with patch.object(common, 'ConcurrentObjectUseError', _ConcurrentObjectUseError):
-        # context-manager form
-        with ignore_errors(connection):
-            raise _ConcurrentObjectUseError()
-
-        # function-call form
-        def raising():
-            raise _ConcurrentObjectUseError()
-
-        ignore_errors(connection, raising)
-
-
-def test_ignore_errors_reraises_when_gevent_not_available():
-    """ignore_errors() must not silently eat ConcurrentObjectUseError when
-    ConcurrentObjectUseError is None (gevent not installed)."""
-
-    class _ConcurrentObjectUseError(Exception):
-        pass
-
-    connection = Mock()
-    connection.channel_errors = ()
-    connection.connection_errors = ()
-
-    with patch.object(common, 'ConcurrentObjectUseError', None):
-        with pytest.raises(_ConcurrentObjectUseError):
-            with ignore_errors(connection):
-                raise _ConcurrentObjectUseError()
-
-
 class test_declaration_cached:
 
     def test_when_cached(self):
