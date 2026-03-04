@@ -21,14 +21,6 @@ except ImportError:  # pragma: no cover
     except ImportError:
         register_after_fork = None
 
-if 'gevent' in sys.modules:
-    try:
-        from gevent.exceptions import ConcurrentObjectUseError
-    except ImportError:
-        ConcurrentObjectUseError = None
-else:
-    ConcurrentObjectUseError = None
-
 
 _environment = None
 
