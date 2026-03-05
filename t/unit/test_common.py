@@ -55,6 +55,53 @@ def test_ignore_errors():
             raise KeyError()
 
 
+def test_ignore_errors_catches_concurrent_object_use_error_when_gevent_available():
+    """ignore_errors() must suppress ConcurrentObjectUseError when gevent is installed."""
+
+    class _ConcurrentObjectUseError(Exception):
+        """Stand-in for gevent.exceptions.ConcurrentObjectUseError."""
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=_ConcurrentObjectUseError):
+        # context-manager form
+        with ignore_errors(connection):
+            raise _ConcurrentObjectUseError()
+
+        # function-call form
+        def raising():
+            raise _ConcurrentObjectUseError()
+
+        ignore_errors(connection, raising)
+
+
+def test_ignore_errors_reraises_when_gevent_not_available():
+
+    class _ConcurrentObjectUseError(Exception):
+        pass
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        with pytest.raises(_ConcurrentObjectUseError):
+            with ignore_errors(connection):
+                raise _ConcurrentObjectUseError()
+
+
+def test_ignore_errors_lazy_evaluation_does_not_crash_with_mock_connection():
+
+    connection = Mock()  # connection_errors and channel_errors are both Mock
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        # Must not raise TypeError during normal (no-exception) execution
+        with ignore_errors(connection):
+            pass  # no exception raised → except clause never evaluated
+
+
 class test_declaration_cached:
 
     def test_when_cached(self):
