@@ -16,7 +16,8 @@ import pytest
 from kombu import Exchange, Queue
 from kombu.exceptions import KombuError
 from kombu.transport.SQS import SNS
-from kombu.transport.SQS.exceptions import UnableToUnsubscribeQueueFromTopicException, UndefinedExchangeException
+from kombu.transport.SQS.exceptions import (
+    UnableToUnsubscribeQueueFromTopicException, UndefinedExchangeException)
 
 boto3 = pytest.importorskip('boto3')
 

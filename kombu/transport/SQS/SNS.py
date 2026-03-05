@@ -18,11 +18,9 @@ from botocore.exceptions import ClientError
 from kombu.exceptions import KombuError
 from kombu.log import get_logger
 
-from .exceptions import (
-    UnableToSubscribeQueueToTopicException,
-    UnableToUnsubscribeQueueFromTopicException,
-    UndefinedExchangeException
-)
+from .exceptions import (UnableToSubscribeQueueToTopicException,
+                         UnableToUnsubscribeQueueFromTopicException,
+                         UndefinedExchangeException)
 
 # pragma: no branch
 if TYPE_CHECKING:
