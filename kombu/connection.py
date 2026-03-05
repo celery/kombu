@@ -749,7 +749,9 @@ class Connection:
             return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
-        if callable(password):
+        if not include_password:
+            password = mask
+        elif callable(password):
             password = password()
 
         return as_url(
