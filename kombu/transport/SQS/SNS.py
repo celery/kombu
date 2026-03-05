@@ -20,8 +20,8 @@ from kombu.log import get_logger
 
 from .exceptions import (
     UnableToSubscribeQueueToTopicException,
-      UnableToUnsubscribeQueueFromTopicException,
-      UndefinedExchangeException
+    UnableToUnsubscribeQueueFromTopicException,
+    UndefinedExchangeException
 )
 
 # pragma: no branch
