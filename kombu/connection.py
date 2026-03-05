@@ -130,7 +130,10 @@ class Connection:
         If a callable is provided, it will be invoked on each
         connection/reconnection attempt, enabling credential refresh
         (e.g., for expiring tokens).
-        Note: callable passwords are only supported via programmatic
+        Note: callable passwords are currently resolved by the
+        ``pyamqp`` transport only. Other transports (e.g.
+        ``librabbitmq``) will not invoke the callable.
+        Callable passwords are only supported via programmatic
         configuration, not via URL-based configuration.
         The callable must be thread-safe if used in a multi-threaded
         context, and picklable if using the ``spawn`` start method.
