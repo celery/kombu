@@ -130,13 +130,17 @@ class Connection:
         If a callable is provided, it will be invoked on each
         connection/reconnection attempt, enabling credential refresh
         (e.g., for expiring tokens).
-        Note: callable passwords are currently resolved by the
-        ``pyamqp`` transport only. Other transports (e.g.
-        ``librabbitmq``) will not invoke the callable.
+        Note: during connection establishment, callable passwords are
+        currently resolved by the ``pyamqp`` transport only. Other
+        transports (e.g. ``librabbitmq``) will not invoke the callable.
+        Additionally, :meth:`as_uri` will invoke the callable when
+        ``include_password=True``.
         Callable passwords are only supported via programmatic
         configuration, not via URL-based configuration.
         The callable must be thread-safe if used in a multi-threaded
         context, and picklable if using the ``spawn`` start method.
+
+        .. versionadded:: 5.7
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
     """
