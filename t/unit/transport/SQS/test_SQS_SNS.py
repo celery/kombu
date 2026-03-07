@@ -15,7 +15,9 @@ import pytest
 
 from kombu import Exchange, Queue
 from kombu.exceptions import KombuError
-from kombu.transport.SQS.exceptions import UndefinedExchangeException
+from kombu.transport.SQS import SNS
+from kombu.transport.SQS.exceptions import (
+    UnableToUnsubscribeQueueFromTopicException, UndefinedExchangeException)
 
 boto3 = pytest.importorskip('boto3')
 
@@ -67,33 +69,14 @@ class test_SNS:
 
         # Assert
         assert result is None
-        assert sns_fanout.subscriptions.cleanup.call_count == 0
-        assert sns_fanout._topic_arn_cache[exchange_name] == "existing_arn"
-
-    def test_initialise_exchange_with_predefined_exchanges(self, sns_fanout, caplog):
-        # Arrange
-        exchange_name = "test_exchange"
-
-        sns_fanout.channel.predefined_exchanges = {"exchange-1": {}}
-        sns_fanout.subscriptions = Mock()
-        caplog.set_level(logging.DEBUG)
-
-        # Act
-        result = sns_fanout.initialise_exchange(exchange_name)
-
-        # Assert
-        assert result is None
         assert sns_fanout.subscriptions.cleanup.call_args_list == [call(exchange_name)]
-        assert (
-            "'predefined_exchanges' has been specified, so SNS topics will not be created."
-            in caplog.text
-        )
+        assert sns_fanout._topic_arn_cache[exchange_name] == "existing_arn"
 
     def test_initialise_exchange_create_new_topic(self, sns_fanout):
         # Arrange
         exchange_name = "test_exchange"
 
-        sns_fanout.channel.predefined_exchanges = False
+        sns_fanout.channel.predefined_exchanges = {}
         sns_fanout.subscriptions = Mock()
         sns_fanout._create_sns_topic = Mock(return_value="new_arn")
 
@@ -106,7 +89,7 @@ class test_SNS:
         assert sns_fanout._create_sns_topic.call_args_list == [call(exchange_name)]
         assert sns_fanout._topic_arn_cache[exchange_name] == "new_arn"
 
-    def test_get_topic_arn_create_new_topic(self, sns_fanout):
+    def test_get_or_create_topic_create_new_topic(self, sns_fanout):
         # Arrange
         exchange_name = "test_exchange"
 
@@ -114,14 +97,14 @@ class test_SNS:
         sns_fanout._create_sns_topic = Mock(return_value="new_arn")
 
         # Act
-        result = sns_fanout._get_topic_arn(exchange_name)
+        result = sns_fanout._get_or_create_topic(exchange_name)
 
         # Assert
         assert result == "new_arn"
         assert sns_fanout._create_sns_topic.call_args_list == [call(exchange_name)]
         assert sns_fanout._topic_arn_cache[exchange_name] == "new_arn"
 
-    def test_get_topic_arn_predefined_exchange_found(self, sns_fanout):
+    def test_get_or_create_topic_predefined_exchange_found(self, sns_fanout):
         # Arrange
         exchange_name = "exchange-1"
 
@@ -131,14 +114,14 @@ class test_SNS:
         sns_fanout._create_sns_topic = Mock(return_value="new_arn")
 
         # Act
-        result = sns_fanout._get_topic_arn(exchange_name)
+        result = sns_fanout._get_or_create_topic(exchange_name)
 
         # Assert
         assert result == "some-existing-arn"
         assert sns_fanout._create_sns_topic.call_count == 0
         assert sns_fanout._topic_arn_cache[exchange_name] == "some-existing-arn"
 
-    def test_get_topic_arn_predefined_exchange_not_found(self, sns_fanout):
+    def test_get_or_create_topic_predefined_exchange_not_found(self, sns_fanout):
         # Arrange
         exchange_name = "exchange-2"
 
@@ -152,7 +135,7 @@ class test_SNS:
             UndefinedExchangeException,
             match="Exchange with name 'exchange-2' must be defined in 'predefined_exchanges'.",
         ):
-            sns_fanout._get_topic_arn(exchange_name)
+            sns_fanout._get_or_create_topic(exchange_name)
 
         # Assert
         assert sns_fanout._create_sns_topic.call_count == 0
@@ -519,19 +502,41 @@ class test_SNS:
             )
         ]
 
-    def test_handle_getting_topic_arn_for_predefined_exchanges_double_lock_check(self, sns_fanout):
+    def test_get_topic_arn_for_predefined_exchange_found_in_cache(self, sns_fanout):
         # Arrange
         exchange = "test-exchange"
-        sns_fanout._topic_arn_cache = {exchange: "cached-subscription-arn"}
-        sns_fanout.channel.predefined_exchanges = MagicMock()
-        sns_fanout.channel.predefined_exchanges.get.side_effect = AssertionError("This should not be called")
+        sns_fanout._topic_arn_cache = {"another-exchange": "another-topics-arn"}
+        sns_fanout.channel.predefined_exchanges = {
+            "test-exchange": {"arn": "arn:aws:sns:us-east-1:123456789012:test_topic"}
+        }
 
         # Act
-        result = sns_fanout._handle_getting_topic_arn_for_predefined_exchanges(exchange)
+        result = sns_fanout._get_topic_arn_for_predefined_exchange(exchange)
 
         # Assert
-        assert result == "cached-subscription-arn"
-        assert sns_fanout.channel.predefined_exchanges.get.call_count == 0
+        assert result == "arn:aws:sns:us-east-1:123456789012:test_topic"
+        assert sns_fanout._topic_arn_cache == {
+            "another-exchange": "another-topics-arn",
+            "test-exchange": "arn:aws:sns:us-east-1:123456789012:test_topic"
+        }
+
+    def test_get_topic_arn_for_predefined_exchange_not_found_in_cache(self, sns_fanout):
+        # Arrange
+        exchange = "test-exchange"
+        sns_fanout._topic_arn_cache = {"another-exchange": "another-topics-arn"}
+        sns_fanout.channel.predefined_exchanges = {"topic-2": {"arn": "arn:aws:sns:us-east-1:123456789012:topic-2"}}
+
+        # Act
+        with pytest.raises(
+            UndefinedExchangeException,
+            match="Exchange with name 'test-exchange' must be defined in 'predefined_exchanges'.",
+        ):
+            sns_fanout._get_topic_arn_for_predefined_exchange(exchange)
+
+        # Assert
+        assert sns_fanout._topic_arn_cache == {
+            "another-exchange": "another-topics-arn",
+        }
 
 
 class test_SnsSubscription:
@@ -541,8 +546,8 @@ class test_SnsSubscription:
             yield mock
 
     @pytest.fixture
-    def mock_get_topic_arn(self, sns_fanout):
-        with patch.object(sns_fanout, "_get_topic_arn") as mock:
+    def mock_get_or_create_topic(self, sns_fanout):
+        with patch.object(sns_fanout, "_get_or_create_topic") as mock:
             yield mock
 
     @pytest.fixture
@@ -590,7 +595,7 @@ class test_SnsSubscription:
         self,
         sns_subscription,
         caplog,
-        mock_get_topic_arn,
+        mock_get_or_create_topic,
         mock_get_queue_arn,
         mock_set_permission_on_sqs_queue,
         mock_subscribe_queue_to_sns_topic,
@@ -603,7 +608,7 @@ class test_SnsSubscription:
         subscription_arn = "arn:aws:sns:us-east-1:123456789012:test_topic:12345678-1234-1234-1234-123456789012"
 
         mock_get_queue_arn.return_value = queue_arn
-        mock_get_topic_arn.return_value = topic_arn
+        mock_get_or_create_topic.return_value = topic_arn
         mock_subscribe_queue_to_sns_topic.return_value = subscription_arn
 
         # Act
@@ -616,7 +621,7 @@ class test_SnsSubscription:
             == subscription_arn
         )
         assert mock_get_queue_arn.call_args_list == [call("test_queue")]
-        assert mock_get_topic_arn.call_args_list == [call(exchange_name)]
+        assert mock_get_or_create_topic.call_args_list == [call(exchange_name)]
         assert mock_subscribe_queue_to_sns_topic.call_args_list == [
             call(topic_arn=topic_arn, queue_arn=queue_arn)
         ]
@@ -692,7 +697,7 @@ class test_SnsSubscription:
         exchange_name = "exchange-1"
 
         channel_fixture.predefined_exchanges = {"exchange-1": {}}
-        sns_fanout._get_topic_arn = Mock()
+        sns_fanout._get_or_create_topic = Mock()
 
         # Act
         result = sns_subscription.cleanup(exchange_name)
@@ -703,7 +708,7 @@ class test_SnsSubscription:
                    "'predefined_exchanges' has been specified, so stale SNS subscription"
                    " cleanup will be skipped."
                ) in caplog.text
-        assert sns_fanout._get_topic_arn.call_count == 0
+        assert sns_fanout._get_or_create_topic.call_count == 0
 
     def test_cleanup_no_invalid_subscriptions(
         self, sns_subscription, caplog, channel_fixture, sns_fanout
@@ -715,7 +720,7 @@ class test_SnsSubscription:
         exchange_name = "exchange-1"
 
         channel_fixture.predefined_exchanges = {}
-        sns_fanout._get_topic_arn = Mock(return_value=topic_arn)
+        sns_fanout._get_or_create_topic = Mock(return_value=topic_arn)
         sns_subscription._get_invalid_sns_subscriptions = Mock(return_value=[])
         sns_subscription._unsubscribe_sns_subscription = Mock()
 
@@ -727,7 +732,7 @@ class test_SnsSubscription:
         assert (
                    f"Checking for stale SNS subscriptions for exchange '{exchange_name}'"
                ) in caplog.text
-        assert sns_fanout._get_topic_arn.call_args_list == [call(exchange_name)]
+        assert sns_fanout._get_or_create_topic.call_args_list == [call(exchange_name)]
         assert sns_subscription._unsubscribe_sns_subscription.call_count == 0
 
     def test_cleanup_with_invalid_subscriptions(
@@ -740,7 +745,7 @@ class test_SnsSubscription:
         exchange_name = "exchange-1"
 
         channel_fixture.predefined_exchanges = {}
-        sns_fanout._get_topic_arn = Mock(return_value=topic_arn)
+        sns_fanout._get_or_create_topic = Mock(return_value=topic_arn)
         sns_subscription._get_invalid_sns_subscriptions = Mock(
             return_value=[
                 "subscription-arn-1",
@@ -759,7 +764,7 @@ class test_SnsSubscription:
 
         # Assert
         assert result is None
-        assert sns_fanout._get_topic_arn.call_args_list == [call(exchange_name)]
+        assert sns_fanout._get_or_create_topic.call_args_list == [call(exchange_name)]
         assert sns_subscription._unsubscribe_sns_subscription.call_args_list == [
             call("subscription-arn-1"),
             call("subscription-arn-2"),
@@ -1200,10 +1205,9 @@ class test_SnsSubscription:
         ]
 
     def test_unsubscribe_sns_subscription_error(
-        self, sns_subscription, sns_fanout, caplog
+        self, sns_subscription, sns_fanout
     ):
         # Arrange
-        caplog.set_level(logging.DEBUG)
         subscription_arn = (
             "arn:aws:sns:us-west-2:123456789012:my-topic:12345678-12:sub-id"
         )
@@ -1215,16 +1219,16 @@ class test_SnsSubscription:
         sns_fanout.get_client = mock_client
 
         # Act
-        result = sns_subscription._unsubscribe_sns_subscription(subscription_arn)
+        with pytest.raises(
+            UnableToUnsubscribeQueueFromTopicException,
+            match="SNS unsubscribe API returned status code '400'",
+        ):
+            sns_subscription._unsubscribe_sns_subscription(subscription_arn)
 
         # Assert
-        assert result is None
         assert mock_client.return_value.unsubscribe.call_args_list == [
             call(SubscriptionArn=subscription_arn)
         ]
-        assert (
-                   f"Unable to remove subscription '{subscription_arn}': status code was 400"
-               ) in caplog.text
 
     def test_get_invalid_sns_subscriptions(self, sns_subscription, sns_fanout):
         # Arrange
@@ -1556,3 +1560,495 @@ class test_SnsSubscription:
             match="Unable to get ARN for SQS queue 'my-queue-4': status code was '500'",
         ):
             sns_subscription._get_queue_arn("my-queue-4")
+
+    @pytest.fixture
+    def unsubscribe_mock(self, sns_subscription):
+        mock = Mock()
+        sns_subscription._unsubscribe_sns_subscription = mock
+        return mock
+
+    @pytest.mark.parametrize(
+        "queue_name, exchange_name",
+        [
+            (None, None),
+            ("", ""),
+            ("test_queue", "test_exchange"),
+        ],
+    )
+    def test_unsubscribe_queue_returns_none_when_subscription_not_cached(
+        self, sns_subscription, unsubscribe_mock, queue_name, exchange_name
+    ):
+        """Return early without side effects when no cached subscription exists."""
+        # Arrange
+        sns_subscription._subscription_arn_cache = {
+            "another-exchange:another-queue": "arn:aws:sns:us-east-1:123456789012:topic:sub"
+        }
+
+        # Act
+        result = sns_subscription.unsubscribe_queue(queue_name, exchange_name)
+
+        # Assert
+        assert result is None
+        assert unsubscribe_mock.call_count == 0
+
+    def test_unsubscribe_queue_logs_and_removes_cache_on_success(
+        self, sns_subscription, unsubscribe_mock, caplog
+    ):
+        """Unsubscribe successfully, emit an info log, and remove the cached ARN."""
+        # Arrange
+        caplog.set_level(logging.INFO)
+        queue_name = "test_queue"
+        exchange_name = "test_exchange"
+        cache_key = f"{exchange_name}:{queue_name}"
+        subscription_arn = (
+            "arn:aws:sns:us-east-1:123456789012:test-topic:"
+            "12345678-1234-1234-1234-123456789012"
+        )
+        sns_subscription._subscription_arn_cache = {cache_key: subscription_arn}
+
+        # Act
+        result = sns_subscription.unsubscribe_queue(queue_name, exchange_name)
+
+        # Assert
+        assert result is None
+        assert unsubscribe_mock.call_args_list == [call(subscription_arn)]
+        assert cache_key not in sns_subscription._subscription_arn_cache
+        assert (
+            f"Unsubscribed subscription '{subscription_arn}' for SQS queue '{queue_name}'"
+            in caplog.text
+        )
+
+    def test_unsubscribe_queue_logs_and_reraises_on_unsubscribe_failure_and_still_removes_cache(
+        self, sns_subscription, unsubscribe_mock, caplog
+    ):
+        """Log and re-raise unsubscribe failures while always invalidating cache."""
+        # Arrange
+        caplog.set_level(logging.ERROR)
+        queue_name = "test_queue"
+        exchange_name = "test_exchange"
+        cache_key = f"{exchange_name}:{queue_name}"
+        subscription_arn = "arn:aws:sns:us-east-1:123456789012:test-topic:sub-1"
+        sns_subscription._subscription_arn_cache = {cache_key: subscription_arn}
+        unsubscribe_mock.side_effect = UnableToUnsubscribeQueueFromTopicException(
+            "SNS unsubscribe API returned status code '500'"
+        )
+
+        # Act / Assert
+        with pytest.raises(
+            UnableToUnsubscribeQueueFromTopicException,
+            match="SNS unsubscribe API returned status code '500'",
+        ):
+            sns_subscription.unsubscribe_queue(queue_name, exchange_name)
+
+        # Assert
+        assert unsubscribe_mock.call_args_list == [call(subscription_arn)]
+        assert cache_key not in sns_subscription._subscription_arn_cache
+        assert (
+            f"Failed to unsubscribe queue '{queue_name}' from SNS topic '{exchange_name}': "
+            "SNS unsubscribe API returned status code '500'"
+        ) in caplog.text
+
+
+class _SqsSnsE2eTestBase:
+    @pytest.fixture
+    def mock_sns_client(self):
+        sns_client_mock = MagicMock(name='MockSNSClient')
+        sns_client_mock.create_topic.return_value = {
+            "TopicArn": "arn:aws:sns:us-east-1:123456789012:test_exchange"
+        }
+        return sns_client_mock
+
+    @pytest.fixture
+    def mock_sqs_client(self):
+        sqs_client_mock = MagicMock(name='MockSQSClient')
+        return sqs_client_mock
+
+    @pytest.fixture
+    def mock_channel(self, mock_sns_client, mock_sqs_client):
+        channel_mock = MagicMock(name='MockChannel')
+        channel_mock.predefined_exchanges = {}
+        channel_mock.transport_options = {}
+        channel_mock.region = "us-east-1"
+        channel_mock.conninfo.userid = "test_access_key_id"
+        channel_mock.conninfo.password = "test_secret_access_key"
+        channel_mock.is_sts_token_refresh_required.return_value = False
+        channel_mock._resolve_queue_url.side_effect = (
+            lambda name: f"https://sqs.us-east-1.amazonaws.com/123456789012/{name}"
+        )
+        channel_mock._new_boto_client.return_value = mock_sns_client
+        channel_mock.sqs.return_value = mock_sqs_client
+        channel_mock.canonical_queue_name.side_effect = lambda name: name
+        return channel_mock
+
+    @pytest.fixture
+    def sns_instance(self, mock_channel) -> SNS:
+        return SNS(mock_channel)
+
+    @pytest.fixture(autouse=True)
+    def _setup(self, caplog):
+        caplog.set_level(logging.DEBUG)
+
+
+class test_SqsSnsInitialiseExchangeE2E(_SqsSnsE2eTestBase):
+    @pytest.mark.parametrize("exchange_name, is_fifo", [("test_exchange", False), ("another_exchange.fifo", True)])
+    def test_not_initialised_yet(self, sns_instance, caplog, mock_channel, mock_sns_client, exchange_name, is_fifo):
+        # Arrange
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn":        f"arn:aws:sns:us-east-1:testing:{exchange_name}"
+        }
+        assert sns_instance._topic_arn_cache == {}
+
+        # Act
+        sns_instance.initialise_exchange(exchange_name)
+
+        # Assert
+        assert f"Checking for stale SNS subscriptions for exchange '{exchange_name}'" in caplog.text
+        assert sns_instance._lock.locked() is False
+
+        assert mock_channel._new_boto_client.call_args_list == [
+            call(
+                service='sns',
+                region=mock_channel.region,
+                access_key_id=mock_channel.conninfo.userid,
+                secret_access_key=mock_channel.conninfo.password,
+                session_token=None
+            )
+        ]
+        assert mock_sns_client.create_topic.call_args_list == [
+            call(
+                Name=exchange_name,
+                Attributes={'FifoTopic': 'true' if is_fifo else 'false'},
+                Tags=[
+                    {'Key': 'ManagedBy', 'Value': 'Celery/Kombu'},
+                    {
+                        'Key': 'Description',
+                        'Value': 'This SNS topic is used by Kombu to enable Fanout support for AWS SQS.'
+                    }
+                ]
+            )
+        ]
+        assert sns_instance._topic_arn_cache == {exchange_name: f"arn:aws:sns:us-east-1:testing:{exchange_name}"}
+
+    @pytest.mark.parametrize("exchange_name, is_fifo", [("test_exchange", False), ("another_exchange.fifo", True)])
+    def test_initialised_already(self, sns_instance, caplog, mock_channel, mock_sns_client, exchange_name, is_fifo):
+        # Arrange
+        sns_instance._topic_arn_cache = {exchange_name: f"arn:aws:sns:us-east-1:testing:{exchange_name}"}
+
+        # Act
+        sns_instance.initialise_exchange(exchange_name)
+
+        # Assert
+        assert sns_instance._lock.locked() is False
+
+        assert mock_sns_client.create_topic.call_count == 0
+        assert sns_instance._topic_arn_cache == {exchange_name: f"arn:aws:sns:us-east-1:testing:{exchange_name}"}
+
+    def test_with_invalid_subscriptions(self, sns_instance, caplog, mock_channel, mock_sns_client, mock_sqs_client):
+        def _get_queue_url_side_effect(QueueName):
+            if QueueName == "my-queue":
+                return {
+                    "ResponseMetadata": {"HTTPStatusCode": 200},
+                    "QueueUrl": f"https://sqs.us-east-1.amazonaws.com/123456789012/{QueueName}"
+                    }
+            else:
+                raise ClientError(
+                    error_response={"Error": {"Code": "QueueDoesNotExist"}},
+                    operation_name="GetQueueUrl"
+                )
+
+        # Arrange
+        exchange_name = "test_exchange"
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn":        f"arn:aws:sns:us-east-1:testing:{exchange_name}"
+        }
+        mock_sns_client.get_paginator.return_value.paginate.return_value = iter([
+            {"Subscriptions": [
+                {
+                    "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:my-topic:sub1",
+                    "Protocol": "http",
+                    "Endpoint": "http://localhost/example-endpoint"
+                },  # Protocol is not SQS, so is not eligibe for cleanup
+                {
+                    "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:my-topic:sub2",
+                    "Protocol": "sqs", "Endpoint": "arn:aws:sqs:us-east-1:123456789012:my-queue"
+                }  # This SQS subscription is valid (queue exists) and should not be removed
+            ]},
+            {"Subscriptions": [
+                {
+                    "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:my-topic:sub3",
+                    "Protocol": "sqs",
+                    "Endpoint": "arn:aws:sqs:us-east-1:123456789012:a-deleted-queue"
+                }  # This SQS subscription is invalid (queue does not exist) and should be removed
+            ]},
+        ])
+        mock_sqs_client.get_queue_url.side_effect = _get_queue_url_side_effect
+        mock_sns_client.unsubscribe.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}}
+
+        # Act
+        sns_instance.initialise_exchange(exchange_name)
+
+        # Assert
+        assert f"Checking for stale SNS subscriptions for exchange '{exchange_name}'" in caplog.text
+        assert (
+            "Removed stale subscription 'arn:aws:sns:us-east-1:123456789012:my-topic:sub3' "
+            "for SNS topic 'arn:aws:sns:us-east-1:testing:test_exchange'"
+        ) in caplog.text
+        assert (
+            f"Created SNS topic '{exchange_name}' with "
+            f"ARN 'arn:aws:sns:us-east-1:testing:{exchange_name}'"
+        ) in caplog.text
+        assert sns_instance._lock.locked() is False
+
+        assert mock_channel._new_boto_client.call_count == 1
+        assert mock_sns_client.create_topic.call_count == 1
+        assert mock_sns_client.unsubscribe.call_args_list == [
+            call(SubscriptionArn="arn:aws:sns:us-east-1:123456789012:my-topic:sub3")
+        ]
+
+        assert sns_instance._topic_arn_cache == {
+            exchange_name: f"arn:aws:sns:us-east-1:testing:{exchange_name}"
+        }
+
+    def test_not_initialised_yet_with_predefined_exchanges_found(
+        self, sns_instance, caplog, mock_channel, mock_sns_client
+    ):
+        # Arrange
+        exchange_name = "test_exchange"
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn":        f"arn:aws:sns:us-east-1:testing:{exchange_name}"
+        }
+        mock_channel.predefined_exchanges = {
+            exchange_name: {"arn": f"arn:aws:sns:us-east-1:testing:{exchange_name}"}
+        }
+        assert sns_instance._topic_arn_cache == {}
+
+        # Act
+        sns_instance.initialise_exchange(exchange_name)
+
+        # Assert
+        assert (
+            "'predefined_exchanges' has been specified,"
+            " so stale SNS subscription cleanup will be skipped."
+        ) in caplog.text
+        assert sns_instance._lock.locked() is False
+
+        assert mock_channel._new_boto_client.call_count == 0
+        assert mock_sns_client.create_topic.call_count == 0
+        assert sns_instance._topic_arn_cache == {exchange_name: f"arn:aws:sns:us-east-1:testing:{exchange_name}"}
+
+    def test_not_initialised_yet_with_predefined_exchanges_not_found(
+        self, sns_instance, caplog, mock_channel, mock_sns_client
+    ):
+        # Arrange
+        exchange_name = "test_exchange"
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn":        f"arn:aws:sns:us-east-1:testing:{exchange_name}"
+        }
+        mock_channel.predefined_exchanges = {
+            "another-topic": {"arn": "arn:aws:sns:us-east-1:testing:another-topic"}
+        }
+        assert sns_instance._topic_arn_cache == {}
+
+        # Act
+        with pytest.raises(
+            UndefinedExchangeException,
+            match=f"Exchange with name '{exchange_name}' must be defined in 'predefined_exchanges'."
+        ) as e:
+            sns_instance.initialise_exchange(exchange_name)
+
+        # Assert
+        assert isinstance(e.value, KombuError)
+        assert (
+            "'predefined_exchanges' has been specified, so stale "
+            "SNS subscription cleanup will be skipped."
+        ) in caplog.text
+        assert sns_instance._lock.locked() is False
+
+        assert mock_channel._new_boto_client.call_count == 0
+        assert mock_sns_client.create_topic.call_count == 0
+        assert sns_instance._topic_arn_cache == {}
+
+
+class test_SqsSnsPublishE2E(_SqsSnsE2eTestBase):
+    def test_publish_end_to_end_with_attributes_and_request_params(
+        self, sns_instance, mock_sns_client
+    ):
+        # Arrange
+        exchange_name = "events"
+        message = "hello"
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn": "arn:aws:sns:us-east-1:testing:events",
+        }
+        mock_sns_client.publish.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}}
+
+        # Act
+        sns_instance.publish(
+            exchange_name=exchange_name,
+            message=message,
+            message_attributes={"bool": True, "number": 12},
+            request_params={"Subject": "example-subject"},
+        )
+
+        # Assert
+        assert mock_sns_client.create_topic.call_args_list == [
+            call(
+                Name="events",
+                Attributes={"FifoTopic": "false"},
+                Tags=[
+                    {"Key": "ManagedBy", "Value": "Celery/Kombu"},
+                    {
+                        "Key": "Description",
+                        "Value": "This SNS topic is used by Kombu to enable Fanout support for AWS SQS.",
+                    },
+                ],
+            )
+        ]
+        assert mock_sns_client.publish.call_args_list == [
+            call(
+                TopicArn="arn:aws:sns:us-east-1:testing:events",
+                Message="hello",
+                Subject="example-subject",
+                MessageAttributes={
+                    "bool": {"DataType": "String", "StringValue": "True"},
+                    "number": {"DataType": "String", "StringValue": "12"},
+                },
+            )
+        ]
+
+    def test_subscribe_queue_end_to_end_sets_subscription_and_merges_policy(
+        self, sns_instance, mock_sns_client, mock_sqs_client
+    ):
+        # Arrange
+        exchange_name = "events"
+        queue_name = "worker-queue"
+        queue_url = f"https://sqs.us-east-1.amazonaws.com/123456789012/{queue_name}"
+        queue_arn = "arn:aws:sqs:us-east-1:123456789012:worker-queue"
+        topic_arn = "arn:aws:sns:us-east-1:testing:events"
+        subscription_arn = "arn:aws:sns:us-east-1:testing:events:sub-1"
+        existing_policy = {
+            "Version": "2012-10-17",
+            "Statement": [{"Sid": "ExistingStatement", "Action": "sqs:GetQueueAttributes"}],
+        }
+
+        mock_sns_client.create_topic.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "TopicArn": topic_arn,
+        }
+        mock_sns_client.subscribe.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200},
+            "SubscriptionArn": subscription_arn,
+        }
+
+        def _queue_attrs_side_effect(QueueUrl, AttributeNames):
+            assert QueueUrl == queue_url
+            if AttributeNames == ["QueueArn"]:
+                return {
+                    "ResponseMetadata": {"HTTPStatusCode": 200},
+                    "Attributes": {"QueueArn": queue_arn},
+                }
+            if AttributeNames == ["Policy"]:
+                return {"Attributes": {"Policy": json.dumps(existing_policy)}}
+            raise AssertionError("Unexpected SQS get_queue_attributes request")
+
+        mock_sqs_client.get_queue_attributes.side_effect = _queue_attrs_side_effect
+
+        # Act
+        result = sns_instance.subscriptions.subscribe_queue(queue_name, exchange_name)
+
+        # Assert
+        assert result == subscription_arn
+        assert sns_instance.subscriptions._subscription_arn_cache[
+            f"{exchange_name}:{queue_name}"
+        ] == subscription_arn
+        assert mock_sns_client.subscribe.call_args_list == [
+            call(
+                TopicArn=topic_arn,
+                Protocol="sqs",
+                Endpoint=queue_arn,
+                Attributes={"RawMessageDelivery": "true"},
+                ReturnSubscriptionArn=True,
+            )
+        ]
+
+        set_policy_call = mock_sqs_client.set_queue_attributes.call_args_list
+        assert len(set_policy_call) == 1
+        assert set_policy_call[0].kwargs["QueueUrl"] == queue_url
+        policy_doc = json.loads(set_policy_call[0].kwargs["Attributes"]["Policy"])
+        assert policy_doc["Statement"][0] == existing_policy["Statement"][0]
+        assert policy_doc["Statement"][1] == {
+            "Sid": "KombuManaged",
+            "Effect": "Allow",
+            "Principal": {"Service": "sns.amazonaws.com"},
+            "Action": "SQS:SendMessage",
+            "Resource": queue_arn,
+            "Condition": {"ArnLike": {"aws:SourceArn": topic_arn}},
+        }
+
+    def test_unsubscribe_queue_end_to_end_removes_cache_entry(
+        self, sns_instance, mock_sns_client
+    ):
+        # Arrange
+        queue_name = "worker-queue"
+        exchange_name = "events"
+        cache_key = f"{exchange_name}:{queue_name}"
+        subscription_arn = "arn:aws:sns:us-east-1:testing:events:sub-1"
+        sns_instance.subscriptions._subscription_arn_cache[cache_key] = subscription_arn
+        mock_sns_client.unsubscribe.return_value = {
+            "ResponseMetadata": {"HTTPStatusCode": 200}
+        }
+
+        # Act
+        sns_instance.subscriptions.unsubscribe_queue(queue_name, exchange_name)
+
+        # Assert
+        assert cache_key not in sns_instance.subscriptions._subscription_arn_cache
+        assert mock_sns_client.unsubscribe.call_args_list == [
+            call(SubscriptionArn=subscription_arn)
+        ]
+
+    def test_publish_predefined_exchange_uses_sts_refreshed_client(
+        self, sns_instance, mock_channel
+    ):
+        # Arrange
+        exchange_name = "predefined-topic"
+        topic_arn = "arn:aws:sns:eu-west-1:testing:predefined-topic"
+        mock_channel.predefined_exchanges = {
+            exchange_name: {"arn": topic_arn, "region": "eu-west-1"}
+        }
+        mock_channel.transport_options = {"sts_role_arn": "arn:aws:iam::123456789012:role/test"}
+        mock_channel.is_sts_token_refresh_required.return_value = True
+        mock_channel.get_sts_credentials.return_value = {
+            "AccessKeyId": "sts-access",
+            "SecretAccessKey": "sts-secret",
+            "SessionToken": "sts-token",
+            "Expiration": datetime.now(timezone.utc) + timedelta(minutes=30),
+        }
+
+        sts_sns_client = MagicMock(name="StsSnsClient")
+        sts_sns_client.publish.return_value = {"ResponseMetadata": {"HTTPStatusCode": 200}}
+        mock_channel._new_boto_client.side_effect = [sts_sns_client]
+
+        # Act
+        sns_instance.publish(exchange_name=exchange_name, message="from-sts")
+
+        # Assert
+        assert mock_channel._new_boto_client.call_args_list == [
+            call(
+                service="sns",
+                region="eu-west-1",
+                access_key_id="sts-access",
+                secret_access_key="sts-secret",
+                session_token="sts-token",
+            )
+        ]
+        assert sts_sns_client.publish.call_args_list == [
+            call(TopicArn=topic_arn, Message="from-sts")
+        ]
+        assert sns_instance.sts_expiration == mock_channel.get_sts_credentials.return_value[
+            "Expiration"
+        ]
