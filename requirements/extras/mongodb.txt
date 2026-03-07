@@ -1,1 +1,1 @@
-pymongo==4.15.3
+pymongo==4.16.0
