@@ -126,6 +126,21 @@ class Connection:
         keyword argument at the same time.
     :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
+        Can be a string or a callable returning a string.
+        If a callable is provided, it will be invoked on each
+        connection/reconnection attempt, enabling credential refresh
+        (e.g., for expiring tokens).
+        Note: during connection establishment, callable passwords are
+        currently resolved by the ``pyamqp`` transport only. Other
+        transports (e.g. ``librabbitmq``) will not invoke the callable.
+        Additionally, :meth:`as_uri` will invoke the callable when
+        ``include_password=True``.
+        Callable passwords are only supported via programmatic
+        configuration, not via URL-based configuration.
+        The callable must be thread-safe if used in a multi-threaded
+        context, and picklable if using the ``spawn`` start method.
+
+        .. versionadded:: 5.7
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
     """
@@ -738,6 +753,10 @@ class Connection:
             return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
+        if not include_password:
+            password = mask
+        elif callable(password):
+            password = password()
 
         return as_url(
             transport, hostname, port, userid, password, quote(vhost),
