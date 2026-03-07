@@ -507,7 +507,13 @@ class Channel(virtual.Channel):
             return consumer
 
         def _subscribe():
-            consumer.subscribe(topic, FilterExpression(expression=group_config.filter_exp))
+            consumer.subscribe(
+                topic,
+                FilterExpression(
+                    expression=group_config.filter_exp,
+                    filter_type=group_config.filter_type,
+                ),
+            )
             self._bound_topics.add(topic)
 
         retry_over_time(
