@@ -126,6 +126,9 @@ try:
     DEFAULT_FILTER_EXP = FilterExpression.TAG_EXPRESSION_SUB_ALL
 except ImportError:
     rocketmq = None
+    # Provide safe fallbacks so the module can be imported without rocketmq-python-client.
+    FilterType = None  # type: ignore[assignment]
+    DEFAULT_FILTER_EXP = None
 
 
 logger = get_logger(__name__)
