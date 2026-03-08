@@ -378,7 +378,7 @@ class _SnsSubscription:
         """Unsubscribes a queue from an AWS SNS topic.
 
         :param queue_name: The queue to unsubscribe
-        :param exchange_name: The exchange to unsubscribe from the queue, if not provided
+        :param exchange_name: The exchange to unsubscribe from the queue
         :return: None
         """
         cache_key = f"{exchange_name}:{queue_name}"
