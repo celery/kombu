@@ -1769,7 +1769,7 @@ class test_SqsSnsInitialiseExchangeE2E(_SqsSnsE2eTestBase):
                     "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:my-topic:sub1",
                     "Protocol": "http",
                     "Endpoint": "http://localhost/example-endpoint"
-                },  # Protocol is not SQS, so is not eligibe for cleanup
+                },  # Protocol is not SQS, so is not eligible for cleanup
                 {
                     "SubscriptionArn": "arn:aws:sns:us-east-1:123456789012:my-topic:sub2",
                     "Protocol": "sqs", "Endpoint": "arn:aws:sqs:us-east-1:123456789012:my-queue"
