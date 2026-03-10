@@ -11,9 +11,9 @@ from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         NotFound, PermissionDenied)
 from google.pubsub_v1.types.pubsub import Subscription
 
-from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
-                                      Transport, UnackedIds,
-                                      _ACK_MODIFY_BATCH_SIZE)
+from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE, AtomicCounter,
+                                      Channel, QueueDescriptor, Transport,
+                                      UnackedIds)
 
 
 class test_UnackedIds:
