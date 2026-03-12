@@ -197,6 +197,16 @@ class CurlClient(BaseClient):
         setopt = curl.setopt
         setopt(_pycurl.URL, bytes_to_str(request.url))
 
+        # Apply request and connect timeouts to the curl handle.
+        # Without these, pycurl will wait indefinitely on a socket
+        # that is open but not sending data (e.g. after a network
+        # partition or proxy/sidecar termination), causing the async
+        # SQS polling loop to hang forever.
+        if request.request_timeout:
+            setopt(_pycurl.TIMEOUT, int(request.request_timeout))
+        if request.connect_timeout:
+            setopt(_pycurl.CONNECTTIMEOUT, int(request.connect_timeout))
+
         # see tornado curl client
         request.headers.setdefault('Expect', '')
         request.headers.setdefault('Pragma', '')
