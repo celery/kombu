@@ -1108,6 +1108,9 @@ class ConnectionPool(Resource):
         resource._debug('acquired')
         return resource
 
+    def acquire(self, block: bool = False, timeout: int | float | None = None) -> Connection:
+        return super().acquire(block, timeout)
+
 
 class ChannelPool(Resource):
     """Pool of channels."""
