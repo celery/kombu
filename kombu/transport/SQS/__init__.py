@@ -341,7 +341,9 @@ class Channel(virtual.Channel):
         if no_ack:
             self._noack_queues.add(queue)
         if self.hub:
-            self._loop1(queue)
+            # Start the polling loop immediately on first consume without
+            # incurring any polling_interval delay at startup.
+            self.hub.call_soon(self._schedule_queue, queue)
         return super().basic_consume(queue, no_ack, callback, consumer_tag, *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
@@ -656,8 +658,21 @@ class Channel(virtual.Channel):
             return self._messages_to_python(messages, queue)[0]
         raise Empty()
 
-    def _loop1(self, queue, _=None):
-        self.hub.call_soon(self._schedule_queue, queue)
+    def _loop1(self, queue, messages_fetched=None):
+        if messages_fetched:
+            # Messages were found in the last poll; schedule next poll immediately.
+            self.hub.call_soon(self._schedule_queue, queue)
+        else:
+            # No messages found (unsuccessful poll); respect polling_interval
+            # before the next attempt to avoid hammering SQS unnecessarily.
+            # Note: self.connection is the Transport instance (virtual transport
+            # establish_connection() returns self), so polling_interval is
+            # accessed directly on self.connection.
+            polling_interval = self.connection.polling_interval
+            if polling_interval:
+                self.hub.call_later(polling_interval, self._schedule_queue, queue)
+                return
+            self.hub.call_soon(self._schedule_queue, queue)
 
     def _schedule_queue(self, queue):
         if queue in self._active_queues:
