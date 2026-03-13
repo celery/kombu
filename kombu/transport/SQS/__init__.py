@@ -701,6 +701,8 @@ class Channel(virtual.Channel):
             for msg in messages['Messages']:
                 msg_parsed = self._message_to_python(msg, qname, queue)
                 callbacks[qname](msg_parsed)
+            return len(messages['Messages'])
+        return 0
 
     def _get_from_sqs(self, queue_name, queue_url,
                       connection, count=1, callback=None):
