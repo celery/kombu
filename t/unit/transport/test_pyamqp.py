@@ -230,3 +230,35 @@ class test_pyamqp:
             t = pyamqp.Transport(Mock())
             t.get_manager(1, kw=2)
             get_manager.assert_called_with(t.client, 1, kw=2)
+
+    def test_qos_semantics_matches_spec(self):
+        t = pyamqp.Transport(Mock())
+        conn = Mock()
+
+        # Non-RabbitMQ broker: always True
+        conn.server_properties = {'product': 'ActiveMQ', 'version': '5.0.0'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ < 3.3: per-channel QoS (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.2.4'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 3.3: global QoS semantics introduced (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.3.0'}
+        assert t.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 3.13: still global QoS (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.13.0'}
+        assert t.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 4.0: global QoS removed on classic queues (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.0.0'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 4.x future version: still True
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.2.1'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ with missing 'version' key: returns True (safe default)
+        conn.server_properties = {'product': 'RabbitMQ'}
+        assert t.qos_semantics_matches_spec(conn) is True
