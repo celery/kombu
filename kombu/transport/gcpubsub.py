@@ -88,7 +88,7 @@ CHARS_REPLACE_TABLE = {
 
 # Pub/Sub rejects modify_ack_deadline requests larger than 512 KB.
 # Batching ack_ids keeps each request well under the limit.
-_ACK_MODIFY_BATCH_SIZE = 1000
+_ACK_MODIFY_BATCH_SIZE = 200
 
 
 class UnackedIds:
