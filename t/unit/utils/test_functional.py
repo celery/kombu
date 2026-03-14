@@ -20,6 +20,19 @@ class test_ChannelPromise:
         assert 'promise' in repr(ChannelPromise(obj))
         obj.assert_not_called()
 
+    def test_failing_contract(self):
+        def failing():
+            raise RuntimeError("failure for test")
+
+        p = ChannelPromise(failing)
+
+        with pytest.raises(RuntimeError, match="failure for test") as excinfo:
+            p()
+
+        # ensure the exception is not chained with internal ChannelPromise errors
+        assert excinfo.value.__context__ is None
+        assert excinfo.value.__cause__ is None
+
 
 class test_shufflecycle:
 
