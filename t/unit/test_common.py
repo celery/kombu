@@ -55,6 +55,93 @@ def test_ignore_errors():
             raise KeyError()
 
 
+def test_ignore_errors_catches_concurrent_object_use_error_when_gevent_available():
+    """ignore_errors() must suppress ConcurrentObjectUseError when gevent is installed."""
+
+    class _ConcurrentObjectUseError(Exception):
+        """Stand-in for gevent.exceptions.ConcurrentObjectUseError."""
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=_ConcurrentObjectUseError):
+        # context-manager form
+        with ignore_errors(connection):
+            raise _ConcurrentObjectUseError()
+
+        # function-call form
+        def raising():
+            raise _ConcurrentObjectUseError()
+
+        ignore_errors(connection, raising)
+
+
+def test_ignore_errors_reraises_when_gevent_not_available():
+
+    class _ConcurrentObjectUseError(Exception):
+        pass
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        with pytest.raises(_ConcurrentObjectUseError):
+            with ignore_errors(connection):
+                raise _ConcurrentObjectUseError()
+
+
+def test_ignore_errors_lazy_evaluation_does_not_crash_with_mock_connection():
+
+    connection = Mock()  # connection_errors and channel_errors are both Mock
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        # Must not raise TypeError during normal (no-exception) execution
+        with ignore_errors(connection):
+            pass  # no exception raised → except clause never evaluated
+
+
+def test_ignore_errors_celery_shutdown_step_pattern():
+    """Regression test: simulates the exact Celery ConsumerStep.shutdown() pattern
+    that broke CI in PR #2473.
+
+    Celery's test setup passes a plain Mock() as the connection, so
+    connection.connection_errors and connection.channel_errors are both
+    Mock instances — not tuples.  Before the lazy-evaluation fix, the line
+
+        errors = conn.connection_errors + conn.channel_errors
+
+    executed eagerly (outside the try block), causing:
+        TypeError: unsupported operand type(s) for +: 'Mock' and 'Mock'
+
+    With the fix, the tuple composition only happens when an exception is
+    actually raised, so the mock attributes are never added together during
+    a normal (no-exception) shutdown and the test passes cleanly.
+    """
+    # Mirrors Celery: connection is a bare Mock, errors attrs are Mock too
+    connection = Mock()
+    assert isinstance(connection.connection_errors, Mock)
+    assert isinstance(connection.channel_errors, Mock)
+
+    # Mirrors Celery: consumer with a mock channel
+    consumer = Mock()
+
+    # Mirrors Celery ConsumerStep.shutdown():
+    #   for consumer in self._consumers:
+    #       with ignore_errors(connection):
+    #           consumer.channel.close()
+    with ignore_errors(connection):
+        consumer.channel.close()
+
+    consumer.channel.close.assert_called_once_with()
+
+    # Also verify the function-call form works the same way
+    consumer2 = Mock()
+    ignore_errors(connection, consumer2.channel.close)
+    consumer2.channel.close.assert_called_once_with()
+
+
 class test_declaration_cached:
 
     def test_when_cached(self):
