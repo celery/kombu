@@ -86,6 +86,10 @@ CHARS_REPLACE_TABLE = {
     **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE},
 }
 
+# Pub/Sub rejects modify_ack_deadline requests larger than 512 KB.
+# Batching ack_ids keeps each request well under the limit.
+_ACK_MODIFY_BATCH_SIZE = 200
+
 
 class UnackedIds:
     """Threadsafe list of ack_ids."""
@@ -396,6 +400,7 @@ class Channel(virtual.Channel):
         message = response.received_messages[0]
         ack_id = message.ack_id
         payload = loads(message.message.data)
+        payload['properties']['delivery_tag'] = self._next_delivery_tag()
         delivery_info = payload['properties']['delivery_info']
         logger.debug(
             'queue:%s got message, ack_id: %s, payload: %s',
@@ -458,6 +463,7 @@ class Channel(virtual.Channel):
         for message in received_messages:
             ack_id = message.ack_id
             payload = loads(bytes_to_str(message.message.data))
+            payload['properties']['delivery_tag'] = self._next_delivery_tag()
             delivery_info = payload['properties']['delivery_info']
             delivery_info['gcpubsub_message'] = {
                 'queue': prefixed_queue,
@@ -583,29 +589,35 @@ class Channel(virtual.Channel):
                         qdesc.subscription_path,
                     )
                     continue
+                ack_ids = list(qdesc.unacked_ids)
                 logger.debug(
                     'thread [%s]: extend ack deadline for %s: %d msgs [%s]',
                     thread_id,
                     qdesc.subscription_path,
-                    len(qdesc.unacked_ids),
-                    list(qdesc.unacked_ids),
+                    len(ack_ids),
+                    ack_ids,
                 )
-                try:
-                    self.subscriber.modify_ack_deadline(
-                        request={
-                            "subscription": qdesc.subscription_path,
-                            "ack_ids": list(qdesc.unacked_ids),
-                            "ack_deadline_seconds": self.ack_deadline_seconds,
-                        }
-                    )
-                except Exception as exc:
-                    logger.error(
-                        'thread [%s]: failed to extend ack deadline for %s: %s',
-                        thread_id,
-                        qdesc.subscription_path,
-                        exc,
-                        exc_info=True,
-                    )
+                for i in range(0, len(ack_ids), _ACK_MODIFY_BATCH_SIZE):
+                    batch = ack_ids[i:i + _ACK_MODIFY_BATCH_SIZE]
+                    try:
+                        self.subscriber.modify_ack_deadline(
+                            request={
+                                "subscription": qdesc.subscription_path,
+                                "ack_ids": batch,
+                                "ack_deadline_seconds": self.ack_deadline_seconds,
+                            }
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            'thread [%s]: failed to extend ack deadline '
+                            'for %s (batch %d–%d of %d): %s',
+                            thread_id,
+                            qdesc.subscription_path,
+                            i, min(i + _ACK_MODIFY_BATCH_SIZE, len(ack_ids)),
+                            len(ack_ids),
+                            exc,
+                            exc_info=True,
+                        )
         logger.info(
             'unacked deadline extension thread [%s] stopped', thread_id
         )

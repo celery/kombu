@@ -11,8 +11,9 @@ from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         NotFound, PermissionDenied)
 from google.pubsub_v1.types.pubsub import Subscription
 
-from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
-                                      Transport, UnackedIds)
+from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE, AtomicCounter,
+                                      Channel, QueueDescriptor, Transport,
+                                      UnackedIds)
 
 
 class test_UnackedIds:
@@ -719,6 +720,176 @@ class test_Channel:
 
             # Then: Both queues are processed despite the first one failing
             assert channel.subscriber.modify_ack_deadline.call_count == 2
+
+    def test_get_assigns_unique_delivery_tag(self, channel):
+        queue = "test_queue"
+        channel.entity_name = MagicMock(return_value=queue)
+        channel._queue_cache[queue] = QueueDescriptor(
+            name=queue,
+            topic_path="topic_path",
+            subscription_id=queue,
+            subscription_path="subscription_path",
+        )
+        original_tag = "original-publish-time-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 1}}'
+        )
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack_A1",
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+        )
+        channel.subscriber.acknowledge = MagicMock()
+
+        payload1 = channel._get(queue)
+        tag1 = payload1['properties']['delivery_tag']
+        assert tag1 != original_tag
+
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack_A2",
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+        )
+        payload2 = channel._get(queue)
+        tag2 = payload2['properties']['delivery_tag']
+        assert tag2 != original_tag
+        assert tag1 != tag2
+
+    def test_get_bulk_assigns_unique_delivery_tags(self, channel):
+        queue = "test_queue"
+        subscription_path = "projects/p/subscriptions/test_queue"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/p/topics/t",
+            subscription_id=queue,
+            subscription_path=subscription_path,
+        )
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        original_tag = "same-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 2}}'
+        )
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack1",
+                        message=MagicMock(data=data, message_id="m1"),
+                    ),
+                    MagicMock(
+                        ack_id="ack2",
+                        message=MagicMock(data=data, message_id="m1"),
+                    ),
+                ]
+            )
+        )
+        channel.bulk_max_messages = 10
+        channel._is_auto_ack = MagicMock(return_value=False)
+        channel.qos.can_consume_max_estimate = MagicMock(return_value=None)
+
+        _queue, payloads = channel._get_bulk(queue, timeout=10)
+        tags = [p['properties']['delivery_tag'] for p in payloads]
+        assert tags[0] != tags[1]
+        assert tags[0] != original_tag
+        assert tags[1] != original_tag
+
+    def test_redelivery_ack_uses_correct_ack_id(self, channel):
+        """Two deliveries of the same message get distinct delivery_tags.
+
+        basic_ack for each delivery must use the correct ack_id.
+        """
+        queue = "test_queue"
+        subscription_path = "projects/p/subscriptions/q"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/p/topics/t",
+            subscription_id=queue,
+            subscription_path=subscription_path,
+        )
+        channel._queue_cache[queue] = qdesc
+        channel.entity_name = MagicMock(return_value=queue)
+
+        from kombu.transport.virtual.base import QoS
+
+        qos = QoS(channel, prefetch_count=10)
+        channel.qos = qos
+
+        original_tag = "publish-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 2}}'
+        )
+
+        def make_pull(ack_id):
+            return MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id=ack_id,
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+
+        channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A1"))
+        payload1 = channel._get(queue)
+        msg1 = channel.Message(payload1, channel=channel)
+        qos.append(msg1, msg1.delivery_tag)
+
+        channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A2"))
+        payload2 = channel._get(queue)
+        msg2 = channel.Message(payload2, channel=channel)
+        qos.append(msg2, msg2.delivery_tag)
+
+        assert msg1.delivery_tag != msg2.delivery_tag
+        assert len(qos._delivered) == 2
+
+        channel._do_ack = MagicMock()
+        channel.basic_ack(msg1.delivery_tag)
+        channel._do_ack.assert_called_once_with(["ack_A1"], subscription_path)
+
+        channel._do_ack.reset_mock()
+        channel.basic_ack(msg2.delivery_tag)
+        channel._do_ack.assert_called_once_with(["ack_A2"], subscription_path)
+
+    def test_extend_unacked_deadline_batches_requests(self, channel):
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        n_ids = _ACK_MODIFY_BATCH_SIZE + 50
+        ack_ids = [f"ack_{i}" for i in range(n_ids)]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock()
+
+        channel._extend_unacked_deadline()
+
+        assert channel.subscriber.modify_ack_deadline.call_count == 2
+        first_call = channel.subscriber.modify_ack_deadline.call_args_list[0]
+        second_call = channel.subscriber.modify_ack_deadline.call_args_list[1]
+        assert len(first_call[1]['request']['ack_ids']) == _ACK_MODIFY_BATCH_SIZE
+        assert len(second_call[1]['request']['ack_ids']) == 50
 
     def test_after_reply_message_received(self, channel):
         queue = 'test-queue'
