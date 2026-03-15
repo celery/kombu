@@ -202,11 +202,41 @@ class CurlClient(BaseClient):
         # that is open but not sending data (e.g. after a network
         # partition or proxy/sidecar termination), causing the async
         # SQS polling loop to hang forever.
-        if request.request_timeout:
-            setopt(_pycurl.TIMEOUT, int(request.request_timeout))
-        if request.connect_timeout:
-            setopt(_pycurl.CONNECTTIMEOUT, int(request.connect_timeout))
+        request_timeout = request.request_timeout
+        connect_timeout = request.connect_timeout
 
+        # Always set per-request timeout values on the handle to avoid
+        # leaking settings between pooled Curl instances. Use millisecond
+        # resolution when supported, rounding and ensuring that any
+        # positive timeout is at least 1ms. A value of 0 disables the
+        # timeout in libcurl/pycurl.
+        if hasattr(_pycurl, 'TIMEOUT_MS'):
+            if request_timeout:
+                timeout_ms = max(1, int(round(request_timeout * 1000.0)))
+            else:
+                timeout_ms = 0
+            setopt(_pycurl.TIMEOUT_MS, timeout_ms)
+        else:
+            if request_timeout:
+                # Fall back to second granularity; ensure at least 1s for
+                # any positive timeout.
+                timeout_s = max(1, int(round(request_timeout)))
+            else:
+                timeout_s = 0
+            setopt(_pycurl.TIMEOUT, timeout_s)
+
+        if hasattr(_pycurl, 'CONNECTTIMEOUT_MS'):
+            if connect_timeout:
+                conn_timeout_ms = max(1, int(round(connect_timeout * 1000.0)))
+            else:
+                conn_timeout_ms = 0
+            setopt(_pycurl.CONNECTTIMEOUT_MS, conn_timeout_ms)
+        else:
+            if connect_timeout:
+                conn_timeout_s = max(1, int(round(connect_timeout)))
+            else:
+                conn_timeout_s = 0
+            setopt(_pycurl.CONNECTTIMEOUT, conn_timeout_s)
         # see tornado curl client
         request.headers.setdefault('Expect', '')
         request.headers.setdefault('Pragma', '')
