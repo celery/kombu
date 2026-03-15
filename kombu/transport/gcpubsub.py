@@ -604,8 +604,7 @@ class Channel(virtual.Channel):
                             request={
                                 "subscription": qdesc.subscription_path,
                                 "ack_ids": batch,
-                                "ack_deadline_seconds":
-                                    self.ack_deadline_seconds,
+                                "ack_deadline_seconds": self.ack_deadline_seconds,
                             }
                         )
                     except Exception as exc:
