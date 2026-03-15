@@ -45,6 +45,7 @@ TRANSPORT_ALIASES = {
     'azureservicebus': 'kombu.transport.azureservicebus:Transport',
     'pyro': 'kombu.transport.pyro:Transport',
     'gcpubsub': 'kombu.transport.gcpubsub:Transport',
+    'rocketmq': 'kombu.transport.rocketmq:Transport',
 }
 
 _transport_cache = {}
