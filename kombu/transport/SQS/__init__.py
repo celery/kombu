@@ -13,8 +13,9 @@ Long Polling
 https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
 
 Long polling is enabled by setting the ``wait_time_seconds`` transport
-option to a value between 1 and 20.  Amazon supports up to 20 seconds.
-The default is 10 seconds.
+option to a value between 1 and 20 (valid range: 0–20, where 0 disables
+long polling).  Amazon supports up to 20 seconds.  The default is 10
+seconds.
 
 When ``wait_time_seconds`` is greater than 0, each ``ReceiveMessage``
 API call to AWS will block on the *server side* for up to that many
