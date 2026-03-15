@@ -1431,14 +1431,15 @@ class Transport(virtual.Transport):
         def _on_disconnect(connection):
             if connection._sock:
                 loop.remove(connection._sock)
-
-            # must have started polling or this will break reconnection
-            if cycle.fds:
-                # stop polling in the event loop
-                try:
-                    loop.on_tick.remove(on_poll_start)
-                except KeyError:
-                    pass
+            # Note: we intentionally do NOT remove on_poll_start from
+            # loop.on_tick here.  on_poll_start is idempotent — when there
+            # are no active file descriptors it simply does nothing.
+            # Removing it caused a race condition where a late-firing
+            # _on_disconnect from a stale channel would remove the
+            # on_poll_start callback that a newly-reconnected channel had
+            # just registered, leaving the worker alive but unable to
+            # consume any tasks ("catatonic worker" after broker restart).
+            # See: https://github.com/celery/celery/issues/8030
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():

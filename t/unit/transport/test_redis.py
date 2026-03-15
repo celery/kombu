@@ -1203,7 +1203,14 @@ class test_Channel:
 
     @pytest.mark.parametrize('fds', [{12: 'LISTEN', 13: 'BRPOP'}, {}])
     def test_register_with_event_loop__on_disconnect__loop_cleanup(self, fds):
-        """Ensure event loop polling stops on disconnect (if started)."""
+        """Ensure on_poll_start stays in on_tick after disconnect.
+
+        on_poll_start is idempotent (no-op when there are no fds), so it
+        must NOT be removed on disconnect.  Removing it caused a race
+        condition where a late-firing _on_disconnect from a stale channel
+        would remove the callback just registered by a new channel,
+        leaving the worker unable to consume tasks after reconnection.
+        """
         transport = self.connection.transport
         self.connection._sock = None
         transport.cycle = Mock(name='cycle')
@@ -1215,11 +1222,8 @@ class test_Channel:
         redis.Transport.register_with_event_loop(transport, conn, loop)
         assert len(loop.on_tick) == 1
         transport.cycle._on_connection_disconnect(self.connection)
-        if fds:
-            assert len(loop.on_tick) == 0
-        else:
-            # on_tick shouldn't be cleared when polling hasn't started
-            assert len(loop.on_tick) == 1
+        # on_poll_start must remain registered regardless of fds state
+        assert len(loop.on_tick) == 1
 
     def test_configurable_health_check(self):
         transport = self.connection.transport
