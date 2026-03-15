@@ -26,6 +26,16 @@ the connection string has following format:
 
     sentinel://[USER:PASSWORD@]SENTINEL_ADDRESS[:PORT]
 
+
+To use Valkey (which was originally a Redis fork),
+the connection string has the following format:
+
+.. code-block::
+
+    valkey://[USER:PASSWORD@]VALKEY_ADDRESS[:PORT][/VIRTUALHOST]
+    valkeys://[USER:PASSWORD@]VALKEY_ADDRESS[:PORT][/VIRTUALHOST]
+
+
 Transport Options
 =================
 * ``sep``
