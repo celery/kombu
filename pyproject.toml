@@ -20,3 +20,25 @@ omit = [
     "*/pypy/*",
     "*kombu/utils/debug.py",
 ]
+
+[tool.ty.rules]
+call-non-callable = "ignore"
+conflicting-declarations = "ignore"
+invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
+invalid-base = "ignore"
+invalid-exception-caught = "ignore"
+invalid-parameter-default = "ignore"
+invalid-return-type = "ignore"
+no-matching-overload = "ignore"
+non-subscriptable = "ignore"
+not-iterable = "ignore"
+parameter-already-assigned = "ignore"
+possibly-missing-attribute = "ignore"
+possibly-missing-import = "ignore"
+too-many-positional-arguments = "ignore"
+unresolved-attribute = "ignore"
+unresolved-import = "ignore"
+unresolved-reference = "ignore"
+unknown-argument = "ignore"
+unsupported-operator = "ignore"
