@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from concurrent.futures import Future
 from datetime import datetime
 from queue import Empty
@@ -448,9 +449,12 @@ class test_Channel:
         )
         assert result == [exchange]
 
+    @patch.dict(os.environ, {}, clear=False)
     @patch('kombu.transport.gcpubsub.monitoring_v3')
     @patch('kombu.transport.gcpubsub.query.Query')
     def test_size(self, mock_query, mock_monitor, channel):
+        # Ensure emulator env var is not set so we test the real path
+        os.environ.pop('PUBSUB_EMULATOR_HOST', None)
         queue = "test_queue"
         subscription_id = "test_subscription"
         qdesc = QueueDescriptor(
@@ -481,6 +485,17 @@ class test_Channel:
         mock_query_result.select_resources.return_value = [mock_item]
         size = channel._size(queue)
         assert size == -1
+
+    @patch.dict(os.environ, {"PUBSUB_EMULATOR_HOST": "localhost:8085"})
+    def test_size_with_emulator(self, channel):
+        queue = "test_queue"
+        channel.monitor = MagicMock()
+
+        size = channel._size(queue)
+
+        assert size == -1
+        # Verify the monitoring API was never accessed
+        channel.monitor.assert_not_called()
 
     def test_basic_ack(self, channel):
         delivery_tag = "test_delivery_tag"

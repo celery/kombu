@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import os
 import string
 import threading
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
@@ -506,6 +507,10 @@ class Channel(virtual.Channel):
         This is a *rough* estimation, as Pub/Sub doesn't provide
         an exact API.
         """
+        if os.getenv("PUBSUB_EMULATOR_HOST"):
+            # Pub/Sub emulator does not support monitoring API.
+            return -1
+
         queue = self.entity_name(queue)
         if queue not in self._queue_cache:
             return 0
