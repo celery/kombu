@@ -87,7 +87,7 @@ CHARS_REPLACE_TABLE = {
 }
 
 # Pub/Sub rejects modify_ack_deadline requests larger than 512 KB.
-# Batching ack_ids keeps each request well under the limit.
+# Batching ack_ids helps keep each request under this limit; 200 is a
 _ACK_MODIFY_BATCH_SIZE = 200
 
 
