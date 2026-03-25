@@ -484,10 +484,14 @@ def test_lock_renewal_config_initialization():
 @patch('kombu.transport.azureservicebus.AutoLockRenewer')
 def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
     """Test for creation, reuse, and only present in peek lock mode."""
-    channel = mock_queue.channel
-    # Clear cached_property in case it was accessed during mock_queue setup.
-    channel.__dict__.pop('use_lock_renewal', None)
-    channel.transport_options["use_lock_renewal"] = True
+    # Create a fresh Connection/channel with lock renewal enabled via transport_options,
+    # mirroring real usage instead of mutating transport_options after creation.
+    conn = Connection(
+        URL_CREDS_MI_FQ,
+        transport=azureservicebus.Transport,
+        transport_options={"use_lock_renewal": True},
+    )
+    channel = conn.channel()
     channel.queue_service.get_queue_receiver = MagicMock()
 
     # test if renewer is created
