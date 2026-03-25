@@ -507,13 +507,13 @@ class Channel(virtual.Channel):
         This is a *rough* estimation, as Pub/Sub doesn't provide
         an exact API.
         """
-        if os.getenv("PUBSUB_EMULATOR_HOST"):
-            # Pub/Sub emulator does not support monitoring API.
-            return -1
-
         queue = self.entity_name(queue)
         if queue not in self._queue_cache:
             return 0
+
+        if os.getenv("PUBSUB_EMULATOR_HOST"):
+            # Pub/Sub emulator does not support monitoring API.
+            return -1
         qdesc = self._queue_cache[queue]
         result = query.Query(
             self.monitor,
