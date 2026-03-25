@@ -31,3 +31,7 @@ class DoesNotExistQueueException(KombuError):
 
 class UnableToSubscribeQueueToTopicException(KombuError):
     """Raised when unable to subscribe a queue to an SNS topic."""
+
+
+class UnableToUnsubscribeQueueFromTopicException(KombuError):
+    """Raised when unable to unsubscribe a queue from an SNS topic."""

@@ -12,9 +12,58 @@ Long Polling
 ------------
 https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html
 
-Long polling is enabled by setting the `wait_time_seconds` transport
-option to a number > 1.  Amazon supports up to 20 seconds.  This is
-enabled with 10 seconds by default.
+Long polling is enabled by setting the ``wait_time_seconds`` transport
+option to a value between 1 and 20 (valid range: 0–20, where 0 disables
+long polling).  Amazon supports up to 20 seconds.  The default is 10
+seconds.
+
+When ``wait_time_seconds`` is greater than 0, each ``ReceiveMessage``
+API call to AWS will block on the *server side* for up to that many
+seconds, returning early only when a message arrives.  This reduces
+empty responses and lowers SQS request costs compared to short polling
+(``wait_time_seconds=0``).
+
+Polling Interval
+----------------
+
+The ``polling_interval`` transport option (default: 1 second) controls
+the *client-side* delay added between consecutive polls when a poll
+returns no messages.  After a successful (non-empty) poll the next poll
+is scheduled immediately; after an empty poll the transport waits
+``polling_interval`` seconds before trying again.
+
+**Important — additive timing when both options are set:**
+
+``wait_time_seconds`` and ``polling_interval`` are applied at different
+layers and their delays compose additively.  For an empty poll the total
+time before the next ``ReceiveMessage`` call is issued is::
+
+    effective interval = wait_time_seconds + polling_interval
+
+For example, with the defaults (``wait_time_seconds=10``,
+``polling_interval=1``) an empty queue is polled at most once every
+~11 seconds: the AWS call blocks for up to 10 s, then the client waits
+an additional 1 s before rescheduling.
+
+To make ``polling_interval`` the *sole* timing control (e.g. for short
+polling), set ``wait_time_seconds=0``:
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {
+        'wait_time_seconds': 0,   # disable server-side long polling
+        'polling_interval': 5,    # client waits 5 s after each empty poll
+    }
+
+To rely entirely on long polling and remove the extra client-side delay,
+set ``polling_interval=0``:
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {
+        'wait_time_seconds': 10,  # server holds connection up to 10 s
+        'polling_interval': 0,    # no additional client-side wait
+    }
 
 Batch API Actions
 -----------------
@@ -32,7 +81,8 @@ from SQS when you have short-running tasks (or a large number of workers).
 When a Celery worker has multiple queues to monitor, it will pull down
 up to 'prefetch_count' messages from queueA and work on them all before
 moving on to queueB.  If queueB is empty, it will wait up until
-'polling_interval' expires before moving back and checking on queueA.
+'polling_interval' expires (plus any server-side long-polling delay from
+'wait_time_seconds') before moving back and checking on queueA.
 
 Message Attributes
 -----------------
@@ -341,7 +391,9 @@ class Channel(virtual.Channel):
         if no_ack:
             self._noack_queues.add(queue)
         if self.hub:
-            self._loop1(queue)
+            # Start the polling loop immediately on first consume without
+            # incurring any polling_interval delay at startup.
+            self.hub.call_soon(self._schedule_queue, queue)
         return super().basic_consume(queue, no_ack, callback, consumer_tag, *args, **kwargs)
 
     def basic_cancel(self, consumer_tag):
@@ -656,8 +708,21 @@ class Channel(virtual.Channel):
             return self._messages_to_python(messages, queue)[0]
         raise Empty()
 
-    def _loop1(self, queue, _=None):
-        self.hub.call_soon(self._schedule_queue, queue)
+    def _loop1(self, queue, messages_fetched=None):
+        if messages_fetched:
+            # Messages were found in the last poll; schedule next poll immediately.
+            self.hub.call_soon(self._schedule_queue, queue)
+        else:
+            # No messages found (unsuccessful poll); respect polling_interval
+            # before the next attempt to avoid hammering SQS unnecessarily.
+            # Note: self.connection is the Transport instance (virtual transport
+            # establish_connection() returns self), so polling_interval is
+            # accessed directly on self.connection.
+            polling_interval = self.connection.polling_interval
+            if polling_interval:
+                self.hub.call_later(polling_interval, self._schedule_queue, queue)
+                return
+            self.hub.call_soon(self._schedule_queue, queue)
 
     def _schedule_queue(self, queue):
         if queue in self._active_queues:
@@ -701,6 +766,8 @@ class Channel(virtual.Channel):
             for msg in messages['Messages']:
                 msg_parsed = self._message_to_python(msg, qname, queue)
                 callbacks[qname](msg_parsed)
+            return len(messages['Messages'])
+        return 0
 
     def _get_from_sqs(self, queue_name, queue_url,
                       connection, count=1, callback=None):
