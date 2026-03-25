@@ -765,7 +765,7 @@ class ConsumerConfig:
     """wrapper of group config."""
 
     consumer_group: str = ''
-    filter_type: FilterType = FilterType.TAG
+    filter_type: FilterType = getattr(FilterType, "TAG", None)
     filter_exp: str = DEFAULT_FILTER_EXP
 
 
