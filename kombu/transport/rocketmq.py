@@ -729,7 +729,10 @@ class Transport(virtual.Transport):
 
     def as_uri(self, uri: str, include_password=False, mask='**') -> str:
         """Customise the display format of the URI."""
-        pass
+        raise NotImplementedError(
+            "RocketMQ Transport does not implement as_uri(). "
+            "Use the default virtual.Transport behavior instead."
+        )
 
     Channel = Channel
     default_port = DEFAULT_PORT
