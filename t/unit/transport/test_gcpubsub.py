@@ -487,15 +487,23 @@ class test_Channel:
         assert size == -1
 
     @patch.dict(os.environ, {"PUBSUB_EMULATOR_HOST": "localhost:8085"})
-    def test_size_with_emulator(self, channel):
+    @patch('kombu.transport.gcpubsub.query.Query')
+    def test_size_with_emulator(self, mock_query, channel):
         queue = "test_queue"
-        channel.monitor = MagicMock()
+        subscription_id = "test_subscription"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id=subscription_id,
+            subscription_path="projects/project-id/subscriptions/test_subscription",  # E501
+        )
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
 
         size = channel._size(queue)
 
         assert size == -1
-        # Verify the monitoring API was never accessed
-        channel.monitor.assert_not_called()
+        # Verify the monitoring query API was never accessed
+        mock_query.assert_not_called()
 
     def test_basic_ack(self, channel):
         delivery_tag = "test_delivery_tag"
