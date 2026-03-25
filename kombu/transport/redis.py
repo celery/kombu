@@ -572,9 +572,18 @@ class MultiChannelPoller:
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
-                return channel.qos.restore_visible(
-                    num=channel.unacked_restore_limit,
-                )
+                try:
+                    return channel.qos.restore_visible(
+                        num=channel.unacked_restore_limit,
+                    )
+                except channel.connection_errors:
+                    # Connection is broken; skip this cycle and retry next tick.
+                    # The main polling loop handles reconnection independently.
+                    logger.debug(
+                        'maybe_restore_messages: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
 
     def maybe_check_subclient_health(self):
         for channel in self._channels:
@@ -582,7 +591,14 @@ class MultiChannelPoller:
             client = channel.__dict__.get('subclient')
             if client is not None \
                     and callable(getattr(client, 'check_health', None)):
-                client.check_health()
+                try:
+                    client.check_health()
+                except channel.connection_errors:
+                    logger.debug(
+                        'maybe_check_subclient_health: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -1445,12 +1461,24 @@ class Transport(virtual.Transport):
             cycle_poll_start()
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
-        loop.call_repeatedly(10, cycle.maybe_restore_messages)
+
+        # Cancel stale timer entries from a previous connection before
+        # registering new ones. Without this, each reconnect accumulates
+        # an extra entry in hub.timer._queue; they all fire against the
+        # same cycle and can crash the event loop during reconnect.
+        for attr in ('_restore_messages_tref', '_subclient_health_tref'):
+            old_tref = getattr(cycle, attr, None)
+            if old_tref is not None:
+                old_tref.cancel()
+
+        cycle._restore_messages_tref = loop.call_repeatedly(
+            10, cycle.maybe_restore_messages
+        )
         health_check_interval = connection.client.transport_options.get(
             'health_check_interval',
             DEFAULT_HEALTH_CHECK_INTERVAL
         )
-        loop.call_repeatedly(
+        cycle._subclient_health_tref = loop.call_repeatedly(
             health_check_interval,
             cycle.maybe_check_subclient_health
         )
