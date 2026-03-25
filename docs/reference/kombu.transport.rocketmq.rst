@@ -30,7 +30,7 @@
         :members:
         :undoc-members:
 
-    Qos
+    QoS
     -------
 
     .. autoclass:: QoS
