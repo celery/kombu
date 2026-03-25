@@ -1,6 +1,6 @@
 """RocketMQ transport module for Kombu.
 
-`RocketMQ`_ transport use `rocketmq-clients python`_ as the client.
+`RocketMQ`_ transport uses `rocketmq-clients python`_ as the client.
 
 To use this transport you must install the necessary dependencies. These
 dependencies are available via PyPI and can be installed using the pip
