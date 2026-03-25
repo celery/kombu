@@ -148,3 +148,42 @@ class test_Transport:
         self.T.close_connection(conn)
         assert self.client.drain_events is None
         conn.close.assert_called_with()
+
+    def test_qos_semantics_matches_spec(self):
+        conn = Mock(name='connection')
+
+        # Non-RabbitMQ broker: always True
+        conn.server_properties = {'product': 'ActiveMQ', 'version': '5.0.0'}
+        assert self.T.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ < 3.3: per-channel QoS (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.2.4'}
+        assert self.T.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 3.3: global QoS semantics introduced (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.3.0'}
+        assert self.T.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 3.13: still global QoS (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.13.0'}
+        assert self.T.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 4.0: global QoS removed on classic queues (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.0.0'}
+        assert self.T.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 4.x future version: still True
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.2.1'}
+        assert self.T.qos_semantics_matches_spec(conn) is True
+
+        # AttributeError (no server_properties): returns True with warning
+        conn_bad = Mock(name='conn_bad', spec=[])
+        type(conn_bad).server_properties = property(
+            lambda self: (_ for _ in ()).throw(AttributeError)
+        )
+        with pytest.warns(UserWarning, match='librabbitmq version too old'):
+            assert self.T.qos_semantics_matches_spec(conn_bad) is True
+
+        # RabbitMQ with missing 'version' key: returns True (safe default)
+        conn.server_properties = {'product': 'RabbitMQ'}
+        assert self.T.qos_semantics_matches_spec(conn) is True
