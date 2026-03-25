@@ -255,7 +255,7 @@ class QoS(virtual.QoS):
             rocketmq_message = _message_to_rocketmq_ack_message(message)
             delivery_attempt = _safe_str_to_int(rocketmq_message.properties[DELIVERY_ATTEMPT_KEY])
             next_invisible_time = self.channel.backoff_policy[
-                min(delivery_attempt, len(self.channel.backoff_policy) - 1)
+                min(max(delivery_attempt - 1, 0), len(self.channel.backoff_policy) - 1)
             ]
             consumer = self.channel._get_consumer(message.delivery_info[AMQP_QUEUE_KEY], passive=True)
             if not consumer:
