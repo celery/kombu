@@ -124,7 +124,9 @@ class Channel(virtual.Channel):
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
+    #: .. versionadded:: 5.7
     default_use_lock_renewal: bool = False
+    #: .. versionadded:: 5.7
     default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
 
     domain_format: str = 'kombu%(vhost)s'
