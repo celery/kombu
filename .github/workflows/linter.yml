@@ -4,6 +4,8 @@ on: [pull_request, workflow_dispatch]
 
 jobs:
   pre-commit:
+    env:  # https://github.com/pre-commit/action/issues/241
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
 
@@ -12,8 +14,6 @@ jobs:
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
-        env:  # https://github.com/pre-commit/action/issues/241
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
   lint:
     runs-on: blacksmith-4vcpu-ubuntu-2204
