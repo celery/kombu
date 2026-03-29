@@ -342,6 +342,38 @@ class test_Mailbox:
         if m:
             return m.payload
 
+    def test_mailbox_queue_exclusive(self):
+        mbox = pidbox.Mailbox(
+            'flagbox_ex',
+            queue_exclusive=True,
+            queue_durable=False,
+        )(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.exclusive is True
+            assert q.durable is False
+            assert q.auto_delete is True
+
+    def test_mailbox_queue_durable(self):
+        mbox = pidbox.Mailbox(
+            'flagbox_dur',
+            queue_exclusive=False,
+            queue_durable=True,
+        )(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.durable is True
+            assert q.exclusive is False
+            assert q.auto_delete is False
+
+    def test_mailbox_invalid_flag_combo(self):
+        with pytest.raises(ValueError):
+            pidbox.Mailbox(
+                'flagbox_bad',
+                queue_exclusive=True,
+                queue_durable=True,
+            )(self.connection)
+
 
 GLOBAL_PIDBOX = pidbox.Mailbox('global_unittest_mailbox')
 

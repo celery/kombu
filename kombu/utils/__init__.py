@@ -5,7 +5,7 @@ from __future__ import annotations
 from .collections import EqualityDict
 from .compat import fileno, maybe_fileno, nested, register_after_fork
 from .div import emergency_dump_state
-from .functional import (fxrange, fxrangemax, maybe_list, reprcall,
+from .functional import (fxrange, fxrangemax, maybe_list, reprcall, reprkwargs,
                          retry_over_time)
 from .imports import symbol_by_name
 from .objects import cached_property

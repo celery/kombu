@@ -18,7 +18,7 @@ except ImportError:
         pass
 
     exceptions = _void()
-    exceptions.BotoCoreError = BotoCoreError
+    exceptions.BotoCoreError = BotoCoreError  # type: ignore[attr-defined]
     AWSRequest = _void()
     get_response = _void()
 

@@ -7,7 +7,8 @@ Features
 * Supports Topic: Yes
 * Supports Fanout: Yes
 * Supports Priority: Yes
-* Supports TTL: No
+* Supports Queue TTL: Yes
+* Supports Message TTL: No
 
 Connection String
 =================
@@ -49,6 +50,15 @@ Transport Options
 * ``health_check_interval``
 * ``retry_on_timeout``
 * ``priority_steps``
+* ``client_name``: (str) The name to use when connecting to Redis server.
+
+Queue Arguments
+===============
+* ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
+  The queue will be automatically deleted after this period of inactivity.
+  This is a per-queue argument and should be supplied via ``Queue(expires=...)``
+  or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
+  connection-level transport option.
 """
 
 from __future__ import annotations
@@ -68,6 +78,8 @@ from vine import promise
 
 from kombu.exceptions import InconsistencyError, VersionMismatch
 from kombu.log import get_logger
+from kombu.transport.base import to_rabbitmq_queue_arguments
+from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
@@ -87,9 +99,10 @@ except ImportError:  # pragma: no cover
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
-    from redis import sentinel
+    from redis import CredentialProvider, sentinel
 except ImportError:  # pragma: no cover
     sentinel = None
+    CredentialProvider = None
 
 
 logger = get_logger('kombu.transport.redis')
@@ -210,6 +223,7 @@ class GlobalKeyPrefixMixin:
         "ZADD",
         "ZREM",
         "ZREVRANGEBYSCORE",
+        "PEXPIRE",
     ]
 
     PREFIXED_COMPLEX_COMMANDS = {
@@ -558,9 +572,18 @@ class MultiChannelPoller:
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
-                return channel.qos.restore_visible(
-                    num=channel.unacked_restore_limit,
-                )
+                try:
+                    return channel.qos.restore_visible(
+                        num=channel.unacked_restore_limit,
+                    )
+                except channel.connection_errors:
+                    # Connection is broken; skip this cycle and retry next tick.
+                    # The main polling loop handles reconnection independently.
+                    logger.debug(
+                        'maybe_restore_messages: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
 
     def maybe_check_subclient_health(self):
         for channel in self._channels:
@@ -568,7 +591,14 @@ class MultiChannelPoller:
             client = channel.__dict__.get('subclient')
             if client is not None \
                     and callable(getattr(client, 'check_health', None)):
-                client.check_health()
+                try:
+                    client.check_health()
+                except channel.connection_errors:
+                    logger.debug(
+                        'maybe_check_subclient_health: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -647,6 +677,7 @@ class Channel(virtual.Channel):
     retry_on_timeout = None
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
+    client_name = None
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -718,7 +749,8 @@ class Channel(virtual.Channel):
          'max_connections',
          'health_check_interval',
          'retry_on_timeout',
-         'priority_steps')  # <-- do not add comma here!
+         'priority_steps',
+         'client_name')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
@@ -730,6 +762,7 @@ class Channel(virtual.Channel):
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
         self._registered = False
+        self._expires = {}
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -737,6 +770,7 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
+        self.brpop_timeout = self.connection.brpop_timeout
 
         if self.fanout_prefix:
             if isinstance(self.fanout_prefix, str):
@@ -954,7 +988,9 @@ class Channel(virtual.Channel):
                         message, self._fanout_to_queue[exchange])
                     return True
 
-    def _brpop_start(self, timeout=1):
+    def _brpop_start(self, timeout=None):
+        if timeout is None:
+            timeout = self.brpop_timeout
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
@@ -1001,7 +1037,10 @@ class Channel(virtual.Channel):
             for pri in self.priority_steps:
                 item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
+                    self._maybe_update_queues_expire(client, queue)
                     return loads(bytes_to_str(item))
+
+            self._maybe_update_queues_expire(client, queue)
             raise Empty()
 
     def _size(self, queue):
@@ -1026,9 +1065,17 @@ class Channel(virtual.Channel):
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
         pri = self._get_message_priority(message, reverse=False)
+        key = self._q_for_pri(queue, pri)
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._q_for_pri(queue, pri), dumps(message))
+            if self._expires and queue in self._expires:
+                with client.pipeline() as pipe:
+                    pipe.lpush(key, dumps(message))
+                    for p in self.priority_steps:
+                        pipe.pexpire(self._q_for_pri(queue, p), self._expires[queue])
+                    pipe.execute()
+            else:
+                client.lpush(key, dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -1042,6 +1089,15 @@ class Channel(virtual.Channel):
         if auto_delete:
             self.auto_delete_queues.add(queue)
 
+        expire = self._get_queue_expire(kwargs)
+        if expire is not None:
+            self._expires[queue] = expire
+        else:
+            # If the queue is redeclared without an expiration, ensure that
+            # any previous expiration configuration is cleared so that
+            # stale TTLs are not applied unexpectedly.
+            self._expires.pop(queue, None)
+
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
             # Mark exchange as fanout.
@@ -1053,6 +1109,38 @@ class Channel(virtual.Channel):
                         self.sep.join([routing_key or '',
                                        pattern or '',
                                        queue or '']))
+
+    def _maybe_update_queues_expire(self, client, queue):
+        """Update expiration on queue keys.
+
+        For each queue, set expiration time in milliseconds.
+        Will only be set if x-expires argument was provided when creating the queue.
+        """
+        if not self._expires or queue not in self._expires:
+            return
+
+        with client.pipeline() as pipe:
+            for priority in self.priority_steps:
+                pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
+            pipe.execute()
+
+    def _get_queue_expire(self, args):
+        """Get expiration header named `x-expires` of queue definition.
+
+        Returns expiration time in milliseconds or None if not set.
+
+        Arguments:
+        ---------
+            args (dict): Queue arguments dictionary
+        """
+        try:
+            value = args['arguments']['x-expires']
+            return int(value)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
@@ -1142,6 +1230,22 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
+    def _process_credential_provider(self, credential_provider, connparams):
+        if credential_provider:
+            if isinstance(credential_provider, str):
+                credential_provider_cls = symbol_by_name(credential_provider)
+                credential_provider = credential_provider_cls()
+
+            if not isinstance(credential_provider, CredentialProvider):
+                raise ValueError(
+                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
+                )
+
+            connparams['credential_provider'] = credential_provider
+            # drop username and password if credential provider is configured
+            connparams.pop("username", None)
+            connparams.pop("password", None)
+
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
@@ -1157,7 +1261,10 @@ class Channel(virtual.Channel):
             'socket_keepalive_options': self.socket_keepalive_options,
             'health_check_interval': self.health_check_interval,
             'retry_on_timeout': self.retry_on_timeout,
+            'client_name': self.client_name,
         }
+
+        self._process_credential_provider(conninfo.credential_provider, connparams)
 
         conn_class = self.connection_class
 
@@ -1197,6 +1304,10 @@ class Channel(virtual.Channel):
                 connparams.pop('socket_keepalive_options', None)
             connparams['username'] = username
             connparams['password'] = password
+
+            # credential provider as query string
+            credential_provider = query.pop("credential_provider", None)
+            self._process_credential_provider(credential_provider, connparams)
 
             connparams.pop('host', None)
             connparams.pop('port', None)
@@ -1286,9 +1397,11 @@ class Channel(virtual.Channel):
 
     @property
     def active_queues(self):
-        """Set of queues being consumed from (excluding fanout queues)."""
-        return {queue for queue in self._active_queues
-                if queue not in self.active_fanout_queues}
+        """List of queues being consumed from (excluding fanout queues)."""
+        return list(dict.fromkeys(
+            queue for queue in self._active_queues
+            if queue not in self.active_fanout_queues
+        ))
 
 
 class Transport(virtual.Transport):
@@ -1297,6 +1410,7 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
+    brpop_timeout = 1
     default_port = DEFAULT_PORT
     driver_type = 'redis'
     driver_name = 'redis'
@@ -1316,6 +1430,9 @@ class Transport(virtual.Transport):
 
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+        # Use polling_interval to set brpop_timeout if provided, but do not modify polling_interval itself.
+        if self.polling_interval is not None:
+            self.brpop_timeout = self.polling_interval
 
     def driver_version(self):
         return redis.__version__
@@ -1330,26 +1447,85 @@ class Transport(virtual.Transport):
         def _on_disconnect(connection):
             if connection._sock:
                 loop.remove(connection._sock)
-
-            # must have started polling or this will break reconnection
-            if cycle.fds:
-                # stop polling in the event loop
+                # Prune the disconnected file descriptor from cycle._fd_to_chan
+                # so that the next on_poll_start tick does not re-register a
+                # stale/disconnected socket.  fileno() returns -1 on a socket
+                # that has been closed (but not yet garbage-collected), so we
+                # only prune when we get a valid (>= 0) file descriptor.
+                sock = connection._sock
+                fd = None
                 try:
-                    loop.on_tick.remove(on_poll_start)
-                except KeyError:
+                    if hasattr(sock, "fileno"):
+                        raw_fd = sock.fileno()
+                        # fileno() returns -1 for a closed-but-not-GC'd socket;
+                        # in that case there is no valid fd to prune.
+                        if raw_fd >= 0:
+                            fd = raw_fd
+                    else:
+                        # Plain integer file descriptor (no fileno() method).
+                        fd = sock
+                except OSError:
+                    # Socket already closed at OS level; nothing to prune.
                     pass
+                if fd is not None:
+                    try:
+                        del cycle._fd_to_chan[fd]
+                    except KeyError:
+                        # fd was never tracked or already pruned — safe to ignore.
+                        pass
+            else:
+                # In async Redis mode, Connection.disconnect() may have already
+                # cleared connection._sock (set to None) before invoking this
+                # callback. In that case we can no longer derive the fd from the
+                # socket itself, so we conservatively scan cycle._fd_to_chan for
+                # channels that are backed by this connection and prune them.
+                stale_fds = []
+                for fd, (chan, _type) in list(cycle._fd_to_chan.items()):
+                    client = getattr(chan, "client", None)
+                    subclient = getattr(chan, "subclient", None)
+                    client_conn = getattr(client, "connection", None)
+                    subclient_conn = getattr(subclient, "connection", None)
+                    if client_conn is connection or subclient_conn is connection:
+                        stale_fds.append(fd)
+                for fd in stale_fds:
+                    try:
+                        del cycle._fd_to_chan[fd]
+                    except KeyError:
+                        # fd was never tracked or already pruned — safe to ignore.
+                        pass
+            # Note: we intentionally do NOT remove on_poll_start from
+            # loop.on_tick here.  on_poll_start is idempotent — when there
+            # are no active file descriptors it simply does nothing.
+            # Removing it caused a race condition where a late-firing
+            # _on_disconnect from a stale channel would remove the
+            # on_poll_start callback that a newly-reconnected channel had
+            # just registered, leaving the worker alive but unable to
+            # consume any tasks ("catatonic worker" after broker restart).
+            # See: https://github.com/celery/celery/issues/8030
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
             cycle_poll_start()
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
-        loop.call_repeatedly(10, cycle.maybe_restore_messages)
+
+        # Cancel stale timer entries from a previous connection before
+        # registering new ones. Without this, each reconnect accumulates
+        # an extra entry in hub.timer._queue; they all fire against the
+        # same cycle and can crash the event loop during reconnect.
+        for attr in ('_restore_messages_tref', '_subclient_health_tref'):
+            old_tref = getattr(cycle, attr, None)
+            if old_tref is not None:
+                old_tref.cancel()
+
+        cycle._restore_messages_tref = loop.call_repeatedly(
+            10, cycle.maybe_restore_messages
+        )
         health_check_interval = connection.client.transport_options.get(
             'health_check_interval',
             DEFAULT_HEALTH_CHECK_INTERVAL
         )
-        loop.call_repeatedly(
+        cycle._subclient_health_tref = loop.call_repeatedly(
             health_check_interval,
             cycle.maybe_check_subclient_health
         )
@@ -1442,9 +1618,15 @@ class SentinelChannel(Channel):
                 "'master_name' transport option must be specified."
             )
 
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
+
         return sentinel_inst.master_for(
             master_name,
             redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
