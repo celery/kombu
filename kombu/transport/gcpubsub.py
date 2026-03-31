@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import os
 import string
 import threading
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
@@ -509,6 +510,10 @@ class Channel(virtual.Channel):
         queue = self.entity_name(queue)
         if queue not in self._queue_cache:
             return 0
+
+        if os.getenv("PUBSUB_EMULATOR_HOST"):
+            # Pub/Sub emulator does not support monitoring API.
+            return -1
         qdesc = self._queue_cache[queue]
         result = query.Query(
             self.monitor,

@@ -1447,14 +1447,61 @@ class Transport(virtual.Transport):
         def _on_disconnect(connection):
             if connection._sock:
                 loop.remove(connection._sock)
-
-            # must have started polling or this will break reconnection
-            if cycle.fds:
-                # stop polling in the event loop
+                # Prune the disconnected file descriptor from cycle._fd_to_chan
+                # so that the next on_poll_start tick does not re-register a
+                # stale/disconnected socket.  fileno() returns -1 on a socket
+                # that has been closed (but not yet garbage-collected), so we
+                # only prune when we get a valid (>= 0) file descriptor.
+                sock = connection._sock
+                fd = None
                 try:
-                    loop.on_tick.remove(on_poll_start)
-                except KeyError:
+                    if hasattr(sock, "fileno"):
+                        raw_fd = sock.fileno()
+                        # fileno() returns -1 for a closed-but-not-GC'd socket;
+                        # in that case there is no valid fd to prune.
+                        if raw_fd >= 0:
+                            fd = raw_fd
+                    else:
+                        # Plain integer file descriptor (no fileno() method).
+                        fd = sock
+                except OSError:
+                    # Socket already closed at OS level; nothing to prune.
                     pass
+                if fd is not None:
+                    try:
+                        del cycle._fd_to_chan[fd]
+                    except KeyError:
+                        # fd was never tracked or already pruned — safe to ignore.
+                        pass
+            else:
+                # In async Redis mode, Connection.disconnect() may have already
+                # cleared connection._sock (set to None) before invoking this
+                # callback. In that case we can no longer derive the fd from the
+                # socket itself, so we conservatively scan cycle._fd_to_chan for
+                # channels that are backed by this connection and prune them.
+                stale_fds = []
+                for fd, (chan, _type) in list(cycle._fd_to_chan.items()):
+                    client = getattr(chan, "client", None)
+                    subclient = getattr(chan, "subclient", None)
+                    client_conn = getattr(client, "connection", None)
+                    subclient_conn = getattr(subclient, "connection", None)
+                    if client_conn is connection or subclient_conn is connection:
+                        stale_fds.append(fd)
+                for fd in stale_fds:
+                    try:
+                        del cycle._fd_to_chan[fd]
+                    except KeyError:
+                        # fd was never tracked or already pruned — safe to ignore.
+                        pass
+            # Note: we intentionally do NOT remove on_poll_start from
+            # loop.on_tick here.  on_poll_start is idempotent — when there
+            # are no active file descriptors it simply does nothing.
+            # Removing it caused a race condition where a late-firing
+            # _on_disconnect from a stale channel would remove the
+            # on_poll_start callback that a newly-reconnected channel had
+            # just registered, leaving the worker alive but unable to
+            # consume any tasks ("catatonic worker" after broker restart).
+            # See: https://github.com/celery/celery/issues/8030
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
