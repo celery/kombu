@@ -35,12 +35,16 @@ Transport Options
 * ``retry_timeout_seconds``: (int) The maximum time to wait before retrying.
 * ``bulk_max_messages``: (int) The maximum number of messages to pull in bulk.
   Defaults to 32.
+* ``enable_exactly_once_delivery``: (bool) Enable exactly-once delivery for
+  subscriptions. When enabled, Pub/Sub provides message deduplication.
+  Defaults to False.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import datetime
+import os
 import string
 import threading
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
@@ -55,7 +59,7 @@ from uuid import NAMESPACE_OID, uuid3
 from _socket import gethostname
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        PermissionDenied)
+                                        NotFound, PermissionDenied)
 from google.api_core.retry import Retry
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import query
@@ -162,6 +166,7 @@ class Channel(virtual.Channel):
     default_expiration_seconds = 86400
     default_retry_timeout_seconds = 300
     default_bulk_max_messages = 32
+    default_enable_exactly_once_delivery = False
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -280,12 +285,9 @@ class Channel(virtual.Channel):
         return topic_path
 
     def _is_topic_exists(self, topic_path: str) -> bool:
-        topics = self.publisher.list_topics(
-            request={"project": f'projects/{self.project_id}'}
-        )
-        for t in topics:
-            if t.name == topic_path:
-                return True
+        with suppress(NotFound):
+            self.publisher.get_topic(request={"topic": topic_path})
+            return True
         return False
 
     def _create_subscription(
@@ -316,11 +318,10 @@ class Channel(virtual.Channel):
                 request={
                     "name": subscription_path,
                     "topic": topic_path,
-                    'ack_deadline_seconds': self.ack_deadline_seconds,
-                    'expiration_policy': {
-                        'ttl': f'{self.expiration_seconds}s'
-                    },
-                    'message_retention_duration': f'{msg_retention}s',
+                    "ack_deadline_seconds": self.ack_deadline_seconds,
+                    "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
+                    "message_retention_duration": f"{msg_retention}s",
+                    "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
                     **(filter_args or {}),
                 }
             )
@@ -509,6 +510,10 @@ class Channel(virtual.Channel):
         queue = self.entity_name(queue)
         if queue not in self._queue_cache:
             return 0
+
+        if os.getenv("PUBSUB_EMULATOR_HOST"):
+            # Pub/Sub emulator does not support monitoring API.
+            return -1
         qdesc = self._queue_cache[queue]
         result = query.Query(
             self.monitor,
@@ -590,13 +595,22 @@ class Channel(virtual.Channel):
                     len(qdesc.unacked_ids),
                     list(qdesc.unacked_ids),
                 )
-                self.subscriber.modify_ack_deadline(
-                    request={
-                        "subscription": qdesc.subscription_path,
-                        "ack_ids": list(qdesc.unacked_ids),
-                        "ack_deadline_seconds": self.ack_deadline_seconds,
-                    }
-                )
+                try:
+                    self.subscriber.modify_ack_deadline(
+                        request={
+                            "subscription": qdesc.subscription_path,
+                            "ack_ids": list(qdesc.unacked_ids),
+                            "ack_deadline_seconds": self.ack_deadline_seconds,
+                        }
+                    )
+                except Exception as exc:
+                    logger.error(
+                        'thread [%s]: failed to extend ack deadline for %s: %s',
+                        thread_id,
+                        qdesc.subscription_path,
+                        exc,
+                        exc_info=True,
+                    )
         logger.info(
             'unacked deadline extension thread [%s] stopped', thread_id
         )
@@ -661,6 +675,13 @@ class Channel(virtual.Channel):
     def bulk_max_messages(self):
         return self.transport_options.get(
             'bulk_max_messages', self.default_bulk_max_messages
+        )
+
+    @cached_property
+    def enable_exactly_once_delivery(self):
+        return self.transport_options.get(
+            'enable_exactly_once_delivery',
+            self.default_enable_exactly_once_delivery
         )
 
     def close(self):
