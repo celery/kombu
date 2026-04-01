@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import pytest
@@ -19,11 +21,11 @@ class SimpleBase:
     def _Queue(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport='memory')
         self.connection.default_channel.exchange_declare('amq.direct')
 
-    def teardown(self):
+    def teardown_method(self):
         self.connection.close()
         self.connection = None
 
@@ -91,9 +93,8 @@ class SimpleBase:
     def test_enter_exit(self):
         q = self.Queue('test_enter_exit')
         q.close = Mock()
-
-        assert q.__enter__() is q
-        q.__exit__()
+        with q as x:
+            assert x is q
         q.close.assert_called_with()
 
     def test_qsize(self):

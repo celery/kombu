@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 import sys
 from unittest.mock import ANY, Mock, patch
@@ -44,7 +46,7 @@ def test_safe_format():
 
 class test_LogMixin:
 
-    def setup(self):
+    def setup_method(self):
         self.log = Log('Log', Mock())
         self.logger = self.log.logger
 

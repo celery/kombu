@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kombu.log import get_logger
 from kombu.mixins import ConsumerMixin
 from kombu.utils.functional import reprcall

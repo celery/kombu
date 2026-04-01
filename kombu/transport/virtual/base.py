@@ -3,6 +3,8 @@
 Emulates the AMQ API for non-AMQ transports.
 """
 
+from __future__ import annotations
+
 import base64
 import socket
 import sys
@@ -13,6 +15,7 @@ from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
 from time import monotonic, sleep
+from typing import TYPE_CHECKING
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -25,6 +28,9 @@ from kombu.utils.scheduling import FairCycle
 from kombu.utils.uuid import uuid
 
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 ARRAY_TYPE_H = 'H'
 
@@ -153,6 +159,7 @@ class QoS:
     Only supports `prefetch_count` at this point.
 
     Arguments:
+    ---------
         channel (ChannelT): Connection channel.
         prefetch_count (int): Initial prefetch count (defaults to 0).
     """
@@ -177,6 +184,8 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
+        # Standard Python dictionaries do not support setting attributes
+        # on the object, hence the use of OrderedDict
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
@@ -203,7 +212,8 @@ class QoS:
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
-        Returns:
+        Returns
+        -------
             int: greater than zero.
         """
         pcount = self.prefetch_count
@@ -265,6 +275,7 @@ class QoS:
         """Restore all unacknowledged messages at shutdown/gc collect.
 
         Note:
+        ----
             Can only be called once for each instance, subsequent
             calls will be ignored.
         """
@@ -293,11 +304,12 @@ class QoS:
             state.restored = True
 
     def restore_visible(self, *args, **kwargs):
-        """Restore any pending unackwnowledged messages.
+        """Restore any pending unacknowledged messages.
 
         To be filled in for visibility_timeout style implementations.
 
         Note:
+        ----
             This is implementation optional, and currently only
             used by the Redis transport.
         """
@@ -347,6 +359,7 @@ class AbstractChannel:
     you'd usually want to implement in a virtual channel.
 
     Note:
+    ----
         Do not subclass directly, but rather inherit
         from :class:`Channel`.
     """
@@ -371,6 +384,7 @@ class AbstractChannel:
         """Delete `queue`.
 
         Note:
+        ----
             This just purges the queue, if you need to do more you can
             override this method.
         """
@@ -380,6 +394,7 @@ class AbstractChannel:
         """Create new queue.
 
         Note:
+        ----
             Your transport can override this method if it needs
             to do something whenever a new queue is declared.
         """
@@ -387,7 +402,8 @@ class AbstractChannel:
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
+        -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
         """
@@ -406,6 +422,7 @@ class Channel(AbstractChannel, base.StdChannel):
     """Virtual channel.
 
     Arguments:
+    ---------
         connection (ConnectionT): The transport instance this
             channel is part of.
     """
@@ -667,6 +684,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Change QoS settings for this channel.
 
         Note:
+        ----
             Only `prefetch_count` is supported.
         """
         self.qos.prefetch_count = prefetch_count
@@ -689,9 +707,10 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Returns:
-            str: queue name -- must return the string `default`
-                if no queues matched.
+        Returns
+        -------
+            list[str]: queue names -- must return `[default]`
+                if default is set and no queues matched.
         """
         if default is None:
             default = self.deadletter_queue
@@ -720,7 +739,8 @@ class Channel(AbstractChannel, base.StdChannel):
         message = message.serializable()
         message['redelivered'] = True
         for queue in self._lookup(
-                delivery_info['exchange'], delivery_info['routing_key']):
+            delivery_info['exchange'],
+                delivery_info['routing_key']):
             self._put(queue, message)
 
     def _restore_at_beginning(self, message):
@@ -756,7 +776,8 @@ class Channel(AbstractChannel, base.StdChannel):
     def flow(self, active=True):
         """Enable/disable message flow.
 
-        Raises:
+        Raises
+        ------
             NotImplementedError: as flow
                 is not implemented by the base virtual implementation.
         """
@@ -781,12 +802,12 @@ class Channel(AbstractChannel, base.StdChannel):
         self.exchange_types = None
 
     def encode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).encode(body), encoding
         return body, encoding
 
     def decode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).decode(body)
         return body
 
@@ -797,7 +818,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
     @property
@@ -824,6 +850,7 @@ class Channel(AbstractChannel, base.StdChannel):
         The value is limited to within a boundary of 0 to 9.
 
         Note:
+        ----
             Higher value has more priority.
         """
         try:
@@ -873,6 +900,7 @@ class Transport(base.Transport):
     """Virtual transport.
 
     Arguments:
+    ---------
         client (kombu.Connection): The client this is a transport for.
     """
 
@@ -945,7 +973,7 @@ class Transport(base.Transport):
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
         self._avail_channels.append(self.create_channel(self))
-        return self     # for drain events
+        return self  # for drain events
 
     def close_connection(self, connection):
         self.cycle.close()

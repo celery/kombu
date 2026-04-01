@@ -24,6 +24,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import os
 import socket
 from collections import defaultdict
@@ -76,6 +78,7 @@ class Channel(virtual.Channel):
         """Create and return the `queue` with the proper prefix.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         return f'{self.prefix}/{queue}'
@@ -91,6 +94,7 @@ class Channel(virtual.Channel):
         means that they have to wait before the lock is released.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         lock = etcd.Lock(self.client, queue)
@@ -107,6 +111,7 @@ class Channel(virtual.Channel):
         """Create a new `queue` if the `queue` doesn't already exist.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         self.queues[queue] = queue
@@ -121,7 +126,8 @@ class Channel(virtual.Channel):
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
+        -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
         """
@@ -135,6 +141,7 @@ class Channel(virtual.Channel):
         """Delete a `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         self.queues.pop(queue, None)
@@ -146,6 +153,7 @@ class Channel(virtual.Channel):
         This simply writes a key to the Etcd store
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
             payload (dict): Message data which will be dumped to etcd.
         """
@@ -164,6 +172,7 @@ class Channel(virtual.Channel):
         only one node reads at the same time. This is for read consistency
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
             timeout (int): Optional seconds to wait for a response.
         """
@@ -194,6 +203,7 @@ class Channel(virtual.Channel):
         """Remove all `message`s from a `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         with self._queue_lock(queue):
@@ -205,6 +215,7 @@ class Channel(virtual.Channel):
         """Return the size of the `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         with self._queue_lock(queue):

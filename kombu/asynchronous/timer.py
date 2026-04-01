@@ -1,5 +1,7 @@
 """Timer scheduling Python callbacks."""
 
+from __future__ import annotations
+
 import heapq
 import sys
 from collections import namedtuple
@@ -7,29 +9,33 @@ from datetime import datetime
 from functools import total_ordering
 from time import monotonic
 from time import time as _time
+from typing import TYPE_CHECKING
 from weakref import proxy as weakrefproxy
 
 from vine.utils import wraps
 
 from kombu.log import get_logger
 
-try:
-    from pytz import utc
-except ImportError:  # pragma: no cover
-    utc = None
+if sys.version_info >= (3, 9):
+    from zoneinfo import ZoneInfo
+else:
+    from backports.zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('Entry', 'Timer', 'to_timestamp')
 
 logger = get_logger(__name__)
 
 DEFAULT_MAX_INTERVAL = 2
-EPOCH = datetime.utcfromtimestamp(0).replace(tzinfo=utc)
+EPOCH = datetime.fromtimestamp(0, ZoneInfo("UTC"))
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
 
-def to_timestamp(d, default_timezone=utc, time=monotonic):
+def to_timestamp(d, default_timezone=ZoneInfo("UTC"), time=monotonic):
     """Convert datetime to timestamp.
 
     If d' is already a timestamp, then that will be used.
@@ -101,7 +107,12 @@ class Timer:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.stop()
 
     def call_at(self, eta, fun, args=(), kwargs=None, priority=0):
@@ -138,6 +149,7 @@ class Timer:
         """Enter function into the scheduler.
 
         Arguments:
+        ---------
             entry (~kombu.asynchronous.timer.Entry): Item to enter.
             eta (datetime.datetime): Scheduled time.
             priority (int): Unused.

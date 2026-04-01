@@ -1,4 +1,4 @@
-importlib-metadata>=0.18; python_version<"3.8"
-cached_property; python_version<"3.8"
-amqp>=5.0.9,<6.0.0
-vine
+amqp>=5.1.1,<6.0.0
+vine==5.1.0
+tzdata>=2025.2
+packaging

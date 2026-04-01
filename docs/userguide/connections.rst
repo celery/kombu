@@ -64,7 +64,50 @@ resources:
     with Connection() as connection:
         # work with connection
 
+.. _debug-logs:
+
+Debug Logs
+==========
+
+Kombu exposes multiple environment variables that control debug logging for connection and channel logs.
+This is useful for situations where you want to debug Kombu or contribute to the project.
+
+If ``KOMBU_LOG_CONNECTION`` is set to 1, debug logs are enabled for connections.
+
+If ``KOMBU_LOG_CHANNEL`` is set to 1, debug logs are enabled for channels.
+
+If ``KOMBU_LOG_DEBUG`` is set to 1, debug logs are enabled for both connections and channels.
+
 .. _connection-urls:
+
+Celery with SQS
+===============
+SQS broker url doesn't include queue_name_prefix by default.
+So we can use the following code snippet to make it work in celery.
+
+.. code-block:: python
+
+    from celery import Celery
+    def make_celery(app):
+        celery = Celery(
+            app.import_name,
+            broker="sqs://",
+            broker_transport_options={
+                "queue_name_prefix": "{SERVICE_ENV}-{SERVICE_NAME}-"
+            },
+        )
+        task_base = celery.Task
+
+        class ContextTask(task_base):
+            abstract = True
+
+            def __call__(self, *args, **kwargs):
+                with app.app_context():
+                    return task_base.__call__(self, *args, **kwargs)
+
+        celery.Task = ContextTask
+
+        return celery
 
 URLs
 ====
@@ -88,7 +131,7 @@ All of these are valid URLs:
 
     # Using Redis over a Unix socket
     redis+socket:///tmp/redis.sock
-    
+
     # Using Redis sentinel
     sentinel://sentinel1:26379;sentinel://sentinel2:26379
 
@@ -205,3 +248,12 @@ Transport Comparison
          ``supports_fanout`` transport option.
 
 .. [#f3] AMQP Message priority support depends on broker implementation.
+
+Transport Options
+=================
+
+py-amqp
+~~~~~~~
+
+:read_timeout: Timeout for reading data from RabbitMQ.
+:write_timeout: Timeout for writing data to RabbitMQ.

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 try:
     from urllib.parse import urlencode
 except ImportError:
@@ -49,10 +51,18 @@ def test_maybe_sanitize_url(url, expected):
 def test_ssl_parameters():
     url = 'rediss://user:password@host:6379/0?'
     querystring = urlencode({
+        "ssl_check_hostname": "on",
+    })
+    kwargs = parse_url(url + querystring)
+    assert kwargs['transport'] == 'rediss'
+    assert kwargs['ssl']['ssl_check_hostname'] is True
+
+    querystring = urlencode({
         'ssl_cert_reqs': 'required',
         'ssl_ca_certs': '/var/ssl/myca.pem',
         'ssl_certfile': '/var/ssl/server-cert.pem',
         'ssl_keyfile': '/var/ssl/priv/worker-key.pem',
+        "ssl_check_hostname": "false",
     })
     kwargs = parse_url(url + querystring)
     assert kwargs['transport'] == 'rediss'
@@ -60,6 +70,7 @@ def test_ssl_parameters():
     assert kwargs['ssl']['ssl_ca_certs'] == '/var/ssl/myca.pem'
     assert kwargs['ssl']['ssl_certfile'] == '/var/ssl/server-cert.pem'
     assert kwargs['ssl']['ssl_keyfile'] == '/var/ssl/priv/worker-key.pem'
+    assert kwargs['ssl']['ssl_check_hostname'] is False
 
     kombu.utils.url.ssl_available = False
 

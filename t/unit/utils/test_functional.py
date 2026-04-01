@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pickle
 from itertools import count
 from unittest.mock import Mock
@@ -17,6 +19,19 @@ class test_ChannelPromise:
         obj = Mock(name='cb')
         assert 'promise' in repr(ChannelPromise(obj))
         obj.assert_not_called()
+
+    def test_failing_contract(self):
+        def failing():
+            raise RuntimeError("failure for test")
+
+        p = ChannelPromise(failing)
+
+        with pytest.raises(RuntimeError, match="failure for test") as excinfo:
+            p()
+
+        # ensure the exception is not chained with internal ChannelPromise errors
+        assert excinfo.value.__context__ is None
+        assert excinfo.value.__cause__ is None
 
 
 class test_shufflecycle:
@@ -166,7 +181,7 @@ class test_retry_over_time:
     class Predicate(Exception):
         pass
 
-    def setup(self):
+    def setup_method(self):
         self.index = 0
 
     def myfun(self):

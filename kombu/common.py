@@ -1,5 +1,7 @@
 """Common Utilities."""
 
+from __future__ import annotations
+
 import os
 import socket
 import threading
@@ -14,6 +16,7 @@ from amqp import ChannelError, RecoverableConnectionError
 from .entity import Exchange, Queue
 from .log import get_logger
 from .serialization import registry as serializers
+from .utils.compat import get_gevent_concurrent_error
 from .utils.uuid import uuid
 
 __all__ = ('Broadcast', 'maybe_declare', 'uuid',
@@ -64,6 +67,7 @@ class Broadcast(Queue):
     and both the queue and exchange is configured with auto deletion.
 
     Arguments:
+    ---------
         name (str): This is used as the name of the exchange.
         queue (str): By default a unique id is used for the queue
             name for every consumer.  You can specify a custom
@@ -123,7 +127,7 @@ def _ensure_channel_is_bound(entity, channel):
             raise ChannelError(
                 f"Cannot bind channel {channel} to entity {entity}")
         entity = entity.bind(channel)
-        return entity
+    return entity
 
 
 def _maybe_declare(entity, channel):
@@ -132,7 +136,9 @@ def _maybe_declare(entity, channel):
 
     _ensure_channel_is_bound(entity, channel)
 
-    if channel is None:
+    if channel is None or channel.connection is None:
+        # If this was called from the `ensure()` method then the channel could have been invalidated
+        # and the correct channel was re-bound to the entity by calling the `entity.revive()` method.
         if not entity.is_bound:
             raise ChannelError(
                 f"channel is None and entity {entity} not bound.")
@@ -156,7 +162,7 @@ def _maybe_declare(entity, channel):
 
 
 def _imaybe_declare(entity, channel, **retry_policy):
-    _ensure_channel_is_bound(entity, channel)
+    entity = _ensure_channel_is_bound(entity, channel)
 
     if not entity.channel.connection:
         raise RecoverableConnectionError('channel disconnected')
@@ -201,7 +207,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
 
     ``eventloop`` is a generator.
 
-    Examples:
+    Examples
+    --------
         >>> from kombu.common import eventloop
 
         >>> def run(conn):
@@ -217,7 +224,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         for _ in eventloop(connection, limit=1, timeout=1):
             pass
 
-    See Also:
+    See Also
+    --------
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.
     """
@@ -234,6 +242,7 @@ def send_reply(exchange, req, msg,
     """Send reply for request.
 
     Arguments:
+    ---------
         exchange (kombu.Exchange, str): Reply exchange
         req (~kombu.Message): Original request, a message with
             a ``reply_to`` property.
@@ -280,7 +289,9 @@ def _ensure_errback(exc, interval):
 def _ignore_errors(conn):
     try:
         yield
-    except conn.connection_errors + conn.channel_errors:
+    except conn.connection_errors + conn.channel_errors + (
+        (conc_err,) if (conc_err := get_gevent_concurrent_error()) is not None else ()
+    ):
         pass
 
 
@@ -307,6 +318,7 @@ def ignore_errors(conn, fun=None, *args, **kwargs):
 
 
     Note:
+    ----
         Connection and channel errors should be properly handled,
         and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
@@ -346,12 +358,17 @@ class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
     Arguments:
+    ---------
         callback (Callable): Function used to set new prefetch count,
             e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
             with a single ``prefetch_count`` keyword argument.
         initial_value (int): Initial prefetch count value..
+        max_prefetch (int or None): Maximum allowed prefetch count. If specified
+            as an integer, increment_eventually will not allow the value to exceed this limit.
+            If None (the default), there is no upper limit on the prefetch count.
 
     Example:
+    -------
         >>> from kombu import Consumer, Connection
         >>> connection = Connection('amqp://')
         >>> consumer = Consumer(connection)
@@ -385,27 +402,34 @@ class QoS:
 
     prev = None
 
-    def __init__(self, callback, initial_value):
+    def __init__(self, callback, initial_value, max_prefetch=None):
         self.callback = callback
         self._mutex = threading.RLock()
         self.value = initial_value or 0
+        self.max_prefetch = max_prefetch
 
     def increment_eventually(self, n=1):
         """Increment the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
-            when necessary.
+            when necessary. If max_prefetch is set, the value will not
+            exceed this limit.
         """
         with self._mutex:
             if self.value:
-                self.value = self.value + max(n, 0)
+                new_value = self.value + max(n, 0)
+                if self.max_prefetch is not None and new_value > self.max_prefetch:
+                    new_value = self.max_prefetch
+                self.value = new_value
         return self.value
 
     def decrement_eventually(self, n=1):
         """Decrement the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
             when necessary.
         """

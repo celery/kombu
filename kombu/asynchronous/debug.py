@@ -1,5 +1,7 @@
 """Event-loop debugging tools."""
 
+from __future__ import annotations
+
 from kombu.utils.eventio import ERR, READ, WRITE
 from kombu.utils.functional import reprcall
 

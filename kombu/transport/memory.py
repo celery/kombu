@@ -22,6 +22,8 @@ Connection string is in the following format:
 
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from queue import Queue
 

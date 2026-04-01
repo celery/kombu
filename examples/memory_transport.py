@@ -1,6 +1,8 @@
 """
 Example that use memory transport for message produce.
 """
+from __future__ import annotations
+
 import time
 
 from kombu import Connection, Consumer, Exchange, Queue

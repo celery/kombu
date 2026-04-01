@@ -7,6 +7,8 @@ message sent.
 
 """
 
+from __future__ import annotations
+
 from kombu import Connection
 
 #: Create connection

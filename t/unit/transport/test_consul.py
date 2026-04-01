@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from array import array
 from queue import Empty
 from unittest.mock import Mock
@@ -11,7 +13,7 @@ pytest.importorskip('consul')
 
 class test_Consul:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Mock()
         self.connection._used_channel_ids = array('H')
         self.connection.channel_max = 65535

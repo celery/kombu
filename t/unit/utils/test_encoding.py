@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -58,7 +60,7 @@ class newstr(str):
 
 class test_safe_str:
 
-    def setup(self):
+    def setup_method(self):
         self._encoding = self.patching('sys.getfilesystemencoding')
         self._encoding.return_value = 'ascii'
 

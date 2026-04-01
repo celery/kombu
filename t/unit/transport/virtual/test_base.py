@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import io
 import socket
 import warnings
@@ -34,10 +36,10 @@ def test_BrokerState():
 
 class test_QoS:
 
-    def setup(self):
+    def setup_method(self):
         self.q = virtual.QoS(client().channel(), prefetch_count=10)
 
-    def teardown(self):
+    def teardown_method(self):
         self.q._on_collect.cancel()
 
     def test_constructor(self):
@@ -172,10 +174,10 @@ class test_AbstractChannel:
 
 class test_Channel:
 
-    def setup(self):
+    def setup_method(self):
         self.channel = client().channel()
 
-    def teardown(self):
+    def teardown_method(self):
         if self.channel._qos is not None:
             self.channel._qos._on_collect.cancel()
 
@@ -462,9 +464,8 @@ class test_Channel:
             assert 'could not be delivered' in log[0].message.args[0]
 
     def test_context(self):
-        x = self.channel.__enter__()
-        assert x is self.channel
-        x.__exit__()
+        with self.channel as x:
+            assert x is self.channel
         assert x.closed
 
     def test_cycle_property(self):
@@ -554,7 +555,7 @@ class test_Channel:
 
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.transport = client().transport
 
     def test_state_is_transport_specific(self):
@@ -581,8 +582,8 @@ class test_Transport:
         assert len(self.transport.channels) == 2
         self.transport.close_connection(self.transport)
         assert not self.transport.channels
-        del(c1)  # so pyflakes doesn't complain
-        del(c2)
+        del c1  # so pyflakes doesn't complain
+        del c2
 
     def test_create_channel(self):
         """Ensure create_channel can create channels successfully."""

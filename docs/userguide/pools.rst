@@ -189,4 +189,4 @@ argument:
 
     from kombu import pools
 
-    connections = pools.Connections(limit=pools.use_default_limit)
+    connections = pools.Connections(limit=pools.use_global_limit)

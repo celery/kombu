@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kombu import Connection
 
 with Connection('amqp://guest:guest@localhost:5672//') as conn:

@@ -1,10 +1,12 @@
 """Kombu transport using SQLAlchemy as the message store."""
 
+from __future__ import annotations
+
 import datetime
 
 from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,
                         Sequence, SmallInteger, String, Text)
-from sqlalchemy.orm import relation
+from sqlalchemy.orm import relationship
 from sqlalchemy.schema import MetaData
 
 try:
@@ -35,7 +37,7 @@ class Queue:
 
     @declared_attr
     def messages(cls):
-        return relation('Message', backref='queue', lazy='noload')
+        return relationship('Message', backref='queue', lazy='noload')
 
 
 class Message:

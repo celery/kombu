@@ -1,11 +1,13 @@
 """HTTP Client using pyCurl."""
 
+from __future__ import annotations
+
 from collections import deque
 from functools import partial
 from io import BytesIO
 from time import time
 
-from kombu.asynchronous.hub import READ, WRITE, get_event_loop
+from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
 from kombu.exceptions import HttpError
 from kombu.utils.encoding import bytes_to_str
 
@@ -36,7 +38,7 @@ class CurlClient(BaseClient):
 
     Curl = Curl
 
-    def __init__(self, hub=None, max_clients=10):
+    def __init__(self, hub: Hub | None = None, max_clients: int = 10):
         if pycurl is None:
             raise ImportError('The curl client requires the pycurl library.')
         hub = hub or get_event_loop()
@@ -250,7 +252,11 @@ class CurlClient(BaseClient):
             setopt(meth, True)
 
         if request.method in ('POST', 'PUT'):
-            body = request.body.encode('utf-8') if request.body else bytes()
+            if not request.body:
+                body = b''
+            else:
+                body = request.body if isinstance(request.body, bytes) else request.body.encode('utf-8')
+
             reqbuffer = BytesIO(body)
             setopt(_pycurl.READFUNCTION, reqbuffer.read)
             if request.method == 'POST':

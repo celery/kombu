@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from itertools import count
 from unittest.mock import MagicMock, Mock, patch
@@ -25,7 +27,7 @@ class MockConnection(dict):
 
 class test_Channel:
 
-    def setup(self):
+    def setup_method(self):
 
         class Channel(pyamqp.Channel):
             wait_returns = []
@@ -76,10 +78,16 @@ class test_Channel:
         self.channel.basic_cancel('my-consumer-tag')
         assert 'my-consumer-tag' not in self.channel.no_ack_consumers
 
+    def test_consume_registers_cancel_callback(self):
+        on_cancel = Mock()
+        self.channel.wait_returns = ['my-consumer-tag']
+        self.channel.basic_consume('foo', on_cancel=on_cancel)
+        assert self.channel.cancel_callbacks['my-consumer-tag'] == on_cancel
+
 
 class test_Transport:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection('pyamqp://')
         self.transport = self.connection.transport
 
@@ -222,3 +230,94 @@ class test_pyamqp:
             t = pyamqp.Transport(Mock())
             t.get_manager(1, kw=2)
             get_manager.assert_called_with(t.client, 1, kw=2)
+
+    def test_qos_semantics_matches_spec(self):
+        t = pyamqp.Transport(Mock())
+        conn = Mock()
+
+        # Non-RabbitMQ broker: always True
+        conn.server_properties = {'product': 'ActiveMQ', 'version': '5.0.0'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ < 3.3: per-channel QoS (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.2.4'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 3.3: global QoS semantics introduced (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.3.0'}
+        assert t.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 3.13: still global QoS (False)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '3.13.0'}
+        assert t.qos_semantics_matches_spec(conn) is False
+
+        # RabbitMQ 4.0: global QoS removed on classic queues (True)
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.0.0'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ 4.x future version: still True
+        conn.server_properties = {'product': 'RabbitMQ', 'version': '4.2.1'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+        # RabbitMQ with missing 'version' key: returns True (safe default)
+        conn.server_properties = {'product': 'RabbitMQ'}
+        assert t.qos_semantics_matches_spec(conn) is True
+
+    def test_establish_connection_callable_password(self):
+        """Callable password is invoked and resolved string passed to
+        amqp.Connection."""
+        class Transport(pyamqp.Transport):
+            Connection = MagicMock()
+
+        password_func = Mock(return_value='fresh_token')
+        conn = Connection(
+            'amqp://user@localhost/',
+            password=password_func,
+            transport=Transport,
+        )
+        conn.connect()
+        password_func.assert_called_once()
+        _, kwargs = Transport.Connection.call_args
+        assert kwargs['password'] == 'fresh_token'
+
+    def test_establish_connection_string_password_unchanged(self):
+        """Static string password still works identically."""
+        class Transport(pyamqp.Transport):
+            Connection = MagicMock()
+
+        conn = Connection(
+            'amqp://user@localhost/',
+            password='static_pass',
+            transport=Transport,
+        )
+        conn.connect()
+        _, kwargs = Transport.Connection.call_args
+        assert kwargs['password'] == 'static_pass'
+
+    def test_reconnection_invokes_callable_each_time(self):
+        """Each reconnection invokes the callable for a fresh password."""
+        call_count = 0
+
+        def password_func():
+            nonlocal call_count
+            call_count += 1
+            return f'token_{call_count}'
+
+        class Transport(pyamqp.Transport):
+            Connection = MockConnection
+
+        conn = Connection(
+            'amqp://user@localhost/',
+            password=password_func,
+            transport=Transport,
+        )
+        # First connection
+        c1 = conn.connect()
+        assert c1['password'] == 'token_1'
+        assert call_count == 1
+
+        # Simulate disconnect + reconnect
+        conn.close()
+        c2 = conn.connect()
+        assert c2['password'] == 'token_2'
+        assert call_count == 2

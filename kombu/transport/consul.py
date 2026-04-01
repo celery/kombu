@@ -27,6 +27,8 @@ Connection string has the following format:
 
 """
 
+from __future__ import annotations
+
 import socket
 import uuid
 from collections import defaultdict
@@ -95,9 +97,11 @@ class Channel(virtual.Channel):
         read-consistency between the nodes.
 
         Arguments:
+        ---------
             queue (str): The name of the Queue.
 
-        Returns:
+        Returns
+        -------
             str: The ID of the session.
         """
         try:
@@ -132,13 +136,16 @@ class Channel(virtual.Channel):
         means that they have to wait before the lock is released.
 
         Arguments:
+        ---------
             queue (str): The name of the Queue.
             raising (Exception): Set custom lock error class.
 
-        Raises:
+        Raises
+        ------
             LockError: if the lock cannot be acquired.
 
-        Returns:
+        Returns
+        -------
             bool: success?
         """
         self._acquire_lock(queue, raising=raising)
@@ -168,6 +175,7 @@ class Channel(virtual.Channel):
         It does so by simply removing the lock key in Consul.
 
         Arguments:
+        ---------
             queue (str): The name of the queue we want to release
                 the lock from.
         """
@@ -180,6 +188,7 @@ class Channel(virtual.Channel):
         Will release all locks it still might hold.
 
         Arguments:
+        ---------
             queue (str): The name of the Queue.
         """
         logger.debug('Destroying session %s', self.queues[queue]['session_id'])
