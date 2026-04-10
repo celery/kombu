@@ -12,9 +12,9 @@ from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         NotFound, PermissionDenied)
 from google.pubsub_v1.types.pubsub import Subscription
 
-from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE, AtomicCounter,
-                                      Channel, QueueDescriptor, Transport,
-                                      UnackedIds)
+from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE_DEFAULT,
+                                      AtomicCounter, Channel,
+                                      QueueDescriptor, Transport, UnackedIds)
 
 
 class test_UnackedIds:
@@ -592,6 +592,7 @@ class test_Channel:
             subscription_path=subscription_path,
         )
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
 
@@ -634,6 +635,7 @@ class test_Channel:
             subscription_path=subscription_path,
         )
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
         channel._stop_extender.wait = MagicMock(side_effect=[False, False, True])
@@ -676,6 +678,7 @@ class test_Channel:
             subscription_path=subscription_path,
         )
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
         channel._stop_extender.wait = MagicMock(side_effect=[False, True])
@@ -719,6 +722,7 @@ class test_Channel:
         )
 
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue1)] = qdesc1
         channel._queue_cache[channel.entity_name(queue2)] = qdesc2
         qdesc1.unacked_ids.extend(ack_ids)
@@ -891,7 +895,7 @@ class test_Channel:
         subscription_path = (
             "projects/project-id/subscriptions/test_subscription"
         )
-        n_ids = _ACK_MODIFY_BATCH_SIZE + 50
+        n_ids = _ACK_MODIFY_BATCH_SIZE_DEFAULT + 50
         ack_ids = [f"ack_{i}" for i in range(n_ids)]
         qdesc = QueueDescriptor(
             name=queue,
@@ -900,6 +904,7 @@ class test_Channel:
             subscription_path=subscription_path,
         )
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
 
@@ -911,8 +916,38 @@ class test_Channel:
         assert channel.subscriber.modify_ack_deadline.call_count == 2
         first_call = channel.subscriber.modify_ack_deadline.call_args_list[0]
         second_call = channel.subscriber.modify_ack_deadline.call_args_list[1]
-        assert len(first_call[1]['request']['ack_ids']) == _ACK_MODIFY_BATCH_SIZE
+        assert len(first_call[1]['request']['ack_ids']) == _ACK_MODIFY_BATCH_SIZE_DEFAULT
         assert len(second_call[1]['request']['ack_ids']) == 50
+
+    def test_extend_unacked_deadline_custom_batch_size(self, channel):
+        """transport_options['ack_modify_batch_size'] overrides the default."""
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        custom_batch = 3
+        ack_ids = [f"ack_{i}" for i in range(7)]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = custom_batch
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock()
+
+        channel._extend_unacked_deadline()
+
+        assert channel.subscriber.modify_ack_deadline.call_count == 3
+        calls = channel.subscriber.modify_ack_deadline.call_args_list
+        assert len(calls[0][1]['request']['ack_ids']) == 3
+        assert len(calls[1][1]['request']['ack_ids']) == 3
+        assert len(calls[2][1]['request']['ack_ids']) == 1
 
     def test_after_reply_message_received(self, channel):
         queue = 'test-queue'

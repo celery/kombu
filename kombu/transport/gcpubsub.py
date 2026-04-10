@@ -38,6 +38,10 @@ Transport Options
 * ``enable_exactly_once_delivery``: (bool) Enable exactly-once delivery for
   subscriptions. When enabled, Pub/Sub provides message deduplication.
   Defaults to False.
+* ``ack_modify_batch_size``: (int) Maximum number of ack_ids sent in a single
+  ``modify_ack_deadline`` request.  Pub/Sub rejects requests larger than
+  512 KiB; this count-based batch size keeps requests under that limit for
+  typical ack_id lengths.  Defaults to 1000.
 """
 
 from __future__ import annotations
@@ -87,9 +91,11 @@ CHARS_REPLACE_TABLE = {
     **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE},
 }
 
-# Pub/Sub rejects modify_ack_deadline requests larger than 512 KB.
-# Batching ack_ids helps keep each request under this limit; 200 is a
-_ACK_MODIFY_BATCH_SIZE = 200
+# Pub/Sub rejects modify_ack_deadline requests larger than 512 KiB.
+# Batching by count is a pragmatic approximation; ack_ids are typically
+# ~176 bytes so 1000 ids ≈ 200 KiB, safely under the limit.  Override
+# via transport_options['ack_modify_batch_size'] if needed.
+_ACK_MODIFY_BATCH_SIZE_DEFAULT = 1000
 
 
 class UnackedIds:
@@ -602,8 +608,9 @@ class Channel(virtual.Channel):
                     len(ack_ids),
                     ack_ids,
                 )
-                for i in range(0, len(ack_ids), _ACK_MODIFY_BATCH_SIZE):
-                    batch = ack_ids[i:i + _ACK_MODIFY_BATCH_SIZE]
+                batch_size = self.ack_modify_batch_size
+                for i in range(0, len(ack_ids), batch_size):
+                    batch = ack_ids[i:i + batch_size]
                     try:
                         self.subscriber.modify_ack_deadline(
                             request={
@@ -618,7 +625,7 @@ class Channel(virtual.Channel):
                             'for %s (batch %d–%d of %d): %s',
                             thread_id,
                             qdesc.subscription_path,
-                            i, min(i + _ACK_MODIFY_BATCH_SIZE, len(ack_ids)),
+                            i, min(i + batch_size, len(ack_ids)),
                             len(ack_ids),
                             exc,
                             exc_info=True,
@@ -694,6 +701,12 @@ class Channel(virtual.Channel):
         return self.transport_options.get(
             'enable_exactly_once_delivery',
             self.default_enable_exactly_once_delivery
+        )
+
+    @cached_property
+    def ack_modify_batch_size(self):
+        return self.transport_options.get(
+            'ack_modify_batch_size', _ACK_MODIFY_BATCH_SIZE_DEFAULT
         )
 
     def close(self):
