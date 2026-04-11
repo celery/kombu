@@ -705,9 +705,14 @@ class Channel(virtual.Channel):
 
     @cached_property
     def ack_modify_batch_size(self):
-        return self.transport_options.get(
+        value = self.transport_options.get(
             'ack_modify_batch_size', _ACK_MODIFY_BATCH_SIZE_DEFAULT
         )
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            value = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        return max(1, value)
 
     def close(self):
         """Close the channel."""
