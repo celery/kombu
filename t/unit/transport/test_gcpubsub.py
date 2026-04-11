@@ -933,8 +933,11 @@ class test_Channel:
             subscription_id="test_subscription",
             subscription_path=subscription_path,
         )
-        channel.transport_options = {"ack_deadline_seconds": 240}
-        channel.ack_modify_batch_size = custom_batch
+        channel.transport_options = {
+            "ack_deadline_seconds": 240,
+            "ack_modify_batch_size": custom_batch,
+        }
+        channel.__dict__.pop("ack_modify_batch_size", None)
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
 
