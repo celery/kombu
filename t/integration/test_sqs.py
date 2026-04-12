@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from unittest.mock import patch
+import uuid
 
 import pytest
 
@@ -11,16 +12,18 @@ import kombu.asynchronous
 from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
 
 
-def get_connection(hostname, port):
+def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: str = ""):
     return kombu.Connection(
         f'sqs://{hostname}:{port}',
         userid="TestUsername",  # This can be anything
         password="TestPassword",  # This can be anything
         transport_options={
             "supports_fanout": True,
+            "is_secure": False,
             "client-config": {
                 "region_name": "us-east-1",
-            }
+            },
+            "queue_name_prefix": queue_prefix,
         },
     )
 
@@ -36,16 +39,34 @@ def hub():
     kombu.asynchronous.set_event_loop(previous_hub)
 
 
-@pytest.fixture()
-def invalid_connection():
-    return kombu.Connection('sqs://localhost:12345')
+@pytest.fixture
+def test_queue_prefix() -> str:
+    """Generate a unique prefix for the test queues to avoid conflicts between test runs."""
+    return str(uuid.uuid4())[:8] + "_"
 
 
 @pytest.fixture()
-def connection(hub):
+def invalid_connection(test_queue_prefix):
+    return kombu.Connection(
+        'sqs://localhost:12345',
+        userid="TestUsername",
+        password="TestPassword",
+        transport_options={
+            "supports_fanout": True,
+            "is_secure": False,
+            "client-config": {
+                "region_name": "us-east-1",
+            },
+            "queue_name_prefix": test_queue_prefix,
+        })
+
+
+@pytest.fixture()
+def connection(hub, test_queue_prefix):
     conn = get_connection(
         hostname=os.environ.get('SQS_HOST', 'localhost'),
         port=os.environ.get('SQS_PORT', '4100'),
+        queue_prefix=test_queue_prefix
     )
     conn.transport_options['hub'] = hub
     return conn
@@ -58,13 +79,13 @@ def mock_set_policy():
         yield mock
 
 
-@pytest.mark.env('sqs')
+# @pytest.mark.env('sqs')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSBasicFunctionality(BasicFunctionality):
     pass
 
 
-@pytest.mark.env('sqs')
+# @pytest.mark.env('sqs')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSBaseExchangeTypes(BaseExchangeTypes):
     def test_fanout(self, connection):
