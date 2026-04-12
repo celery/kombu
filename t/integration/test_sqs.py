@@ -28,11 +28,12 @@ def get_connection(hostname, port):
 @pytest.fixture()
 def hub():
     """Provide a Kombu hub (event loop) for async I/O and callbacks."""
+    previous_hub = kombu.asynchronous.get_event_loop()
     h = kombu.asynchronous.Hub()
     kombu.asynchronous.set_event_loop(h)
     yield h
     h.close()
-    kombu.asynchronous.set_event_loop(None)
+    kombu.asynchronous.set_event_loop(previous_hub)
 
 
 @pytest.fixture()
