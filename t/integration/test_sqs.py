@@ -79,13 +79,13 @@ def mock_set_policy():
         yield mock
 
 
-# @pytest.mark.env('sqs')
+@pytest.mark.env('sqs')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSBasicFunctionality(BasicFunctionality):
     pass
 
 
-# @pytest.mark.env('sqs')
+@pytest.mark.env('sqs')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSBaseExchangeTypes(BaseExchangeTypes):
     def test_fanout(self, connection):
