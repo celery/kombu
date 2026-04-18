@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import multiprocessing
 import socket
 import warnings
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -396,7 +397,8 @@ class test_PidboxOid:
     def test_subprocess_oid(self):
         """Tests that subprocess will not share oid with parent process."""
         oid = GLOBAL_PIDBOX.oid
-        with ProcessPoolExecutor() as e:
+        mp_context = multiprocessing.get_context('forkserver')
+        with ProcessPoolExecutor(mp_context=mp_context) as e:
             res = e.submit(getoid)
             subprocess_oid = res.result()
         assert subprocess_oid != oid
