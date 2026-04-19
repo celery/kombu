@@ -352,7 +352,8 @@ def accepts_argument(func, argument_name):
     argument_spec = inspect.getfullargspec(func)
     return (
         argument_name in argument_spec.args or
-        argument_name in argument_spec.kwonlyargs
+        argument_name in argument_spec.kwonlyargs or
+        argument_spec.varkw is not None  # **kwargs accepts any keyword
     )
 
 
