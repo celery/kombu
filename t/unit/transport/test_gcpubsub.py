@@ -872,15 +872,20 @@ class test_Channel:
                 ]
             )
 
-        channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A1"))
-        payload1 = channel._get(queue)
-        msg1 = channel.Message(payload1, channel=channel)
-        qos.append(msg1, msg1.delivery_tag)
+        with patch.object(
+            channel,
+            "_next_delivery_tag",
+            side_effect=["det-tag-1", "det-tag-2"],
+        ):
+            channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A1"))
+            payload1 = channel._get(queue)
+            msg1 = channel.Message(payload1, channel=channel)
+            qos.append(msg1, msg1.delivery_tag)
 
-        channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A2"))
-        payload2 = channel._get(queue)
-        msg2 = channel.Message(payload2, channel=channel)
-        qos.append(msg2, msg2.delivery_tag)
+            channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A2"))
+            payload2 = channel._get(queue)
+            msg2 = channel.Message(payload2, channel=channel)
+            qos.append(msg2, msg2.delivery_tag)
 
         assert msg1.delivery_tag != msg2.delivery_tag
         assert len(qos._delivered) == 2
