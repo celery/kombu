@@ -1101,6 +1101,26 @@ class test_Channel:
         with pytest.raises(ValueError):
             self.channel._connparams()
 
+    def test_create_client_passes_credential_provider_from_pool(self):
+        provider = object()
+        client_factory = Mock(name='Client')
+        self.channel.Client = client_factory
+        self.channel._pool = Mock(connection_kwargs={'credential_provider': provider})
+        self.channel._async_pool = Mock(connection_kwargs={'credential_provider': provider})
+
+        self.channel._create_client()
+        client_factory.assert_called_with(
+            connection_pool=self.channel.pool,
+            credential_provider=provider,
+        )
+
+        client_factory.reset_mock()
+        self.channel._create_client(asynchronous=True)
+        client_factory.assert_called_with(
+            connection_pool=self.channel.async_pool,
+            credential_provider=provider,
+        )
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
