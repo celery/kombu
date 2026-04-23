@@ -8,5 +8,5 @@ pymongo==4.17.0
 kazoo==2.11.0
 
 # SQS transport
-boto3>=1.26.143
+boto3>=1.42.94
 
