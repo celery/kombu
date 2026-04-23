@@ -826,9 +826,12 @@ class test_Channel:
         channel._is_auto_ack = MagicMock(return_value=False)
         channel.qos.can_consume_max_estimate = MagicMock(return_value=None)
 
-        _queue, payloads = channel._get_bulk(queue, timeout=10)
+        with patch.object(
+            channel, "_next_delivery_tag", side_effect=["det-tag-1", "det-tag-2"]
+        ):
+            _queue, payloads = channel._get_bulk(queue, timeout=10)
         tags = [p['properties']['delivery_tag'] for p in payloads]
-        assert tags[0] != tags[1]
+        assert tags == ["det-tag-1", "det-tag-2"]
         assert tags[0] != original_tag
         assert tags[1] != original_tag
 
