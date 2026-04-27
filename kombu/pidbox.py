@@ -181,7 +181,7 @@ class Mailbox:
                  type='direct', connection=None, clock=None,
                  accept=None, serializer=None, producer_pool=None,
                  queue_ttl=None, queue_expires=None,
-                 queue_durable=False, queue_exclusive=False,
+                 queue_durable=False, queue_exclusive=True,
                  reply_queue_ttl=None, reply_queue_expires=10.0):
         self.namespace = namespace
         self.connection = connection
