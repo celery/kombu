@@ -167,6 +167,12 @@ class test_Mailbox:
         assert consumer2.channel is chan2
         assert not consumer2.no_ack
 
+    def test_Node_consumer_channel_error_raises_inconsistency(self):
+        with patch('kombu.pidbox.Consumer') as MockConsumer:
+            MockConsumer.side_effect = self.connection.channel_errors[0]()
+            with pytest.raises(InconsistencyError, match='already using'):
+                self.node.Consumer()
+
     def test_Node_consumer_multiple_listeners(self):
         warnings.resetwarnings()
         consumer = self.node.Consumer()
@@ -341,6 +347,14 @@ class test_Mailbox:
         m = consumer.queues[0].get()
         if m:
             return m.payload
+
+    def test_mailbox_defaults_to_exclusive(self):
+        mbox = pidbox.Mailbox('flagbox_default')(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.exclusive is True
+            assert q.durable is False
+            assert q.auto_delete is True
 
     def test_mailbox_queue_exclusive(self):
         mbox = pidbox.Mailbox(
