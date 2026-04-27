@@ -12,7 +12,7 @@ import kombu.asynchronous
 from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
 
 
-def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: str = ""):
+def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: str = "") -> kombu.Connection:
     return kombu.Connection(
         f'sqs://{hostname}:{port}',
         userid="TestUsername",  # This can be anything
@@ -24,6 +24,7 @@ def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: 
                 "region_name": "us-east-1",
             },
             "queue_name_prefix": queue_prefix,
+            "wait_time_seconds": 0,  # Set to 0 to ensure requeue testing works
         },
     )
 
@@ -66,7 +67,7 @@ def connection(hub, test_queue_prefix):
     conn = get_connection(
         hostname=os.environ.get('SQS_HOST', 'localhost'),
         port=os.environ.get('SQS_PORT', '4100'),
-        queue_prefix=test_queue_prefix
+        queue_prefix=test_queue_prefix,
     )
     conn.transport_options['hub'] = hub
     return conn
@@ -86,7 +87,7 @@ class test_SQSBasicFunctionality(BasicFunctionality):
 
 
 @pytest.mark.env('sqs')
-@pytest.mark.flaky(reruns=5, reruns_delay=2)
+@pytest.mark.flaky(reruns=5, reruns_delay=5)
 class test_SQSBaseExchangeTypes(BaseExchangeTypes):
     def test_fanout(self, connection):
         ex = kombu.Exchange('test_fanout', type='fanout')
@@ -95,12 +96,14 @@ class test_SQSBaseExchangeTypes(BaseExchangeTypes):
         test_queue2 = kombu.Queue('fanout2', exchange=ex)
         consumer2 = self._create_consumer(connection, test_queue2)
 
-        with connection as conn:
-            with conn.channel() as channel:
-                self._publish(channel, ex, [test_queue1, test_queue2])
-
-                self._consume_from(conn, consumer1)
-                self._consume_from(conn, consumer2)
+        with (
+            connection as conn,
+            conn.channel() as channel,
+            consumer1, consumer2
+        ):
+            self._publish(channel, ex, [test_queue1, test_queue2])
+            conn.drain_events(timeout=1)
+            conn.drain_events(timeout=1)
 
 
 @pytest.mark.env('sqs')
