@@ -80,10 +80,10 @@ class Node:
                 accept=self.mailbox.accept if accept is None else accept,
                 **options
             )
-        except channel_errors:
+        except channel_errors as exc:
             raise InconsistencyError(
                 W_PIDBOX_IN_USE.format(node=self)
-            )
+            ) from exc
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun

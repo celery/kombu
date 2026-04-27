@@ -73,7 +73,7 @@
     Mailbox Options
     ~~~~~~~~~~~~~~~
 
-    .. versionadded:: 5.7.0
+    .. versionadded:: 5.6.0
 
     The `Mailbox` supports several configuration options that affect
     the behavior of its queues.
