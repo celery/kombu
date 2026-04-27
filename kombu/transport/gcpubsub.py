@@ -38,6 +38,10 @@ Transport Options
 * ``enable_exactly_once_delivery``: (bool) Enable exactly-once delivery for
   subscriptions. When enabled, Pub/Sub provides message deduplication.
   Defaults to False.
+* ``ack_modify_batch_size``: (int) Maximum number of ack_ids sent in a single
+  ``modify_ack_deadline`` request.  Pub/Sub rejects requests larger than
+  512 KiB; this count-based batch size keeps requests under that limit for
+  typical ack_id lengths.  Defaults to 1000.
 """
 
 from __future__ import annotations
@@ -86,6 +90,12 @@ CHARS_REPLACE_TABLE = {
     ord('.'): ord('-'),
     **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE},
 }
+
+# Pub/Sub rejects modify_ack_deadline requests larger than 512 KiB.
+# Batching by count is a pragmatic approximation; ack_ids are typically
+# ~176 bytes so 1000 ids ≈ 200 KiB, safely under the limit.  Override
+# via transport_options['ack_modify_batch_size'] if needed.
+_ACK_MODIFY_BATCH_SIZE_DEFAULT = 1000
 
 
 class UnackedIds:
@@ -397,6 +407,7 @@ class Channel(virtual.Channel):
         message = response.received_messages[0]
         ack_id = message.ack_id
         payload = loads(message.message.data)
+        payload['properties']['delivery_tag'] = self._next_delivery_tag()
         delivery_info = payload['properties']['delivery_info']
         logger.debug(
             'queue:%s got message, ack_id: %s, payload: %s',
@@ -459,6 +470,7 @@ class Channel(virtual.Channel):
         for message in received_messages:
             ack_id = message.ack_id
             payload = loads(bytes_to_str(message.message.data))
+            payload['properties']['delivery_tag'] = self._next_delivery_tag()
             delivery_info = payload['properties']['delivery_info']
             delivery_info['gcpubsub_message'] = {
                 'queue': prefixed_queue,
@@ -588,29 +600,36 @@ class Channel(virtual.Channel):
                         qdesc.subscription_path,
                     )
                     continue
+                ack_ids = list(qdesc.unacked_ids)
                 logger.debug(
                     'thread [%s]: extend ack deadline for %s: %d msgs [%s]',
                     thread_id,
                     qdesc.subscription_path,
-                    len(qdesc.unacked_ids),
-                    list(qdesc.unacked_ids),
+                    len(ack_ids),
+                    ack_ids,
                 )
-                try:
-                    self.subscriber.modify_ack_deadline(
-                        request={
-                            "subscription": qdesc.subscription_path,
-                            "ack_ids": list(qdesc.unacked_ids),
-                            "ack_deadline_seconds": self.ack_deadline_seconds,
-                        }
-                    )
-                except Exception as exc:
-                    logger.error(
-                        'thread [%s]: failed to extend ack deadline for %s: %s',
-                        thread_id,
-                        qdesc.subscription_path,
-                        exc,
-                        exc_info=True,
-                    )
+                batch_size = self.ack_modify_batch_size
+                for i in range(0, len(ack_ids), batch_size):
+                    batch = ack_ids[i:i + batch_size]
+                    try:
+                        self.subscriber.modify_ack_deadline(
+                            request={
+                                "subscription": qdesc.subscription_path,
+                                "ack_ids": batch,
+                                "ack_deadline_seconds": self.ack_deadline_seconds,
+                            }
+                        )
+                    except Exception as exc:
+                        logger.error(
+                            'thread [%s]: failed to extend ack deadline '
+                            'for %s (batch %d–%d of %d): %s',
+                            thread_id,
+                            qdesc.subscription_path,
+                            i, min(i + batch_size, len(ack_ids)),
+                            len(ack_ids),
+                            exc,
+                            exc_info=True,
+                        )
         logger.info(
             'unacked deadline extension thread [%s] stopped', thread_id
         )
@@ -683,6 +702,17 @@ class Channel(virtual.Channel):
             'enable_exactly_once_delivery',
             self.default_enable_exactly_once_delivery
         )
+
+    @cached_property
+    def ack_modify_batch_size(self):
+        value = self.transport_options.get(
+            'ack_modify_batch_size', _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        )
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            value = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        return max(1, value)
 
     def close(self):
         """Close the channel."""
