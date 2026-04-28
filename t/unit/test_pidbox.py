@@ -168,8 +168,17 @@ class test_Mailbox:
         assert not consumer2.no_ack
 
     def test_Node_consumer_channel_error_raises_inconsistency(self):
+        base_channel_error = self.connection.channel_errors[0]
+
+        class ResourceLockedChannelError(base_channel_error):
+            def __str__(self):
+                return (
+                    "RESOURCE_LOCKED - cannot obtain exclusive access to "
+                    "locked queue 'pidbox': already using this queue"
+                )
+
         with patch('kombu.pidbox.Consumer') as MockConsumer:
-            MockConsumer.side_effect = self.connection.channel_errors[0]()
+            MockConsumer.side_effect = ResourceLockedChannelError()
             with pytest.raises(InconsistencyError, match='already using'):
                 self.node.Consumer()
 
