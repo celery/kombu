@@ -81,9 +81,11 @@ class Node:
                 **options
             )
         except channel_errors as exc:
-            raise InconsistencyError(
-                W_PIDBOX_IN_USE.format(node=self)
-            ) from exc
+            if getattr(exc, 'code', 0) == 405:
+                raise InconsistencyError(
+                    W_PIDBOX_IN_USE.format(node=self)
+                ) from exc
+            raise
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun
