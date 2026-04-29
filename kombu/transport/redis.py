@@ -53,7 +53,7 @@ Transport Options
 
       .. code-block:: bash
 
-          redis-cli --scan --pattern '_kombu.binding.*' | xargs redis-cli DEL
+          redis-cli --scan --pattern '_kombu.binding.*' | xargs -r -n 100 redis-cli DEL
 
       or point the deploy at a fresh Redis logical database
       (``redis://host/1`` instead of ``redis://host/0``).
