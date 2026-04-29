@@ -2241,7 +2241,7 @@ class test_Channel:
         assert result is sns_fanout_mock
 
     def test_fanout_client_not_initialised(self, channel_fixture):
-        with patch("kombu.transport.SQS.SNS") as fan_mock:
+        with patch("kombu.transport.SQS.SnsFanout") as fan_mock:
             # Arrange
             channel_fixture._fanout = None
 
