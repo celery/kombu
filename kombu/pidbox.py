@@ -72,11 +72,20 @@ class Node:
                 warnings.warn(W_PIDBOX_IN_USE.format(node=self))
         queue.on_declared = verify_exclusive
 
-        return Consumer(
-            channel or self.channel, [queue], no_ack=no_ack,
-            accept=self.mailbox.accept if accept is None else accept,
-            **options
-        )
+        conn = self.mailbox.connection
+        channel_errors = conn.channel_errors if conn else ()
+        try:
+            return Consumer(
+                channel or self.channel, [queue], no_ack=no_ack,
+                accept=self.mailbox.accept if accept is None else accept,
+                **options
+            )
+        except channel_errors as exc:
+            if getattr(exc, 'code', 0) == 405:
+                raise InconsistencyError(
+                    W_PIDBOX_IN_USE.format(node=self)
+                ) from exc
+            raise
 
     def handler(self, fun):
         self.handlers[fun.__name__] = fun
@@ -181,7 +190,7 @@ class Mailbox:
                  type='direct', connection=None, clock=None,
                  accept=None, serializer=None, producer_pool=None,
                  queue_ttl=None, queue_expires=None,
-                 queue_durable=False, queue_exclusive=False,
+                 queue_durable=False, queue_exclusive=True,
                  reply_queue_ttl=None, reply_queue_expires=10.0):
         self.namespace = namespace
         self.connection = connection
