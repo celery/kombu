@@ -167,6 +167,34 @@ class test_Mailbox:
         assert consumer2.channel is chan2
         assert not consumer2.no_ack
 
+    def test_Node_consumer_resource_locked_raises_inconsistency(self):
+        base_channel_error = self.connection.channel_errors[0]
+
+        class ResourceLockedChannelError(base_channel_error):
+            code = 405
+
+            def __str__(self):
+                return (
+                    "RESOURCE_LOCKED - cannot obtain exclusive access to "
+                    "locked queue 'pidbox': already using this queue"
+                )
+
+        with patch('kombu.pidbox.Consumer') as MockConsumer:
+            MockConsumer.side_effect = ResourceLockedChannelError()
+            with pytest.raises(InconsistencyError, match='already using'):
+                self.node.Consumer()
+
+    def test_Node_consumer_other_channel_error_propagates(self):
+        base_channel_error = self.connection.channel_errors[0]
+
+        class AccessRefusedError(base_channel_error):
+            code = 403
+
+        with patch('kombu.pidbox.Consumer') as MockConsumer:
+            MockConsumer.side_effect = AccessRefusedError()
+            with pytest.raises(AccessRefusedError):
+                self.node.Consumer()
+
     def test_Node_consumer_multiple_listeners(self):
         warnings.resetwarnings()
         consumer = self.node.Consumer()
@@ -341,6 +369,14 @@ class test_Mailbox:
         m = consumer.queues[0].get()
         if m:
             return m.payload
+
+    def test_mailbox_defaults_to_exclusive(self):
+        mbox = pidbox.Mailbox('flagbox_default')(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.exclusive is True
+            assert q.durable is False
+            assert q.auto_delete is True
 
     def test_mailbox_queue_exclusive(self):
         mbox = pidbox.Mailbox(
