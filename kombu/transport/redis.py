@@ -41,12 +41,12 @@ Transport Options
 
           ValueError: not enough values to unpack (expected 3, got 1)
 
-      from ``DirectExchange.lookup()``
-      (``kombu/transport/virtual/exchange.py``, line 67) when those
-      stale entries are read.  ``get_table()`` splits each stored entry
-      on the *new* separator; if the old separator is not present the
-      split returns a 1-element tuple rather than the required
-      ``(routing_key, pattern, queue)`` 3-tuple.
+      from ``DirectExchange.lookup()`` in
+      ``kombu/transport/virtual/exchange.py`` when those stale entries
+      are read.  ``get_table()`` splits each stored entry on the *new*
+      separator; if the old separator is not present the split returns a
+      1-element tuple rather than the required ``(routing_key, pattern,
+      queue)`` 3-tuple.
 
       **Before deploying a** ``sep`` **change against a live Redis**,
       either delete the existing binding keys:
