@@ -269,7 +269,6 @@ class test_Channel:
         channel._js.add_stream.assert_not_called()
 
     def test_ensure_stream_creates_new_stream(self, channel):
-        loop = get_event_loop()
         # stream_info raises NotFoundError (not cached).
         channel._js.stream_info = AsyncMock(side_effect=_NotFoundError())
         channel._js.add_stream = AsyncMock()
@@ -278,7 +277,6 @@ class test_Channel:
         channel._js.add_stream.assert_awaited_once()
 
     def test_ensure_stream_stream_already_exists_in_nats(self, channel):
-        loop = get_event_loop()
         # First call (check) succeeds → stream exists already.
         channel._js.stream_info = AsyncMock(return_value=MagicMock())
         channel._ensure_stream('myqueue')
