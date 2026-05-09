@@ -34,7 +34,8 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_, `Pyro`_
+      and `NATS JetStream`_.
 
     * In-memory transport for unit testing.
 
@@ -70,6 +71,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
+.. _`NATS JetStream`: https://docs.nats.io/nats-concepts/jetstream
 
 .. _transport-comparison:
 
@@ -96,6 +98,8 @@ Transport Comparison
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *NATS*        | Virtual  | Yes        | Yes        | Yes           | No           | Yes                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 
@@ -367,4 +371,3 @@ kombu as part of the Tidelift Subscription
 The maintainers of kombu and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/pypi-kombu?utm_source=pypi-kombu&utm_medium=referral&utm_campaign=readme&utm_term=repo)
 
 --
-

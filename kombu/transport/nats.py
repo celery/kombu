@@ -34,6 +34,12 @@ Transport Options
   correspond with attributes in the NATS JetStream stream configuration.
 * ``consumer_config`` - Consumer configuration. Must be a dict whose key-value pairs
   correspond with attributes in the NATS JetStream consumer configuration.
+* ``stream_name_prefix`` - Prefix used when naming JetStream streams. Default ``"STREAM_"``.
+  For example, setting ``stream_name_prefix`` to ``"myapp_"`` causes queue
+  ``tasks`` to use a stream named ``myapp_tasks``.
+* ``consumer_name_prefix`` - Prefix used when naming JetStream consumers. Default ``"CONSUMER_"``.
+  For example, setting ``consumer_name_prefix`` to ``"myapp_"`` causes queue
+  ``tasks`` to use a consumer named ``myapp_tasks``.
 """
 
 from __future__ import annotations
@@ -146,6 +152,8 @@ class Channel(virtual.Channel):
 
     default_wait_time_seconds = 5
     default_connection_wait_time_seconds = 5
+    default_stream_name_prefix = "STREAM_"
+    default_consumer_name_prefix = "CONSUMER_"
 
     def __init__(self, *args, **kwargs):
         if Client is None:
@@ -167,11 +175,13 @@ class Channel(virtual.Channel):
 
     def _get_stream_name(self, queue):
         """Get the stream name for a queue."""
-        return f"STREAM_{queue}"
+        prefix = self.options.get("stream_name_prefix", self.default_stream_name_prefix)
+        return f"{prefix}{queue}"
 
     def _get_consumer_name(self, queue):
         """Get the consumer name for a queue."""
-        return f"CONSUMER_{queue}"
+        prefix = self.options.get("consumer_name_prefix", self.default_consumer_name_prefix)
+        return f"{prefix}{queue}"
 
     def _ensure_stream(self, queue):
         """Ensure a stream exists for the queue."""
