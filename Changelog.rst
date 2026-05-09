@@ -4,6 +4,22 @@
  Change history
 ================
 
+.. _version-5.6.2:
+
+5.6.2
+=====
+:release-date: 29 December, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Improve error handling in GCP Pub/Sub ack deadline extension (#2430)
+- Fix SentinelChannel to pass ACL credentials to master_for() (#2426)
+- Fix credential_provider compatibility with redis-py < 5.3.0 (#2423)
+- Simplify requirements given Py3.9+ baseline (#2414)
+- Prepare for release: v5.6.2 (#2434)
+
 .. _version-5.6.1:
 
 5.6.1

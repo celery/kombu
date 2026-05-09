@@ -33,7 +33,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
         os: ["blacksmith-4vcpu-ubuntu-2404"]
 
 
@@ -55,7 +55,7 @@ jobs:
     - name: >
         Run tox for
         "${{ matrix.python-version }}-unit"
-      timeout-minutes: 10
+      timeout-minutes: 60
       run: >
           tox --verbose --verbose -e
           "${{ matrix.python-version }}-unit" -vv
@@ -66,7 +66,7 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
-    - uses: codecov/codecov-action@v5
+    - uses: codecov/codecov-action@v6
       with:
         fail_ci_if_error: false # optional (default = false)
         token: ${{ secrets.CODECOV_TOKEN }}
@@ -81,22 +81,23 @@ jobs:
       strategy:
           fail-fast: false
           matrix:
-              python-version: ['3.9', '3.10', '3.11', '3.12', '3.13', '3.14', '3.14t']
+              python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
               toxenv: [
                   'py-amqp',
                   'py-redis',
                   'py-mongodb',
-                  'py-kafka'
+                  'py-kafka',
+                  'py-sqs'
               ]
               experimental: [false]
               include:
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-amqp'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-redis'
                   experimental: true
-                - python-version: pypy3.10
+                - python-version: pypy3.11
                   toxenv: 'py-mongodb'
                   experimental: true
                 # - python-version: pypy3.10
@@ -120,7 +121,7 @@ jobs:
           -   name: >
                   Run tox for
                   "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}"
-              timeout-minutes: 30
+              timeout-minutes: 60
               run: >
                   tox --verbose --verbose -e
                   "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}" -vv

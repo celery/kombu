@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.6.1
+:Version: 5.6.2
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -72,6 +72,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
 .. _`NATS JetStream`: https://docs.nats.io/nats-concepts/jetstream
+.. _`AWS SNS`: https://aws.amazon.com/sns/
 
 .. _transport-comparison:
 
@@ -106,9 +107,9 @@ Transport Comparison
 .. [#f1] Declarations only kept in memory, so exchanges/queues
          must be declared by all clients that needs them.
 
-.. [#f2] Fanout supported via storing routing tables in SimpleDB.
-         Disabled by default, but can be enabled by using the
-         ``supports_fanout`` transport option.
+.. [#f2] Fanout is supported via `AWS SNS`_. A notification is sent to SNS, and a copy is set to all subscribed
+         `Amazon SQS`_ queues. Please consult the AWS SNS and SQS pricing pages to see how this will affect your usage
+         costs. Disabled by default, but can be enabled by using the ``supports_fanout`` transport option.
 
 .. [#f3] AMQP Message priority support depends on broker implementation.
 
