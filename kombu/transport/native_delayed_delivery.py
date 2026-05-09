@@ -24,7 +24,7 @@ def level_name(level: int, prefix: str | None = "") -> str:
     return f"celery_delayed_{level}"
 
 
-def celery_delayed_delivery_exchange(prefix: str | None = None) -> str:
+def _celery_delayed_delivery_exchange(prefix: str | None = None) -> str:
     if prefix:
         return f"{prefix}_{CELERY_DELAYED_DELIVERY_EXCHANGE}"
     return CELERY_DELAYED_DELIVERY_EXCHANGE
@@ -53,7 +53,7 @@ def declare_native_delayed_delivery_exchanges_and_queues(
             "x-queue-type": queue_type,
             "x-overflow": "reject-publish",
             "x-message-ttl": pow(2, level) * 1000,
-            "x-dead-letter-exchange": next_level if level > 0 else celery_delayed_delivery_exchange(prefix),
+            "x-dead-letter-exchange": next_level if level > 0 else _celery_delayed_delivery_exchange(prefix),
         }
 
         if queue_type == 'quorum':
@@ -81,7 +81,7 @@ def declare_native_delayed_delivery_exchanges_and_queues(
         routing_key = "*." + routing_key
 
     delivery_exchange: Exchange = Exchange(
-        celery_delayed_delivery_exchange(prefix), type="topic").bind(channel)
+        _celery_delayed_delivery_exchange(prefix), type="topic").bind(channel)
     delivery_exchange.declare()
     delivery_exchange.bind_to(level_name(0, prefix), routing_key)
 
@@ -134,7 +134,7 @@ def bind_queue_to_native_delayed_delivery_exchange(
 
         routing_key = binding_entry.routing_key if binding_entry.routing_key.startswith(
             '#') else f"#.{binding_entry.routing_key}"
-        exchange.bind_to(celery_delayed_delivery_exchange(prefix), routing_key=routing_key)
+        exchange.bind_to(_celery_delayed_delivery_exchange(prefix), routing_key=routing_key)
         queue.bind_to(exchange.name, routing_key=routing_key)
 
 
