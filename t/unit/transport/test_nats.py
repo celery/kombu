@@ -19,15 +19,9 @@ nats = pytest.importorskip('nats')
 import nats.errors  # noqa: E402
 import nats.js.errors  # noqa: E402
 
-from kombu.transport.nats import (  # noqa: E402
-    DEFAULT_HOST,
-    DEFAULT_PORT,
-    Channel,
-    Message,
-    QoS,
-    Transport,
-    get_event_loop,
-)
+from kombu.transport.nats import (DEFAULT_HOST, DEFAULT_PORT,  # noqa: E402
+                                  Channel, Message, QoS, Transport,
+                                  get_event_loop)
 
 # Convenience aliases for real nats exception classes used as side-effects.
 _NotFoundError = nats.js.errors.NotFoundError
