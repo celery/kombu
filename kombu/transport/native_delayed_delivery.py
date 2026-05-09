@@ -101,8 +101,9 @@ def bind_queue_to_native_delayed_delivery_exchange(
     :type connection: Connection
     :param queue: The queue to be bound to the native delayed delivery exchange.
     :type queue: Queue
-    :param prefix: Prefix name of the delayed delivery exchanges and queues
-    :type prefix: str
+    :param prefix: Optional prefix for delayed delivery exchange and queue names;
+        ``None`` or ``""`` means no prefix is applied.
+    :type prefix: str | None
 
     Warning:
     -------
