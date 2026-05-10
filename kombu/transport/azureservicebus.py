@@ -357,11 +357,7 @@ class Channel(virtual.Channel):
 
     def close(self) -> None:
         # Cache and noack set live on Transport; see Transport.close_connection.
-        if self.closed:
-            return
-        self.closed = True
-        if self.connection is not None:
-            self.connection.close_channel(self)
+        super().close()
 
     @cached_property
     def queue_service(self) -> ServiceBusClient:
