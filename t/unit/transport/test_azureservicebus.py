@@ -457,6 +457,163 @@ def test_basic_ack_reject_message_when_raises_exception(
         assert super_basic_reject.call_count == 1
 
 
+def test_separate_connections_get_separate_queue_caches(
+    mock_asb, mock_asb_management
+):
+    """Regression: separate Connections must not share _queue_cache."""
+    conn_a = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    conn_b = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+
+    assert chan_a._queue_cache is not chan_b._queue_cache
+
+    chan_a._add_queue_to_cache('shared-name', sender=MagicMock())
+    assert 'shared-name' in chan_a._queue_cache
+    assert 'shared-name' not in chan_b._queue_cache
+
+
+def test_separate_connections_get_separate_noack_queues(
+    mock_asb, mock_asb_management
+):
+    """Regression: separate Connections must not share _noack_queues."""
+    conn_a = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    conn_b = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+
+    assert chan_a._noack_queues is not chan_b._noack_queues
+
+    chan_a._noack_queues.add('shared-name')
+    assert 'shared-name' in chan_a._noack_queues
+    assert 'shared-name' not in chan_b._noack_queues
+
+
+def test_channels_on_same_connection_share_queue_cache(mock_queue: MockQueue):
+    """Channels on one Connection still share cache (Transport-scoped)."""
+    chan_a = mock_queue.channel
+    chan_b = mock_queue.conn.channel()
+
+    assert chan_a._queue_cache is chan_b._queue_cache
+    assert chan_a._noack_queues is chan_b._noack_queues
+
+
+def test_channel_close_does_not_evict_queue_cache(mock_queue: MockQueue):
+    """Regression: Channel.close() must not evict siblings' cache entries."""
+    chan_a = mock_queue.channel
+    chan_b = mock_queue.conn.channel()
+
+    sender = MagicMock()
+    chan_a._add_queue_to_cache('q', sender=sender)
+    assert 'q' in chan_b._queue_cache
+
+    chan_a.close()
+
+    # Sibling still sees the cached entry; SDK object was not closed.
+    assert 'q' in chan_b._queue_cache
+    assert chan_b._queue_cache['q'].sender is sender
+    sender.close.assert_not_called()
+
+
+def test_close_connection_clears_queue_cache(mock_queue: MockQueue):
+    """Transport.close_connection() tears down the per-Connection cache."""
+    transport = mock_queue.conn.transport
+    sender = MagicMock()
+    receiver = MagicMock()
+    mock_queue.channel._add_queue_to_cache(
+        'q1', sender=sender, receiver=receiver)
+    mock_queue.channel._noack_queues.add('q1')
+
+    transport.close_connection(mock_queue.conn)
+
+    assert transport._queue_cache == {}
+    assert transport._noack_queues == set()
+    sender.close.assert_called_once()
+    receiver.close.assert_called_once()
+
+
+def test_close_connection_continues_on_per_entry_exception(
+    mock_queue: MockQueue
+):
+    """A failing SendReceive.close() must not strand sibling cleanup."""
+    transport = mock_queue.conn.transport
+
+    bad = MagicMock()
+    bad.close.side_effect = RuntimeError("boom")
+    good_sender = MagicMock()
+
+    mock_queue.channel._add_queue_to_cache('bad', sender=bad)
+    mock_queue.channel._add_queue_to_cache('good', sender=good_sender)
+
+    transport.close_connection(mock_queue.conn)
+
+    good_sender.close.assert_called_once()
+    assert transport._queue_cache == {}
+
+
+def test_basic_ack_lock_lost_logs_warning_and_rejects(
+    mock_queue: MockQueue, caplog
+):
+    """Regression: lock-lost ack failures must be logged, not silent."""
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=azure.servicebus.exceptions.MessageLockLostError())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject, caplog.at_level(
+        'WARNING', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.channel.basic_ack("test_delivery_tag")
+
+    assert super_basic_reject.call_count == 1
+    assert any(
+        'MessageLockLostError' in record.message
+        for record in caplog.records
+    )
+
+
+def test_basic_ack_unknown_exception_logs_and_rejects(
+    mock_queue: MockQueue, caplog
+):
+    """Regression: unknown ack failures must be logged with traceback."""
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=RuntimeError("transient broker error"))
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject, caplog.at_level(
+        'ERROR', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.channel.basic_ack("test_delivery_tag")
+
+    assert super_basic_reject.call_count == 1
+    error_records = [r for r in caplog.records if r.levelname == 'ERROR']
+    assert error_records, "expected an ERROR-level log from logger.exception"
+    assert error_records[0].exc_info is not None
+
+
 def test_returning_sas():
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     assert conn.as_uri(True) == URL_CREDS_SAS_FQ
