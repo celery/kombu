@@ -14,7 +14,7 @@ MAX_LEVEL = MAX_NUMBER_OF_BITS_TO_USE - 1
 CELERY_DELAYED_DELIVERY_EXCHANGE = "celery_delayed_delivery"
 
 
-def level_name(level: int, prefix: str | None = "") -> str:
+def level_name(level: int, prefix: str | None = None) -> str:
     """Generates the delayed queue/exchange name based on the level."""
     if level < 0:
         raise ValueError("level must be a non-negative number")
@@ -31,7 +31,7 @@ def _celery_delayed_delivery_exchange(prefix: str | None = None) -> str:
 
 
 def declare_native_delayed_delivery_exchanges_and_queues(
-    connection: Connection, queue_type: str, prefix: str | None = ""
+    connection: Connection, queue_type: str, prefix: str | None = None
 ) -> None:
     """Declare all native delayed delivery exchanges and queues.
 
@@ -95,7 +95,7 @@ def declare_native_delayed_delivery_exchanges_and_queues(
 
 
 def bind_queue_to_native_delayed_delivery_exchange(
-    connection: Connection, queue: Queue, prefix: str | None = ""
+    connection: Connection, queue: Queue, prefix: str | None = None
 ) -> None:
     """Bind a queue to the native delayed delivery exchange.
 

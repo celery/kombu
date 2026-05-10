@@ -19,5 +19,5 @@ with Connection('amqp://guest:guest@localhost:5672//') as connection:
         producer.publish(
             "delayed msg",
             routing_key=routing_key,
-            exchange=level_name(27)
+            exchange=level_name(27, "my_prefix")
         )
