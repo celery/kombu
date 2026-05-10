@@ -7,12 +7,13 @@ queues and delete old queues as required.
 
 Notes when using with Celery if you are experiencing issues with programs not
 terminating properly. The Azure Service Bus SDK uses the Azure uAMQP library
-which in turn creates some threads. If the AzureServiceBus Channel is closed,
-said threads will be closed properly, but it seems there are times when Celery
-does not do this so these threads will be left running. As the uAMQP threads
-are not marked as Daemon threads, they will not be killed when the main thread
-exits. Setting the ``uamqp_keep_alive_interval`` transport option to 0 will
-prevent the keep_alive thread from starting
+which in turn creates some threads. If the AzureServiceBus Connection is
+closed (e.g. via ``Connection.release()``), said threads will be closed
+properly, but it seems there are times when Celery does not do this so these
+threads will be left running. As the uAMQP threads are not marked as Daemon
+threads, they will not be killed when the main thread exits. Setting the
+``uamqp_keep_alive_interval`` transport option to 0 will prevent the
+keep_alive thread from starting
 
 
 More information about Azure Service Bus:
@@ -76,11 +77,14 @@ except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None
 
+from kombu.log import get_logger
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
+
+logger = get_logger(__name__)
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
 PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_', '.', '-'}
@@ -121,8 +125,6 @@ class Channel(virtual.Channel):
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
     domain_format: str = 'kombu%(vhost)s'
-    _queue_cache: dict[str, SendReceive] = {}
-    _noack_queues: set[str] = set()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -302,7 +304,18 @@ class Channel(virtual.Channel):
                     delivery_info['azure_message'])
             except azure.servicebus.exceptions.MessageAlreadySettled:
                 super().basic_ack(delivery_tag)
+            except azure.servicebus.exceptions.MessageLockLostError:
+                logger.warning(
+                    "complete_message on queue %r failed with "
+                    "MessageLockLostError; the broker may have redelivered "
+                    "this message. Consider shorter handlers or enabling "
+                    "lock renewal.",
+                    queue,
+                )
+                super().basic_reject(delivery_tag)
             except Exception:
+                logger.exception(
+                    "complete_message on queue %r failed", queue)
                 super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
@@ -343,15 +356,12 @@ class Channel(virtual.Channel):
         return n
 
     def close(self) -> None:
-        # receivers and senders spawn threads so clean them up
-        if not self.closed:
-            self.closed = True
-            for queue_obj in self._queue_cache.values():
-                queue_obj.close()
-            self._queue_cache.clear()
-
-            if self.connection is not None:
-                self.connection.close_channel(self)
+        # Cache and noack set live on Transport; see Transport.close_connection.
+        if self.closed:
+            return
+        self.closed = True
+        if self.connection is not None:
+            self.connection.close_channel(self)
 
     @cached_property
     def queue_service(self) -> ServiceBusClient:
@@ -389,6 +399,14 @@ class Channel(virtual.Channel):
     @property
     def transport_options(self):
         return self.connection.client.transport_options
+
+    @property
+    def _queue_cache(self) -> dict[str, SendReceive]:
+        return self.connection._queue_cache
+
+    @property
+    def _noack_queues(self) -> set[str]:
+        return self.connection._noack_queues
 
     @cached_property
     def queue_name_prefix(self) -> str:
@@ -436,6 +454,24 @@ class Transport(virtual.Transport):
     polling_interval = 1
     default_port = None
     can_parse_url = True
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self._queue_cache: dict[str, SendReceive] = {}
+        self._noack_queues: set[str] = set()
+
+    def close_connection(self, connection) -> None:
+        try:
+            super().close_connection(connection)
+        finally:
+            for queue_obj in self._queue_cache.values():
+                try:
+                    queue_obj.close()
+                except Exception:
+                    logger.exception(
+                        "Failed to close cached SendReceive; continuing")
+            self._queue_cache.clear()
+            self._noack_queues.clear()
 
     @staticmethod
     def parse_uri(uri: str) -> tuple[str, str | DefaultAzureCredential |
