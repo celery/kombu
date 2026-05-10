@@ -33,7 +33,15 @@ def _celery_delayed_delivery_exchange(prefix: str | None = None) -> str:
 def declare_native_delayed_delivery_exchanges_and_queues(
     connection: Connection, queue_type: str, prefix: str | None = ""
 ) -> None:
-    """Declares all native delayed delivery exchanges and queues."""
+    """Declare all native delayed delivery exchanges and queues.
+
+    The generated delayed exchange/queue names use ``prefix`` when it is a
+    non-empty string. In that case, level names are created as
+    ``"{prefix}_celery_delayed_{level}"`` and the delivery exchange is named
+    ``"{prefix}_celery_delayed_delivery"``. If ``prefix`` is ``None`` or an
+    empty string, no prefix is applied and the default names
+    ``"celery_delayed_{level}"`` and ``"celery_delayed_delivery"`` are used.
+    """
     if queue_type != "classic" and queue_type != "quorum":
         raise ValueError("queue_type must be either classic or quorum")
 
