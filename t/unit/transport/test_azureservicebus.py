@@ -627,3 +627,158 @@ def test_returning_da():
 def test_returning_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
     assert conn.as_uri(True) == URL_CREDS_MI_FQ
+
+
+def test_lock_renewal_default_config():
+    """use_lock_renewal defaults to False; duration defaults to 3600s."""
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    assert channel.use_lock_renewal is False
+    assert channel.max_lock_renewal_duration == \
+        azureservicebus.Channel.default_max_lock_renewal_duration
+
+
+def test_lock_renewal_config_initialization():
+    """Transport options override the renewal defaults."""
+    options = {
+        'use_lock_renewal': True,
+        'max_lock_renewal_duration': 1234,
+    }
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
+                      transport_options=options)
+    channel = conn.channel()
+
+    assert channel.use_lock_renewal is True
+    assert channel.max_lock_renewal_duration == 1234
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_default_does_not_create_renewer(
+    mock_renewer_cls, mock_queue,
+):
+    """Renewer is not instantiated when use_lock_renewal is unset."""
+    channel = mock_queue.channel
+    channel.queue_service.get_queue_receiver = MagicMock()
+
+    channel._get_asb_receiver(
+        'some_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+
+    mock_renewer_cls.assert_not_called()
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is None
+    assert channel.connection._renewer is None
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_creates_and_reuses_renewer(
+    mock_renewer_cls, mock_queue,
+):
+    """Renewer is created on first PEEK_LOCK call, reused, and gated."""
+    conn = Connection(
+        URL_CREDS_SAS,
+        transport=azureservicebus.Transport,
+        transport_options={'use_lock_renewal': True},
+    )
+    channel = conn.channel()
+    channel.queue_service.get_queue_receiver = MagicMock()
+
+    # Renewer is created on first PEEK_LOCK call.
+    channel._get_asb_receiver(
+        'first_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    mock_renewer_cls.assert_called_once_with(
+        max_lock_renewal_duration=channel.max_lock_renewal_duration)
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is mock_renewer_cls.return_value
+    assert channel.connection._renewer is mock_renewer_cls.return_value
+
+    # Subsequent PEEK_LOCK calls reuse the same renewer.
+    channel._get_asb_receiver(
+        'second_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    assert mock_renewer_cls.call_count == 1
+
+    # RECEIVE_AND_DELETE never gets a renewer attached.
+    channel._get_asb_receiver(
+        'third_queue', recv_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is None
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_separate_connections_get_separate_renewers(
+    mock_renewer_cls, mock_asb, mock_asb_management,
+):
+    """Regression: renewer is per-Connection, not process-wide."""
+    options = {'use_lock_renewal': True}
+    conn_a = Connection(
+        URL_CREDS_SAS, transport=azureservicebus.Transport,
+        transport_options=options,
+    )
+    conn_b = Connection(
+        URL_CREDS_SAS, transport=azureservicebus.Transport,
+        transport_options=options,
+    )
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+    chan_a.queue_service.get_queue_receiver = MagicMock()
+    chan_b.queue_service.get_queue_receiver = MagicMock()
+
+    mock_renewer_cls.side_effect = [MagicMock(), MagicMock()]
+
+    chan_a._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    chan_b._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+
+    assert chan_a.connection._renewer is not None
+    assert chan_b.connection._renewer is not None
+    assert chan_a.connection._renewer is not chan_b.connection._renewer
+    assert mock_renewer_cls.call_count == 2
+
+
+def test_close_connection_without_renewer_is_safe(mock_queue: MockQueue):
+    """Connection release with no renewer ever created is a no-op."""
+    transport = mock_queue.conn.transport
+    assert transport._renewer is None
+
+    mock_queue.conn.release()
+
+    assert transport._renewer is None
+
+
+def test_close_connection_closes_renewer(mock_queue: MockQueue):
+    """Connection release closes the renewer exactly once."""
+    transport = mock_queue.conn.transport
+    renewer = MagicMock()
+    transport._renewer = renewer
+
+    mock_queue.conn.release()
+
+    renewer.close.assert_called_once()
+    assert transport._renewer is None
+
+
+def test_close_connection_continues_on_renewer_close_exception(
+    mock_queue: MockQueue, caplog,
+):
+    """A failing renewer.close() must not strand cache teardown."""
+    transport = mock_queue.conn.transport
+    renewer = MagicMock()
+    renewer.close.side_effect = RuntimeError("boom")
+    transport._renewer = renewer
+
+    sender = MagicMock()
+    mock_queue.channel._add_queue_to_cache('q1', sender=sender)
+
+    with caplog.at_level(
+        'ERROR', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.conn.release()
+
+    renewer.close.assert_called_once()
+    assert transport._renewer is None
+    sender.close.assert_called_once()
+    assert transport._queue_cache == {}
+    assert any(
+        'AutoLockRenewer' in record.message for record in caplog.records
+    )

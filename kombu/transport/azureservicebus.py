@@ -54,6 +54,14 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
+* ``use_lock_renewal`` - Enable Azure SDK ``AutoLockRenewer`` to keep
+  message locks alive while a worker is processing. Only effective when
+  receive mode is ``PEEK_LOCK`` (the default). Default ``False``.
+* ``max_lock_renewal_duration`` - Time in seconds that locks registered
+  to the renewer should be maintained for. Default ``3600`` (1 hour).
+
+.. versionadded:: 5.7.0
+    ``use_lock_renewal`` and ``max_lock_renewal_duration`` transport options.
 """
 
 from __future__ import annotations
@@ -65,9 +73,9 @@ from typing import Any
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
-                              ServiceBusReceiveMode, ServiceBusReceiver,
-                              ServiceBusSender)
+from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
+                              ServiceBusMessage, ServiceBusReceiveMode,
+                              ServiceBusReceiver, ServiceBusSender)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
@@ -124,6 +132,8 @@ class Channel(virtual.Channel):
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
+    default_use_lock_renewal: bool = False
+    default_max_lock_renewal_duration: float = 3600  # in seconds (1 hour)
     domain_format: str = 'kombu%(vhost)s'
 
     def __init__(self, *args, **kwargs):
@@ -204,9 +214,19 @@ class Channel(virtual.Channel):
         cache_key = queue_cache_key or queue
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
+            auto_lock_renewer = None
+            if (self.use_lock_renewal
+                    and recv_mode == ServiceBusReceiveMode.PEEK_LOCK):
+                if self.connection._renewer is None:
+                    self.connection._renewer = AutoLockRenewer(
+                        max_lock_renewal_duration=(
+                            self.max_lock_renewal_duration)
+                    )
+                auto_lock_renewer = self.connection._renewer
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
-                keep_alive=self.uamqp_keep_alive_interval)
+                keep_alive=self.uamqp_keep_alive_interval,
+                auto_lock_renewer=auto_lock_renewer)
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 
@@ -441,6 +461,17 @@ class Channel(virtual.Channel):
         return self.transport_options.get(
             'retry_backoff_max', self.default_retry_backoff_max)
 
+    @cached_property
+    def use_lock_renewal(self) -> bool:
+        return self.transport_options.get(
+            'use_lock_renewal', self.default_use_lock_renewal)
+
+    @cached_property
+    def max_lock_renewal_duration(self) -> float:
+        return self.transport_options.get(
+            'max_lock_renewal_duration',
+            self.default_max_lock_renewal_duration)
+
 
 class Transport(virtual.Transport):
     """Azure Service Bus transport."""
@@ -455,11 +486,19 @@ class Transport(virtual.Transport):
         super().__init__(client, **kwargs)
         self._queue_cache: dict[str, SendReceive] = {}
         self._noack_queues: set[str] = set()
+        self._renewer: AutoLockRenewer | None = None
 
     def close_connection(self, connection) -> None:
         try:
             super().close_connection(connection)
         finally:
+            if self._renewer is not None:
+                try:
+                    self._renewer.close()
+                except Exception:
+                    logger.exception(
+                        "Failed to close AutoLockRenewer; continuing")
+                self._renewer = None
             for queue_obj in self._queue_cache.values():
                 try:
                     queue_obj.close()
