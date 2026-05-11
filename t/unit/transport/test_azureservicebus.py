@@ -476,26 +476,25 @@ def test_separate_connections_get_separate_queue_caches(
 def test_separate_connections_get_separate_noack_queues(
     mock_asb, mock_asb_management
 ):
-    """Regression: separate Connections must not share _noack_queues."""
+    """Regression: separate Connections must not share no_ack state."""
     conn_a = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     conn_b = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     chan_a = conn_a.channel()
     chan_b = conn_b.channel()
 
-    assert chan_a._noack_queues is not chan_b._noack_queues
-
-    chan_a._noack_queues.add('shared-name')
+    chan_a.basic_consume('shared-name', True, lambda m: None, 'tag-x')
     assert 'shared-name' in chan_a._noack_queues
     assert 'shared-name' not in chan_b._noack_queues
 
 
 def test_channels_on_same_connection_share_queue_cache(mock_queue: MockQueue):
-    """Channels on one Connection still share cache (Transport-scoped)."""
+    """Channels on one Connection share Transport-scoped state."""
     chan_a = mock_queue.channel
     chan_b = mock_queue.conn.channel()
 
     assert chan_a._queue_cache is chan_b._queue_cache
-    assert chan_a._noack_queues is chan_b._noack_queues
+    assert (chan_a.connection._noack_consumer_tags
+            is chan_b.connection._noack_consumer_tags)
 
 
 def test_channel_close_does_not_evict_queue_cache(mock_queue: MockQueue):
@@ -522,12 +521,12 @@ def test_close_connection_clears_queue_cache(mock_queue: MockQueue):
     receiver = MagicMock()
     mock_queue.channel._add_queue_to_cache(
         'q1', sender=sender, receiver=receiver)
-    mock_queue.channel._noack_queues.add('q1')
+    transport._noack_consumer_tags.add('tag-x')
 
     transport.close_connection(mock_queue.conn)
 
     assert transport._queue_cache == {}
-    assert transport._noack_queues == set()
+    assert transport._noack_consumer_tags == set()
     sender.close.assert_called_once()
     receiver.close.assert_called_once()
 
@@ -782,3 +781,46 @@ def test_close_connection_continues_on_renewer_close_exception(
     assert any(
         'AutoLockRenewer' in record.message for record in caplog.records
     )
+
+
+def test_basic_cancel_does_not_de_noack_when_another_no_ack_consumer_remains(
+    mock_queue: MockQueue,
+):
+    """Regression: cancelling an ack consumer must not remove the queue
+    from the no_ack view while a no_ack consumer is still subscribed."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    channel.basic_consume(queue, True, lambda m: None, 'tag_noack')
+    channel.basic_consume(queue, False, lambda m: None, 'tag_ack')
+    assert queue in channel._noack_queues
+
+    channel.basic_cancel('tag_ack')
+
+    assert queue in channel._noack_queues
+
+
+def test_get_asb_receiver_creates_separate_receiver_per_recv_mode(
+    mock_queue: MockQueue,
+):
+    """Regression: a receiver created in one recv_mode must not be reused
+    for callers requesting the other mode (silently skips renewal wiring
+    and applies the wrong receive semantics)."""
+    channel = mock_queue.channel
+    recv_a = MagicMock(name='peek_lock_receiver')
+    recv_b = MagicMock(name='receive_and_delete_receiver')
+    channel.queue_service.get_queue_receiver = MagicMock(
+        side_effect=[recv_a, recv_b])
+
+    queue_obj_a = channel._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    queue_obj_b = channel._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+
+    assert channel.queue_service.get_queue_receiver.call_count == 2
+    assert channel.queue_service.get_queue_receiver.call_args_list[0].kwargs[
+        'receive_mode'] == ServiceBusReceiveMode.PEEK_LOCK
+    assert channel.queue_service.get_queue_receiver.call_args_list[1].kwargs[
+        'receive_mode'] == ServiceBusReceiveMode.RECEIVE_AND_DELETE
+    assert queue_obj_a.receiver is recv_a
+    assert queue_obj_b.receiver is recv_b

@@ -172,17 +172,16 @@ class Channel(virtual.Channel):
         self._connection_string = ';'.join(
             [key + '=' + value for key, value in conn_dict.items()])
 
-    def basic_consume(self, queue, no_ack, *args, **kwargs):
+    def basic_consume(self, queue, no_ack, callback, consumer_tag,
+                      *args, **kwargs):
         if no_ack:
-            self._noack_queues.add(queue)
+            self.connection._noack_consumer_tags.add(consumer_tag)
         return super().basic_consume(
-            queue, no_ack, *args, **kwargs
+            queue, no_ack, callback, consumer_tag, *args, **kwargs
         )
 
     def basic_cancel(self, consumer_tag):
-        if consumer_tag in self._consumers:
-            queue = self._tag_to_queue[consumer_tag]
-            self._noack_queues.discard(queue)
+        self.connection._noack_consumer_tags.discard(consumer_tag)
         return super().basic_cancel(consumer_tag)
 
     def _add_queue_to_cache(
@@ -211,7 +210,7 @@ class Channel(virtual.Channel):
             self, queue: str,
             recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
             queue_cache_key: str | None = None) -> SendReceive:
-        cache_key = queue_cache_key or queue
+        cache_key = queue_cache_key or f"{queue}::{recv_mode.name}"
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
             auto_lock_renewer = None
@@ -422,7 +421,10 @@ class Channel(virtual.Channel):
 
     @property
     def _noack_queues(self) -> set[str]:
-        return self.connection._noack_queues
+        tag_to_queue = self._tag_to_queue
+        return {tag_to_queue[t]
+                for t in self.connection._noack_consumer_tags
+                if t in tag_to_queue}
 
     @cached_property
     def queue_name_prefix(self) -> str:
@@ -485,7 +487,7 @@ class Transport(virtual.Transport):
     def __init__(self, client, **kwargs):
         super().__init__(client, **kwargs)
         self._queue_cache: dict[str, SendReceive] = {}
-        self._noack_queues: set[str] = set()
+        self._noack_consumer_tags: set[str] = set()
         self._renewer: AutoLockRenewer | None = None
 
     def close_connection(self, connection) -> None:
@@ -506,7 +508,7 @@ class Transport(virtual.Transport):
                     logger.exception(
                         "Failed to close cached SendReceive; continuing")
             self._queue_cache.clear()
-            self._noack_queues.clear()
+            self._noack_consumer_tags.clear()
 
     @staticmethod
     def parse_uri(uri: str) -> tuple[str, str | DefaultAzureCredential |
