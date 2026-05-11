@@ -19,8 +19,8 @@ nats = pytest.importorskip('nats')
 import nats.errors  # noqa: E402
 import nats.js.errors  # noqa: E402
 
-from kombu.transport.nats import (DEFAULT_HOST,  # noqa: E402
-                                  DEFAULT_METADATA_HEADER_NAMES, DEFAULT_PORT,
+from kombu.transport.nats import DEFAULT_HOST  # noqa: E402
+from kombu.transport.nats import (DEFAULT_METADATA_HEADER_NAMES, DEFAULT_PORT,
                                   Channel, Message, QoS, Transport,
                                   decode_nats_header_value,
                                   encode_nats_header_value, get_event_loop,
