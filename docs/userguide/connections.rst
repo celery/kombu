@@ -265,3 +265,25 @@ py-amqp
 
 :read_timeout: Timeout for reading data from RabbitMQ.
 :write_timeout: Timeout for writing data to RabbitMQ.
+
+NATS
+~~~~
+
+:connection_wait_time_seconds: Time in seconds to wait for a NATS connection
+  to succeed. Default: ``5``.
+:wait_time_seconds: Time in seconds to wait when fetching messages from
+  JetStream. Default: ``5``.
+:stream_config: A :class:`dict` whose key-value pairs are passed to the NATS
+  JetStream stream configuration when a stream is first created.
+:consumer_config: A :class:`dict` whose key-value pairs are passed to the
+  NATS JetStream consumer configuration when a consumer is first created.
+:stream_name_prefix: Prefix used when naming JetStream streams (default
+  ``"STREAM_"``).  The queue name is appended to the prefix, e.g. a prefix
+  of ``"myapp_"`` and queue ``"tasks"`` produces the stream ``"myapp_tasks"``.
+:consumer_name_prefix: Prefix used when naming JetStream consumers (default
+  ``"CONSUMER_"``). Same naming rules as ``stream_name_prefix`` apply.
+
+Per-message TTL is also supported. When a Kombu message is published with an
+``expiration`` property (value in milliseconds), the transport forwards it to
+NATS as a ``Nats-TTL`` JetStream header so the broker will expire the message
+after that duration.

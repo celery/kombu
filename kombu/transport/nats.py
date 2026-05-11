@@ -40,6 +40,11 @@ Transport Options
 * ``consumer_name_prefix`` - Prefix used when naming JetStream consumers. Default ``"CONSUMER_"``.
   For example, setting ``consumer_name_prefix`` to ``"myapp_"`` causes queue
   ``tasks`` to use a consumer named ``myapp_tasks``.
+
+Per-message TTL is supported via the ``Nats-TTL`` JetStream header. When a
+message is published with a Kombu ``expiration`` property (in milliseconds),
+the transport sets the ``Nats-TTL`` header so NATS will expire the message
+after that duration.
 """
 
 from __future__ import annotations
@@ -107,7 +112,9 @@ class Message(virtual.Message):
 class QoS(virtual.QoS):
     """Quality of Service guarantees."""
 
-    _not_yet_acked = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._not_yet_acked = {}
 
     def can_consume(self):
         """Return true if the channel can be consumed from."""
@@ -115,7 +122,7 @@ class QoS(virtual.QoS):
 
     def can_consume_max_estimate(self):
         if self.prefetch_count:
-            return self.prefetch_count - len(self._not_yet_acked)
+            return max(0, self.prefetch_count - len(self._not_yet_acked))
         return 1
 
     def append(self, message, delivery_tag):
@@ -169,6 +176,7 @@ class Channel(virtual.Channel):
         self._nats_client: Client | None = None
         self._js: JetStreamContext | None = None
         self._streams = set()
+        self._js_consumers: set = set()
 
         # Evaluate connection
         self.client
@@ -253,7 +261,7 @@ class Channel(virtual.Channel):
     def _ensure_consumer(self, queue):
         """Ensure a consumer exists for the queue."""
         consumer_name = self._get_consumer_name(queue)
-        if consumer_name in self._consumers:
+        if consumer_name in self._js_consumers:
             return
 
         if self._js is None:
@@ -279,7 +287,7 @@ class Channel(virtual.Channel):
                     timeout=5.0  # Use a longer timeout for consumer creation
                 )
             )
-            self._consumers.add(consumer_name)
+            self._js_consumers.add(consumer_name)
         except nats.errors.TimeoutError:
             # If we timeout creating the consumer, check if it was actually created
             try:
@@ -289,7 +297,7 @@ class Channel(virtual.Channel):
                         timeout=1.0
                     )
                 )
-                self._consumers.add(consumer_name)
+                self._js_consumers.add(consumer_name)
             except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
                 raise RuntimeError(f"Failed to create consumer {consumer_name} for stream {name}")
 
@@ -299,9 +307,13 @@ class Channel(virtual.Channel):
         if self._js is None:
             raise RuntimeError("JetStream context not initialized")
 
-        subject = queue
+        headers = None
+        expiration = (message.get('properties') or {}).get('expiration')
+        if expiration:
+            headers = {'Nats-TTL': f"{expiration}ms"}
+
         get_event_loop().run_until_complete(
-            self._js.publish(subject, str_to_bytes(dumps(message)))
+            self._js.publish(queue, str_to_bytes(dumps(message)), headers=headers)
         )
 
     def _get(self, queue, **kwargs):
@@ -336,16 +348,16 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue."""
-        stream_name = self._get_stream_name(queue)
-        if stream_name in self._streams:
-            if self._js is None:
-                raise RuntimeError("JetStream context not initialized")
+        if self._js is None:
+            raise RuntimeError("JetStream context not initialized")
 
-            try:
-                get_event_loop().run_until_complete(self._js.delete_stream(stream_name))
-                self._streams.remove(stream_name)
-            except (nats.js.errors.NotFoundError):
-                pass
+        stream_name = self._get_stream_name(queue)
+        try:
+            get_event_loop().run_until_complete(self._js.delete_stream(stream_name))
+        except nats.js.errors.NotFoundError:
+            pass
+        finally:
+            self._streams.discard(stream_name)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
@@ -385,9 +397,11 @@ class Channel(virtual.Channel):
             if self._nats_client is None:
                 raise RuntimeError("Failed to create NATS client")
 
+            host = self.conninfo.hostname or DEFAULT_HOST
+            port = self.conninfo.port or DEFAULT_PORT
             get_event_loop().run_until_complete(
                 self._nats_client.connect(
-                    f"nats://{self.conninfo.hostname}:{self.conninfo.port or DEFAULT_PORT}",
+                    f"nats://{host}:{port}",
                     user=self.conninfo.userid,
                     password=self.conninfo.password,
                     connect_timeout=self.connection_wait_time_seconds,
@@ -436,16 +450,6 @@ class Channel(virtual.Channel):
             loop.run_until_complete(self._nats_client.close())
             self._nats_client = None
             self._js = None
-
-        # Cancel any pending tasks
-        loop = get_event_loop()
-        for task in asyncio.all_tasks(loop):
-            if not task.done():
-                task.cancel()
-                try:
-                    loop.run_until_complete(task)
-                except asyncio.CancelledError:
-                    pass
 
     def ack_msg(self, msg):
         get_event_loop().run_until_complete(msg.nats_ack())

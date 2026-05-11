@@ -68,7 +68,7 @@ def channel(mock_connection):
     ch._nats_client = mock_nc
     ch._js = mock_js
     ch._streams = set()
-    ch._consumers = set()
+    ch._js_consumers = set()
     return ch
 
 
@@ -172,6 +172,18 @@ class test_QoS:
         self.qos._not_yet_acked = {'a': 1, 'b': 2}
         assert self.qos.can_consume_max_estimate() == 8
 
+    def test_can_consume_max_estimate_clamped_at_zero(self):
+        """When _not_yet_acked exceeds prefetch_count, result is clamped at 0."""
+        self.qos.prefetch_count = 2
+        self.qos._not_yet_acked = {'a': 1, 'b': 2, 'c': 3}
+        assert self.qos.can_consume_max_estimate() == 0
+
+    def test_not_yet_acked_is_instance_attribute(self):
+        """Each QoS instance must have its own _not_yet_acked dict."""
+        qos2 = QoS(MagicMock(), prefetch_count=0)
+        self.qos._not_yet_acked['x'] = 1
+        assert 'x' not in qos2._not_yet_acked
+
     def test_append(self):
         msg = MagicMock()
         self.qos.append(msg, 'tag-1')
@@ -254,7 +266,7 @@ class test_Channel:
         channel.connection.client.transport_options = {'consumer_name_prefix': 'myapp_'}
         channel._js.add_consumer = AsyncMock()
         channel._ensure_consumer('myqueue')
-        assert 'myapp_myqueue' in channel._consumers
+        assert 'myapp_myqueue' in channel._js_consumers
         call_args = channel._js.add_consumer.call_args
         consumer_cfg = call_args[0][1]
         assert consumer_cfg.durable_name == 'myapp_myqueue'
@@ -292,7 +304,7 @@ class test_Channel:
     # -- _ensure_consumer ------------------------------------------------
 
     def test_ensure_consumer_already_tracked(self, channel):
-        channel._consumers.add('CONSUMER_myqueue')
+        channel._js_consumers.add('CONSUMER_myqueue')
         channel._js.add_consumer = MagicMock()
         channel._ensure_consumer('myqueue')
         channel._js.add_consumer.assert_not_called()
@@ -300,7 +312,7 @@ class test_Channel:
     def test_ensure_consumer_creates_consumer(self, channel):
         channel._js.add_consumer = AsyncMock()
         channel._ensure_consumer('myqueue')
-        assert 'CONSUMER_myqueue' in channel._consumers
+        assert 'CONSUMER_myqueue' in channel._js_consumers
         channel._js.add_consumer.assert_awaited_once()
 
     def test_ensure_consumer_raises_if_js_is_none(self, channel):
@@ -317,6 +329,24 @@ class test_Channel:
         channel._put('myqueue', message)
         channel._ensure_stream.assert_called_once_with('myqueue')
         channel._js.publish.assert_awaited_once()
+
+    def test_put_publishes_with_ttl_header(self, channel):
+        """Messages with an expiration property set the Nats-TTL header."""
+        channel._ensure_stream = MagicMock()
+        channel._js.publish = AsyncMock()
+        message = {'body': 'hello', 'properties': {'expiration': '5000'}}
+        channel._put('myqueue', message)
+        _, kwargs = channel._js.publish.call_args
+        assert kwargs.get('headers') == {'Nats-TTL': '5000ms'}
+
+    def test_put_no_ttl_header_without_expiration(self, channel):
+        """Messages without expiration must not include Nats-TTL header."""
+        channel._ensure_stream = MagicMock()
+        channel._js.publish = AsyncMock()
+        message = {'body': 'hello', 'properties': {}}
+        channel._put('myqueue', message)
+        _, kwargs = channel._js.publish.call_args
+        assert kwargs.get('headers') is None
 
     def test_put_raises_if_js_is_none(self, channel):
         channel._ensure_stream = MagicMock()
@@ -386,17 +416,29 @@ class test_Channel:
         channel._js.delete_stream.assert_awaited_once_with('STREAM_myqueue')
         assert 'STREAM_myqueue' not in channel._streams
 
-    def test_delete_noop_for_untracked_stream(self, channel):
-        # Stream not tracked → delete_stream must not be called.
+    def test_delete_attempts_deletion_for_untracked_stream(self, channel):
+        """_delete() always attempts deletion, even if stream is not in cache."""
         channel._js.delete_stream = AsyncMock()
         channel._delete('myqueue')
-        channel._js.delete_stream.assert_not_called()
+        channel._js.delete_stream.assert_awaited_once_with('STREAM_myqueue')
 
     def test_delete_handles_not_found_gracefully(self, channel):
+        channel._js.delete_stream = AsyncMock(side_effect=_NotFoundError())
+        # Must not raise even when stream was never in cache.
+        channel._delete('myqueue')
+        assert 'STREAM_myqueue' not in channel._streams
+
+    def test_delete_discards_stream_from_cache_on_not_found(self, channel):
+        """When NotFoundError is raised, stream is still removed from cache."""
         channel._streams.add('STREAM_myqueue')
         channel._js.delete_stream = AsyncMock(side_effect=_NotFoundError())
-        # Must not raise.
         channel._delete('myqueue')
+        assert 'STREAM_myqueue' not in channel._streams
+
+    def test_delete_raises_if_js_is_none(self, channel):
+        channel._js = None
+        with pytest.raises(RuntimeError, match='JetStream context not initialized'):
+            channel._delete('myqueue')
 
     # -- _size -----------------------------------------------------------
 
@@ -541,6 +583,27 @@ class test_Channel:
         result = channel._open()
         # If _nats_client is already set, _open returns it without connecting.
         assert result is existing_client
+
+    def test_open_uses_default_host_when_none(self, mock_connection):
+        """When hostname is None, _open must not produce 'nats://None:...'."""
+        mock_nc = MagicMock()
+        mock_nc.connect = AsyncMock()
+        mock_nc.jetstream.return_value = MagicMock()
+        mock_connection.client.hostname = None
+        mock_connection.client.port = None
+
+        with patch.object(Channel, '_open', return_value=mock_nc):
+            ch = Channel(connection=mock_connection)
+
+        # Reset client so _open() will actually run the connection logic.
+        ch._nats_client = None
+        with patch('kombu.transport.nats.Client', return_value=mock_nc):
+            ch._open()
+
+        mock_nc.connect.assert_awaited_once()
+        url_arg = mock_nc.connect.call_args[0][0]
+        assert 'None' not in url_arg
+        assert f'{DEFAULT_HOST}:{DEFAULT_PORT}' in url_arg
 
     # -- ImportError when library missing --------------------------------
 
