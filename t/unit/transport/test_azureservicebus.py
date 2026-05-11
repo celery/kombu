@@ -42,6 +42,13 @@ class ASBQueue:
             def close(self):
                 pass
 
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                self.close()
+                return False
+
             def receive_messages(_self, **kwargs2):
                 max_message_count = kwargs2.get('max_message_count', 1)
                 result = []
@@ -325,6 +332,55 @@ def test_delete_populated_queue(mock_queue: MockQueue):
 
     mock_queue.channel._delete(mock_queue.queue_name)
     assert mock_queue.queue_name not in mock_queue.channel._queue_cache
+
+
+def test_delete_closes_all_cached_entries_for_queue(mock_queue: MockQueue):
+    """Regression: _delete must close every cache entry for the queue,
+    including mode-keyed receiver entries created via _get_asb_receiver."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    sender = MagicMock(name='sender')
+    pl_recv = MagicMock(name='peek_lock_recv')
+    rad_recv = MagicMock(name='receive_and_delete_recv')
+    channel._add_queue_to_cache(queue, sender=sender)
+    channel._add_queue_to_cache(f'{queue}::PEEK_LOCK', receiver=pl_recv)
+    channel._add_queue_to_cache(
+        f'{queue}::RECEIVE_AND_DELETE', receiver=rad_recv)
+
+    channel._delete(queue)
+
+    transport = mock_queue.conn.transport
+    assert queue not in transport._queue_cache
+    assert f'{queue}::PEEK_LOCK' not in transport._queue_cache
+    assert f'{queue}::RECEIVE_AND_DELETE' not in transport._queue_cache
+    sender.close.assert_called_once()
+    pl_recv.close.assert_called_once()
+    rad_recv.close.assert_called_once()
+
+
+def test_purge_uses_ephemeral_receiver(mock_queue: MockQueue):
+    """Regression: _purge must drain via a one-shot receiver it closes
+    itself, not via a cached purge_<queue> entry."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    ephemeral_receiver = MagicMock(name='ephemeral_recv')
+    ephemeral_receiver.receive_messages = MagicMock(return_value=[])
+    ephemeral_receiver.__enter__ = MagicMock(return_value=ephemeral_receiver)
+    ephemeral_receiver.__exit__ = MagicMock(return_value=False)
+    channel.queue_service.get_queue_receiver = MagicMock(
+        return_value=ephemeral_receiver)
+
+    channel._purge(queue)
+
+    channel.queue_service.get_queue_receiver.assert_called_once()
+    call = channel.queue_service.get_queue_receiver.call_args
+    assert call.kwargs['receive_mode'] == \
+        ServiceBusReceiveMode.RECEIVE_AND_DELETE
+    ephemeral_receiver.__exit__.assert_called_once()
+    assert f'purge_{queue}' not in channel._queue_cache
+    assert f'{queue}::RECEIVE_AND_DELETE' not in channel._queue_cache
 
 
 def test_purge(mock_queue: MockQueue):

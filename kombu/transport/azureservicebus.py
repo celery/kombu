@@ -262,11 +262,21 @@ class Channel(virtual.Channel):
     def _delete(self, queue: str, *args, **kwargs) -> None:
         """Delete queue by name."""
         queue = self.entity_name(self.queue_name_prefix + queue)
-
         self.queue_mgmt_service.delete_queue(queue)
-        send_receive_obj = self._queue_cache.pop(queue, None)
-        if send_receive_obj:
-            send_receive_obj.close()
+        keys = [
+            k for k in self._queue_cache
+            if k == queue or k.startswith(f"{queue}::")
+        ]
+        for k in keys:
+            obj = self._queue_cache.pop(k, None)
+            if obj is None:
+                continue
+            try:
+                obj.close()
+            except Exception:
+                logger.exception(
+                    "Failed to close cached SendReceive for %r; continuing",
+                    k)
 
     def _put(self, queue: str, message, **kwargs) -> None:
         """Put message onto queue."""
@@ -348,29 +358,26 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue) -> int:
         """Delete all current messages in a queue."""
-        # Azure doesn't provide a purge api yet
+        # Azure has no broker-side purge API. Drain via an ephemeral
+        # RECEIVE_AND_DELETE receiver scoped to this call so we do not
+        # leak the receiver into _queue_cache.
         n = 0
         max_purge_count = 10
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        # By default all the receivers will be in PEEK_LOCK receive mode
-        queue_obj = self._queue_cache.get(queue, None)
-        if queue not in self._noack_queues or \
-           queue_obj is None or queue_obj.receiver is None:
-            queue_obj = self._get_asb_receiver(
-                queue,
-                ServiceBusReceiveMode.RECEIVE_AND_DELETE, 'purge_' + queue
-            )
-
-        while True:
-            messages = queue_obj.receiver.receive_messages(
-                max_message_count=max_purge_count,
-                max_wait_time=0.2
-            )
-            n += len(messages)
-
-            if len(messages) < max_purge_count:
-                break
+        with self.queue_service.get_queue_receiver(
+            queue_name=queue,
+            receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE,
+            keep_alive=self.uamqp_keep_alive_interval,
+        ) as receiver:
+            while True:
+                messages = receiver.receive_messages(
+                    max_message_count=max_purge_count,
+                    max_wait_time=0.2,
+                )
+                n += len(messages)
+                if len(messages) < max_purge_count:
+                    break
 
         return n
 
