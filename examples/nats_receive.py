@@ -9,9 +9,13 @@ LOCAL_SERVER = "localhost"
 DEMO_SERVER = "demo.nats.io"
 
 server = LOCAL_SERVER
-use_demo_server = len(sys.argv) > 1 and sys.argv[1] == "--demo"
-if use_demo_server:
-    server = DEMO_SERVER
+clean_body = False
+
+for arg in sys.argv[1:]:
+    if arg == "--demo":
+        server = DEMO_SERVER
+    elif arg == "--clean-body":
+        clean_body = True
 
 
 exchange = Exchange("exchange", "direct", durable=False)
@@ -29,7 +33,12 @@ def process_msg(body, message):
     message.ack()
 
 
-with Connection(f"nats://{server}:4222") as connection:
+print(f"Consuming with nats_clean_body={clean_body} from nats://{server}:4222")
+
+with Connection(
+    f"nats://{server}:4222",
+    transport_options={"nats_clean_body": clean_body},
+) as connection:
     with Consumer(connection, msg_queue, callbacks=[process_msg]) as consumer:
-        for msg in eventloop(connection):
+        for _ in eventloop(connection):
             pass
