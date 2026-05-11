@@ -40,11 +40,26 @@ Transport Options
 * ``consumer_name_prefix`` - Prefix used when naming JetStream consumers. Default ``"CONSUMER_"``.
   For example, setting ``consumer_name_prefix`` to ``"myapp_"`` causes queue
   ``tasks`` to use a consumer named ``myapp_tasks``.
+* ``nats_clean_body`` - If ``True``, publish the serialized application payload
+  directly as the NATS message body instead of wrapping it in a Kombu JSON
+  envelope.  Kombu metadata (content-type, properties, etc.) is carried in NATS
+  headers with the configured prefix.  Default ``False`` (backward-compatible
+  envelope-in-body behaviour).
+* ``nats_metadata_header_prefix`` - Prefix applied to all Kombu metadata header
+  names when ``nats_clean_body=True``.  Default ``"Kombu-"``.  Must not start
+  with ``"Nats-"`` as that namespace is reserved for NATS/JetStream built-in
+  headers.
+* ``nats_metadata_header_names`` - Optional :class:`dict` that overrides
+  individual Kombu metadata header *name suffixes* (without the prefix).
+  Recognized keys: ``"content_type"``, ``"content_encoding"``,
+  ``"headers"``, ``"properties"``, ``"delivery_info"``.  Any key not
+  specified falls back to the default (``Content-Type``, ``Content-Encoding``,
+  ``Headers``, ``Properties``, ``Delivery-Info``).
 
 Per-message TTL is supported via the ``Nats-TTL`` JetStream header. When a
 message is published with a Kombu ``expiration`` property (in milliseconds),
 the transport sets the ``Nats-TTL`` header so NATS will expire the message
-after that duration.
+after that duration.  This header is applied in both legacy and clean-body mode.
 """
 
 from __future__ import annotations
@@ -96,6 +111,164 @@ def get_event_loop() -> asyncio.AbstractEventLoop:
         _event_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(_event_loop)
     return _event_loop
+
+
+# ---------------------------------------------------------------------------
+# Clean-body mode: module-level constants and helpers
+# ---------------------------------------------------------------------------
+
+#: Default Kombu metadata header name suffixes (used with the configured
+#: prefix, e.g. ``"Kombu-"`` → ``"Kombu-Content-Type"``).
+DEFAULT_METADATA_HEADER_NAMES: dict[str, str] = {
+    "content_type": "Content-Type",
+    "content_encoding": "Content-Encoding",
+    "headers": "Headers",
+    "properties": "Properties",
+    "delivery_info": "Delivery-Info",
+}
+
+
+def encode_nats_header_value(value) -> str:
+    """Encode a Python value as a NATS header string.
+
+    Plain strings are returned unchanged.  All other types (dicts, lists,
+    integers, …) are JSON-serialised so they can round-trip through NATS
+    headers.  ``None`` maps to an empty string.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return dumps(value)
+
+
+def decode_nats_header_value(raw: str):
+    """Decode a NATS header string back to a Python value.
+
+    Values whose first non-whitespace character is ``{`` or ``[`` are
+    JSON-parsed; all others are returned as plain strings.  An empty
+    string returns ``None``.
+    """
+    if not raw:
+        return None
+    stripped = raw.strip()
+    if stripped and stripped[0] in ('{', '['):
+        try:
+            return loads(stripped)
+        except Exception:
+            pass
+    return raw
+
+
+def message_to_nats_body_and_headers(
+    message: dict,
+    *,
+    clean_body: bool,
+    header_prefix: str,
+    header_names: dict | None,
+) -> tuple[bytes, dict]:
+    """Convert a Kombu message dict to *(body_bytes, metadata_headers)*.
+
+    **Default mode** (``clean_body=False``):
+        *body_bytes* is the full Kombu JSON envelope serialised to bytes;
+        *metadata_headers* is an empty dict.
+
+    **Clean-body mode** (``clean_body=True``):
+        *body_bytes* is ``message['body']`` converted to bytes exactly as
+        Kombu/the application provided it — no additional encoding or
+        decoding is applied.  *metadata_headers* holds Kombu metadata under
+        the configured header prefix.
+    """
+    if not clean_body:
+        return str_to_bytes(dumps(message)), {}
+
+    # Merge user-supplied header name overrides with defaults.
+    names = {**DEFAULT_METADATA_HEADER_NAMES, **(header_names or {})}
+
+    # Publish the body exactly as provided by Kombu's serializer layer.
+    # Serialization/encoding is entirely the caller's responsibility.
+    body = message.get("body", b"")
+    if isinstance(body, str):
+        body_bytes = body.encode("utf-8")
+    elif isinstance(body, (bytes, bytearray)):
+        body_bytes = bytes(body)
+    else:
+        body_bytes = b""
+
+    # Build the metadata header dict, skipping absent/empty values.
+    headers: dict[str, str] = {}
+
+    def _set(field_key: str, value) -> None:
+        if value:
+            headers[f"{header_prefix}{names[field_key]}"] = \
+                encode_nats_header_value(value)
+
+    _set("content_type", message.get("content-type"))
+    _set("content_encoding", message.get("content-encoding"))
+    _set("headers", message.get("headers") or None)
+    _set("properties", message.get("properties") or None)
+    _set("delivery_info", message.get("delivery_info") or None)
+
+    return body_bytes, headers
+
+
+def nats_body_and_headers_to_message(
+    data: bytes,
+    msg_headers,
+    *,
+    header_prefix: str,
+    header_names: dict | None,
+) -> dict:
+    """Reconstruct a Kombu message dict from NATS *data* and *msg_headers*.
+
+    If the configured metadata headers are absent the payload is assumed to
+    be a legacy Kombu JSON envelope and is parsed directly.
+    """
+    names = {**DEFAULT_METADATA_HEADER_NAMES, **(header_names or {})}
+    ct_key = f"{header_prefix}{names['content_type']}"
+
+    # Normalise msg.headers: nats-py may give None, str values, or list values.
+    flat: dict[str, str] = {}
+    if isinstance(msg_headers, dict):
+        for k, v in msg_headers.items():
+            flat[k] = v[0] if isinstance(v, list) else v
+
+    if ct_key not in flat:
+        # Legacy path: payload is a full Kombu JSON envelope.
+        return loads(data.decode())
+
+    # Clean-body path: reconstruct a Kombu envelope from the metadata headers.
+    content_type = flat.get(ct_key) or ""
+    content_encoding = flat.get(
+        f"{header_prefix}{names['content_encoding']}"
+    ) or "utf-8"
+    msg_hdrs = decode_nats_header_value(
+        flat.get(f"{header_prefix}{names['headers']}", "")
+    )
+    properties = decode_nats_header_value(
+        flat.get(f"{header_prefix}{names['properties']}", "")
+    )
+    delivery_info = decode_nats_header_value(
+        flat.get(f"{header_prefix}{names['delivery_info']}", "")
+    )
+
+    props: dict = dict(properties) if isinstance(properties, dict) else {}
+
+    # Restore the body to the same type as when it was published.
+    # body_encoding is preserved via the Properties header, so Kombu's
+    # deserialization pipeline can handle it correctly without any
+    # re-encoding on the transport side.
+    body_encoding = props.get("body_encoding", "")
+    body_value: str | bytes = data.decode("utf-8") if body_encoding else data
+
+    return {
+        "body": body_value,
+        "content-type": content_type,
+        "content-encoding": content_encoding,
+        "headers": msg_hdrs if isinstance(msg_hdrs, dict) else {},
+        "properties": props,
+        "delivery_info": delivery_info if isinstance(delivery_info, dict) else {},
+    }
 
 
 class Message(virtual.Message):
@@ -307,13 +480,25 @@ class Channel(virtual.Channel):
         if self._js is None:
             raise RuntimeError("JetStream context not initialized")
 
-        headers = None
+        body_bytes, meta_headers = message_to_nats_body_and_headers(
+            message,
+            clean_body=self.nats_clean_body,
+            header_prefix=self.nats_metadata_header_prefix,
+            header_names=self.nats_metadata_header_names,
+        )
+
+        # Start from the metadata headers (empty dict in legacy mode).
+        headers: dict | None = dict(meta_headers) if meta_headers else None
+
+        # Append the JetStream TTL header when expiration is set.
         expiration = (message.get('properties') or {}).get('expiration')
         if expiration:
-            headers = {'Nats-TTL': f"{expiration}ms"}
+            if headers is None:
+                headers = {}
+            headers['Nats-TTL'] = f"{expiration}ms"
 
         get_event_loop().run_until_complete(
-            self._js.publish(queue, str_to_bytes(dumps(message)), headers=headers)
+            self._js.publish(queue, body_bytes, headers=headers)
         )
 
     def _get(self, queue, **kwargs):
@@ -336,7 +521,12 @@ class Channel(virtual.Channel):
                 pull_sub.fetch(1, timeout=self.wait_time_seconds)
             )[0]
 
-            body = loads(msg.data.decode())
+            body = nats_body_and_headers_to_message(
+                msg.data,
+                msg.headers,
+                header_prefix=self.nats_metadata_header_prefix,
+                header_names=self.nats_metadata_header_names,
+            )
             body["subject"] = msg.subject
             body["ack"] = msg.ack
             body["nak"] = msg.nak
@@ -441,6 +631,42 @@ class Channel(virtual.Channel):
                 self.default_connection_wait_time_seconds,
             )
         )
+
+    @property
+    def nats_clean_body(self) -> bool:
+        """If ``True``, publish the application payload directly as msg.data.
+
+        Kombu envelope metadata is carried in NATS headers instead.
+        Default ``False`` (backward-compatible envelope-in-body behaviour).
+        """
+        return bool(self.options.get('nats_clean_body', False))
+
+    @property
+    def nats_metadata_header_prefix(self) -> str:
+        """Prefix applied to Kombu metadata header names in clean-body mode.
+
+        Default ``"Kombu-"``.  Must not start with ``"Nats-"`` as that
+        namespace is reserved for NATS/JetStream built-in headers.
+        """
+        prefix = self.options.get('nats_metadata_header_prefix', 'Kombu-')
+        if prefix.lower().startswith('nats-'):
+            logger.warning(
+                "nats_metadata_header_prefix %r begins with 'Nats-', which "
+                "is reserved for NATS/JetStream semantics.  Choose a "
+                "different prefix to avoid conflicts with built-in headers.",
+                prefix,
+            )
+        return prefix
+
+    @property
+    def nats_metadata_header_names(self):
+        """Optional dict of per-field Kombu metadata header name overrides.
+
+        Keys: ``"content_type"``, ``"content_encoding"``, ``"headers"``,
+        ``"properties"``, ``"delivery_info"``.  Only specified keys are
+        overridden; others fall back to :data:`DEFAULT_METADATA_HEADER_NAMES`.
+        """
+        return self.options.get('nats_metadata_header_names', None)
 
     def close(self):
         """Close the channel."""

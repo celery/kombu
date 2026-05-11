@@ -20,8 +20,13 @@ import nats.errors  # noqa: E402
 import nats.js.errors  # noqa: E402
 
 from kombu.transport.nats import (DEFAULT_HOST, DEFAULT_PORT,  # noqa: E402
+                                  DEFAULT_METADATA_HEADER_NAMES,
                                   Channel, Message, QoS, Transport,
-                                  get_event_loop)
+                                  decode_nats_header_value,
+                                  encode_nats_header_value,
+                                  get_event_loop,
+                                  message_to_nats_body_and_headers,
+                                  nats_body_and_headers_to_message)
 
 # Convenience aliases for real nats exception classes used as side-effects.
 _NotFoundError = nats.js.errors.NotFoundError
@@ -363,6 +368,7 @@ class test_Channel:
         fake_msg = MagicMock()
         fake_msg.subject = 'myqueue'
         fake_msg.data = b'{"body": "hello"}'
+        fake_msg.headers = None
         fake_msg.ack = AsyncMock()
         fake_msg.nak = AsyncMock()
         fake_msg.term = AsyncMock()
@@ -706,3 +712,464 @@ class test_Transport:
         mock_nc.connect.assert_awaited_once_with(
             f'nats://{DEFAULT_HOST}:{DEFAULT_PORT}'
         )
+
+
+# ---------------------------------------------------------------------------
+# test_clean_body_helpers
+# ---------------------------------------------------------------------------
+
+
+class test_clean_body_helpers:
+    """Tests for the module-level clean-body helper functions."""
+
+    # -- encode_nats_header_value -----------------------------------------
+
+    def test_encode_string_passthrough(self):
+        assert encode_nats_header_value('application/json') == 'application/json'
+
+    def test_encode_none_returns_empty_string(self):
+        assert encode_nats_header_value(None) == ''
+
+    def test_encode_dict_to_json(self):
+        from kombu.utils.json import loads as jloads
+        result = encode_nats_header_value({'a': 1, 'b': 'x'})
+        assert jloads(result) == {'a': 1, 'b': 'x'}
+
+    def test_encode_list_to_json(self):
+        from kombu.utils.json import loads as jloads
+        result = encode_nats_header_value([1, 2, 3])
+        assert jloads(result) == [1, 2, 3]
+
+    def test_encode_integer_to_json(self):
+        result = encode_nats_header_value(42)
+        assert result == '42'
+
+    # -- decode_nats_header_value -----------------------------------------
+
+    def test_decode_empty_string_returns_none(self):
+        assert decode_nats_header_value('') is None
+
+    def test_decode_json_object(self):
+        result = decode_nats_header_value('{"k": "v"}')
+        assert result == {'k': 'v'}
+
+    def test_decode_json_array(self):
+        result = decode_nats_header_value('[1, 2, 3]')
+        assert result == [1, 2, 3]
+
+    def test_decode_plain_string(self):
+        assert decode_nats_header_value('application/json') == 'application/json'
+
+    def test_decode_whitespace_around_json(self):
+        result = decode_nats_header_value('  {"x": 1}  ')
+        assert result == {'x': 1}
+
+    # -- DEFAULT_METADATA_HEADER_NAMES ------------------------------------
+
+    def test_default_header_names_keys(self):
+        expected_keys = {
+            'content_type', 'content_encoding', 'headers',
+            'properties', 'delivery_info',
+        }
+        assert set(DEFAULT_METADATA_HEADER_NAMES.keys()) == expected_keys
+
+    # -- message_to_nats_body_and_headers ---------------------------------
+
+    def test_legacy_mode_returns_json_envelope(self):
+        from kombu.utils.json import loads as jloads
+        message = {'body': 'test', 'content-type': 'application/json'}
+        body_bytes, headers = message_to_nats_body_and_headers(
+            message,
+            clean_body=False,
+            header_prefix='Kombu-',
+            header_names=None,
+        )
+        assert jloads(body_bytes.decode()) == message
+        assert headers == {}
+
+    def test_put_clean_body_publishes_body_as_bytes(self):
+        """Clean-body mode publishes message['body'] as bytes without decoding."""
+        import base64
+        raw = b'{"result": 42}'
+        body_b64 = base64.b64encode(raw).decode('utf-8')
+        message = {
+            'body': body_b64,
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+            'delivery_info': {'exchange': 'ex'},
+        }
+        body_bytes, headers = message_to_nats_body_and_headers(
+            message,
+            clean_body=True,
+            header_prefix='Kombu-',
+            header_names=None,
+        )
+        # NATS payload is message['body'] as UTF-8 bytes, not the decoded raw bytes.
+        assert body_bytes == body_b64.encode('utf-8')
+
+    def test_clean_body_sets_content_type_header(self):
+        import base64
+        message = {
+            'body': base64.b64encode(b'x').decode(),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        _, headers = message_to_nats_body_and_headers(
+            message, clean_body=True, header_prefix='Kombu-', header_names=None,
+        )
+        assert headers.get('Kombu-Content-Type') == 'application/json'
+        assert headers.get('Kombu-Content-Encoding') == 'utf-8'
+
+    def test_clean_body_custom_prefix(self):
+        import base64
+        message = {
+            'body': base64.b64encode(b'x').decode(),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        _, headers = message_to_nats_body_and_headers(
+            message, clean_body=True, header_prefix='ce-', header_names=None,
+        )
+        assert 'ce-Content-Type' in headers
+        assert 'Kombu-Content-Type' not in headers
+
+    def test_clean_body_custom_header_names(self):
+        import base64
+        message = {
+            'body': base64.b64encode(b'x').decode(),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        _, headers = message_to_nats_body_and_headers(
+            message,
+            clean_body=True,
+            header_prefix='X-',
+            header_names={'content_type': 'KombuContentType'},
+        )
+        assert 'X-KombuContentType' in headers
+        # Other names still use defaults
+        assert 'X-Content-Encoding' in headers
+
+    def test_clean_body_empty_headers_not_set(self):
+        """Empty 'headers' dict is not serialised into NATS headers."""
+        import base64
+        message = {
+            'body': base64.b64encode(b'x').decode(),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        _, headers = message_to_nats_body_and_headers(
+            message, clean_body=True, header_prefix='Kombu-', header_names=None,
+        )
+        assert 'Kombu-Headers' not in headers
+
+    # -- nats_body_and_headers_to_message ---------------------------------
+
+    def test_legacy_path_no_metadata_headers(self):
+        """No metadata headers → fall back to legacy JSON envelope parse."""
+        import json
+        envelope = {'body': 'hello', 'content-type': 'application/json'}
+        data = json.dumps(envelope).encode()
+        result = nats_body_and_headers_to_message(
+            data, None,
+            header_prefix='Kombu-', header_names=None,
+        )
+        assert result == envelope
+
+    def test_legacy_path_non_dict_headers(self):
+        """Non-dict msg.headers (e.g. MagicMock) → fall back to legacy path."""
+        import json
+        envelope = {'body': 'hi'}
+        data = json.dumps(envelope).encode()
+        result = nats_body_and_headers_to_message(
+            data, MagicMock(),  # truthy but not a real dict
+            header_prefix='Kombu-', header_names=None,
+        )
+        assert result == envelope
+
+    def test_clean_body_path_reconstructs_envelope(self):
+        import json
+        raw = b'raw payload'
+        headers = {
+            'Kombu-Content-Type': 'application/octet-stream',
+            'Kombu-Content-Encoding': 'binary',
+            'Kombu-Properties': json.dumps({'delivery_mode': 2}),
+            'Kombu-Delivery-Info': json.dumps({'exchange': 'ex', 'routing_key': 'rk'}),
+        }
+        result = nats_body_and_headers_to_message(
+            raw, headers,
+            header_prefix='Kombu-', header_names=None,
+        )
+        assert result['content-type'] == 'application/octet-stream'
+        assert result['content-encoding'] == 'binary'
+        # body is raw bytes, no re-encoding applied by the transport.
+        assert result['body'] == raw
+        assert result['properties']['delivery_mode'] == 2
+        assert result['delivery_info'] == {'exchange': 'ex', 'routing_key': 'rk'}
+
+    def test_clean_body_list_header_values_flattened(self):
+        """Header values that are lists (nats-py style) are flattened."""
+        import json
+        raw = b'data'
+        headers = {
+            'Kombu-Content-Type': ['application/json'],  # list value
+            'Kombu-Properties': json.dumps({'delivery_mode': 1}),
+        }
+        result = nats_body_and_headers_to_message(
+            raw, headers,
+            header_prefix='Kombu-', header_names=None,
+        )
+        assert result['content-type'] == 'application/json'
+
+    def test_roundtrip_clean_body(self):
+        """message_to_nats → nats_to_message reproduces the Kombu envelope."""
+        import base64
+        raw = b'{"x": 1}'
+        message = {
+            'body': base64.b64encode(raw).decode('utf-8'),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {'x-custom': 'val'},
+            'properties': {'body_encoding': 'base64', 'delivery_mode': 2},
+            'delivery_info': {'exchange': 'ex', 'routing_key': 'rk'},
+        }
+        body_bytes, meta_headers = message_to_nats_body_and_headers(
+            message, clean_body=True, header_prefix='Kombu-', header_names=None,
+        )
+        reconstructed = nats_body_and_headers_to_message(
+            body_bytes, meta_headers,
+            header_prefix='Kombu-', header_names=None,
+        )
+        assert reconstructed['content-type'] == 'application/json'
+        assert reconstructed['content-encoding'] == 'utf-8'
+        assert base64.b64decode(reconstructed['body']) == raw
+        assert reconstructed['headers'] == {'x-custom': 'val'}
+        assert reconstructed['properties']['delivery_mode'] == 2
+        assert reconstructed['delivery_info'] == {
+            'exchange': 'ex', 'routing_key': 'rk',
+        }
+
+
+# ---------------------------------------------------------------------------
+# Clean-body mode tests in Channel
+# ---------------------------------------------------------------------------
+
+
+class test_channel_clean_body:
+    """Integration-style unit tests for Channel._put / _get in clean-body mode."""
+
+    @pytest.fixture
+    def clean_channel(self, mock_connection):
+        """Channel configured with nats_clean_body=True."""
+        mock_connection.client.transport_options = {'nats_clean_body': True}
+        mock_nc = MagicMock()
+        mock_js = MagicMock()
+        mock_nc.jetstream.return_value = mock_js
+        with patch.object(Channel, '_open', return_value=mock_nc):
+            ch = Channel(connection=mock_connection)
+        ch.__dict__['client'] = mock_nc
+        ch._nats_client = mock_nc
+        ch._js = mock_js
+        ch._streams = set()
+        ch._js_consumers = set()
+        return ch
+
+    # -- nats_clean_body / nats_metadata_header_prefix / nats_metadata_header_names
+
+    def test_nats_clean_body_default_false(self, channel):
+        assert channel.nats_clean_body is False
+
+    def test_nats_clean_body_true_from_options(self, clean_channel):
+        assert clean_channel.nats_clean_body is True
+
+    def test_nats_metadata_header_prefix_default(self, channel):
+        assert channel.nats_metadata_header_prefix == 'Kombu-'
+
+    def test_nats_metadata_header_prefix_from_options(self, channel, mock_connection):
+        mock_connection.client.transport_options = {
+            'nats_metadata_header_prefix': 'ce-',
+        }
+        channel.connection = mock_connection
+        assert channel.nats_metadata_header_prefix == 'ce-'
+
+    def test_nats_metadata_header_prefix_reserved_warning(
+        self, channel, mock_connection, caplog
+    ):
+        import logging
+        mock_connection.client.transport_options = {
+            'nats_metadata_header_prefix': 'Nats-Custom',
+        }
+        channel.connection = mock_connection
+        with caplog.at_level(logging.WARNING, logger='kombu.transport.nats'):
+            _ = channel.nats_metadata_header_prefix
+        assert 'Nats-' in caplog.text
+
+    def test_nats_metadata_header_names_default_none(self, channel):
+        assert channel.nats_metadata_header_names is None
+
+    def test_nats_metadata_header_names_from_options(self, channel, mock_connection):
+        custom = {'content_type': 'ContentType'}
+        mock_connection.client.transport_options = {
+            'nats_metadata_header_names': custom,
+        }
+        channel.connection = mock_connection
+        assert channel.nats_metadata_header_names == custom
+
+    # -- _put in clean-body mode -----------------------------------------
+
+    def test_put_clean_body_publishes_body_bytes_to_nats(self, clean_channel):
+        """_put() publishes message['body'] as bytes; does not unwrap base64."""
+        import base64
+        clean_channel._ensure_stream = MagicMock()
+        clean_channel._js.publish = AsyncMock()
+        raw = b'{"task": "add", "args": [1, 2]}'
+        body_b64 = base64.b64encode(raw).decode('utf-8')
+        message = {
+            'body': body_b64,
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64', 'delivery_mode': 2},
+            'delivery_info': {'exchange': 'x', 'routing_key': 'r'},
+        }
+        clean_channel._put('myqueue', message)
+        args, kwargs = clean_channel._js.publish.call_args
+        # Payload is message['body'] encoded to UTF-8; not the unwrapped raw bytes.
+        assert args[1] == body_b64.encode('utf-8')
+
+    def test_put_clean_body_sets_metadata_headers(self, clean_channel):
+        import base64
+        clean_channel._ensure_stream = MagicMock()
+        clean_channel._js.publish = AsyncMock()
+        raw = b'"hello"'
+        message = {
+            'body': base64.b64encode(raw).decode('utf-8'),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+            'delivery_info': {'exchange': 'ex'},
+        }
+        clean_channel._put('myqueue', message)
+        _, kwargs = clean_channel._js.publish.call_args
+        headers = kwargs.get('headers', {}) or {}
+        assert headers.get('Kombu-Content-Type') == 'application/json'
+        assert headers.get('Kombu-Content-Encoding') == 'utf-8'
+
+    def test_put_clean_body_with_ttl_has_both_headers(self, clean_channel):
+        import base64
+        clean_channel._ensure_stream = MagicMock()
+        clean_channel._js.publish = AsyncMock()
+        raw = b'"hello"'
+        message = {
+            'body': base64.b64encode(raw).decode('utf-8'),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64', 'expiration': '3000'},
+        }
+        clean_channel._put('myqueue', message)
+        _, kwargs = clean_channel._js.publish.call_args
+        headers = kwargs.get('headers', {}) or {}
+        assert 'Kombu-Content-Type' in headers
+        assert headers.get('Nats-TTL') == '3000ms'
+
+    def test_put_clean_body_custom_prefix(self, mock_connection):
+        import base64
+        mock_connection.client.transport_options = {
+            'nats_clean_body': True,
+            'nats_metadata_header_prefix': 'ce-',
+        }
+        mock_nc = MagicMock()
+        mock_js = MagicMock()
+        mock_nc.jetstream.return_value = mock_js
+        with patch.object(Channel, '_open', return_value=mock_nc):
+            ch = Channel(connection=mock_connection)
+        ch.__dict__['client'] = mock_nc
+        ch._nats_client = mock_nc
+        ch._js = mock_js
+        ch._streams = set()
+        ch._js_consumers = set()
+
+        ch._ensure_stream = MagicMock()
+        ch._js.publish = AsyncMock()
+        message = {
+            'body': base64.b64encode(b'data').decode(),
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        ch._put('myqueue', message)
+        _, kwargs = ch._js.publish.call_args
+        headers = kwargs.get('headers', {}) or {}
+        assert 'ce-Content-Type' in headers
+        assert 'Kombu-Content-Type' not in headers
+
+    # -- _get in clean-body mode -----------------------------------------
+
+    def test_get_clean_body_reconstructs_message(self, clean_channel):
+        import json
+        clean_channel._ensure_stream = MagicMock()
+        clean_channel._ensure_consumer = MagicMock()
+        raw = b'{"task": "add"}'
+        fake_msg = MagicMock()
+        fake_msg.subject = 'myqueue'
+        fake_msg.data = raw
+        fake_msg.ack = AsyncMock()
+        fake_msg.nak = AsyncMock()
+        fake_msg.term = AsyncMock()
+        fake_msg.headers = {
+            'Kombu-Content-Type': 'application/json',
+            'Kombu-Content-Encoding': 'utf-8',
+            'Kombu-Properties': json.dumps({'delivery_mode': 2}),
+            'Kombu-Delivery-Info': json.dumps({'exchange': 'ex', 'routing_key': 'rk'}),
+        }
+        mock_pull_sub = MagicMock()
+        mock_pull_sub.fetch = AsyncMock(return_value=[fake_msg])
+        clean_channel._js.pull_subscribe = AsyncMock(return_value=mock_pull_sub)
+
+        result = clean_channel._get('myqueue')
+        assert result['content-type'] == 'application/json'
+        assert result['content-encoding'] == 'utf-8'
+        # body is raw bytes, no re-encoding applied by the transport.
+        assert result['body'] == raw
+        assert result['subject'] == 'myqueue'
+        assert result['ack'] is fake_msg.ack
+
+    def test_get_legacy_message_still_works(self, channel):
+        """Legacy (non-clean-body) messages are always parsed correctly."""
+        channel._ensure_stream = MagicMock()
+        channel._ensure_consumer = MagicMock()
+        import json
+        envelope = {
+            'body': 'aGVsbG8=',
+            'content-type': 'application/json',
+            'content-encoding': 'utf-8',
+            'headers': {},
+            'properties': {'body_encoding': 'base64'},
+        }
+        fake_msg = MagicMock()
+        fake_msg.subject = 'myqueue'
+        fake_msg.data = json.dumps(envelope).encode()
+        fake_msg.headers = None
+        fake_msg.ack = AsyncMock()
+        fake_msg.nak = AsyncMock()
+        fake_msg.term = AsyncMock()
+        mock_pull_sub = MagicMock()
+        mock_pull_sub.fetch = AsyncMock(return_value=[fake_msg])
+        channel._js.pull_subscribe = AsyncMock(return_value=mock_pull_sub)
+
+        result = channel._get('myqueue')
+        assert result['content-type'] == 'application/json'
+        assert result['body'] == 'aGVsbG8='
