@@ -145,18 +145,23 @@ def encode_nats_header_value(value) -> str:
 def decode_nats_header_value(raw: str):
     """Decode a NATS header string back to a Python value.
 
-    Values whose first non-whitespace character is ``{`` or ``[`` are
-    JSON-parsed; all others are returned as plain strings.  An empty
-    string returns ``None``.
+    An empty string returns ``None``. Non-empty values are JSON-parsed
+    when possible so encoded objects, arrays, and scalar values such as
+    integers and booleans round-trip correctly. If parsing fails, or if
+    parsing would produce a Python string, the original raw string is
+    returned unchanged.
     """
     if not raw:
         return None
     stripped = raw.strip()
-    if stripped and stripped[0] in ('{', '['):
+    if stripped:
         try:
-            return loads(stripped)
+            value = loads(stripped)
         except Exception:
             pass
+        else:
+            if not isinstance(value, str):
+                return value
     return raw
 
 
