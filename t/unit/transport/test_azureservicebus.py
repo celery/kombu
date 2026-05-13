@@ -514,6 +514,34 @@ def test_get_asb_receiver_logic(mock_renewer_cls, mock_queue):
     assert channel.queue_service.get_queue_receiver.call_args.kwargs["auto_lock_renewer"] is None
 
 
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_gevent_uses_gevent_renewer(mock_renewer_cls, mock_queue):
+    """When gevent is detected, GeventLockRenewer is used instead of AutoLockRenewer."""
+    conn = Connection(
+        URL_CREDS_MI_FQ,
+        transport=azureservicebus.Transport,
+        transport_options={"use_lock_renewal": True},
+    )
+    channel = conn.channel()
+    channel.queue_service.get_queue_receiver = MagicMock()
+    channel.__dict__['_is_gevent'] = True
+
+    with patch(
+        'kombu.transport.azureservicebus.GeventLockRenewer',
+    ) as mock_gevent_cls:
+        channel._get_asb_receiver(
+            "queue", recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+
+        mock_gevent_cls.assert_called_once_with(
+            max_lock_renewal_duration=channel.max_lock_renewal_duration,
+            interval=channel.lock_renewal_interval,
+        )
+        mock_renewer_cls.assert_not_called()
+        assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+            "auto_lock_renewer"
+        ] == mock_gevent_cls.return_value
+
+
 def test_channel_close_is_safe(mock_queue):
     """Make sure renewer close is safe to call multiple times."""
     channel = mock_queue.channel

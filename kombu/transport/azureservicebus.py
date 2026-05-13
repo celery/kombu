@@ -56,11 +56,15 @@ Transport Options
 * ``use_lock_renewal`` - Use Azure SDK Auto Lock Renewal. Works only if receive mode ``PEEK_LOCK`` is in use.
 * ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
   should be maintained for. Default ``3600.0`` (1 hour)
+* ``lock_renewal_interval`` - Seconds between lock renewal attempts
+  (gevent only; ``AutoLockRenewer`` manages its own timing).
+  Default half of ``peek_lock_seconds`` (minimum ``10``)
 """
 
 from __future__ import annotations
 
 import string
+import time
 from queue import Empty
 from typing import Any
 
@@ -110,6 +114,75 @@ class SendReceive:
             self.sender = None
 
 
+class GeventLockRenewer:
+    """Drop-in replacement for AutoLockRenewer using gevent greenlets."""
+
+    def __init__(self, max_lock_renewal_duration, interval):
+        from gevent import joinall, spawn
+        from gevent.event import Event
+        from gevent.lock import RLock
+
+        self._max_duration = max_lock_renewal_duration
+        self._interval = interval
+        self._messages = {}
+        self._closed = False
+        self._lock = RLock()
+        self._stop = Event()
+        self._spawn = spawn
+        self._joinall = joinall
+        self._worker = spawn(self._run)
+
+    def register(self, receiver, renewable, *, timeout=None):
+        with self._lock:
+            self._messages[id(renewable)] = (
+                receiver, renewable, time.monotonic()
+            )
+
+    def unregister(self, renewable):
+        with self._lock:
+            self._messages.pop(id(renewable), None)
+
+    def _run(self):
+        while not self._stop.wait(self._interval):
+            self._renew_locks()
+
+    def _renew_one(self, key, receiver, msg):
+        try:
+            receiver.renew_message_lock(msg)
+        except Exception:
+            with self._lock:
+                self._messages.pop(key, None)
+
+    def _renew_locks(self):
+        now = time.monotonic()
+        with self._lock:
+            expired = []
+            to_renew = []
+            for key, (receiver, msg, registered_at) in self._messages.items():
+                if now - registered_at >= self._max_duration:
+                    expired.append(key)
+                else:
+                    to_renew.append((key, receiver, msg))
+            for key in expired:
+                del self._messages[key]
+
+        greenlets = [
+            self._spawn(self._renew_one, key, receiver, msg)
+            for key, receiver, msg in to_renew
+        ]
+        self._joinall(greenlets)
+
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        self._stop.set()
+        if self._worker is not None:
+            self._worker.join(timeout=5)
+        with self._lock:
+            self._messages.clear()
+
+
 class Channel(virtual.Channel):
     """Azure Service Bus channel."""
 
@@ -123,9 +196,7 @@ class Channel(virtual.Channel):
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
-    #: .. versionadded:: 5.7
     default_use_lock_renewal: bool = False
-    #: .. versionadded:: 5.7
     default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
 
     domain_format: str = 'kombu%(vhost)s'
@@ -215,15 +286,29 @@ class Channel(virtual.Channel):
             auto_lock_renewer = None
             if self.use_lock_renewal and recv_mode == ServiceBusReceiveMode.PEEK_LOCK:
                 if self._renewer is None:
-                    self._renewer = AutoLockRenewer(
-                        max_lock_renewal_duration=self.max_lock_renewal_duration
-                    )
+                    self._renewer = self._create_lock_renewer()
                 auto_lock_renewer = self._renewer
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
-                keep_alive=self.uamqp_keep_alive_interval, auto_lock_renewer=auto_lock_renewer)
+                keep_alive=self.uamqp_keep_alive_interval,
+                auto_lock_renewer=auto_lock_renewer)
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
+
+    def _create_lock_renewer(self):
+        if self._is_gevent:
+            return GeventLockRenewer(
+                max_lock_renewal_duration=self.max_lock_renewal_duration,
+                interval=self.lock_renewal_interval,
+            )
+        return AutoLockRenewer(
+            max_lock_renewal_duration=self.max_lock_renewal_duration
+        )
+
+    @cached_property
+    def _is_gevent(self) -> bool:
+        from kombu.utils.compat import detect_environment
+        return detect_environment() == 'gevent'
 
     def entity_name(
             self, name: str, table: dict[int, int] | None = None) -> str:
@@ -458,6 +543,15 @@ class Channel(virtual.Channel):
         return float(
             self.transport_options.get(
                 'max_lock_renewal_duration', self.default_max_lock_renewal_duration
+            )
+        )
+
+    @cached_property
+    def lock_renewal_interval(self) -> float:
+        return float(
+            self.transport_options.get(
+                'lock_renewal_interval',
+                max(10.0, self.peek_lock_seconds / 2.0)
             )
         )
 
