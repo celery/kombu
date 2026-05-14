@@ -69,7 +69,6 @@ Transport Options
 
 .. versionadded:: 5.7.0
     ``use_lock_renewal`` and ``max_lock_renewal_duration`` transport options.
->>>>>>> main
 """
 
 from __future__ import annotations
