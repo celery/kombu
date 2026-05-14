@@ -54,21 +54,14 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
-* ``use_lock_renewal`` - Use Azure SDK Auto Lock Renewal. Works only if receive mode ``PEEK_LOCK`` is in use.
-* ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
-  should be maintained for. Default ``3600.0`` (1 hour)
-* ``lock_renewal_interval`` - Seconds between lock renewal attempts
-  (gevent only; ``AutoLockRenewer`` manages its own timing).
-  Default half of ``peek_lock_seconds`` (minimum ``10``)
-=======
 * ``use_lock_renewal`` - Enable Azure SDK ``AutoLockRenewer`` to keep
   message locks alive while a worker is processing. Only effective when
   receive mode is ``PEEK_LOCK`` (the default). Default ``False``.
 * ``max_lock_renewal_duration`` - Time in seconds that locks registered
   to the renewer should be maintained for. Default ``3600`` (1 hour).
-
-.. versionadded:: 5.7.0
-    ``use_lock_renewal`` and ``max_lock_renewal_duration`` transport options.
+* ``lock_renewal_interval`` - Seconds between lock renewal attempts
+  (gevent only; ``AutoLockRenewer`` manages its own timing).
+  Default half of ``peek_lock_seconds`` (minimum ``10``)
 """
 
 from __future__ import annotations
@@ -210,12 +203,8 @@ class Channel(virtual.Channel):
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
     default_use_lock_renewal: bool = False
-<<<<<<< main
     default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
 
-=======
-    default_max_lock_renewal_duration: float = 3600  # in seconds (1 hour)
->>>>>>> main
     domain_format: str = 'kombu%(vhost)s'
 
     def __init__(self, *args, **kwargs):
@@ -298,21 +287,10 @@ class Channel(virtual.Channel):
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
             auto_lock_renewer = None
-<<<<<<< main
             if self.use_lock_renewal and recv_mode == ServiceBusReceiveMode.PEEK_LOCK:
                 if self._renewer is None:
                     self._renewer = self._create_lock_renewer()
                 auto_lock_renewer = self._renewer
-=======
-            if (self.use_lock_renewal
-                    and recv_mode == ServiceBusReceiveMode.PEEK_LOCK):
-                if self.connection._renewer is None:
-                    self.connection._renewer = AutoLockRenewer(
-                        max_lock_renewal_duration=(
-                            self.max_lock_renewal_duration)
-                    )
-                auto_lock_renewer = self.connection._renewer
->>>>>>> main
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
                 keep_alive=self.uamqp_keep_alive_interval,
@@ -488,23 +466,8 @@ class Channel(virtual.Channel):
         return n
 
     def close(self) -> None:
-<<<<<<< main
-        # receivers and senders spawn threads so clean them up
-        if not self.closed:
-            self.closed = True
-            if self._renewer:
-                self._renewer.close()
-                self._renewer = None
-            for queue_obj in self._queue_cache.values():
-                queue_obj.close()
-            self._queue_cache.clear()
-
-            if self.connection is not None:
-                self.connection.close_channel(self)
-=======
         # Cache and noack set live on Transport; see Transport.close_connection.
         super().close()
->>>>>>> main
 
     @cached_property
     def queue_service(self) -> ServiceBusClient:
@@ -594,7 +557,6 @@ class Channel(virtual.Channel):
     @cached_property
     def use_lock_renewal(self) -> bool:
         return self.transport_options.get(
-<<<<<<< main
             'use_lock_renewal', self.default_use_lock_renewal
         )
 
@@ -614,15 +576,6 @@ class Channel(virtual.Channel):
                 max(10.0, self.peek_lock_seconds / 2.0)
             )
         )
-=======
-            'use_lock_renewal', self.default_use_lock_renewal)
-
-    @cached_property
-    def max_lock_renewal_duration(self) -> float:
-        return self.transport_options.get(
-            'max_lock_renewal_duration',
-            self.default_max_lock_renewal_duration)
->>>>>>> main
 
 
 class Transport(virtual.Transport):
