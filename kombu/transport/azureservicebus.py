@@ -54,7 +54,6 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
-<<<<<<< main
 * ``use_lock_renewal`` - Use Azure SDK Auto Lock Renewal. Works only if receive mode ``PEEK_LOCK`` is in use.
 * ``max_lock_renewal_duration`` - Azure SDK time in seconds that locks registered to a renewer
   should be maintained for. Default ``3600.0`` (1 hour)
