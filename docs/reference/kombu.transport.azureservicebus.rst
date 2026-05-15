@@ -19,8 +19,7 @@
     .. rubric:: Transport-specific notes
 
     .. versionadded:: 5.7
-    ``use_lock_renewal``, ``max_lock_renewal_duration`` and
-    ``lock_renewal_interval`` transport options.
+    ``use_lock_renewal`` and ``max_lock_renewal_duration`` transport options.
 
     Channel
     -------
