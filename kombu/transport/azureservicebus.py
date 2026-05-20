@@ -73,17 +73,12 @@ import isodate
 from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
                               ServiceBusMessage, ServiceBusReceiveMode,
                               ServiceBusReceiver, ServiceBusSender)
-from azure.servicebus._pyamqp.error import (
-    AMQPConnectionError,
-    AMQPLinkError,
-    AMQPSessionError,
-)
-from azure.servicebus.exceptions import (
-    OperationTimeoutError,
-    ServiceBusConnectionError,
-    ServiceBusCommunicationError,
-    ServiceBusServerBusyError,
-)
+from azure.servicebus._pyamqp.error import (AMQPConnectionError, AMQPLinkError,
+                                            AMQPSessionError)
+from azure.servicebus.exceptions import (OperationTimeoutError,
+                                         ServiceBusCommunicationError,
+                                         ServiceBusConnectionError,
+                                         ServiceBusServerBusyError)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
