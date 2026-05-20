@@ -232,7 +232,9 @@ class Channel(virtual.Channel):
         """Get or create a receiver dedicated to lock renewal.
 
         Uses a separate AMQP connection so renewal management requests
-        don't contend with the receive loop's socket_lock.
+        don't contend with the receive loop's socket_lock.  The receiver
+        is opened eagerly because the SDK's _check_message_alive rejects
+        renew_message_lock when _running is False.
         """
         cache_key = f"{queue}::_renewal"
         queue_obj = self._queue_cache.get(cache_key, None)
@@ -242,6 +244,7 @@ class Channel(virtual.Channel):
                 receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
                 prefetch_count=0,
                 keep_alive=self.uamqp_keep_alive_interval)
+            receiver._open_with_retry()
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 

@@ -777,11 +777,13 @@ def test_get_renewal_receiver_caches_per_queue(mock_queue: MockQueue):
 
     assert obj.receiver is recv_renewal
     assert channel.queue_service.get_queue_receiver.call_count == 2
+    recv_renewal._open_with_retry.assert_called_once()
 
-    # Second call returns cached renewal receiver.
+    # Second call returns cached renewal receiver — no second open.
     obj2 = channel._get_renewal_receiver('q')
     assert obj2 is obj
     assert channel.queue_service.get_queue_receiver.call_count == 2
+    recv_renewal._open_with_retry.assert_called_once()
 
 
 @patch('kombu.transport.azureservicebus.AutoLockRenewer')
