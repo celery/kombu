@@ -59,9 +59,6 @@ Transport Options
   receive mode is ``PEEK_LOCK`` (the default). Default ``False``.
 * ``max_lock_renewal_duration`` - Time in seconds that locks registered
   to the renewer should be maintained for. Default ``3600`` (1 hour).
-
-.. versionadded:: 5.7.0
-    ``use_lock_renewal`` and ``max_lock_renewal_duration`` transport options.
 """
 
 from __future__ import annotations
@@ -76,7 +73,23 @@ import isodate
 from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
                               ServiceBusMessage, ServiceBusReceiveMode,
                               ServiceBusReceiver, ServiceBusSender)
+from azure.servicebus._pyamqp.error import (AMQPConnectionError, AMQPLinkError,
+                                            AMQPSessionError)
+from azure.servicebus.exceptions import (OperationTimeoutError,
+                                         ServiceBusCommunicationError,
+                                         ServiceBusConnectionError,
+                                         ServiceBusServerBusyError)
 from azure.servicebus.management import ServiceBusAdministrationClient
+
+_TRANSIENT_ERRORS = (
+    ServiceBusConnectionError,
+    ServiceBusCommunicationError,
+    AMQPConnectionError,
+    AMQPSessionError,
+    AMQPLinkError,
+    OperationTimeoutError,
+    ServiceBusServerBusyError,
+)
 
 try:
     from azure.identity import (DefaultAzureCredential,
@@ -133,7 +146,8 @@ class Channel(virtual.Channel):
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
     default_use_lock_renewal: bool = False
-    default_max_lock_renewal_duration: float = 3600  # in seconds (1 hour)
+    default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
+
     domain_format: str = 'kombu%(vhost)s'
 
     def __init__(self, *args, **kwargs):
@@ -206,26 +220,53 @@ class Channel(virtual.Channel):
             queue_obj = self._add_queue_to_cache(queue, sender=sender)
         return queue_obj
 
+    @staticmethod
+    def _receiver_cache_key(
+        queue: str,
+        recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
+    ) -> str:
+        return f"{queue}::{recv_mode.name}"
+
     def _get_asb_receiver(
             self, queue: str,
             recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
             queue_cache_key: str | None = None) -> SendReceive:
-        cache_key = queue_cache_key or f"{queue}::{recv_mode.name}"
+        cache_key = queue_cache_key or self._receiver_cache_key(queue, recv_mode)
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
-            auto_lock_renewer = None
-            if (self.use_lock_renewal
-                    and recv_mode == ServiceBusReceiveMode.PEEK_LOCK):
-                if self.connection._renewer is None:
-                    self.connection._renewer = AutoLockRenewer(
-                        max_lock_renewal_duration=(
-                            self.max_lock_renewal_duration)
-                    )
-                auto_lock_renewer = self.connection._renewer
             receiver = self.queue_service.get_queue_receiver(
                 queue_name=queue, receive_mode=recv_mode,
-                keep_alive=self.uamqp_keep_alive_interval,
-                auto_lock_renewer=auto_lock_renewer)
+                keep_alive=self.uamqp_keep_alive_interval)
+            queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
+        return queue_obj
+
+    def _close_cached_receiver(self, queue: str, recv_mode) -> None:
+        """Close and evict a cached receiver so the next call creates a fresh one."""
+        cache_key = self._receiver_cache_key(queue, recv_mode)
+        obj = self._queue_cache.pop(cache_key, None)
+        if obj is not None and obj.receiver is not None:
+            try:
+                obj.receiver.close()
+            except Exception:
+                pass
+
+    def _get_renewal_receiver(self, queue: str) -> SendReceive:
+        """Get or create a receiver dedicated to lock renewal.
+
+        Uses a separate AMQP connection so renewal management requests
+        don't contend with the receive loop's socket_lock.  The receiver
+        is opened eagerly because the SDK's _check_message_alive rejects
+        renew_message_lock when _running is False.
+        """
+        cache_key = f"{queue}::_renewal"
+        queue_obj = self._queue_cache.get(cache_key, None)
+        if queue_obj is None or queue_obj.receiver is None:
+            receiver = self.queue_service.get_queue_receiver(
+                queue_name=queue,
+                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+                prefetch_count=0,
+                keep_alive=self.uamqp_keep_alive_interval)
+            receiver._open_with_retry()
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 
@@ -240,6 +281,35 @@ class Channel(virtual.Channel):
         # message.delivery_info.pop('azure_message', None)
         # super()._restore(message)
         pass
+
+    def _create_auto_lock_renewer(self) -> AutoLockRenewer:
+        return AutoLockRenewer(
+            max_lock_renewal_duration=self.max_lock_renewal_duration,
+            on_lock_renew_failure=self._on_lock_renew_failure,
+        )
+
+    def _on_lock_renew_failure(self, renewable, error):
+        if renewable._lock_expired or renewable._settled:
+            return
+
+        retries = getattr(renewable, '_kombu_renew_retries', 0)
+        if retries >= 3:
+            logger.error(
+                "Lock renewal giving up after %d retries: %s",
+                retries, error)
+            return
+
+        renewable._kombu_renew_retries = retries + 1
+        renewable.auto_renew_error = None
+        logger.warning(
+            "Lock renewal failed (retry %d/3), re-registering: %s",
+            retries + 1, error)
+        try:
+            receiver = getattr(
+                renewable, '_kombu_renewal_receiver', renewable._receiver)
+            self.connection._renewer.register(receiver, renewable)
+        except Exception:
+            logger.exception("Failed to re-register for lock renewal")
 
     def _new_queue(self, queue: str, **kwargs) -> SendReceive:
         """Ensure a queue exists in ServiceBus."""
@@ -298,9 +368,16 @@ class Channel(virtual.Channel):
         queue = self.entity_name(self.queue_name_prefix + queue)
 
         queue_obj = self._get_asb_receiver(queue, recv_mode)
-        messages = queue_obj.receiver.receive_messages(
-            max_message_count=1,
-            max_wait_time=timeout or self.wait_time_seconds)
+        try:
+            messages = queue_obj.receiver.receive_messages(
+                max_message_count=1,
+                max_wait_time=timeout or self.wait_time_seconds)
+        except _TRANSIENT_ERRORS:
+            logger.warning(
+                "Transient error receiving from %r, resetting receiver",
+                queue, exc_info=True)
+            self._close_cached_receiver(queue, recv_mode)
+            raise Empty()
 
         if not messages:
             raise Empty()
@@ -316,7 +393,24 @@ class Channel(virtual.Channel):
         msg['properties']['delivery_info']['azure_message'] = message
         msg['properties']['delivery_info']['azure_queue_name'] = queue
 
+        if (self.use_lock_renewal
+                and recv_mode == ServiceBusReceiveMode.PEEK_LOCK):
+            try:
+                self._register_for_renewal(queue, message)
+            except Exception:
+                logger.warning(
+                    "Failed to register message for lock renewal on "
+                    "%r; processing without renewal", queue,
+                    exc_info=True)
+
         return msg
+
+    def _register_for_renewal(self, queue, message):
+        if self.connection._renewer is None:
+            self.connection._renewer = self._create_auto_lock_renewer()
+        renewal_obj = self._get_renewal_receiver(queue)
+        message._kombu_renewal_receiver = renewal_obj.receiver
+        self.connection._renewer.register(renewal_obj.receiver, message)
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
         try:
@@ -473,13 +567,16 @@ class Channel(virtual.Channel):
     @cached_property
     def use_lock_renewal(self) -> bool:
         return self.transport_options.get(
-            'use_lock_renewal', self.default_use_lock_renewal)
+            'use_lock_renewal', self.default_use_lock_renewal
+        )
 
     @cached_property
     def max_lock_renewal_duration(self) -> float:
-        return self.transport_options.get(
-            'max_lock_renewal_duration',
-            self.default_max_lock_renewal_duration)
+        return float(
+            self.transport_options.get(
+                'max_lock_renewal_duration', self.default_max_lock_renewal_duration
+            )
+        )
 
 
 class Transport(virtual.Transport):
