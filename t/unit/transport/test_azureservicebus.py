@@ -1002,3 +1002,67 @@ def test_get_asb_receiver_creates_separate_receiver_per_recv_mode(
         'receive_mode'] == ServiceBusReceiveMode.RECEIVE_AND_DELETE
     assert queue_obj_a.receiver is recv_a
     assert queue_obj_b.receiver is recv_b
+
+
+def test_get_raises_empty_on_transient_amqp_error(mock_queue: MockQueue):
+    """Transient AMQP errors in _get should be caught, the broken receiver
+    invalidated, and Empty raised so the event loop retries on the next poll."""
+    from azure.servicebus._pyamqp.error import AMQPConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(
+        channel.queue_name_prefix + mock_queue.queue_name)
+
+    receiver = MagicMock(name='receiver')
+    receiver.receive_messages.side_effect = AMQPConnectionError(
+        condition=b"amqp:connection:forced",
+        description=b"Simulated connection error")
+
+    cache_key = f"{queue_name}::PEEK_LOCK"
+    channel._queue_cache[cache_key] = azureservicebus.SendReceive(
+        receiver=receiver, sender=None)
+
+    with pytest.raises(Empty):
+        channel._get(mock_queue.queue_name)
+
+    receiver.close.assert_called_once()
+    assert cache_key not in channel._queue_cache
+
+
+def test_get_recovers_after_transient_error(mock_queue: MockQueue):
+    """After a transient error invalidates the receiver, the next _get call
+    should create a fresh receiver and succeed."""
+    from azure.servicebus._pyamqp.error import AMQPConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(
+        channel.queue_name_prefix + mock_queue.queue_name)
+
+    bad_receiver = MagicMock(name='bad_receiver')
+    bad_receiver.receive_messages.side_effect = AMQPConnectionError(
+        condition=b"amqp:connection:forced",
+        description=b"Simulated connection error")
+
+    cache_key = f"{queue_name}::PEEK_LOCK"
+    channel._queue_cache[cache_key] = azureservicebus.SendReceive(
+        receiver=bad_receiver, sender=None)
+
+    with pytest.raises(Empty):
+        channel._get(mock_queue.queue_name)
+
+    assert cache_key not in channel._queue_cache
+
+    mock_queue.producer.publish("recovery message")
+    result = channel._get(mock_queue.queue_name)
+    assert result is not None
+
+
+def test_transient_errors_do_not_affect_transport_connection_errors():
+    """Transport should NOT override connection_errors or channel_errors.
+    Transient ASB errors are handled inside _get, not by Celery's consumer
+    restart loop."""
+    from kombu.transport.virtual import Transport as VirtualTransport
+    assert azureservicebus.Transport.connection_errors == \
+        VirtualTransport.connection_errors
+    assert azureservicebus.Transport.channel_errors == \
+        VirtualTransport.channel_errors

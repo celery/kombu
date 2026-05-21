@@ -81,6 +81,16 @@ from azure.servicebus.exceptions import (OperationTimeoutError,
                                          ServiceBusServerBusyError)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
+_TRANSIENT_ERRORS = (
+    ServiceBusConnectionError,
+    ServiceBusCommunicationError,
+    AMQPConnectionError,
+    AMQPSessionError,
+    AMQPLinkError,
+    OperationTimeoutError,
+    ServiceBusServerBusyError,
+)
+
 try:
     from azure.identity import (DefaultAzureCredential,
                                 ManagedIdentityCredential)
@@ -210,11 +220,18 @@ class Channel(virtual.Channel):
             queue_obj = self._add_queue_to_cache(queue, sender=sender)
         return queue_obj
 
+    @staticmethod
+    def _receiver_cache_key(
+        queue: str,
+        recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
+    ) -> str:
+        return f"{queue}::{recv_mode.name}"
+
     def _get_asb_receiver(
             self, queue: str,
             recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
             queue_cache_key: str | None = None) -> SendReceive:
-        cache_key = queue_cache_key or f"{queue}::{recv_mode.name}"
+        cache_key = queue_cache_key or self._receiver_cache_key(queue, recv_mode)
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
             receiver = self.queue_service.get_queue_receiver(
@@ -222,6 +239,16 @@ class Channel(virtual.Channel):
                 keep_alive=self.uamqp_keep_alive_interval)
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
+
+    def _close_cached_receiver(self, queue: str, recv_mode) -> None:
+        """Close and evict a cached receiver so the next call creates a fresh one."""
+        cache_key = self._receiver_cache_key(queue, recv_mode)
+        obj = self._queue_cache.pop(cache_key, None)
+        if obj is not None and obj.receiver is not None:
+            try:
+                obj.receiver.close()
+            except Exception:
+                pass
 
     def _get_renewal_receiver(self, queue: str) -> SendReceive:
         """Get or create a receiver dedicated to lock renewal.
@@ -341,9 +368,16 @@ class Channel(virtual.Channel):
         queue = self.entity_name(self.queue_name_prefix + queue)
 
         queue_obj = self._get_asb_receiver(queue, recv_mode)
-        messages = queue_obj.receiver.receive_messages(
-            max_message_count=1,
-            max_wait_time=timeout or self.wait_time_seconds)
+        try:
+            messages = queue_obj.receiver.receive_messages(
+                max_message_count=1,
+                max_wait_time=timeout or self.wait_time_seconds)
+        except _TRANSIENT_ERRORS:
+            logger.warning(
+                "Transient error receiving from %r, resetting receiver",
+                queue, exc_info=True)
+            self._close_cached_receiver(queue, recv_mode)
+            raise Empty()
 
         if not messages:
             raise Empty()
@@ -549,19 +583,6 @@ class Transport(virtual.Transport):
     """Azure Service Bus transport."""
 
     Channel = Channel
-
-    connection_errors = virtual.Transport.connection_errors + (
-        ServiceBusConnectionError,
-        ServiceBusCommunicationError,
-        AMQPConnectionError,
-    )
-
-    channel_errors = virtual.Transport.channel_errors + (
-        AMQPSessionError,
-        AMQPLinkError,
-        OperationTimeoutError,
-        ServiceBusServerBusyError,
-    )
 
     polling_interval = 1
     default_port = None
