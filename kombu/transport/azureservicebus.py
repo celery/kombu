@@ -81,16 +81,6 @@ from azure.servicebus.exceptions import (OperationTimeoutError,
                                          ServiceBusServerBusyError)
 from azure.servicebus.management import ServiceBusAdministrationClient
 
-_TRANSIENT_ERRORS = (
-    ServiceBusConnectionError,
-    ServiceBusCommunicationError,
-    AMQPConnectionError,
-    AMQPSessionError,
-    AMQPLinkError,
-    OperationTimeoutError,
-    ServiceBusServerBusyError,
-)
-
 try:
     from azure.identity import (DefaultAzureCredential,
                                 ManagedIdentityCredential)
@@ -106,6 +96,16 @@ from kombu.utils.objects import cached_property
 from . import virtual
 
 logger = get_logger(__name__)
+
+_TRANSIENT_ERRORS = (
+    ServiceBusConnectionError,
+    ServiceBusCommunicationError,
+    AMQPConnectionError,
+    AMQPSessionError,
+    AMQPLinkError,
+    OperationTimeoutError,
+    ServiceBusServerBusyError,
+)
 
 # dots are replaced by dash, all other punctuation replaced by underscore.
 PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_', '.', '-'}
