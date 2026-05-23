@@ -1279,7 +1279,8 @@ class Channel(virtual.Channel):
                 classes += [b for b in conn_class.__bases__ if b is not object]
             for klass in classes:
                 arg_spec = inspect.getfullargspec(klass.__init__)
-                if (accepts_argument(klass.__init__, 'health_check_interval')
+                if ('health_check_interval' in arg_spec.args
+                        or 'health_check_interval' in arg_spec.kwonlyargs
                         or arg_spec.varkw is not None):
                     break
             else:  # no break
