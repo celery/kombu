@@ -64,6 +64,7 @@ Queue Arguments
 from __future__ import annotations
 
 import functools
+import inspect
 import numbers
 import socket
 from bisect import bisect
@@ -1271,13 +1272,15 @@ class Channel(virtual.Channel):
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
         if hasattr(conn_class, '__init__'):
-            # check health_check_interval for the class and bases
-            # classes
+            # Check the class and its direct bases (but skip `object` — its
+            # __init__ accepts **kwargs as a no-op and would match anything).
             classes = [conn_class]
             if hasattr(conn_class, '__bases__'):
-                classes += list(conn_class.__bases__)
+                classes += [b for b in conn_class.__bases__ if b is not object]
             for klass in classes:
-                if accepts_argument(klass.__init__, 'health_check_interval'):
+                arg_spec = inspect.getfullargspec(klass.__init__)
+                if (accepts_argument(klass.__init__, 'health_check_interval')
+                        or arg_spec.varkw is not None):
                     break
             else:  # no break
                 connparams.pop('health_check_interval')
