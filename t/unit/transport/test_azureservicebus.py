@@ -42,6 +42,13 @@ class ASBQueue:
             def close(self):
                 pass
 
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc, tb):
+                self.close()
+                return False
+
             def receive_messages(_self, **kwargs2):
                 max_message_count = kwargs2.get('max_message_count', 1)
                 result = []
@@ -327,6 +334,55 @@ def test_delete_populated_queue(mock_queue: MockQueue):
     assert mock_queue.queue_name not in mock_queue.channel._queue_cache
 
 
+def test_delete_closes_all_cached_entries_for_queue(mock_queue: MockQueue):
+    """Regression: _delete must close every cache entry for the queue,
+    including mode-keyed receiver entries created via _get_asb_receiver."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    sender = MagicMock(name='sender')
+    pl_recv = MagicMock(name='peek_lock_recv')
+    rad_recv = MagicMock(name='receive_and_delete_recv')
+    channel._add_queue_to_cache(queue, sender=sender)
+    channel._add_queue_to_cache(f'{queue}::PEEK_LOCK', receiver=pl_recv)
+    channel._add_queue_to_cache(
+        f'{queue}::RECEIVE_AND_DELETE', receiver=rad_recv)
+
+    channel._delete(queue)
+
+    transport = mock_queue.conn.transport
+    assert queue not in transport._queue_cache
+    assert f'{queue}::PEEK_LOCK' not in transport._queue_cache
+    assert f'{queue}::RECEIVE_AND_DELETE' not in transport._queue_cache
+    sender.close.assert_called_once()
+    pl_recv.close.assert_called_once()
+    rad_recv.close.assert_called_once()
+
+
+def test_purge_uses_ephemeral_receiver(mock_queue: MockQueue):
+    """Regression: _purge must drain via a one-shot receiver it closes
+    itself, not via a cached purge_<queue> entry."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    ephemeral_receiver = MagicMock(name='ephemeral_recv')
+    ephemeral_receiver.receive_messages = MagicMock(return_value=[])
+    ephemeral_receiver.__enter__ = MagicMock(return_value=ephemeral_receiver)
+    ephemeral_receiver.__exit__ = MagicMock(return_value=False)
+    channel.queue_service.get_queue_receiver = MagicMock(
+        return_value=ephemeral_receiver)
+
+    channel._purge(queue)
+
+    channel.queue_service.get_queue_receiver.assert_called_once()
+    call = channel.queue_service.get_queue_receiver.call_args
+    assert call.kwargs['receive_mode'] == \
+        ServiceBusReceiveMode.RECEIVE_AND_DELETE
+    ephemeral_receiver.__exit__.assert_called_once()
+    assert f'purge_{queue}' not in channel._queue_cache
+    assert f'{queue}::RECEIVE_AND_DELETE' not in channel._queue_cache
+
+
 def test_purge(mock_queue: MockQueue):
     mock_queue.producer.publish('test1234')
     mock_queue.producer.publish('test1234')
@@ -457,6 +513,162 @@ def test_basic_ack_reject_message_when_raises_exception(
         assert super_basic_reject.call_count == 1
 
 
+def test_separate_connections_get_separate_queue_caches(
+    mock_asb, mock_asb_management
+):
+    """Regression: separate Connections must not share _queue_cache."""
+    conn_a = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    conn_b = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+
+    assert chan_a._queue_cache is not chan_b._queue_cache
+
+    chan_a._add_queue_to_cache('shared-name', sender=MagicMock())
+    assert 'shared-name' in chan_a._queue_cache
+    assert 'shared-name' not in chan_b._queue_cache
+
+
+def test_separate_connections_get_separate_noack_queues(
+    mock_asb, mock_asb_management
+):
+    """Regression: separate Connections must not share no_ack state."""
+    conn_a = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    conn_b = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+
+    chan_a.basic_consume('shared-name', True, lambda m: None, 'tag-x')
+    assert 'shared-name' in chan_a._noack_queues
+    assert 'shared-name' not in chan_b._noack_queues
+
+
+def test_channels_on_same_connection_share_queue_cache(mock_queue: MockQueue):
+    """Channels on one Connection share Transport-scoped state."""
+    chan_a = mock_queue.channel
+    chan_b = mock_queue.conn.channel()
+
+    assert chan_a._queue_cache is chan_b._queue_cache
+    assert (chan_a.connection._noack_consumer_tags
+            is chan_b.connection._noack_consumer_tags)
+
+
+def test_channel_close_does_not_evict_queue_cache(mock_queue: MockQueue):
+    """Regression: Channel.close() must not evict siblings' cache entries."""
+    chan_a = mock_queue.channel
+    chan_b = mock_queue.conn.channel()
+
+    sender = MagicMock()
+    chan_a._add_queue_to_cache('q', sender=sender)
+    assert 'q' in chan_b._queue_cache
+
+    chan_a.close()
+
+    # Sibling still sees the cached entry; SDK object was not closed.
+    assert 'q' in chan_b._queue_cache
+    assert chan_b._queue_cache['q'].sender is sender
+    sender.close.assert_not_called()
+
+
+def test_close_connection_clears_queue_cache(mock_queue: MockQueue):
+    """Transport.close_connection() tears down the per-Connection cache."""
+    transport = mock_queue.conn.transport
+    sender = MagicMock()
+    receiver = MagicMock()
+    mock_queue.channel._add_queue_to_cache(
+        'q1', sender=sender, receiver=receiver)
+    transport._noack_consumer_tags.add('tag-x')
+
+    transport.close_connection(mock_queue.conn)
+
+    assert transport._queue_cache == {}
+    assert transport._noack_consumer_tags == set()
+    sender.close.assert_called_once()
+    receiver.close.assert_called_once()
+
+
+def test_close_connection_continues_on_per_entry_exception(
+    mock_queue: MockQueue
+):
+    """A failing SendReceive.close() must not strand sibling cleanup."""
+    transport = mock_queue.conn.transport
+
+    bad = MagicMock()
+    bad.close.side_effect = RuntimeError("boom")
+    good_sender = MagicMock()
+
+    mock_queue.channel._add_queue_to_cache('bad', sender=bad)
+    mock_queue.channel._add_queue_to_cache('good', sender=good_sender)
+
+    transport.close_connection(mock_queue.conn)
+
+    good_sender.close.assert_called_once()
+    assert transport._queue_cache == {}
+
+
+def test_basic_ack_lock_lost_logs_warning_and_rejects(
+    mock_queue: MockQueue, caplog
+):
+    """Regression: lock-lost ack failures must be logged, not silent."""
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=azure.servicebus.exceptions.MessageLockLostError())
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject, caplog.at_level(
+        'WARNING', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.channel.basic_ack("test_delivery_tag")
+
+    assert super_basic_reject.call_count == 1
+    assert any(
+        'MessageLockLostError' in record.message
+        for record in caplog.records
+    )
+
+
+def test_basic_ack_unknown_exception_logs_and_rejects(
+    mock_queue: MockQueue, caplog
+):
+    """Regression: unknown ack failures must be logged with traceback."""
+    mock_queue.producer.publish("test message")
+    message = mock_queue.channel._get(mock_queue.queue_name)
+    mock_queue.channel.qos.get = MagicMock(
+        return_value=mock_queue.channel.Message(
+            message, mock_queue.channel
+        )
+    )
+    receiver_mock = MagicMock()
+    receiver_mock.complete_message = MagicMock(
+        side_effect=RuntimeError("transient broker error"))
+    queue_object_mock = MagicMock()
+    queue_object_mock.receiver = receiver_mock
+    mock_queue.channel._get_asb_receiver = MagicMock(
+        return_value=queue_object_mock)
+    with patch(
+        'kombu.transport.virtual.base.Channel.basic_reject'
+    ) as super_basic_reject, caplog.at_level(
+        'ERROR', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.channel.basic_ack("test_delivery_tag")
+
+    assert super_basic_reject.call_count == 1
+    error_records = [r for r in caplog.records if r.levelname == 'ERROR']
+    assert error_records, "expected an ERROR-level log from logger.exception"
+    assert error_records[0].exc_info is not None
+
+
 def test_returning_sas():
     conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
     assert conn.as_uri(True) == URL_CREDS_SAS_FQ
@@ -470,3 +682,201 @@ def test_returning_da():
 def test_returning_mi():
     conn = Connection(URL_CREDS_MI, transport=azureservicebus.Transport)
     assert conn.as_uri(True) == URL_CREDS_MI_FQ
+
+
+def test_lock_renewal_default_config():
+    """use_lock_renewal defaults to False; duration defaults to 3600s."""
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport)
+    channel = conn.channel()
+
+    assert channel.use_lock_renewal is False
+    assert channel.max_lock_renewal_duration == \
+        azureservicebus.Channel.default_max_lock_renewal_duration
+
+
+def test_lock_renewal_config_initialization():
+    """Transport options override the renewal defaults."""
+    options = {
+        'use_lock_renewal': True,
+        'max_lock_renewal_duration': 1234,
+    }
+    conn = Connection(URL_CREDS_SAS, transport=azureservicebus.Transport,
+                      transport_options=options)
+    channel = conn.channel()
+
+    assert channel.use_lock_renewal is True
+    assert channel.max_lock_renewal_duration == 1234
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_default_does_not_create_renewer(
+    mock_renewer_cls, mock_queue,
+):
+    """Renewer is not instantiated when use_lock_renewal is unset."""
+    channel = mock_queue.channel
+    channel.queue_service.get_queue_receiver = MagicMock()
+
+    channel._get_asb_receiver(
+        'some_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+
+    mock_renewer_cls.assert_not_called()
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is None
+    assert channel.connection._renewer is None
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_get_asb_receiver_creates_and_reuses_renewer(
+    mock_renewer_cls, mock_queue,
+):
+    """Renewer is created on first PEEK_LOCK call, reused, and gated."""
+    conn = Connection(
+        URL_CREDS_SAS,
+        transport=azureservicebus.Transport,
+        transport_options={'use_lock_renewal': True},
+    )
+    channel = conn.channel()
+    channel.queue_service.get_queue_receiver = MagicMock()
+
+    # Renewer is created on first PEEK_LOCK call.
+    channel._get_asb_receiver(
+        'first_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    mock_renewer_cls.assert_called_once_with(
+        max_lock_renewal_duration=channel.max_lock_renewal_duration)
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is mock_renewer_cls.return_value
+    assert channel.connection._renewer is mock_renewer_cls.return_value
+
+    # Subsequent PEEK_LOCK calls reuse the same renewer.
+    channel._get_asb_receiver(
+        'second_queue', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    assert mock_renewer_cls.call_count == 1
+
+    # RECEIVE_AND_DELETE never gets a renewer attached.
+    channel._get_asb_receiver(
+        'third_queue', recv_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+    assert channel.queue_service.get_queue_receiver.call_args.kwargs[
+        'auto_lock_renewer'] is None
+
+
+@patch('kombu.transport.azureservicebus.AutoLockRenewer')
+def test_separate_connections_get_separate_renewers(
+    mock_renewer_cls, mock_asb, mock_asb_management,
+):
+    """Regression: renewer is per-Connection, not process-wide."""
+    options = {'use_lock_renewal': True}
+    conn_a = Connection(
+        URL_CREDS_SAS, transport=azureservicebus.Transport,
+        transport_options=options,
+    )
+    conn_b = Connection(
+        URL_CREDS_SAS, transport=azureservicebus.Transport,
+        transport_options=options,
+    )
+    chan_a = conn_a.channel()
+    chan_b = conn_b.channel()
+    chan_a.queue_service.get_queue_receiver = MagicMock()
+    chan_b.queue_service.get_queue_receiver = MagicMock()
+
+    mock_renewer_cls.side_effect = [MagicMock(), MagicMock()]
+
+    chan_a._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    chan_b._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+
+    assert chan_a.connection._renewer is not None
+    assert chan_b.connection._renewer is not None
+    assert chan_a.connection._renewer is not chan_b.connection._renewer
+    assert mock_renewer_cls.call_count == 2
+
+
+def test_close_connection_without_renewer_is_safe(mock_queue: MockQueue):
+    """Connection release with no renewer ever created is a no-op."""
+    transport = mock_queue.conn.transport
+    assert transport._renewer is None
+
+    mock_queue.conn.release()
+
+    assert transport._renewer is None
+
+
+def test_close_connection_closes_renewer(mock_queue: MockQueue):
+    """Connection release closes the renewer exactly once."""
+    transport = mock_queue.conn.transport
+    renewer = MagicMock()
+    transport._renewer = renewer
+
+    mock_queue.conn.release()
+
+    renewer.close.assert_called_once()
+    assert transport._renewer is None
+
+
+def test_close_connection_continues_on_renewer_close_exception(
+    mock_queue: MockQueue, caplog,
+):
+    """A failing renewer.close() must not strand cache teardown."""
+    transport = mock_queue.conn.transport
+    renewer = MagicMock()
+    renewer.close.side_effect = RuntimeError("boom")
+    transport._renewer = renewer
+
+    sender = MagicMock()
+    mock_queue.channel._add_queue_to_cache('q1', sender=sender)
+
+    with caplog.at_level(
+        'ERROR', logger='kombu.transport.azureservicebus'
+    ):
+        mock_queue.conn.release()
+
+    renewer.close.assert_called_once()
+    assert transport._renewer is None
+    sender.close.assert_called_once()
+    assert transport._queue_cache == {}
+    assert any(
+        'AutoLockRenewer' in record.message for record in caplog.records
+    )
+
+
+def test_basic_cancel_does_not_de_noack_when_another_no_ack_consumer_remains(
+    mock_queue: MockQueue,
+):
+    """Regression: cancelling an ack consumer must not remove the queue
+    from the no_ack view while a no_ack consumer is still subscribed."""
+    channel = mock_queue.channel
+    queue = mock_queue.queue_name
+
+    channel.basic_consume(queue, True, lambda m: None, 'tag_noack')
+    channel.basic_consume(queue, False, lambda m: None, 'tag_ack')
+    assert queue in channel._noack_queues
+
+    channel.basic_cancel('tag_ack')
+
+    assert queue in channel._noack_queues
+
+
+def test_get_asb_receiver_creates_separate_receiver_per_recv_mode(
+    mock_queue: MockQueue,
+):
+    """Regression: a receiver created in one recv_mode must not be reused
+    for callers requesting the other mode (silently skips renewal wiring
+    and applies the wrong receive semantics)."""
+    channel = mock_queue.channel
+    recv_a = MagicMock(name='peek_lock_receiver')
+    recv_b = MagicMock(name='receive_and_delete_receiver')
+    channel.queue_service.get_queue_receiver = MagicMock(
+        side_effect=[recv_a, recv_b])
+
+    queue_obj_a = channel._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.PEEK_LOCK)
+    queue_obj_b = channel._get_asb_receiver(
+        'q', recv_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+
+    assert channel.queue_service.get_queue_receiver.call_count == 2
+    assert channel.queue_service.get_queue_receiver.call_args_list[0].kwargs[
+        'receive_mode'] == ServiceBusReceiveMode.PEEK_LOCK
+    assert channel.queue_service.get_queue_receiver.call_args_list[1].kwargs[
+        'receive_mode'] == ServiceBusReceiveMode.RECEIVE_AND_DELETE
+    assert queue_obj_a.receiver is recv_a
+    assert queue_obj_b.receiver is recv_b

@@ -63,7 +63,8 @@ from uuid import NAMESPACE_OID, uuid3
 from _socket import gethostname
 from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
-                                        NotFound, PermissionDenied)
+                                        GoogleAPICallError, NotFound,
+                                        PermissionDenied)
 from google.api_core.retry import Retry
 from google.cloud import monitoring_v3
 from google.cloud.monitoring_v3 import query
@@ -72,6 +73,8 @@ from google.cloud.pubsub_v1 import exceptions as pubsub_exceptions
 from google.cloud.pubsub_v1.publisher import exceptions as publisher_exceptions
 from google.cloud.pubsub_v1.subscriber import \
     exceptions as subscriber_exceptions
+from google.cloud.pubsub_v1.types import Subscription
+from google.protobuf.field_mask_pb2 import FieldMask
 from google.pubsub_v1 import gapic_version as package_version
 
 from kombu.entity import TRANSIENT_DELIVERY_MODE
@@ -316,27 +319,51 @@ class Channel(virtual.Channel):
         topic_path = topic_path or self.publisher.topic_path(
             project_id, topic_id
         )
+        msg_retention = msg_retention or self.expiration_seconds
+        subscription_config = {
+            "name": subscription_path,
+            "topic": topic_path,
+            "ack_deadline_seconds": self.ack_deadline_seconds,
+            "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
+            "message_retention_duration": f"{msg_retention}s",
+            "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
+            **(filter_args or {}),
+        }
         try:
             logger.debug(
-                'creating subscription: %s, topic: %s, filter: %s',
+                "creating subscription: %s, topic: %s, filter: %s",
                 subscription_path,
                 topic_path,
                 filter_args,
             )
-            msg_retention = msg_retention or self.expiration_seconds
-            self.subscriber.create_subscription(
-                request={
-                    "name": subscription_path,
-                    "topic": topic_path,
-                    "ack_deadline_seconds": self.ack_deadline_seconds,
-                    "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
-                    "message_retention_duration": f"{msg_retention}s",
-                    "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
-                    **(filter_args or {}),
-                }
-            )
+            self.subscriber.create_subscription(request=subscription_config)
         except AlreadyExists:
-            pass
+            logger.debug(
+                "subscription exists, updating: %s", subscription_path
+            )
+            try:
+                subscription = Subscription(subscription_config)
+                update_mask = FieldMask(paths=[
+                    "ack_deadline_seconds",
+                    "expiration_policy.ttl",
+                    "message_retention_duration",
+                    "enable_exactly_once_delivery",
+                ])
+                if filter_args:
+                    update_mask.paths.append("filter")
+                self.subscriber.update_subscription(
+                    request={
+                        "subscription": subscription,
+                        "update_mask": update_mask,
+                    }
+                )
+                logger.info("subscription updated: %s", subscription_path)
+            except GoogleAPICallError as e:
+                logger.warning(
+                    "failed to update subscription: %s, error: %s",
+                    subscription_path,
+                    e,
+                )
         return subscription_path
 
     def _delete(self, queue, *args, **kwargs):
