@@ -47,7 +47,7 @@ TRANSPORT_ALIASES = {
     'gcpubsub': 'kombu.transport.gcpubsub:Transport',
 }
 
-_transport_cache = {}
+_transport_cache: dict[str | None, str | None] = {}
 
 
 def resolve_transport(transport: str | None = None) -> str | None:
