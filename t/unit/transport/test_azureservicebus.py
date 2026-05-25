@@ -128,10 +128,10 @@ def test_queue_service_nocredentials():
     conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
     with pytest.raises(ValueError) as exc:
         conn.channel()
-        assert (
-            exc
-            == "Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}"
-        )
+    assert (
+        str(exc.value)
+        == "Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}"
+    )
 
 
 def test_queue_service_sas():
