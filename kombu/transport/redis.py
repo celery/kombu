@@ -84,7 +84,6 @@ from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
-from kombu.utils.functional import accepts_argument
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
