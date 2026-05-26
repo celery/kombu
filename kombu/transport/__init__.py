@@ -50,7 +50,7 @@ TRANSPORT_ALIASES = {
 _transport_cache: dict[str | None, type | None] = {}
 
 
-def resolve_transport(transport: str | None = None) -> str | None:
+def resolve_transport(transport: str | None = None) -> type | None:
     """Get transport by name.
 
     Arguments:
@@ -78,7 +78,7 @@ def resolve_transport(transport: str | None = None) -> str | None:
     return transport
 
 
-def get_transport_cls(transport: str | None = None) -> str | None:
+def get_transport_cls(transport: str | None = None) -> type | None:
     """Get transport class by name.
 
     The transport string is the full path to a transport class, e.g.::
