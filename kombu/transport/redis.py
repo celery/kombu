@@ -1271,8 +1271,8 @@ class Channel(virtual.Channel):
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
         if hasattr(conn_class, '__init__'):
-            # Check the class and its direct bases (but skip `object` — its
-            # __init__ accepts **kwargs as a no-op and would match anything).
+            # Check the class and its direct bases (but skip `object`: `inspect` may report
+            # `object.__init__` as accepting **kwargs, which would otherwise match anything).
             classes = [conn_class]
             if hasattr(conn_class, '__bases__'):
                 classes += [b for b in conn_class.__bases__ if b is not object]
