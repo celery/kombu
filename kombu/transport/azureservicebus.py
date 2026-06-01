@@ -291,7 +291,14 @@ class Channel(virtual.Channel):
                 prefetch_count=0,
                 keep_alive=self.uamqp_keep_alive_interval,
             )
-            receiver._open_with_retry()
+            # Explicitly open the AMQP link: the SDK rejects
+            # renew_message_lock unless the receiver is open.
+            # Closed by _close_channel, not __exit__.
+            # __enter__ calls _open_with_retry internally.
+            if hasattr(receiver, "_open_with_retry"):
+                receiver._open_with_retry()
+            else:
+                receiver.__enter__()
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 
