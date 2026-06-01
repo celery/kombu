@@ -70,33 +70,25 @@ from typing import Any
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (
-    AutoLockRenewer,
-    ServiceBusClient,
-    ServiceBusMessage,
-    ServiceBusReceiveMode,
-    ServiceBusReceiver,
-    ServiceBusSender,
-)
-from azure.servicebus.exceptions import (
-    OperationTimeoutError,
-    ServiceBusCommunicationError,
-    ServiceBusConnectionError,
-    ServiceBusServerBusyError,
-)
+from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
+                              ServiceBusMessage, ServiceBusReceiveMode,
+                              ServiceBusReceiver, ServiceBusSender)
+from azure.servicebus.exceptions import (OperationTimeoutError,
+                                         ServiceBusCommunicationError,
+                                         ServiceBusConnectionError,
+                                         ServiceBusServerBusyError)
 
 try:
-    from azure.servicebus._pyamqp.error import (
-        AMQPConnectionError,
-        AMQPLinkError,
-        AMQPSessionError,
-    )
+    from azure.servicebus._pyamqp.error import (AMQPConnectionError,
+                                                AMQPLinkError,
+                                                AMQPSessionError)
 except ImportError:
     AMQPConnectionError = AMQPLinkError = AMQPSessionError = None
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
-    from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
+    from azure.identity import (DefaultAzureCredential,
+                                ManagedIdentityCredential)
 except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None
@@ -690,7 +682,7 @@ class Transport(virtual.Transport):
         if not all([namespace, credential]):
             raise ValueError(
                 "Need a URI like "
-                "azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} "  # noqa
+                "azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} "
                 "or the azure Endpoint connection string"
             )
 
