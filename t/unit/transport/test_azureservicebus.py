@@ -130,7 +130,7 @@ def test_queue_service_nocredentials():
         conn.channel()
     assert (
         str(exc.value)
-        == "Need an URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}"
+        == "Need a URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}"
     )
 
 
