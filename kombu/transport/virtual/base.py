@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import socket
-import sys
 import warnings
 from array import array
 from collections import OrderedDict, defaultdict, namedtuple
