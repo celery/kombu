@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import socket
+import sys
 import warnings
 from array import array
 from time import monotonic
@@ -16,6 +17,7 @@ from kombu.transport import virtual
 from kombu.utils.uuid import uuid
 
 PRINT_FQDN = 'builtins.print'
+LOG_FQDN = 'logging.Logger._log'
 
 
 def client(**kwargs):
@@ -411,9 +413,12 @@ class test_Channel:
         assert not q._delivered
 
     @patch('kombu.transport.virtual.base.emergency_dump_state')
+    @patch(LOG_FQDN)
     @patch(PRINT_FQDN)
-    def test_restore_unacked_once_when_unrestored(self, print_,
-                                                  emergency_dump_state):
+    @pytest.mark.parametrize("stderr_set", [True, False])
+    def test_restore_unacked_once_when_unrestored(self, print_, log_,
+                                                  emergency_dump_state, stderr_set):
+        stderr = sys.stderr if stderr_set else None
         q = self.channel.qos
         q._flush = Mock()
 
@@ -430,8 +435,14 @@ class test_Channel:
         ru.return_value = [(exc, 1)]
 
         self.channel.do_restore = True
-        q.restore_unacked_once()
-        print_.assert_called()
+        q.restore_unacked_once(stderr=stderr)
+        if stderr_set:
+            print_.assert_called()
+            log_.assert_not_called()
+        else:
+            log_.assert_called()
+            print_.assert_not_called()
+
         emergency_dump_state.assert_called()
 
     def test_basic_recover(self):
