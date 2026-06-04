@@ -260,14 +260,18 @@ class QoS:
 
         while delivered:
             try:
-                _, message = pop_message()
+                key, message = pop_message()
             except KeyError:  # pragma: no cover
                 break
 
             try:
                 restore(message)
             except BaseException as exc:
-                errors.append((exc, message))
+                if key not in self._dirty:
+                    # Another thread may have acked the message after the earlier '_flush' call.
+                    # This may cause the restore attempt to fail (e.g. in SQS).
+                    # If restore fails, we only care about errors for messages that have not been 'acked'.
+                    errors.append((exc, message))
         delivered.clear()
         return errors
 
