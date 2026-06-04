@@ -499,11 +499,15 @@ class test_Channel:
         c = self.channel
         c._consumers.add('x')
         c._tag_to_queue['x'] = 'foo'
-        c._active_queues = Mock()
-        c._active_queues.remove.side_effect = ValueError()
+        c._active_queues = ['foo']
+
+        def mock_reset_cycle():
+            # Ensure queue is removed prior to calling '_reset_cycle'
+            assert 'foo' not in c._active_queues
+        c._reset_cycle = mock_reset_cycle
 
         c.basic_cancel('x')
-        c._active_queues.remove.assert_called_with('foo')
+        assert c._active_queues == []
 
     def test_basic_cancel_unknown_ctag(self):
         assert self.channel.basic_cancel('unknown-tag') is None
