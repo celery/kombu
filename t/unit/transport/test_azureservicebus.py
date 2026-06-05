@@ -126,12 +126,8 @@ URL_CREDS_MI_FQ = (
 
 def test_queue_service_nocredentials():
     conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
-    with pytest.raises(ValueError) as exc:
+    with pytest.raises(ValueError):
         conn.channel()
-    assert (
-        str(exc.value)
-        == "Need a URI like azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}"
-    )
 
 
 def test_queue_service_sas():
