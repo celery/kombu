@@ -289,7 +289,7 @@ class QoS:
             return
         try:
             if state:
-                if stderr:
+                if stderr is not None:
                     print(RESTORING_FMT.format(len(self._delivered)), file=stderr)
                 else:
                     logger.info(RESTORING_FMT.format(len(self._delivered)))
