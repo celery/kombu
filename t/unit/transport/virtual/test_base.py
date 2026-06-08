@@ -416,7 +416,7 @@ class test_Channel:
         q._delivered = {1: 1}
 
         def mock_restore_raises_exceptions_due_to_acked_message(*args, **kwargs):
-            q._dirty = {1}  # acked dirty message
+            q.ack(1)  # simulate concurrent ack of the delivered message
             raise SystemExit(1)
 
         q.channel._restore = Mock()
