@@ -495,7 +495,7 @@ class test_Channel:
         self.channel.exchange_declare(exchange='unique_name')
         assert self.channel.get_exchanges()
 
-    def test_basic_cancel_not_in_active_queues(self):
+    def test_basic_cancel(self):
         c = self.channel
         c._consumers.add('x')
         c._tag_to_queue['x'] = 'foo'
@@ -504,10 +504,22 @@ class test_Channel:
         def mock_reset_cycle():
             # Ensure queue is removed prior to calling '_reset_cycle'
             assert 'foo' not in c._active_queues
-        c._reset_cycle = mock_reset_cycle
+
+        c._reset_cycle = Mock(side_effect=mock_reset_cycle)
 
         c.basic_cancel('x')
         assert c._active_queues == []
+        c._reset_cycle.assert_called_once_with()
+
+    def test_basic_cancel_not_in_active_queues(self):
+        c = self.channel
+        c._consumers.add('x')
+        c._tag_to_queue['x'] = 'foo'
+        c._active_queues = Mock()
+        c._active_queues.remove.side_effect = ValueError()
+
+        c.basic_cancel('x')
+        c._active_queues.remove.assert_called_with('foo')
 
     def test_basic_cancel_unknown_ctag(self):
         assert self.channel.basic_cancel('unknown-tag') is None
