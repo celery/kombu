@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import logging
 import socket
 import sys
 import warnings
@@ -17,7 +18,6 @@ from kombu.transport import virtual
 from kombu.utils.uuid import uuid
 
 PRINT_FQDN = 'builtins.print'
-LOG_FQDN = 'logging.Logger._log'
 
 
 def client(**kwargs):
@@ -413,11 +413,10 @@ class test_Channel:
         assert not q._delivered
 
     @patch('kombu.transport.virtual.base.emergency_dump_state')
-    @patch(LOG_FQDN)
     @patch(PRINT_FQDN)
     @pytest.mark.parametrize("stderr_set", [True, False])
-    def test_restore_unacked_once_when_unrestored(self, print_, log_,
-                                                  emergency_dump_state, stderr_set):
+    def test_restore_unacked_once_when_unrestored(self, print_,
+                                                  emergency_dump_state, stderr_set, caplog):
         stderr = sys.stderr if stderr_set else None
         q = self.channel.qos
         q._flush = Mock()
@@ -435,12 +434,14 @@ class test_Channel:
         ru.return_value = [(exc, 1)]
 
         self.channel.do_restore = True
-        q.restore_unacked_once(stderr=stderr)
+        with caplog.at_level(logging.INFO, logger="kombu.transport.virtual.base"):
+            q.restore_unacked_once(stderr=stderr)
         if stderr_set:
             print_.assert_called()
-            log_.assert_not_called()
+            assert not caplog.messages
         else:
-            log_.assert_called()
+            assert caplog.messages[0].startswith("Restoring")
+            assert caplog.messages[0].endswith("unacknowledged message(s)")
             print_.assert_not_called()
 
         emergency_dump_state.assert_called()
