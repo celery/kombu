@@ -46,3 +46,26 @@ class test_emergency_dump_state:
         assert 'bar' in fh.getvalue()
         assert stderr.getvalue()
         assert not stdouts.stdout.getvalue()
+
+    def test_dump_logging(self, caplog):
+        fh = MyBytesIO()
+        emergency_dump_state(
+            {'foo': 'bar'}, open_file=lambda n, m: fh, stderr=None)
+        assert pickle.loads(fh.getvalue()) == {'foo': 'bar'}
+        assert "EMERGENCY DUMP STATE TO FILE" in caplog.text
+
+    def test_dump_logging_exception(self, caplog):
+        fh = MyStringIO()
+
+        def raise_something(*args, **kwargs):
+            raise KeyError('foo')
+
+        emergency_dump_state(
+            {'foo': 'bar'},
+            open_file=lambda n, m: fh,
+            dump=raise_something,
+            stderr=None,
+        )
+        assert 'foo' in fh.getvalue()
+        assert 'bar' in fh.getvalue()
+        assert "Cannot pickle state. Falling back to pformat." in caplog.text
