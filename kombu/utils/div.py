@@ -24,7 +24,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
         print(f'EMERGENCY DUMP STATE TO FILE -> {persist} <-',
               file=stderr)
     else:
-        logger.error('EMERGENCY DUMP STATE TO FILE', extra={"emergency_state_file": persist})
+        logger.error('EMERGENCY DUMP STATE TO FILE -> %s <-', persist, extra={"emergency_state_file": persist})
     fh = open_file(persist, 'w')
     try:
         try:
