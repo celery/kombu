@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import socket
-import sys
 import warnings
 from array import array
 from collections import OrderedDict, defaultdict, namedtuple
@@ -281,7 +280,6 @@ class QoS:
         """
         self._on_collect.cancel()
         self._flush()
-        stderr = sys.stderr if stderr is None else stderr
         state = self._delivered
 
         if not self.restore_at_shutdown or not self.channel.do_restore:
@@ -291,14 +289,19 @@ class QoS:
             return
         try:
             if state:
-                print(RESTORING_FMT.format(len(self._delivered)),
-                      file=stderr)
+                if stderr is not None:
+                    print(RESTORING_FMT.format(len(self._delivered)), file=stderr)
+                else:
+                    logger.info(RESTORING_FMT.format(len(self._delivered)))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    print(RESTORE_PANIC_FMT.format(len(errors), errors),
-                          file=stderr)
+                    if stderr:
+                        print(RESTORE_PANIC_FMT.format(len(errors), errors), file=stderr)
+                    else:
+                        logger.error(RESTORE_PANIC_FMT.format(len(errors), errors))
+
                     emergency_dump_state(messages, stderr=stderr)
         finally:
             state.restored = True
