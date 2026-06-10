@@ -650,12 +650,12 @@ class Channel(AbstractChannel, base.StdChannel):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
-            self._reset_cycle()
             queue = self._tag_to_queue.pop(consumer_tag, None)
             try:
                 self._active_queues.remove(queue)
             except ValueError:
                 pass
+            self._reset_cycle()
             self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, no_ack=False, **kwargs):
