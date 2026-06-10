@@ -412,6 +412,22 @@ class test_Channel:
         assert errors[0][1] == 1
         assert not q._delivered
 
+    def test_restore_unacked_ignores_raised_exceptions_when_acked(self):
+        q = self.channel.qos
+        q._flush = Mock()
+        q._delivered = {1: 1}
+
+        def mock_restore_raises_exceptions_due_to_acked_message(*args, **kwargs):
+            q.ack(1)  # simulate concurrent ack of the delivered message
+            raise SystemExit(1)
+
+        q.channel._restore = Mock()
+        q.channel._restore.side_effect = mock_restore_raises_exceptions_due_to_acked_message
+
+        errors = q.restore_unacked()
+        assert not errors
+        assert not q._delivered
+
     @patch('kombu.transport.virtual.base.emergency_dump_state')
     @patch(PRINT_FQDN)
     @pytest.mark.parametrize("stderr_set", [True, False])
