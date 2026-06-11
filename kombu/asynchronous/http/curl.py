@@ -264,6 +264,7 @@ class CurlClient(BaseClient):
                 def ioctl(cmd):
                     if cmd == _pycurl.IOCMD_RESTARTREAD:
                         reqbuffer.seek(0)
+
                 setopt(_pycurl.IOCTLFUNCTION, ioctl)
                 setopt(_pycurl.POSTFIELDSIZE, len(body))
             else:
