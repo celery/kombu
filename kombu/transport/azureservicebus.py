@@ -285,7 +285,7 @@ class Channel(virtual.Channel):
             )
             # Explicitly open the AMQP link: the SDK rejects
             # renew_message_lock unless the receiver is open.
-            # Closed by _close_channel, not __exit__.
+            # Closed via Transport.close_connection, not __exit__.
             # __enter__ calls _open_with_retry internally.
             if hasattr(receiver, "_open_with_retry"):
                 receiver._open_with_retry()
@@ -652,7 +652,10 @@ class Transport(virtual.Transport):
         # > 'rootpolicy:some/key@somenamespace'
         uri = uri.replace("azureservicebus://", "")
         # > 'rootpolicy:some/key',  'somenamespace'
-        credential, namespace = uri.rsplit("@", 1)
+        if "@" not in uri:
+            credential, namespace = "", ""
+        else:
+            credential, namespace = uri.rsplit("@", 1)
 
         if not namespace.endswith(".net"):
             namespace += ".servicebus.windows.net"

@@ -126,7 +126,7 @@ URL_CREDS_MI_FQ = (
 
 def test_queue_service_nocredentials():
     conn = Connection(URL_NOCREDS, transport=azureservicebus.Transport)
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Need a URI like"):
         conn.channel()
 
 
