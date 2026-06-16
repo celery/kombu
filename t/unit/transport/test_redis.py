@@ -718,6 +718,47 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_interval_throttles(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrevrangebyscore.return_value = []
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+
+        # interval=3 -> only the 1st and 4th calls perform an actual scan.
+        qos._vrestore_count = 0
+        qos.restore_visible(interval=3)
+        client.zrevrangebyscore.assert_called_once()
+        client.zrevrangebyscore.reset_mock()
+
+        qos.restore_visible(interval=3)   # 2nd call -> skip
+        qos.restore_visible(interval=3)   # 3rd call -> skip
+        client.zrevrangebyscore.assert_not_called()
+
+        qos.restore_visible(interval=3)   # 4th call -> scan
+        client.zrevrangebyscore.assert_called_once()
+
+    def test_qos_restore_visible_zero_interval_no_zerodivision(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrevrangebyscore.return_value = []
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+
+        # interval=0 must not raise ZeroDivisionError and scans on every call.
+        qos._vrestore_count = 0
+        qos.restore_visible(interval=0)
+        qos.restore_visible(interval=0)
+        assert client.zrevrangebyscore.call_count == 2
+
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
         self.channel.queue_declare(queue='txconfanq')
@@ -2006,6 +2047,7 @@ class test_MultiChannelPoller:
         p.on_poll_init(poller)
         chan1.qos.restore_visible.assert_called_with(
             num=chan1.unacked_restore_limit,
+            interval=chan1.unacked_restore_throttle,
         )
 
     def test_maybe_restore_messages_calls_restore_visible(self):
@@ -2019,6 +2061,7 @@ class test_MultiChannelPoller:
 
         channel.qos.restore_visible.assert_called_once_with(
             num=channel.unacked_restore_limit,
+            interval=channel.unacked_restore_throttle,
         )
 
     def test_maybe_restore_messages_skips_channel_without_active_queues(self):

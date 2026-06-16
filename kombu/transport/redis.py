@@ -37,6 +37,15 @@ Transport Options
 * ``unacked_mutex_expire``
 * ``visibility_timeout``
 * ``unacked_restore_limit``
+* ``unacked_restore_interval``: (int) Seconds between periodic
+  ``restore_visible`` sweeps in the async (event loop / prefork) path.
+  Defaults to ``10``. Lower this to recover abandoned messages faster when
+  using a low ``visibility_timeout``.
+* ``unacked_restore_throttle``: (int) Only run an actual Redis scan on every
+  Nth ``restore_visible`` call. Defaults to ``10``. The effective async sweep
+  period is roughly ``unacked_restore_interval * unacked_restore_throttle``
+  seconds, so set this to ``1`` to make ``unacked_restore_interval`` the sole
+  control.
 * ``fanout_prefix``
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
@@ -420,7 +429,9 @@ class QoS(virtual.QoS):
 
     def restore_visible(self, start=0, num=10, interval=10):
         self._vrestore_count += 1
-        if (self._vrestore_count - 1) % interval:
+        # ``interval or 1`` avoids a ZeroDivisionError if the throttle is
+        # misconfigured to 0; 1 means "scan on every call".
+        if (self._vrestore_count - 1) % (interval or 1):
             return
         with self.channel.conn_or_acquire() as client:
             ceil = time() - self.visibility_timeout
@@ -566,6 +577,7 @@ class MultiChannelPoller:
         for channel in self._channels:
             return channel.qos.restore_visible(
                 num=channel.unacked_restore_limit,
+                interval=channel.unacked_restore_throttle,
             )
 
     def maybe_restore_messages(self):
@@ -575,6 +587,7 @@ class MultiChannelPoller:
                 try:
                     return channel.qos.restore_visible(
                         num=channel.unacked_restore_limit,
+                        interval=channel.unacked_restore_throttle,
                     )
                 except channel.connection_errors:
                     # Connection is broken; skip this cycle and retry next tick.
@@ -668,6 +681,16 @@ class Channel(virtual.Channel):
     unacked_mutex_key = 'unacked_mutex'
     unacked_mutex_expire = 300  # 5 minutes
     unacked_restore_limit = None
+    #: Seconds between periodic ``restore_visible`` sweeps in the async
+    #: (event loop / prefork) path.  Lower this to recover abandoned messages
+    #: faster when using a low ``visibility_timeout``.
+    unacked_restore_interval = 10
+    #: Only run an actual Redis scan on every Nth ``restore_visible`` call.
+    #: Protects the synchronous poll path (restore is attempted on every empty
+    #: poll) from hitting Redis too often.  Set to 1 to scan on every call.
+    #: Effective async sweep period is roughly
+    #: ``unacked_restore_interval * unacked_restore_throttle`` seconds.
+    unacked_restore_throttle = 10
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
@@ -738,6 +761,8 @@ class Channel(virtual.Channel):
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'unacked_restore_interval',
+         'unacked_restore_throttle',
          'fanout_prefix',
          'fanout_patterns',
          'global_keyprefix',
@@ -1533,8 +1558,11 @@ class Transport(virtual.Transport):
             if old_tref is not None:
                 old_tref.cancel()
 
+        restore_interval = connection.client.transport_options.get(
+            'unacked_restore_interval', Channel.unacked_restore_interval
+        )
         cycle._restore_messages_tref = loop.call_repeatedly(
-            10, cycle.maybe_restore_messages
+            restore_interval, cycle.maybe_restore_messages
         )
         health_check_interval = connection.client.transport_options.get(
             'health_check_interval',
