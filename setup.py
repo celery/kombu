@@ -114,6 +114,7 @@ setup(
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
         'confluentkafka': extras('confluentkafka.txt'),
+        'pgmq': extras('pgmq.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',

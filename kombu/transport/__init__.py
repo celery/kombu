@@ -45,6 +45,7 @@ TRANSPORT_ALIASES = {
     'azureservicebus': 'kombu.transport.azureservicebus:Transport',
     'pyro': 'kombu.transport.pyro:Transport',
     'gcpubsub': 'kombu.transport.gcpubsub:Transport',
+    'pgmq': 'kombu.transport.pgmq:Transport',
 }
 
 _transport_cache: dict[str | None, type | None] = {}
