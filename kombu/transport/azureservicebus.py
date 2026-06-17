@@ -657,6 +657,14 @@ class Transport(virtual.Transport):
         else:
             credential, namespace = uri.rsplit("@", 1)
 
+        # Validate ASB connection string
+        if not all([namespace, credential]):
+            raise ValueError(
+                "Need a URI like "
+                "azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} "
+                "or the azure Endpoint connection string"
+            )
+
         if not namespace.endswith(".net"):
             namespace += ".servicebus.windows.net"
 
@@ -680,14 +688,6 @@ class Transport(virtual.Transport):
             # > 'rootpolicy', 'some/key'
             policy, sas_key = credential.split(":", 1)
             credential = f"{policy}:{sas_key}"
-
-        # Validate ASB connection string
-        if not all([namespace, credential]):
-            raise ValueError(
-                "Need a URI like "
-                "azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} "
-                "or the azure Endpoint connection string"
-            )
 
         return namespace, credential
 
