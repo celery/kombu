@@ -10,7 +10,7 @@ import pytest
 import kombu
 from kombu.exceptions import OperationalError
 
-from .common import (BaseExchangeTypes, BaseMessage, BasicFunctionality)
+from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
 
 
 def get_connection(hostname, port, database, username='postgres',
