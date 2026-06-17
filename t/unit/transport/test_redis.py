@@ -1267,6 +1267,45 @@ class test_Channel:
             call(13, transport.on_readable, 13),
         ])
 
+    def test_register_with_event_loop__restore_interval_from_options(self):
+        """A non-default ``unacked_restore_interval`` transport option is
+        forwarded as the delay of the periodic restore timer, instead of the
+        built-in default of 10 seconds."""
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(
+            name='client',
+            transport_options={'unacked_restore_interval': 5},
+        )
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        loop.call_repeatedly.assert_has_calls([
+            call(5, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+
+    @pytest.mark.parametrize('restore_interval', [0, -5])
+    def test_register_with_event_loop__non_positive_interval_falls_back(
+            self, restore_interval):
+        """A non-positive ``unacked_restore_interval`` would stall the restore
+        timer, so it falls back to the default cadence of 10 seconds."""
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(
+            name='client',
+            transport_options={'unacked_restore_interval': restore_interval},
+        )
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+
     @pytest.mark.parametrize('fds', [{12: 'LISTEN', 13: 'BRPOP'}, {}])
     def test_register_with_event_loop__on_disconnect__loop_cleanup(self, fds):
         """Ensure on_poll_start stays in on_tick after disconnect.

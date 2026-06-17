@@ -1561,6 +1561,8 @@ class Transport(virtual.Transport):
         restore_interval = connection.client.transport_options.get(
             'unacked_restore_interval', Channel.unacked_restore_interval
         )
+        if restore_interval <= 0:
+            restore_interval = Channel.unacked_restore_interval
         cycle._restore_messages_tref = loop.call_repeatedly(
             restore_interval, cycle.maybe_restore_messages
         )
