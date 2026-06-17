@@ -506,9 +506,13 @@ class Channel(virtual.Channel):
                     self.pgmq.delete(queue, msg_id)
             self.qos.reject(delivery_tag, requeue=False)
 
-    def _restore(self, message,
-                 unwanted_delivery_info=('pgmq_message', 'pgmq_msg_id',
-                                       'pgmq_queue')):
+    def _restore(
+        self,
+        message,
+        unwanted_delivery_info=(
+            'pgmq_message', 'pgmq_msg_id', 'pgmq_queue',
+        ),
+    ):
         for unwanted_key in unwanted_delivery_info:
             message.delivery_info.pop(unwanted_key, None)
         return super()._restore(message)

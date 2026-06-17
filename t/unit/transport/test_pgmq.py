@@ -7,10 +7,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-pytest.importorskip('pgmq')
-
 from kombu.transport.pgmq import (FANOUT_TOPIC_PREFIX, PGMQ_MAX_MESSAGES,
                                   Channel, Transport)
+
+pytest.importorskip('pgmq')
 
 
 class test_PGMQ:
