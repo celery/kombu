@@ -753,9 +753,9 @@ class Transport(virtual.Transport):
         password = params['password'] if include_password else mask
         return as_url(
             'pgmq',
-            params['userid'],
-            password,
             params['hostname'],
             params['port'] or cls.default_port,
+            params['userid'],
+            password,
             params['virtual_host'],
         )
