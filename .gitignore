@@ -1,5 +1,7 @@
 .DS_Store
 *.pyc
+*.pyo
+ **/__pycache__/
 *$py.class
 *~
 *.sqlite
@@ -8,6 +10,7 @@ settings_local.py
 build/
 .build/
 _build/
+docs/_build
 .*.sw*
 dist/
 *.egg-info
