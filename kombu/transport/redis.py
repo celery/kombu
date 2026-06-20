@@ -601,7 +601,10 @@ class MultiChannelPoller:
                     return
 
     def on_readable(self, fileno):
-        chan, type = self._fd_to_chan[fileno]
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            return
+        chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
 
@@ -609,7 +612,10 @@ class MultiChannelPoller:
         if event & READ:
             return self.on_readable(fileno), self
         elif event & ERR:
-            chan, type = self._fd_to_chan[fileno]
+            chan_type = self._fd_to_chan.get(fileno)
+            if chan_type is None:
+                return
+            chan, type = chan_type
             chan._poll_error(type)
 
     def get(self, callback, timeout=None):

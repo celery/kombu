@@ -2121,6 +2121,17 @@ class test_MultiChannelPoller:
 
         p.handle_event(13, ~(redis.READ | redis.ERR))
 
+    def test_on_readable_ignores_unmapped_fd(self):
+        p = self.Poller()
+        assert 35 not in p._fd_to_chan
+        p.on_readable(35)
+
+    def test_handle_event_ignores_unmapped_fd(self):
+        p = self.Poller()
+        assert 35 not in p._fd_to_chan
+        p.handle_event(35, redis.READ)
+        p.handle_event(35, redis.ERR)
+
     def test_fds(self):
         p = self.Poller()
         p._fd_to_chan = {1: 2}
