@@ -2129,8 +2129,8 @@ class test_MultiChannelPoller:
     def test_handle_event_ignores_unmapped_fd(self):
         p = self.Poller()
         assert 35 not in p._fd_to_chan
-        p.handle_event(35, redis.READ)
-        p.handle_event(35, redis.ERR)
+        assert p.handle_event(35, redis.READ) is None
+        assert p.handle_event(35, redis.ERR) is None
 
     def test_fds(self):
         p = self.Poller()
