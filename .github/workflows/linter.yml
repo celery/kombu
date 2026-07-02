@@ -12,7 +12,7 @@ jobs:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
         id: python
         uses: useblacksmith/setup-python@v6
