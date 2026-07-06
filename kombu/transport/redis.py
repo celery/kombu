@@ -1127,6 +1127,17 @@ class Channel(virtual.Channel):
         connection = getattr(client, 'connection', None)
         if self._pending_reauth_token(connection) is None:
             return
+        if getattr(connection, '_sock', None) is None:
+            # The socket is already down (e.g. a BRPOP connection error just
+            # disconnected it, or a previous flush failed).  ``re_auth`` would
+            # transparently reconnect a *fresh* socket via ``send_command``,
+            # but behind the poller's back: ``_register_BRPOP`` would then skip
+            # re-registering it (its ``_chan_to_sock`` entry survives the
+            # disconnect and ``_sock`` is no longer ``None``), so the new fd is
+            # never handed to the event loop and the channel silently stalls.
+            # Leave it to ``_register_BRPOP`` to reconnect *and* re-register;
+            # ``on_connect`` re-authenticates with the current credentials.
+            return
         try:
             connection.re_auth()
         except self.connection_errors + (self.ResponseError,):
@@ -1134,10 +1145,18 @@ class Channel(virtual.Channel):
             # AuthenticationError, ...) or a rejected token surfacing as a
             # ResponseError.  Drop the socket so the next poll reconnects and
             # authenticates with fresh credentials from the credential
-            # provider.  This runs from ``_brpop_read``'s ``finally`` block,
-            # so it must never raise.
+            # provider.  Also clear the stored token: ``re_auth`` only clears
+            # it on success, and once the socket is dropped the reconnect
+            # applies the current credentials via ``on_connect`` — re-sending
+            # this same (possibly expired/rejected) token in place would just
+            # fail again on every tick.  This runs from ``_brpop_read``'s
+            # ``finally`` block, so it must never raise.
             warning('Redis streaming re-auth failed on BRPOP connection; '
                     'reconnecting', exc_info=True)
+            try:
+                connection.set_re_auth_token(None)
+            except AttributeError:
+                pass
             try:
                 connection.disconnect()
             except self.connection_errors:

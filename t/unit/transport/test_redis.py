@@ -1842,10 +1842,13 @@ class test_Channel_streaming_reauth:
         )
         self.channel = self.connection.default_channel
 
-    def _conn(self, token=None, protocol=2):
+    def _conn(self, token=None, protocol=2, connected=True):
         conn = Mock(name='connection')
         conn._re_auth_token = token
         conn.get_protocol.return_value = protocol
+        # redis-py sets Connection._sock to the socket when connected and back
+        # to None on disconnect; the flush guards off it.
+        conn._sock = object() if connected else None
         return conn
 
     def _prime_client(self, conn):
@@ -1942,7 +1945,18 @@ class test_Channel_streaming_reauth:
         self.channel.__dict__.pop('client', None)
         self.channel._flush_brpop_reauth()  # must not raise
 
-    def test_flush_brpop_reauth_disconnects_on_error(self):
+    def test_flush_brpop_reauth_skips_when_socket_down(self):
+        # If the BRPOP socket is already disconnected (e.g. a connection error
+        # just dropped it), re_auth must NOT be called: sending AUTH would
+        # transparently reconnect a fresh socket behind the poller's back,
+        # which _register_BRPOP would never re-register -> silent stall.
+        self.channel._in_poll = False
+        conn = self._conn(token=object(), connected=False)
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()
+        conn.re_auth.assert_not_called()
+
+    def test_flush_brpop_reauth_disconnects_and_clears_token_on_error(self):
         self.channel._in_poll = False
 
         class ConnError(Exception):
@@ -1954,6 +1968,9 @@ class test_Channel_streaming_reauth:
         self._prime_client(conn)
         self.channel._flush_brpop_reauth()  # must not raise
         conn.disconnect.assert_called_once_with()
+        # The token is cleared so we do not re-send the same failing token in
+        # place on every tick (reconnect re-auths via on_connect instead).
+        conn.set_re_auth_token.assert_called_once_with(None)
 
     def test_flush_brpop_reauth_disconnects_on_response_error(self):
         # A rejected token surfaces as a ResponseError (a channel error, not a
@@ -1965,6 +1982,7 @@ class test_Channel_streaming_reauth:
         self._prime_client(conn)
         self.channel._flush_brpop_reauth()  # must not raise
         conn.disconnect.assert_called_once_with()
+        conn.set_re_auth_token.assert_called_once_with(None)
 
     def test_flush_brpop_reauth_swallows_disconnect_error(self):
         self.channel._in_poll = False
@@ -2035,6 +2053,37 @@ class test_Channel_streaming_reauth:
             self.channel._brpop_read()
         assert self.channel._in_poll is None
         self.channel._flush_brpop_reauth.assert_called_once_with()
+
+    def test_brpop_read_connection_error_does_not_eager_reconnect(self):
+        # Regression guard for #2509: after a BRPOP connection error drops the
+        # socket, the finally-block re-auth flush must NOT reconnect it (via
+        # re_auth -> send_command).  An eagerly-reconnected socket would be
+        # skipped by _register_BRPOP (its _chan_to_sock entry survives the
+        # disconnect) and never handed to the poller, silently stalling the
+        # channel.  The socket must be left down for _register_BRPOP to
+        # reconnect *and* re-register.
+        class ConnError(Exception):
+            pass
+
+        self.channel.connection_errors = (ConnError,)
+
+        conn = self._conn(token=object(), connected=True)
+
+        def _disconnect():
+            conn._sock = None  # mirror redis-py: disconnect clears the socket
+
+        conn.disconnect.side_effect = _disconnect
+        client = Mock(name='client')
+        client.connection = conn
+        client.parse_response.side_effect = ConnError('server closed')
+        self.channel.__dict__['client'] = client
+
+        with pytest.raises(ConnError):
+            self.channel._brpop_read()
+
+        conn.disconnect.assert_called_once_with()   # from the error path
+        conn.re_auth.assert_not_called()            # no eager reconnect
+        assert conn._sock is None                   # left down for _register
 
 
 class test_Redis:
