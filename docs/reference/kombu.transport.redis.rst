@@ -40,7 +40,7 @@
     .. versionadded:: 5.7.0
 
     The transport supports rotating credentials supplied by a
-    :class:`redis.credentials.StreamingCredentialProvider` (for example the
+    ``redis.credentials.StreamingCredentialProvider`` (for example the
     Microsoft Entra ID provider from ``redis-entraid``, or an AWS ElastiCache
     IAM provider).  Configure it like any other credential provider:
 

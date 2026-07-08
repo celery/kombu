@@ -615,10 +615,14 @@ class MultiChannelPoller:
             try:
                 channel.maybe_reauth()
             except channel.connection_errors:
+                # Connection is broken; skip this cycle and retry next tick.
+                # Stop iterating to avoid repeated exceptions/log spam when
+                # the broker is down (channels share the broken connection).
                 logger.debug(
                     'maybe_reauth: connection error, '
                     'will retry on next cycle', exc_info=True
                 )
+                return
 
     def on_readable(self, fileno):
         chan, type = self._fd_to_chan[fileno]
@@ -1080,7 +1084,7 @@ class Channel(virtual.Channel):
 
         redis-py only re-authenticates *subscribed* connections in place when
         the RESP3 protocol has been negotiated (see
-        :class:`redis.event.RegisterReAuthForPubSub`); a RESP2 subscriber
+        ``redis.event.RegisterReAuthForPubSub``); a RESP2 subscriber
         connection cannot process an ``AUTH`` command at all.  When RESP3 is in
         use we therefore leave the pub/sub connection to redis-py and avoid
         interfering with it.
