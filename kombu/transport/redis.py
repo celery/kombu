@@ -614,15 +614,23 @@ class MultiChannelPoller:
                     return
 
     def on_readable(self, fileno):
-        chan, type = self._fd_to_chan[fileno]
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
+            return
+        chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
 
     def handle_event(self, fileno, event):
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
+            return
         if event & READ:
             return self.on_readable(fileno), self
         elif event & ERR:
-            chan, type = self._fd_to_chan[fileno]
+            chan, type = chan_type
             chan._poll_error(type)
 
     def get(self, callback, timeout=None):
