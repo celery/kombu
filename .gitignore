@@ -33,6 +33,7 @@ htmlcov/
 test.db
 coverage.xml
 venv/
+.venv
 env
 .eggs
 .python-version
