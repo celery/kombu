@@ -28,7 +28,40 @@ the connection string has following format:
 
 Transport Options
 =================
-* ``sep``
+* ``sep``: (str) Field separator used when encoding queue-binding entries
+  in Redis (``_kombu.binding.*`` keys).  Default: ``'\\x06\\x16'``
+  (two non-printing ASCII control characters, binary-safe in all payload
+  types).
+
+  .. warning::
+
+      Once a Redis broker has live ``_kombu.binding.*`` entries written
+      with one ``sep`` value, changing ``sep`` in
+      ``broker_transport_options`` of a subsequent deploy will produce::
+
+          ValueError: not enough values to unpack (expected 3, got 1)
+
+      from ``DirectExchange.lookup()`` in
+      ``kombu/transport/virtual/exchange.py`` when those stale entries
+      are read.  ``get_table()`` splits each stored entry on the *new*
+      separator; if the old separator is not present the split returns a
+      1-element tuple rather than the required ``(routing_key, pattern,
+      queue)`` 3-tuple.
+
+      **Before deploying a** ``sep`` **change against a live Redis**,
+      either delete the existing binding keys:
+
+      .. code-block:: bash
+
+          redis-cli --scan --pattern '_kombu.binding.*' | xargs -r -n 100 redis-cli DEL
+
+      or point the deploy at a fresh Redis logical database
+      (``redis://host/1`` instead of ``redis://host/0``).
+
+      The default ``sep`` (``'\\x06\\x16'``) is binary-safe and rarely
+      needs to change.  Explicit override is usually only for
+      human-readability of binding keys during debugging.
+
 * ``ack_emulation``: (bool) If set to True transport will
   simulate Acknowledge of AMQP protocol.
 * ``unacked_key``
