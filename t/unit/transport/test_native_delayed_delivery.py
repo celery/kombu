@@ -166,3 +166,22 @@ class test_calculate_routing_key:
     def test_none_routing_key(self):
         with pytest.raises(ValueError, match="routing_key must be non-empty"):
             calculate_routing_key(1, None)
+
+    def test_calculate_routing_key_with_existing_prefix(self):
+        # A routing key that already carries a delayed-delivery prefix (for
+        # example, from a previous ``self.retry(countdown=...)``) must not
+        # accumulate a second prefix; the old prefix is stripped first.
+        prefixed = calculate_routing_key(1, 'destination')
+        assert (calculate_routing_key(2, prefixed)
+                == '0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.destination')
+
+    def test_calculate_routing_key_does_not_accumulate_on_retries(self):
+        # Repeated calls (as happen across sequential delayed retries) must
+        # keep the routing key at a constant length instead of growing past
+        # the 255-byte AMQP short-string limit.
+        routing_key = 'my_routing_key'
+        expected = calculate_routing_key(5, routing_key)
+        for _ in range(10):
+            routing_key = calculate_routing_key(5, routing_key)
+            assert routing_key == expected
+            assert len(routing_key) <= 255
