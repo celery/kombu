@@ -56,6 +56,7 @@ Kombu Transports
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro
+    kombu.transport.nats
 
 
 Kombu Asynchronous
