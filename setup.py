@@ -114,6 +114,7 @@ setup(
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
         'confluentkafka': extras('confluentkafka.txt'),
+        'rocketmq': extras('rocketmq.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
