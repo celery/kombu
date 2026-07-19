@@ -165,10 +165,10 @@ class test_CurlClient:
         second_timer = Mock(name='second_timer')
         hub.call_later.side_effect = [first_timer, second_timer]
 
-        x._set_timeout(100)
+        x._set_timeout(0.1)
         assert x._tref is first_timer
 
-        x._set_timeout(100)
+        x._set_timeout(0.1)
 
         first_timer.cancel.assert_called_once()
         assert x._tref is second_timer
