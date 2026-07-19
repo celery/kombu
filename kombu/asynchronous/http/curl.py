@@ -58,6 +58,8 @@ class CurlClient(BaseClient):
             1.0, self._timeout_check,
         )
 
+        self._tref = None
+
         # pycurl 7.29.0 workaround
         dummy_curl_handle = pycurl.Curl()
         self._multi.add_handle(dummy_curl_handle)
@@ -102,7 +104,9 @@ class CurlClient(BaseClient):
                 self._fds[fd] = READ | WRITE
 
     def _set_timeout(self, msecs):
-        self.hub.call_later(msecs, self._timeout_check)
+        if self._tref is not None:
+            self._tref.cancel()
+        self._tref = self.hub.call_later(msecs / 1000.0, self._timeout_check)
 
     def _timeout_check(self, _pycurl=pycurl):
         self._pop_from_hub()
