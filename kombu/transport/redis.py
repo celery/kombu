@@ -427,9 +427,10 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
-                    visible = client.zrevrangebyscore(
+                    visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
-                        start=num and start, num=num, withscores=True)
+                        desc=True, byscore=True,
+                        offset=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
