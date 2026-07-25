@@ -100,7 +100,7 @@ class test_CurlClient:
         hub = Mock(name='hub')
         x = self.Client(hub)
         x._set_timeout(100)
-        hub.call_later.assert_called_with(100, x._timeout_check)
+        hub.call_later.assert_called_with(0.1, x._timeout_check)
 
     def test_timeout_check(self):
         with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
@@ -155,3 +155,20 @@ class test_CurlClient:
                 x.Curl, proxied_request, BytesIO(), x.Headers(), _pycurl
             )
             x.Curl.setopt.assert_any_call(_pycurl.PROXY, proxy_host)
+
+    def test_second_timer_cancelled(self):
+        hub = Mock(name='hub')
+
+        x = self.Client(hub)
+
+        first_timer = Mock(name='first_timer')
+        second_timer = Mock(name='second_timer')
+        hub.call_later.side_effect = [first_timer, second_timer]
+
+        x._set_timeout(0.1)
+        assert x._tref is first_timer
+
+        x._set_timeout(0.1)
+
+        first_timer.cancel.assert_called_once()
+        assert x._tref is second_timer
