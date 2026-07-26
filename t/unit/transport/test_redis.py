@@ -5,19 +5,20 @@ import copy
 import socket
 import types
 from collections import defaultdict
+from contextlib import contextmanager
 from itertools import count
 from queue import Empty
 from queue import Queue as _Queue
 from typing import TYPE_CHECKING
-from unittest.mock import ANY, Mock, call, patch
+from unittest.mock import ANY, MagicMock, Mock, call, patch
 
 import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
-from kombu.exceptions import VersionMismatch
+from kombu.exceptions import BatchPublishError, VersionMismatch
 from kombu.transport import virtual
 from kombu.utils import eventio  # patch poll
-from kombu.utils.json import dumps
+from kombu.utils.json import dumps, loads
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -308,6 +309,239 @@ class test_Channel:
             assert payload
             pymsg = chan.message_to_python(payload)
             return pymsg.delivery_tag
+
+    def _recording_batch_client(self):
+        client = MagicMock(wraps=self.channel._create_client())
+        pipeline = MagicMock()
+        pipeline.__enter__.return_value = pipeline
+        pipeline.__exit__.return_value = None
+        client.pipeline.return_value = pipeline
+
+        @contextmanager
+        def acquire(client=None):
+            yield client or client_instance
+
+        client_instance = client
+        self.channel.conn_or_acquire = acquire
+        return client, pipeline
+
+    def test_publish_batch_capability_is_advertised(self):
+        producer = Producer(self.channel)
+
+        assert producer.supports_batch_publish is True
+        assert self.connection.transport.implements.batch_publish is True
+
+    def test_publish_batch_uses_non_transactional_pipeline(self):
+        client, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel)
+
+        with producer.batch():
+            producer.publish('message', exchange='', routing_key='batch-queue')
+
+        client.pipeline.assert_called_once_with(transaction=False)
+        pipeline.lpush.assert_called_once()
+        pipeline.execute.assert_called_once_with()
+
+    def test_publish_batch_preserves_direct_routing_priority_and_order(self):
+        exchange = Exchange('batch-direct', type='direct')
+        queue = Queue(
+            'batch-direct-queue',
+            exchange=exchange,
+            routing_key='batch.route',
+        )
+        queue(self.channel).declare()
+        _, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch():
+            producer.publish(
+                {'position': 'first'},
+                exchange=exchange,
+                routing_key='batch.route',
+                priority=6,
+            )
+            producer.publish(
+                {'position': 'second'},
+                exchange=exchange,
+                routing_key='batch.route',
+                priority=6,
+            )
+
+        lpush_calls = [
+            method_call
+            for method_call in pipeline.method_calls
+            if method_call[0] == 'lpush'
+        ]
+        assert [method_call.args[0] for method_call in lpush_calls] == [
+            f'batch-direct-queue{self.channel.sep}6',
+            f'batch-direct-queue{self.channel.sep}6',
+        ]
+        messages = [loads(method_call.args[1]) for method_call in lpush_calls]
+        assert messages[0]['body'] != messages[1]['body']
+        assert pipeline.method_calls.index(lpush_calls[0]) < (
+            pipeline.method_calls.index(lpush_calls[1])
+        )
+
+    def test_publish_batch_preserves_topic_routing(self):
+        exchange = Exchange('batch-topic', type='topic')
+        matching = Queue(
+            'batch-topic-matching',
+            exchange=exchange,
+            routing_key='events.*',
+        )
+        other = Queue(
+            'batch-topic-other',
+            exchange=exchange,
+            routing_key='other.*',
+        )
+        matching(self.channel).declare()
+        other(self.channel).declare()
+        _, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch():
+            producer.publish(
+                {'event': 1},
+                exchange=exchange,
+                routing_key='events.created',
+            )
+
+        pipeline.lpush.assert_called_once()
+        assert pipeline.lpush.call_args.args[0] == 'batch-topic-matching'
+
+    def test_publish_batch_preserves_fanout_topic(self):
+        exchange = Exchange('batch-fanout', type='fanout')
+        queue = Queue('batch-fanout-queue', exchange=exchange)
+        queue(self.channel).declare()
+        _, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch():
+            producer.publish(
+                {'event': 1},
+                exchange=exchange,
+                routing_key='worker.*',
+            )
+
+        pipeline.publish.assert_called_once()
+        assert pipeline.publish.call_args.args[0] == (
+            self.channel._get_publish_topic('batch-fanout', 'worker.*')
+        )
+
+    def test_publish_batch_auto_flushes_at_max_size(self):
+        _, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch(max_size=2):
+            for index in range(3):
+                producer.publish(
+                    {'index': index},
+                    exchange='',
+                    routing_key='batch-limit',
+                )
+
+        assert pipeline.execute.call_count == 2
+
+    def test_publish_batch_includes_queue_expiry_commands(self):
+        queue = Queue('batch-expiring', expires=5)
+        queue(self.channel).declare()
+        self.channel._expires[queue.name] = 5000
+        client, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch():
+            producer.publish(
+                {'event': 1},
+                exchange='',
+                routing_key=queue.name,
+            )
+
+        pipeline.lpush.assert_called_once()
+        assert pipeline.pexpire.call_count == len(self.channel.priority_steps)
+        client.pipeline.assert_called_once_with(transaction=False)
+
+    def test_publish_batch_flush_failure_is_not_retried_and_cleans_up(self):
+        self.channel.queue_declare('batch-after-failure')
+        client, pipeline = self._recording_batch_client()
+        pipeline.execute.side_effect = RuntimeError('response lost')
+        producer = Producer(self.channel, serializer='json')
+
+        with pytest.raises(
+            BatchPublishError,
+            match='delivery is uncertain',
+        ) as exc_info:
+            with producer.batch():
+                producer.publish(
+                    {'event': 1},
+                    exchange='',
+                    routing_key='batch-failure',
+                )
+
+        pipeline.execute.assert_called_once_with()
+        pipeline.reset.assert_called()
+        pipeline.__exit__.assert_called_once()
+        assert str(exc_info.value.__cause__) == 'response lost'
+
+        pipeline.execute.side_effect = None
+        producer.publish(
+            {'event': 2},
+            exchange='',
+            routing_key='batch-after-failure',
+        )
+        client.lpush.assert_called_once()
+
+    def test_publish_batch_auto_flush_failure_ignores_publish_retry(self):
+        _, pipeline = self._recording_batch_client()
+        pipeline.execute.side_effect = redis.redis.ConnectionError(
+            'response lost',
+        )
+        producer = Producer(self.channel, serializer='json')
+
+        with pytest.raises(BatchPublishError, match='delivery is uncertain'):
+            with producer.batch(max_size=1):
+                producer.publish(
+                    {'event': 1},
+                    exchange='',
+                    routing_key='batch-retry',
+                    retry=True,
+                    retry_policy={'max_retries': 3},
+                )
+
+        pipeline.execute.assert_called_once_with()
+
+    def test_publish_batch_command_queueing_failure_cleans_up(self):
+        _, pipeline = self._recording_batch_client()
+        pipeline.lpush.side_effect = RuntimeError('cannot queue command')
+        producer = Producer(self.channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='cannot queue command'):
+            with producer.batch():
+                producer.publish(
+                    {'event': 1},
+                    exchange='',
+                    routing_key='batch-command-failure',
+                )
+
+        pipeline.execute.assert_not_called()
+        pipeline.reset.assert_called()
+        pipeline.__exit__.assert_called_once()
+
+    def test_sentinel_inherits_publish_batch_support(self):
+        assert issubclass(redis.SentinelChannel, redis.Channel)
+        assert redis.SentinelChannel.create_publish_batch is (
+            redis.Channel.create_publish_batch
+        )
+        assert redis.SentinelTransport.implements.batch_publish is True
+
+    def test_tls_uses_batch_capable_redis_transport(self):
+        connection = Connection('rediss://localhost:6379/0')
+        try:
+            producer = Producer(connection)
+
+            assert connection.transport.Channel is redis.Channel
+            assert producer.supports_batch_publish is True
+        finally:
+            connection.close()
 
     def test_delivery_tag_is_uuid(self):
         seen = set()
