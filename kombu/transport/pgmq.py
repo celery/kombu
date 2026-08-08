@@ -288,7 +288,12 @@ class Channel(virtual.Channel):
             kwargs['headers'] = headers
 
         if 'DelaySeconds' in properties:
-            kwargs['delay'] = int(properties['DelaySeconds'])
+            try:
+                delay = max(0, int(properties['DelaySeconds']))
+            except (TypeError, ValueError):
+                delay = 0
+            if delay:
+                kwargs['delay'] = delay
         else:
             expiration = properties.get('expiration')
             if expiration is not None:
