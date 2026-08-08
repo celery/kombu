@@ -169,4 +169,4 @@ def calculate_routing_key(countdown: int, routing_key: str) -> str:
     # eventually exceed AMQP's 255-byte short-string limit (see issue #2556).
     routing_key = DELAYED_DELIVERY_PREFIX_REGEX.sub('', routing_key)
 
-    return '.'.join(list(f'{countdown:028b}')) + f'.{routing_key}'
+    return '.'.join(f'{countdown:0{MAX_NUMBER_OF_BITS_TO_USE}b}') + f'.{routing_key}'
