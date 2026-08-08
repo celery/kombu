@@ -787,7 +787,7 @@ class PublishBatch:
             raise RuntimeError('Redis publish batch is aborted')
         if self._failed is not None:
             raise BatchPublishError(
-                'Redis publish batch cannot be reused after flush failure',
+                'Redis publish batch cannot be reused after a previous failure',
             ) from self._failed
 
 
