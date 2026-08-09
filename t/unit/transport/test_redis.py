@@ -741,11 +741,14 @@ class test_Channel:
         client.zrevrangebyscore.assert_not_called()
         client.zrange.assert_called_once()
         args, kwargs = client.zrange.call_args
+        assert args[0] == qos.unacked_index_key
+        assert args[1] == 0
+        assert args[2] >= 0
         assert kwargs['desc'] is True
         assert kwargs['byscore'] is True
+        assert kwargs['offset'] == 0
         assert kwargs['num'] == 10
         assert kwargs['withscores'] is True
-
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
         self.channel.queue_declare(queue='txconfanq')
