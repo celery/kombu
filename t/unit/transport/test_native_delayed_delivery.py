@@ -184,4 +184,4 @@ class test_calculate_routing_key:
         for _ in range(10):
             routing_key = calculate_routing_key(5, routing_key)
             assert routing_key == expected
-            assert len(routing_key) <= 255
+            assert len(routing_key.encode()) <= 255
