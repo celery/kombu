@@ -688,7 +688,7 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = [
+        client.zrange.return_value = [
             (1, 10),
             (2, 20),
             (3, 30),
@@ -697,7 +697,7 @@ class test_Channel:
         restore = qos.restore_by_tag = Mock(name='restore_by_tag')
         qos._vrestore_count = 1
         qos.restore_visible()
-        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_not_called()
         assert qos._vrestore_count == 2
 
         qos._vrestore_count = 0
@@ -709,7 +709,7 @@ class test_Channel:
 
         qos._vrestore_count = 0
         restore.reset_mock()
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos.restore_visible()
         restore.assert_not_called()
         assert qos._vrestore_count == 1
@@ -717,6 +717,39 @@ class test_Channel:
         qos._vrestore_count = 0
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
+
+    def test_qos_restore_visible_uses_zrange(self):
+        """Regression test for https://github.com/celery/kombu/issues/2050.
+
+        ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is not implemented
+        by every Redis-compatible server, so restore_visible must issue an
+        equivalent ZRANGE ... BYSCORE REV query instead.
+        """
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrange.return_value = []
+
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+        qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_called_once()
+        args, kwargs = client.zrange.call_args
+        assert args[0] == qos.unacked_index_key
+        # redis-py passes the upper score first for ZRANGE ... BYSCORE REV.
+        assert args[1] >= args[2]
+        assert args[2] == 0
+        assert kwargs['desc'] is True
+        assert kwargs['byscore'] is True
+        assert kwargs['offset'] == 0
+        assert kwargs['num'] == 10
+        assert kwargs['withscores'] is True
 
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
