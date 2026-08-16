@@ -173,34 +173,69 @@ class _NotifyWaiter:
         self._conn = None
         self._channels: set[str] = set()
         self._lock = threading.Lock()
+        self._closed = False
 
     def register(self, queue_name: str) -> None:
         channel = f'pgmq.q_{queue_name}.INSERT'
         with self._lock:
-            if channel in self._channels:
+            if self._closed or channel in self._channels:
                 return
             self._ensure_conn()
-            self._conn.execute(f'LISTEN "{channel}";')
+            self._listen(self._conn, channel)
             self._channels.add(channel)
 
     def wait(self, timeout: float | None) -> bool:
-        if not self._channels:
+        with self._lock:
+            if self._closed or not self._channels:
+                return False
+            self._ensure_conn()
+            conn = self._conn
+        try:
+            for _ in conn.notifies(timeout=timeout):
+                return True
+        except (OSError, psycopg.OperationalError, psycopg.InterfaceError):
+            self._drop_conn(conn)
             return False
-        self._ensure_conn()
-        for _ in self._conn.notifies(timeout=timeout):
-            return True
         return False
 
     def close(self) -> None:
         with self._lock:
-            if self._conn is not None:
-                self._conn.close()
-                self._conn = None
+            self._closed = True
+            conn, self._conn = self._conn, None
             self._channels.clear()
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+    def _drop_conn(self, conn) -> None:
+        with self._lock:
+            if self._closed or self._conn is not conn:
+                return
+            self._conn = None
+        try:
+            conn.close()
+        except Exception:
+            pass
 
     def _ensure_conn(self) -> None:
-        if self._conn is None:
-            self._conn = psycopg.connect(self._dsn, autocommit=True)
+        if self._conn is not None:
+            return
+        conn = psycopg.connect(self._dsn, autocommit=True)
+        try:
+            for channel in self._channels:
+                self._listen(conn, channel)
+        except Exception:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            raise
+        self._conn = conn
+
+    def _listen(self, conn, channel: str) -> None:
+        conn.execute(f'LISTEN "{channel}";')
 
 
 class Channel(virtual.Channel):
@@ -668,12 +703,14 @@ class Transport(virtual.Transport):
                 wait_time = polling_interval
                 if timeout is not None:
                     remaining = timeout - (monotonic() - time_start)
+                    if remaining <= 0:
+                        raise socket.timeout()
                     if wait_time is None or wait_time > remaining:
                         wait_time = remaining
                 if use_notify and wait_time:
                     self._get_notify_waiter().wait(wait_time)
-                elif polling_interval is not None:
-                    sleep(polling_interval)
+                elif polling_interval is not None and wait_time:
+                    sleep(wait_time)
             else:
                 break
 
@@ -727,10 +764,15 @@ class Transport(virtual.Transport):
             if self._notify_waiter is not None:
                 self._notify_waiter.close()
                 self._notify_waiter = None
-            if self._pgmq_client is not None:
-                pool = getattr(self._pgmq_client, 'pool', None)
-                if pool is not None:
-                    pool.close()
+            client = self._pgmq_client
+            if client is not None:
+                closer = getattr(client, 'close', None)
+                if closer is not None:
+                    closer()
+                else:
+                    pool = getattr(client, 'pool', None)
+                    if pool is not None:
+                        pool.close()
                 self._pgmq_client = None
 
     def verify_connection(self, connection) -> bool:

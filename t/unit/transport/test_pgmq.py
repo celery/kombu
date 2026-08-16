@@ -12,6 +12,7 @@ from kombu.transport.pgmq import (FANOUT_TOPIC_PREFIX, PGMQ_MAX_MESSAGES,
                                   Channel, Transport, _NotifyWaiter)
 
 pytest.importorskip("pgmq")
+psycopg = pytest.importorskip("psycopg")
 
 
 class test_PGMQ:
@@ -345,12 +346,19 @@ class test_PGMQ:
                 pool_size=10,
             )
 
-    def test_close_connection_closes_pool(self):
-        pool = Mock()
-        self.transport._pgmq_client = Mock(pool=pool)
-
+    def test_close_connection_calls_client_close(self):
+        client = Mock()
+        self.transport._pgmq_client = client
         self.transport.close_connection(Mock())
+        client.close.assert_called_once()
+        assert self.transport._pgmq_client is None
 
+    def test_close_connection_falls_back_to_pool_close(self):
+        pool = Mock()
+        client = Mock(spec=["pool"])
+        client.pool = pool
+        self.transport._pgmq_client = client
+        self.transport.close_connection(Mock())
         pool.close.assert_called_once()
         assert self.transport._pgmq_client is None
 
@@ -415,6 +423,62 @@ class test_NotifyWaiter:
             waiter.close()
             mock_conn.close.assert_called_once()
             assert waiter._channels == set()
+
+    def test_wait_after_close_returns_false(self):
+        mock_conn = Mock()
+        mock_conn.notifies.return_value = iter([Mock()])
+        with patch("kombu.transport.pgmq.psycopg.connect", return_value=mock_conn):
+            waiter = _NotifyWaiter("postgresql://localhost/test")
+            waiter.register("celery")
+            waiter.close()
+            assert waiter.wait(1.0) is False
+            mock_conn.notifies.assert_not_called()
+
+    def test_wait_returns_false_on_closed_connection(self):
+        mock_conn = Mock()
+        mock_conn.notifies.side_effect = psycopg.InterfaceError("closed")
+        with patch("kombu.transport.pgmq.psycopg.connect", return_value=mock_conn):
+            waiter = _NotifyWaiter("postgresql://localhost/test")
+            waiter.register("celery")
+            assert waiter.wait(1.0) is False
+
+    def test_wait_reconnects_after_connection_error(self):
+        dead = Mock()
+        dead.notifies.side_effect = psycopg.InterfaceError("closed")
+        fresh = Mock()
+        fresh.notifies.return_value = iter([Mock()])
+        with patch(
+            "kombu.transport.pgmq.psycopg.connect", side_effect=[dead, fresh]
+        ) as connect:
+            waiter = _NotifyWaiter("postgresql://localhost/test")
+            waiter.register("celery")
+            assert waiter.wait(1.0) is False
+            assert waiter.wait(1.0) is True
+        assert connect.call_count == 2
+        dead.close.assert_called()
+        fresh.execute.assert_called_with('LISTEN "pgmq.q_celery.INSERT";')
+
+    def test_wait_relistens_all_channels_on_reconnect(self):
+        dead = Mock()
+        dead.notifies.side_effect = psycopg.InterfaceError("closed")
+        fresh = Mock()
+        fresh.notifies.return_value = iter([])
+        with patch("kombu.transport.pgmq.psycopg.connect", side_effect=[dead, fresh]):
+            waiter = _NotifyWaiter("postgresql://localhost/test")
+            waiter.register("celery")
+            waiter.register("other")
+            assert waiter.wait(1.0) is False
+            assert waiter.wait(1.0) is False
+        listened = [call.args[0] for call in fresh.execute.call_args_list]
+        assert 'LISTEN "pgmq.q_celery.INSERT";' in listened
+        assert 'LISTEN "pgmq.q_other.INSERT";' in listened
+
+    def test_register_after_close_is_noop(self):
+        with patch("kombu.transport.pgmq.psycopg.connect") as connect:
+            waiter = _NotifyWaiter("postgresql://localhost/test")
+            waiter.close()
+            waiter.register("celery")
+            connect.assert_not_called()
 
 
 class test_PGMQ_additional:
@@ -482,6 +546,33 @@ class test_PGMQ_additional:
         message = {"body": "hello", "properties": {"expiration": "0"}}
         self.channel._put("celery", message)
         self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
+    def test_put_with_invalid_delay_seconds(self):
+        message = {"body": "hello", "properties": {"DelaySeconds": "not-a-number"}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
+    def test_put_with_none_delay_seconds(self):
+        message = {"body": "hello", "properties": {"DelaySeconds": None}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
+    def test_put_with_negative_delay_seconds(self):
+        message = {"body": "hello", "properties": {"DelaySeconds": -3}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
+    def test_put_with_zero_delay_seconds(self):
+        message = {"body": "hello", "properties": {"DelaySeconds": 0}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
+    def test_put_with_string_delay_seconds(self):
+        message = {"body": "hello", "properties": {"DelaySeconds": "7"}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with(
+            "celery", message, delay=7
+        )
 
     def test_normalize_messages_none(self):
         assert self.channel._normalize_messages(None) == []
@@ -663,6 +754,55 @@ class test_PGMQ_additional:
         with patch.object(transport.cycle, "get", side_effect=Empty()):
             with pytest.raises(socket.timeout):
                 transport.drain_events(Mock(), timeout=0.01)
+
+    def test_drain_events_sleeps_remaining_timeout(self):
+        self.kombu_connection.transport_options = {"polling_interval": 10}
+        transport = Transport(self.kombu_connection)
+        with patch.object(transport.cycle, "get", side_effect=Empty()):
+            with patch("kombu.transport.pgmq.sleep") as mocked_sleep:
+                with pytest.raises(socket.timeout):
+                    transport.drain_events(Mock(), timeout=0.05)
+        mocked_sleep.assert_called()
+        slept = mocked_sleep.call_args[0][0]
+        assert 0 < slept <= 0.05
+
+    def test_drain_events_second_sleep_uses_remaining_timeout(self):
+        self.kombu_connection.transport_options = {"polling_interval": 0.05}
+        transport = Transport(self.kombu_connection)
+        sleeps = []
+
+        def fake_sleep(seconds):
+            sleeps.append(seconds)
+
+        times = iter([0.00, 0.00, 0.00, 0.04, 0.04, 0.06])
+        with patch.object(transport.cycle, "get", side_effect=Empty()):
+            with patch("kombu.transport.pgmq.sleep", side_effect=fake_sleep):
+                with patch("kombu.transport.pgmq.monotonic", side_effect=times):
+                    with pytest.raises(socket.timeout):
+                        transport.drain_events(Mock(), timeout=0.05)
+        assert sleeps[0] == pytest.approx(0.05)
+        assert sleeps[1] == pytest.approx(0.01)
+        assert len(sleeps) == 2
+
+    def test_drain_events_timeout_when_remaining_goes_negative(self):
+        self.kombu_connection.transport_options = {"polling_interval": 1}
+        transport = Transport(self.kombu_connection)
+        times = iter([0.0, 0.99, 1.01])
+        with patch.object(transport.cycle, "get", side_effect=Empty()):
+            with patch("kombu.transport.pgmq.sleep") as mocked_sleep:
+                with patch("kombu.transport.pgmq.monotonic", side_effect=times):
+                    with pytest.raises(socket.timeout):
+                        transport.drain_events(Mock(), timeout=1.0)
+        mocked_sleep.assert_not_called()
+
+    def test_drain_events_no_sleep_when_polling_interval_none(self):
+        transport = Transport(self.kombu_connection)
+        transport.polling_interval = None
+        with patch.object(transport.cycle, "get", side_effect=Empty()):
+            with patch("kombu.transport.pgmq.sleep") as mocked_sleep:
+                with pytest.raises(socket.timeout):
+                    transport.drain_events(Mock(), timeout=0.01)
+        mocked_sleep.assert_not_called()
 
     def test_drain_events_delivers_message(self):
         transport = Transport(self.kombu_connection)

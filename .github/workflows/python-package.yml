@@ -87,7 +87,8 @@ jobs:
                   'py-redis',
                   'py-mongodb',
                   'py-kafka',
-                  'py-sqs'
+                  'py-sqs',
+                  'py-pgmq'
               ]
               experimental: [false]
               include:

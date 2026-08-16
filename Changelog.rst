@@ -4,6 +4,13 @@
  Change history
 ================
 
+.. _version-unreleased:
+
+Unreleased
+==========
+
+- Add PGMQ transport for PostgreSQL message queues (#2559)
+
 .. _version-5.6.2:
 
 5.6.2
