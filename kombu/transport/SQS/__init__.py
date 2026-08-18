@@ -1096,9 +1096,12 @@ class Channel(virtual.Channel):
 
     @cached_property
     def visibility_timeout(self):
-        # sqs only accepts whole seconds
-        return int(float(self.transport_options.get('visibility_timeout') or
-                         self.default_visibility_timeout))
+        # sqs only accepts whole seconds, and 0 is a valid value, so the
+        # default only applies when the option is absent or empty.
+        timeout = self.transport_options.get('visibility_timeout')
+        if timeout is None or timeout == '':
+            timeout = self.default_visibility_timeout
+        return int(float(timeout))
 
     @cached_property
     def predefined_queues(self):
