@@ -148,6 +148,20 @@ class test_Exchange:
         Exchange('foo', channel=chan).Message({'foo': 'bar'})
         assert 'prepare_message' in chan
 
+    def test_create_message_delivery_mode(self) -> None:
+        chan = get_conn().channel()
+        exchange = Exchange('foo', channel=chan, delivery_mode='persistent')
+
+        # an explicit delivery_mode overrides the exchange default
+        message = exchange.Message({'foo': 'bar'}, delivery_mode='transient')
+        assert message['properties']['delivery_mode'] == \
+            Exchange.TRANSIENT_DELIVERY_MODE
+
+        # without one, the exchange default is used
+        message = exchange.Message({'foo': 'bar'})
+        assert message['properties']['delivery_mode'] == \
+            Exchange.PERSISTENT_DELIVERY_MODE
+
     def test_publish(self) -> None:
         chan = get_conn().channel()
         Exchange('foo', channel=chan).publish('the quick brown fox')
