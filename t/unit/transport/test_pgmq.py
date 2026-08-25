@@ -322,6 +322,25 @@ class test_PGMQ:
         channel = Channel(connection=self.connection)
         assert channel.wait_time_seconds == 5
 
+    def test_visibility_timeout_default(self):
+        channel = Channel(connection=self.connection)
+        assert channel.visibility_timeout == 1800
+
+    def test_visibility_timeout_zero(self):
+        self.kombu_connection.transport_options = {"visibility_timeout": 0}
+        channel = Channel(connection=self.connection)
+        assert channel.visibility_timeout == 0
+
+    def test_visibility_timeout_empty_string(self):
+        self.kombu_connection.transport_options = {"visibility_timeout": ""}
+        channel = Channel(connection=self.connection)
+        assert channel.visibility_timeout == 1800
+
+    def test_visibility_timeout_string(self):
+        self.kombu_connection.transport_options = {"visibility_timeout": "30"}
+        channel = Channel(connection=self.connection)
+        assert channel.visibility_timeout == 30
+
     def test_url_connection(self):
         with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
             conn = Mock()
@@ -342,6 +361,30 @@ class test_PGMQ:
                 username="user",
                 password="secret",
                 vt=1800,
+                init_extension=True,
+                pool_size=10,
+            )
+
+    def test_create_pgmq_client_honors_zero_visibility_timeout(self):
+        with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
+            conn = Mock()
+            conn.hostname = "db.example.com"
+            conn.port = 5433
+            conn.userid = "user"
+            conn.password = "secret"
+            conn.virtual_host = "/mydb"
+            conn.transport_options = {"visibility_timeout": 0}
+
+            transport = Transport(conn)
+            transport._get_pgmq_client()
+
+            PGMQueueMock.assert_called_once_with(
+                host="db.example.com",
+                port="5433",
+                database="mydb",
+                username="user",
+                password="secret",
+                vt=0,
                 init_extension=True,
                 pool_size=10,
             )

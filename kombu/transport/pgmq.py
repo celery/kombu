@@ -130,11 +130,9 @@ from .virtual.exchange import STANDARD_EXCHANGE_TYPES, TopicExchange
 try:
     import psycopg
     from pgmq import PGMQueue
-    from pgmq.messages import Message as PGMQMessage
 except ImportError:  # pragma: no cover
     psycopg = None
     PGMQueue = None
-    PGMQMessage = None
 
 logger = get_logger(__name__)
 
@@ -582,12 +580,12 @@ class Channel(virtual.Channel):
     def queue_name_prefix(self) -> str:
         return self.transport_options.get('queue_name_prefix', '')
 
-@cached_property
-def visibility_timeout(self) -> int:
-    timeout = self.transport_options.get('visibility_timeout')
-    if timeout is None or timeout == '':
-        timeout = self.default_visibility_timeout
-    return int(float(timeout))
+    @cached_property
+    def visibility_timeout(self) -> int:
+        timeout = self.transport_options.get('visibility_timeout')
+        if timeout is None or timeout == '':
+            timeout = self.default_visibility_timeout
+        return int(float(timeout))
 
     @cached_property
     def wait_time_seconds(self) -> int:
@@ -719,10 +717,10 @@ class Transport(virtual.Transport):
     def _create_pgmq_client(self) -> PGMQueue:
         conninfo = self.client
         transport_options = conninfo.transport_options
-        visibility_timeout = (
-            transport_options.get('visibility_timeout') or
-            Channel.default_visibility_timeout
-        )
+        visibility_timeout = transport_options.get('visibility_timeout')
+        if visibility_timeout is None or visibility_timeout == '':
+            visibility_timeout = Channel.default_visibility_timeout
+        visibility_timeout = int(float(visibility_timeout))
 
         if conn_string := transport_options.get('conn_string'):
             return PGMQueue(
