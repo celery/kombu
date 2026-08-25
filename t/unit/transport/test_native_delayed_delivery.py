@@ -22,6 +22,15 @@ class test_native_delayed_delivery_level_name:
     def test_level_name_with_level_1(self):
         assert level_name(1) == 'celery_delayed_1'
 
+    def test_level_name_with_prefix(self):
+        assert level_name(0, 'my_prefix') == 'my_prefix_celery_delayed_0'
+
+    def test_level_name_with_empty_prefix(self):
+        assert level_name(0, '') == 'celery_delayed_0'
+
+    def test_level_name_with_none_prefix(self):
+        assert level_name(0, None) == 'celery_delayed_0'
+
 
 class test_declare_native_delayed_delivery_exchanges_and_queues:
     def test_invalid_queue_type(self):
@@ -33,6 +42,10 @@ class test_declare_native_delayed_delivery_exchanges_and_queues:
 
     def test_quorum_queue_type(self):
         declare_native_delayed_delivery_exchanges_and_queues(Mock(), 'quorum')
+
+    def test_with_prefix(self):
+        declare_native_delayed_delivery_exchanges_and_queues(
+            Mock(), 'quorum', 'my_prefix')
 
 
 class test_bind_queue_to_native_delayed_delivery_exchange:
@@ -108,6 +121,23 @@ class test_bind_queue_to_native_delayed_delivery_exchange:
         bind_queue_to_native_delayed_delivery_exchange(Mock(), queue_mock)
         queue_mock.bind().exchange.bind().bind_to.assert_called_once_with(
             CELERY_DELAYED_DELIVERY_EXCHANGE,
+            routing_key="#.foo"
+        )
+        queue_mock.bind().bind_to.assert_called_once_with(
+            'foo',
+            routing_key="#.foo"
+        )
+
+    def test_bind_to_topic_exchange_with_prefix(self):
+        queue_mock = Mock()
+        queue_mock.bind().exchange.bind().type = 'topic'
+        queue_mock.bind().exchange.bind().name = 'foo'
+        queue_mock.bind().routing_key = 'foo'
+
+        bind_queue_to_native_delayed_delivery_exchange(
+            Mock(), queue_mock, 'my_prefix')
+        queue_mock.bind().exchange.bind().bind_to.assert_called_once_with(
+            'my_prefix_' + CELERY_DELAYED_DELIVERY_EXCHANGE,
             routing_key="#.foo"
         )
         queue_mock.bind().bind_to.assert_called_once_with(
