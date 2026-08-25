@@ -187,10 +187,15 @@ class Transport(base.Transport):
                 'server_hostname' in conninfo.ssl and \
                 conninfo.ssl['server_hostname'] is None:
             conninfo.ssl['server_hostname'] = conninfo.hostname
+        # Resolve callable password to support credential refresh
+        # on each connection/reconnection attempt.
+        password = conninfo.password
+        if callable(password):
+            password = password()
         opts = dict({
             'host': conninfo.host,
             'userid': conninfo.userid,
-            'password': conninfo.password,
+            'password': password,
             'login_method': conninfo.login_method,
             'virtual_host': conninfo.virtual_host,
             'insist': conninfo.insist,

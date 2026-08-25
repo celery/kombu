@@ -359,6 +359,30 @@ class test_Channel:
         finally:
             self.channel.predefined_queues = set()
 
+    @pytest.mark.parametrize(
+        ('input_value', 'expected'),
+        [
+            (21600.0, '21600'),
+            (21600, '21600'),
+            ('21600', '21600'),
+            ('21600.0', '21600'),
+            (0, '0'),
+            (0.5, '0'),
+            ('0.5', '0'),
+        ],
+    )
+    def test_new_queue_visibility_timeout_is_integer(self, input_value, expected):
+        self.connection.transport_options['visibility_timeout'] = input_value
+        queue_name = 'new_visibility_timeout_queue'
+        channel = self.connection.channel()
+        try:
+            channel._new_queue(queue_name)
+            queue = self.sqs_conn_mock._queues[queue_name]
+            assert queue.creation_attributes['VisibilityTimeout'] == expected
+        finally:
+            channel._delete(queue_name)
+            self.connection.transport_options.pop('visibility_timeout', None)
+
     def test_new_queue_custom_creation_attributes(self):
         self.connection.transport_options['sqs-creation-attributes'] = {
             'KmsMasterKeyId': 'alias/aws/sqs',
@@ -809,6 +833,106 @@ class test_Channel:
             'json': {'MessageSystemAttributeNames': ['ApproximateReceiveCount']},
             'query': {'MessageSystemAttributeName.1': 'ApproximateReceiveCount'},
         }
+
+    # ------------------------------------------------------------------
+    # Tests for polling_interval fix (issue #2439)
+    # ------------------------------------------------------------------
+
+    def test_on_messages_ready_returns_message_count(self):
+        """_on_messages_ready returns the number of messages dispatched."""
+        self.channel.connection._callbacks = {
+            self.queue_name: Mock(name='callback')
+        }
+        messages = {
+            'Messages': [
+                {'Body': '{}', 'ReceiptHandle': 'rh1'},
+                {'Body': '{}', 'ReceiptHandle': 'rh2'},
+            ]
+        }
+        self.channel._message_to_python = Mock(return_value={})
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, messages
+        )
+        assert result == 2
+
+    def test_on_messages_ready_returns_zero_when_empty(self):
+        """_on_messages_ready returns 0 when SQS response has no messages."""
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, {}
+        )
+        assert result == 0
+
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, {'Messages': []}
+        )
+        assert result == 0
+
+    def test_loop1_calls_call_soon_when_messages_found(self):
+        """_loop1 schedules next poll immediately when messages were fetched."""
+        hub = Mock(name='hub')
+        self.channel.hub = hub
+
+        self.channel._loop1(self.queue_name, messages_fetched=3)
+
+        hub.call_soon.assert_called_once_with(
+            self.channel._schedule_queue, self.queue_name
+        )
+        hub.call_later.assert_not_called()
+
+    def test_loop1_calls_call_later_when_empty_poll_with_polling_interval(self):
+        """_loop1 uses call_later(polling_interval) when no messages were found."""
+        hub = Mock(name='hub')
+        self.channel.hub = hub
+        # self.channel.connection IS the Transport (virtual transport returns
+        # itself from establish_connection), so set polling_interval directly.
+        self.channel.connection.polling_interval = 5
+
+        self.channel._loop1(self.queue_name, messages_fetched=0)
+
+        hub.call_later.assert_called_once_with(
+            5, self.channel._schedule_queue, self.queue_name
+        )
+        hub.call_soon.assert_not_called()
+
+    def test_loop1_calls_call_soon_when_empty_poll_and_no_polling_interval(self):
+        """_loop1 falls back to call_soon when polling_interval is 0/None."""
+        hub = Mock(name='hub')
+        self.channel.hub = hub
+        self.channel.connection.polling_interval = 0
+
+        self.channel._loop1(self.queue_name, messages_fetched=0)
+
+        hub.call_soon.assert_called_once_with(
+            self.channel._schedule_queue, self.queue_name
+        )
+        hub.call_later.assert_not_called()
+
+    def test_loop1_default_arg_treated_as_empty_poll(self):
+        """_loop1 with no messages_fetched argument applies polling_interval."""
+        hub = Mock(name='hub')
+        self.channel.hub = hub
+        self.channel.connection.polling_interval = 2
+
+        # Called with no second argument (default None → falsy)
+        self.channel._loop1(self.queue_name)
+
+        hub.call_later.assert_called_once_with(
+            2, self.channel._schedule_queue, self.queue_name
+        )
+
+    def test_basic_consume_schedules_directly_via_call_soon(self):
+        """basic_consume calls hub.call_soon(_schedule_queue) directly, not via _loop1."""
+        hub_mock = Mock(name='hub')
+        self.channel.hub = hub_mock
+
+        self.channel.basic_consume(
+            'new-queue', no_ack=False,
+            callback=Mock(), consumer_tag='tag-test',
+        )
+
+        hub_mock.call_soon.assert_called_once_with(
+            self.channel._schedule_queue, 'new-queue'
+        )
 
     @patch('kombu.transport.SQS.AsyncSQSConnection')
     def test_asynsqs_with_predefined_queue_creates_queue_existing_client(self, mock_async_sqs):
@@ -2141,7 +2265,7 @@ class test_Channel:
         assert result is sns_fanout_mock
 
     def test_fanout_client_not_initialised(self, channel_fixture):
-        with patch("kombu.transport.SQS.SNS") as fan_mock:
+        with patch("kombu.transport.SQS.SnsFanout") as fan_mock:
             # Arrange
             channel_fixture._fanout = None
 
