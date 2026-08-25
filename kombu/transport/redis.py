@@ -37,6 +37,15 @@ Transport Options
 * ``unacked_mutex_expire``
 * ``visibility_timeout``
 * ``unacked_restore_limit``
+* ``unacked_restore_interval``: (int) Seconds between periodic
+  ``restore_visible`` sweeps in the async (event loop / prefork) path.
+  Defaults to ``10``. Lower this to recover abandoned messages faster when
+  using a low ``visibility_timeout``.
+* ``unacked_restore_throttle``: (int) Only run an actual Redis scan on every
+  Nth ``restore_visible`` call. Defaults to ``10``. The effective async sweep
+  period is roughly ``unacked_restore_interval * unacked_restore_throttle``
+  seconds, so set this to ``1`` to make ``unacked_restore_interval`` the sole
+  control.
 * ``fanout_prefix``
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
@@ -48,6 +57,11 @@ Transport Options
 * ``queue_order_strategy``
 * ``max_connections``
 * ``health_check_interval``
+* ``reauth_check_interval``: (int) How often, in seconds, to flush pending
+  streaming re-authentication tokens (emitted by a
+  ``redis.credentials.StreamingCredentialProvider`` such as the Entra ID /
+  IAM providers) onto the long-lived BRPOP and pub/sub connections held by
+  the transport. Defaults to ``10``. See :meth:`Channel.maybe_reauth`.
 * ``retry_on_timeout``
 * ``priority_steps``
 * ``client_name``: (str) The name to use when connecting to Redis server.
@@ -64,6 +78,7 @@ Queue Arguments
 from __future__ import annotations
 
 import functools
+import inspect
 import numbers
 import socket
 from bisect import bisect
@@ -83,7 +98,6 @@ from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.eventio import ERR, READ, poll
-from kombu.utils.functional import accepts_argument
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
@@ -112,6 +126,11 @@ DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 DEFAULT_HEALTH_CHECK_INTERVAL = 25
+
+#: How often (in seconds) to flush pending streaming re-authentication
+#: tokens onto the long-lived BRPOP and pub/sub connections.  See
+#: :meth:`Channel.maybe_reauth` for why this is needed.
+DEFAULT_REAUTH_CHECK_INTERVAL = 10
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -420,7 +439,9 @@ class QoS(virtual.QoS):
 
     def restore_visible(self, start=0, num=10, interval=10):
         self._vrestore_count += 1
-        if (self._vrestore_count - 1) % interval:
+        # ``interval or 1`` avoids a ZeroDivisionError if the throttle is
+        # misconfigured to 0; 1 means "scan on every call".
+        if (self._vrestore_count - 1) % (interval or 1):
             return
         with self.channel.conn_or_acquire() as client:
             ceil = time() - self.visibility_timeout
@@ -566,6 +587,7 @@ class MultiChannelPoller:
         for channel in self._channels:
             return channel.qos.restore_visible(
                 num=channel.unacked_restore_limit,
+                interval=channel.unacked_restore_throttle,
             )
 
     def maybe_restore_messages(self):
@@ -575,6 +597,7 @@ class MultiChannelPoller:
                 try:
                     return channel.qos.restore_visible(
                         num=channel.unacked_restore_limit,
+                        interval=channel.unacked_restore_throttle,
                     )
                 except channel.connection_errors:
                     # Connection is broken; skip this cycle and retry next tick.
@@ -600,16 +623,38 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_reauth(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_reauth()
+            except channel.connection_errors:
+                # Connection is broken; skip this cycle and retry next tick.
+                # Stop iterating to avoid repeated exceptions/log spam when
+                # the broker is down (channels share the broken connection).
+                logger.debug(
+                    'maybe_reauth: connection error, '
+                    'will retry on next cycle', exc_info=True
+                )
+                return
+
     def on_readable(self, fileno):
-        chan, type = self._fd_to_chan[fileno]
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
+            return
+        chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
 
     def handle_event(self, fileno, event):
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
+            return
         if event & READ:
             return self.on_readable(fileno), self
         elif event & ERR:
-            chan, type = self._fd_to_chan[fileno]
+            chan, type = chan_type
             chan._poll_error(type)
 
     def get(self, callback, timeout=None):
@@ -668,6 +713,16 @@ class Channel(virtual.Channel):
     unacked_mutex_key = 'unacked_mutex'
     unacked_mutex_expire = 300  # 5 minutes
     unacked_restore_limit = None
+    #: Seconds between periodic ``restore_visible`` sweeps in the async
+    #: (event loop / prefork) path.  Lower this to recover abandoned messages
+    #: faster when using a low ``visibility_timeout``.
+    unacked_restore_interval = 10
+    #: Only run an actual Redis scan on every Nth ``restore_visible`` call.
+    #: Protects the synchronous poll path (restore is attempted on every empty
+    #: poll) from hitting Redis too often.  Set to 1 to scan on every call.
+    #: Effective async sweep period is roughly
+    #: ``unacked_restore_interval * unacked_restore_throttle`` seconds.
+    unacked_restore_throttle = 10
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
@@ -738,6 +793,8 @@ class Channel(virtual.Channel):
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'unacked_restore_interval',
+         'unacked_restore_throttle',
          'fanout_prefix',
          'fanout_patterns',
          'global_keyprefix',
@@ -1025,12 +1082,153 @@ class Channel(virtual.Channel):
                 raise Empty()
         finally:
             self._in_poll = None
+            # The BRPOP connection is now idle (its reply has been fully
+            # consumed and no new BRPOP has been issued yet): this is the
+            # safe moment to flush any pending streaming re-auth token.
+            self._flush_brpop_reauth()
 
     def _poll_error(self, type, **options):
         if type == 'LISTEN':
             self.subclient.parse_response()
         else:
             self.client.parse_response(self.client.connection, type)
+
+    @staticmethod
+    def _pending_reauth_token(connection):
+        """Return a streaming re-auth token stored on ``connection``, if any.
+
+        redis-py's :class:`~redis.event.RegisterReAuthForPooledConnections`
+        listener calls ``Connection.set_re_auth_token`` for every *in-use*
+        pooled connection whenever a
+        :class:`~redis.credentials.StreamingCredentialProvider` emits a fresh
+        token.  The token is stored on the connection and only turned into an
+        actual ``AUTH`` command when the connection is released back to the
+        pool.  We key off this attribute so that we do not have to couple to
+        the credential provider itself; it is only ever set when streaming
+        re-authentication is in effect.
+        """
+        if connection is None:
+            return None
+        return getattr(connection, '_re_auth_token', None)
+
+    @staticmethod
+    def _pubsub_reauth_handled_by_redis(connection):
+        """Whether redis-py re-authenticates ``connection`` itself.
+
+        redis-py only re-authenticates *subscribed* connections in place when
+        the RESP3 protocol has been negotiated (see
+        ``redis.event.RegisterReAuthForPubSub``); a RESP2 subscriber
+        connection cannot process an ``AUTH`` command at all.  When RESP3 is in
+        use we therefore leave the pub/sub connection to redis-py and avoid
+        interfering with it.
+        """
+        get_protocol = getattr(connection, 'get_protocol', None)
+        if get_protocol is not None:
+            protocol = get_protocol()
+        else:
+            protocol = getattr(connection, 'protocol', 2)
+        return str(protocol) == '3'
+
+    def maybe_reauth(self):
+        """Flush pending streaming re-auth tokens onto long-lived connections.
+
+        The transport holds two connections for the lifetime of the worker
+        that are never released back to the pool: the ``BRPOP`` connection
+        (used to consume from ordinary queues) and the pub/sub ``LISTEN``
+        connection (used to consume from fanout queues).  Because they are
+        never released, redis-py's release-triggered re-authentication never
+        fires for them, so a streaming credential provider's rotated tokens
+        never reach them and the broker eventually severs the connections when
+        the original credentials expire (e.g. the 12h limit imposed by AWS
+        ElastiCache with IAM auth).
+
+        This is called periodically from the event loop (a single thread), so
+        it can safely flush the tokens without racing the socket reads.
+        """
+        self._flush_brpop_reauth()
+        self._flush_listen_reauth()
+
+    def _flush_brpop_reauth(self):
+        """Send a pending re-auth token's ``AUTH`` on the BRPOP connection.
+
+        Only safe to do while no ``BRPOP`` command is in flight, otherwise the
+        ``AUTH`` reply would interleave with the blocking pop's reply.  We are
+        called both from the periodic timer and from :meth:`_brpop_read` (right
+        after a reply has been fully consumed), so the token is flushed at the
+        first idle moment after it is emitted.
+        """
+        if self._in_poll:
+            # A BRPOP is outstanding; retry at the next idle opportunity.
+            return
+        client = self.__dict__.get('client')  # only if property is cached
+        connection = getattr(client, 'connection', None)
+        if self._pending_reauth_token(connection) is None:
+            return
+        if getattr(connection, '_sock', None) is None:
+            # The socket is already down (e.g. a BRPOP connection error just
+            # disconnected it, or a previous flush failed).  ``re_auth`` would
+            # transparently reconnect a *fresh* socket via ``send_command``,
+            # but behind the poller's back: ``_register_BRPOP`` would then skip
+            # re-registering it (its ``_chan_to_sock`` entry survives the
+            # disconnect and ``_sock`` is no longer ``None``), so the new fd is
+            # never handed to the event loop and the channel silently stalls.
+            # Leave it to ``_register_BRPOP`` to reconnect *and* re-register;
+            # ``on_connect`` re-authenticates with the current credentials.
+            return
+        try:
+            connection.re_auth()
+        except self.connection_errors + (self.ResponseError,):
+            # The AUTH failed: a network/auth error (ConnectionError,
+            # AuthenticationError, ...) or a rejected token surfacing as a
+            # ResponseError.  Drop the socket so the next poll reconnects and
+            # authenticates with fresh credentials from the credential
+            # provider.  Also clear the stored token: ``re_auth`` only clears
+            # it on success, and once the socket is dropped the reconnect
+            # applies the current credentials via ``on_connect`` — re-sending
+            # this same (possibly expired/rejected) token in place would just
+            # fail again on every tick.  This runs from ``_brpop_read``'s
+            # ``finally`` block, so it must never raise.
+            warning('Redis streaming re-auth failed on BRPOP connection; '
+                    'reconnecting', exc_info=True)
+            try:
+                connection.set_re_auth_token(None)
+            except AttributeError:
+                pass
+            try:
+                connection.disconnect()
+            except self.connection_errors:
+                pass
+
+    def _flush_listen_reauth(self):
+        """Refresh credentials on the long-lived pub/sub (LISTEN) connection.
+
+        A subscribed RESP2 connection cannot process an ``AUTH`` command, so
+        the stored re-auth token can never be flushed in place.  Instead we
+        drop the connection; the poller reconnects and re-subscribes on the
+        next tick, authenticating with the current credentials from the
+        credential provider.  Fanout delivery is best-effort, so the brief
+        reconnect is far less disruptive than a broker-forced disconnect.
+
+        Under RESP3, redis-py re-authenticates pub/sub connections itself, so
+        we leave those untouched.
+        """
+        subclient = self.__dict__.get('subclient')  # only if property cached
+        connection = getattr(subclient, 'connection', None)
+        if self._pending_reauth_token(connection) is None:
+            return
+        if self._pubsub_reauth_handled_by_redis(connection):
+            return
+        logger.info('Refreshing Redis pub/sub connection to apply rotated '
+                    'streaming credentials')
+        # Clear the stored token first so we do not reconnect again on the
+        # next cycle, then drop the socket.  The poller re-registers the
+        # LISTEN connection and re-subscribes on the next tick.
+        try:
+            connection.set_re_auth_token(None)
+        except AttributeError:
+            pass
+        self._in_listen = None
+        connection.disconnect()
 
     def _get(self, queue):
         with self.conn_or_acquire() as client:
@@ -1271,13 +1469,16 @@ class Channel(virtual.Channel):
         # If the connection class does not support the `health_check_interval`
         # argument then remove it.
         if hasattr(conn_class, '__init__'):
-            # check health_check_interval for the class and bases
-            # classes
+            # Check the class and its direct bases (but skip `object`: `inspect` may report
+            # `object.__init__` as accepting **kwargs, which would otherwise match anything).
             classes = [conn_class]
             if hasattr(conn_class, '__bases__'):
-                classes += list(conn_class.__bases__)
+                classes += [b for b in conn_class.__bases__ if b is not object]
             for klass in classes:
-                if accepts_argument(klass.__init__, 'health_check_interval'):
+                arg_spec = inspect.getfullargspec(klass.__init__)
+                if ('health_check_interval' in arg_spec.args
+                        or 'health_check_interval' in arg_spec.kwonlyargs
+                        or arg_spec.varkw is not None):
                     break
             else:  # no break
                 connparams.pop('health_check_interval')
@@ -1336,8 +1537,20 @@ class Channel(virtual.Channel):
 
     def _create_client(self, asynchronous=False):
         if asynchronous:
-            return self.Client(connection_pool=self.async_pool)
-        return self.Client(connection_pool=self.pool)
+            client_kwargs = {'connection_pool': self.async_pool}
+            credential_provider = self.async_pool.connection_kwargs.get(
+                'credential_provider',
+            )
+            if credential_provider is not None:
+                client_kwargs['credential_provider'] = credential_provider
+            return self.Client(**client_kwargs)
+        client_kwargs = {'connection_pool': self.pool}
+        credential_provider = self.pool.connection_kwargs.get(
+            'credential_provider',
+        )
+        if credential_provider is not None:
+            client_kwargs['credential_provider'] = credential_provider
+        return self.Client(**client_kwargs)
 
     def _get_pool(self, asynchronous=False):
         params = self._connparams(asynchronous=asynchronous)
@@ -1513,13 +1726,19 @@ class Transport(virtual.Transport):
         # registering new ones. Without this, each reconnect accumulates
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
-        for attr in ('_restore_messages_tref', '_subclient_health_tref'):
+        for attr in ('_restore_messages_tref', '_subclient_health_tref',
+                     '_reauth_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
 
+        restore_interval = connection.client.transport_options.get(
+            'unacked_restore_interval', Channel.unacked_restore_interval
+        )
+        if restore_interval <= 0:
+            restore_interval = Channel.unacked_restore_interval
         cycle._restore_messages_tref = loop.call_repeatedly(
-            10, cycle.maybe_restore_messages
+            restore_interval, cycle.maybe_restore_messages
         )
         health_check_interval = connection.client.transport_options.get(
             'health_check_interval',
@@ -1528,6 +1747,14 @@ class Transport(virtual.Transport):
         cycle._subclient_health_tref = loop.call_repeatedly(
             health_check_interval,
             cycle.maybe_check_subclient_health
+        )
+        reauth_check_interval = connection.client.transport_options.get(
+            'reauth_check_interval',
+            DEFAULT_REAUTH_CHECK_INTERVAL
+        )
+        cycle._reauth_tref = loop.call_repeatedly(
+            reauth_check_interval,
+            cycle.maybe_reauth
         )
 
     def on_readable(self, fileno):

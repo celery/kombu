@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import base64
 import socket
-import sys
 import warnings
 from array import array
 from collections import OrderedDict, defaultdict, namedtuple
@@ -260,14 +259,18 @@ class QoS:
 
         while delivered:
             try:
-                _, message = pop_message()
+                key, message = pop_message()
             except KeyError:  # pragma: no cover
                 break
 
             try:
                 restore(message)
             except BaseException as exc:
-                errors.append((exc, message))
+                if key not in self._dirty:
+                    # Another thread may have acked the message after the earlier '_flush' call.
+                    # This may cause the restore attempt to fail (e.g. in SQS).
+                    # If restore fails, we only care about errors for messages that have not been 'acked'.
+                    errors.append((exc, message))
         delivered.clear()
         return errors
 
@@ -281,7 +284,6 @@ class QoS:
         """
         self._on_collect.cancel()
         self._flush()
-        stderr = sys.stderr if stderr is None else stderr
         state = self._delivered
 
         if not self.restore_at_shutdown or not self.channel.do_restore:
@@ -291,14 +293,19 @@ class QoS:
             return
         try:
             if state:
-                print(RESTORING_FMT.format(len(self._delivered)),
-                      file=stderr)
+                if stderr is not None:
+                    print(RESTORING_FMT.format(len(self._delivered)), file=stderr)
+                else:
+                    logger.info(RESTORING_FMT.format(len(self._delivered)))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    print(RESTORE_PANIC_FMT.format(len(errors), errors),
-                          file=stderr)
+                    if stderr:
+                        print(RESTORE_PANIC_FMT.format(len(errors), errors), file=stderr)
+                    else:
+                        logger.error(RESTORE_PANIC_FMT.format(len(errors), errors))
+
                     emergency_dump_state(messages, stderr=stderr)
         finally:
             state.restored = True
@@ -647,12 +654,12 @@ class Channel(AbstractChannel, base.StdChannel):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
-            self._reset_cycle()
             queue = self._tag_to_queue.pop(consumer_tag, None)
             try:
                 self._active_queues.remove(queue)
             except ValueError:
                 pass
+            self._reset_cycle()
             self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, no_ack=False, **kwargs):

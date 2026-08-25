@@ -157,7 +157,8 @@ class SimpleBuffer(SimpleQueue):
 
     no_ack = True
     queue_opts = {'durable': False,
-                  'auto_delete': True}
+                  'auto_delete': True,
+                  'exclusive': True}
     exchange_opts = {'durable': False,
                      'delivery_mode': 'transient',
                      'auto_delete': True}
