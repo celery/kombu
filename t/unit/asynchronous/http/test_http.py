@@ -200,4 +200,3 @@ class test_Client:
             client = http.get_client(hub)
             mock_client_fn.assert_not_called()
             assert client is existing_client
-

@@ -494,4 +494,3 @@ class test_Urllib3Client:
         """Test on_writable is a no-op compatibility method."""
         # Should not raise
         self.client.on_writable(5)
-
