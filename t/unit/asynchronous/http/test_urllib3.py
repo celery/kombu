@@ -14,17 +14,19 @@ class test_Urllib3Client:
         self.hub = Mock(name='hub')
         self.hub.call_repeatedly.return_value = Mock()
 
-        # Patch ThreadPoolExecutor to prevent actual thread creation
-        self.executor_patcher = patch('concurrent.futures.ThreadPoolExecutor')
+        # Patch ThreadPoolExecutor in urllib3_client's own namespace to prevent
+        # actual thread creation.  Patching 'concurrent.futures.ThreadPoolExecutor'
+        # would NOT work because urllib3_client already captured the reference via
+        # `from concurrent.futures import ThreadPoolExecutor` at import time.
+        self.executor_patcher = patch(
+            'kombu.asynchronous.http.urllib3_client.ThreadPoolExecutor'
+        )
         self.mock_executor_cls = self.executor_patcher.start()
         self.mock_executor = Mock()
         self.mock_executor_cls.return_value = self.mock_executor
 
         # Create the client
         self.client = Urllib3Client(self.hub)
-
-        # Initialize _pending queue with a value for the test_client_creation test
-        self.client._pending = self.client._pending.__class__([Mock()])
 
     def teardown_method(self):
         self.executor_patcher.stop()
@@ -33,9 +35,11 @@ class test_Urllib3Client:
     def test_client_creation(self):
         assert self.client.hub is self.hub
         assert self.client.max_clients == 10
-        assert self.client._pending  # Just check it exists, not empty
+        assert isinstance(self.client._pending, type(self.client._pending))
         assert isinstance(self.client._active_requests, dict)
         assert self.hub.call_repeatedly.called
+        # Verify that the executor was created via the mock (not a real thread pool)
+        self.mock_executor_cls.assert_called_once_with(max_workers=10)
 
     def _setup_pool_mock(self):
         """Helper to set up a pool mock that can be used across tests"""
@@ -201,13 +205,11 @@ class test_Urllib3Client:
             assert response.error is not None
 
     def test_max_clients_limit(self):
-        # Create a client with low max_clients to test capacity limiting
+        # Create a client with low max_clients to test capacity limiting.
+        # The executor patcher from setup_method already patches the module-level
+        # ThreadPoolExecutor, so this second instantiation also gets the mock.
         client = Urllib3Client(self.hub, max_clients=2)
         client._timeout_check_tref = Mock()
-
-        # Initialize executor for this client too
-        client._executor = Mock()
-        client._executor.submit.side_effect = lambda fn, req: Mock()
 
         # Mock _execute_request to avoid actual execution
         with patch.object(client, '_execute_request'):
