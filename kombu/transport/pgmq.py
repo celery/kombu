@@ -582,10 +582,12 @@ class Channel(virtual.Channel):
     def queue_name_prefix(self) -> str:
         return self.transport_options.get('queue_name_prefix', '')
 
-    @cached_property
-    def visibility_timeout(self) -> int:
-        return (self.transport_options.get('visibility_timeout') or
-                self.default_visibility_timeout)
+@cached_property
+def visibility_timeout(self) -> int:
+    timeout = self.transport_options.get('visibility_timeout')
+    if timeout is None or timeout == '':
+        timeout = self.default_visibility_timeout
+    return int(float(timeout))
 
     @cached_property
     def wait_time_seconds(self) -> int:
