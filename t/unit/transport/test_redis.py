@@ -718,6 +718,47 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_interval_throttles(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrevrangebyscore.return_value = []
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+
+        # interval=3 -> only the 1st and 4th calls perform an actual scan.
+        qos._vrestore_count = 0
+        qos.restore_visible(interval=3)
+        client.zrevrangebyscore.assert_called_once()
+        client.zrevrangebyscore.reset_mock()
+
+        qos.restore_visible(interval=3)   # 2nd call -> skip
+        qos.restore_visible(interval=3)   # 3rd call -> skip
+        client.zrevrangebyscore.assert_not_called()
+
+        qos.restore_visible(interval=3)   # 4th call -> scan
+        client.zrevrangebyscore.assert_called_once()
+
+    def test_qos_restore_visible_zero_interval_no_zerodivision(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrevrangebyscore.return_value = []
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+
+        # interval=0 must not raise ZeroDivisionError and scans on every call.
+        qos._vrestore_count = 0
+        qos.restore_visible(interval=0)
+        qos.restore_visible(interval=0)
+        assert client.zrevrangebyscore.call_count == 2
+
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
         self.channel.queue_declare(queue='txconfanq')
@@ -727,6 +768,34 @@ class test_Channel:
         self.channel.basic_consume('txconfanq', False, None, 1)
         assert 'txconfanq' in self.channel.active_fanout_queues
         assert self.channel._fanout_to_queue.get('txconfan') == 'txconfanq'
+
+    def test_priority_cycle_preserves_queue_order(self):
+        """Regression test for https://github.com/celery/kombu/issues/801.
+
+        The priority queue_order_strategy relies on active_queues preserving
+        insertion order so that the queue cycle matches the order queues were
+        consumed.
+
+        Queue names are chosen so that alphabetical order (high, low, medium)
+        differs from the intended consumption order (high, medium, low),
+        ensuring the test fails if ordering is lost.
+        """
+        with Connection(
+            transport=Transport,
+            transport_options={
+                'queue_order_strategy': 'priority',
+                'fanout_patterns': True,
+            },
+        ) as conn:
+            channel = conn.default_channel
+            queues = ['priority.high', 'priority.medium', 'priority.low']
+            for queue in queues:
+                channel.exchange_declare(exchange=queue)
+                channel.queue_declare(queue=queue)
+                channel.queue_bind(queue=queue, exchange=queue, routing_key=queue)
+            for queue in queues:
+                channel.basic_consume(queue, False, None, queue)
+            assert channel._queue_cycle.items == queues
 
     def test_basic_cancel_unknown_delivery_tag(self):
         assert self.channel.basic_cancel('txaseqwewq') is None
@@ -1073,6 +1142,26 @@ class test_Channel:
         with pytest.raises(ValueError):
             self.channel._connparams()
 
+    def test_create_client_passes_credential_provider_from_pool(self):
+        provider = object()
+        client_factory = Mock(name='Client')
+        self.channel.Client = client_factory
+        self.channel._pool = Mock(connection_kwargs={'credential_provider': provider})
+        self.channel._async_pool = Mock(connection_kwargs={'credential_provider': provider})
+
+        self.channel._create_client()
+        client_factory.assert_called_with(
+            connection_pool=self.channel.pool,
+            credential_provider=provider,
+        )
+
+        client_factory.reset_mock()
+        self.channel._create_client(asynchronous=True)
+        client_factory.assert_called_with(
+            connection_pool=self.channel.async_pool,
+            credential_provider=provider,
+        )
+
     def test_connparams_password_for_unix_socket(self):
         self.channel.connection.client.hostname = \
             'socket://:foo@/var/run/redis.sock'
@@ -1088,10 +1177,15 @@ class test_Channel:
         assert (password, path) == (None, '/var/run/redis.sock')
 
     def test_connparams_health_check_interval_not_supported(self):
+        # Simulate a legacy/custom connection class that has no **kwargs and
+        # therefore genuinely cannot accept health_check_interval.
+        class _LegacyConnection:
+            def __init__(self, host, port):
+                pass
+
         with patch('kombu.transport.redis.Channel._create_client'):
             with Connection('redis+socket:///tmp/redis.sock') as conn:
-                conn.default_channel.connection_class = \
-                    Mock(name='connection_class')
+                conn.default_channel.connection_class = _LegacyConnection
                 connparams = conn.default_channel._connparams()
                 assert 'health_check_interval' not in connparams
 
@@ -1162,6 +1256,7 @@ class test_Channel:
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
             call(25, transport.cycle.maybe_check_subclient_health),
+            call(10, transport.cycle.maybe_reauth),
         ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
@@ -1173,13 +1268,60 @@ class test_Channel:
             call(13, transport.on_readable, 13),
         ])
 
+    def test_register_with_event_loop__restore_interval_from_options(self):
+        """A non-default ``unacked_restore_interval`` transport option is
+        forwarded as the delay of the periodic restore timer, instead of the
+        built-in default of 10 seconds."""
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(
+            name='client',
+            transport_options={'unacked_restore_interval': 5},
+        )
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        loop.call_repeatedly.assert_has_calls([
+            call(5, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+
+    @pytest.mark.parametrize('restore_interval', [0, -5])
+    def test_register_with_event_loop__non_positive_interval_falls_back(
+            self, restore_interval):
+        """A non-positive ``unacked_restore_interval`` would stall the restore
+        timer, so it falls back to the default cadence of 10 seconds."""
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(
+            name='client',
+            transport_options={'unacked_restore_interval': restore_interval},
+        )
+        loop = Mock(name='loop')
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        loop.call_repeatedly.assert_has_calls([
+            call(10, transport.cycle.maybe_restore_messages),
+            call(25, transport.cycle.maybe_check_subclient_health),
+        ])
+
     @pytest.mark.parametrize('fds', [{12: 'LISTEN', 13: 'BRPOP'}, {}])
     def test_register_with_event_loop__on_disconnect__loop_cleanup(self, fds):
-        """Ensure event loop polling stops on disconnect (if started)."""
+        """Ensure on_poll_start stays in on_tick after disconnect.
+
+        on_poll_start is idempotent (no-op when there are no fds), so it
+        must NOT be removed on disconnect.  Removing it caused a race
+        condition where a late-firing _on_disconnect from a stale channel
+        would remove the callback just registered by a new channel,
+        leaving the worker unable to consume tasks after reconnection.
+        """
         transport = self.connection.transport
         self.connection._sock = None
         transport.cycle = Mock(name='cycle')
         transport.cycle.fds = fds
+        transport.cycle._fd_to_chan = {}
         conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
@@ -1187,11 +1329,236 @@ class test_Channel:
         redis.Transport.register_with_event_loop(transport, conn, loop)
         assert len(loop.on_tick) == 1
         transport.cycle._on_connection_disconnect(self.connection)
-        if fds:
-            assert len(loop.on_tick) == 0
-        else:
-            # on_tick shouldn't be cleared when polling hasn't started
-            assert len(loop.on_tick) == 1
+        # on_poll_start must remain registered regardless of fds state
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__removes_sock(self):
+        """Ensure _on_disconnect removes the socket from the event loop.
+
+        When connection._sock is set, _on_disconnect must call loop.remove()
+        on it and prune the fd from cycle._fd_to_chan when present.
+        """
+        transport = self.connection.transport
+        mock_sock = Mock(name='sock')
+        mock_sock.fileno.return_value = 42
+        self.connection._sock = mock_sock
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        transport.cycle._fd_to_chan = {42: Mock(name='chan')}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle._on_connection_disconnect(self.connection)
+        loop.remove.assert_called_once_with(mock_sock)
+        # fd must be pruned from _fd_to_chan
+        assert 42 not in transport.cycle._fd_to_chan
+        # on_poll_start must still be registered after disconnect
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__sock_no_fileno(self):
+        """Ensure _on_disconnect handles sockets without a fileno() method.
+
+        When connection._sock has no fileno() (e.g. a raw fd integer),
+        the fd itself is used as the key to prune from cycle._fd_to_chan.
+        """
+        transport = self.connection.transport
+        # Use a plain integer as the "sock" (no fileno attribute)
+        self.connection._sock = 99
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        transport.cycle._fd_to_chan = {99: Mock(name='chan')}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle._on_connection_disconnect(self.connection)
+        loop.remove.assert_called_once_with(99)
+        assert 99 not in transport.cycle._fd_to_chan
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__fileno_oserror(self):
+        """Ensure _on_disconnect handles OSError from fileno() gracefully.
+
+        When the socket is already closed, fileno() raises OSError.
+        _on_disconnect should swallow it and skip _fd_to_chan pruning.
+        """
+        transport = self.connection.transport
+        mock_sock = Mock(name='sock')
+        mock_sock.fileno.side_effect = OSError('Bad file descriptor')
+        self.connection._sock = mock_sock
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        transport.cycle._fd_to_chan = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        # Must not raise even though fileno() raises OSError
+        transport.cycle._on_connection_disconnect(self.connection)
+        loop.remove.assert_called_once_with(mock_sock)
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__fd_not_in_map(self):
+        """Ensure _on_disconnect handles missing fd in _fd_to_chan gracefully.
+
+        If the fd is not tracked (already removed), the KeyError must be
+        swallowed silently.
+        """
+        transport = self.connection.transport
+        mock_sock = Mock(name='sock')
+        mock_sock.fileno.return_value = 55
+        self.connection._sock = mock_sock
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        # fd 55 is NOT in _fd_to_chan — KeyError must be silently ignored
+        transport.cycle._fd_to_chan = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        # Must not raise
+        transport.cycle._on_connection_disconnect(self.connection)
+        loop.remove.assert_called_once_with(mock_sock)
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__fileno_negative(self):
+        """Ensure _on_disconnect skips pruning when fileno() returns -1.
+
+        A socket that has been closed (but not yet GC'd) returns -1 from
+        fileno().  In that case the real fd is gone and _fd_to_chan must
+        NOT be touched (there is no valid key to remove).
+        """
+        transport = self.connection.transport
+        mock_sock = Mock(name='sock')
+        mock_sock.fileno.return_value = -1
+        self.connection._sock = mock_sock
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        # Suppose fd 42 (the original fd before close) is still in the map.
+        transport.cycle._fd_to_chan = {42: Mock(name='chan')}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle._on_connection_disconnect(self.connection)
+        loop.remove.assert_called_once_with(mock_sock)
+        # _fd_to_chan must be left intact — we had no valid fd to prune.
+        assert 42 in transport.cycle._fd_to_chan
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__sock_none_prunes(self):
+        """Ensure _on_disconnect prunes stale fds when _sock is None.
+
+        In async Redis mode, Connection.disconnect() clears _sock to None
+        before invoking the disconnect callback.  _on_disconnect must still
+        prune cycle._fd_to_chan by scanning for channels backed by the
+        disconnected connection.
+
+        _fd_to_chan stores tuples of (channel, type_string), matching the
+        real data structure used by MultiChannelPoller._register.
+        """
+        transport = self.connection.transport
+        # _sock is None — simulates async Redis disconnect path
+        self.connection._sock = None
+        # Create a channel mock whose client.connection points to self.connection
+        stale_chan = Mock(name='stale_chan')
+        stale_chan.client.connection = self.connection
+        stale_chan.subclient.connection = None
+        # A channel that belongs to a different connection — must NOT be pruned
+        other_conn = Mock(name='other_conn')
+        alive_chan = Mock(name='alive_chan')
+        alive_chan.client.connection = other_conn
+        alive_chan.subclient.connection = None
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        # _fd_to_chan values are (channel, type) tuples in production
+        transport.cycle._fd_to_chan = {
+            10: (stale_chan, 'BRPOP'),
+            20: (alive_chan, 'LISTEN'),
+        }
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle._on_connection_disconnect(self.connection)
+        # loop.remove must NOT be called — there is no socket to remove
+        loop.remove.assert_not_called()
+        # Stale fd must be pruned, alive fd must remain
+        assert 10 not in transport.cycle._fd_to_chan
+        assert 20 in transport.cycle._fd_to_chan
+        # on_poll_start must still be registered
+        assert len(loop.on_tick) == 1
+
+    def test_register_with_event_loop__on_disconnect__sock_none_subclient(self):
+        """Ensure _on_disconnect also matches via subclient.connection.
+
+        _fd_to_chan stores tuples of (channel, type_string).
+        """
+        transport = self.connection.transport
+        self.connection._sock = None
+        stale_chan = Mock(name='stale_chan')
+        stale_chan.client.connection = None
+        stale_chan.subclient.connection = self.connection
+        transport.cycle = Mock(name='cycle', spec=['fds', '_fd_to_chan',
+                                                   'on_poll_init',
+                                                   'on_poll_start',
+                                                   'maybe_restore_messages',
+                                                   'maybe_check_subclient_health',
+                                                   'maybe_reauth',
+                                                   '_on_connection_disconnect'])
+        transport.cycle.fds = {}
+        transport.cycle._fd_to_chan = {30: (stale_chan, 'BRPOP')}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        transport.cycle._on_connection_disconnect(self.connection)
+        assert 30 not in transport.cycle._fd_to_chan
+        assert len(loop.on_tick) == 1
 
     def test_configurable_health_check(self):
         transport = self.connection.transport
@@ -1207,6 +1574,7 @@ class test_Channel:
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
             call(15, transport.cycle.maybe_check_subclient_health),
+            call(10, transport.cycle.maybe_reauth),
         ])
         loop.on_tick.add.assert_called()
         on_poll_start = loop.on_tick.add.call_args[0][0]
@@ -1217,6 +1585,57 @@ class test_Channel:
             call(12, transport.on_readable, 12),
             call(13, transport.on_readable, 13),
         ])
+
+    def test_register_with_event_loop_stores_trefs_on_cycle(self):
+        """call_repeatedly return values (trefs) must be stored on cycle.
+
+        Without storing the trefs, stale timer entries accumulate in
+        hub.timer._queue across reconnects (each reconnect adds a new entry
+        without removing the old one).
+        """
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        tref1, tref2, tref3 = (Mock(name='tref_restore'),
+                               Mock(name='tref_health'),
+                               Mock(name='tref_reauth'))
+        loop.call_repeatedly.side_effect = [tref1, tref2, tref3]
+
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+
+        assert transport.cycle._restore_messages_tref is tref1
+        assert transport.cycle._subclient_health_tref is tref2
+        assert transport.cycle._reauth_tref is tref3
+
+    def test_register_with_event_loop_cancels_stale_trefs_on_reconnect(self):
+        """Stale timer entries from a previous connection must be cancelled.
+
+        Each call to register_with_event_loop (i.e. each reconnect) must
+        cancel the previous trefs before registering new ones, so that
+        hub.timer._queue never accumulates duplicate entries.
+        """
+        transport = self.connection.transport
+        transport.cycle = Mock(name='cycle')
+        transport.cycle.fds = {}
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+
+        old_restore_tref = Mock(name='old_restore_tref')
+        old_health_tref = Mock(name='old_health_tref')
+        old_reauth_tref = Mock(name='old_reauth_tref')
+        transport.cycle._restore_messages_tref = old_restore_tref
+        transport.cycle._subclient_health_tref = old_health_tref
+        transport.cycle._reauth_tref = old_reauth_tref
+
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+
+        old_restore_tref.cancel.assert_called_once()
+        old_health_tref.cancel.assert_called_once()
+        old_reauth_tref.cancel.assert_called_once()
 
     def test_transport_on_readable(self):
         transport = self.connection.transport
@@ -1427,6 +1846,325 @@ class test_Channel:
                 ('HDEL', 'foo_unacked', 'test-tag')
             ]
 
+    def test_get_queue_expire_valid_string(self):
+        """Test _get_queue_expire with valid string value."""
+        args = {"arguments": {"x-expires": "5000"}}
+        result = self.channel._get_queue_expire(args)
+        assert result == 5000
+
+    def test_get_queue_expire_valid_int(self):
+        """Test _get_queue_expire with valid integer value."""
+        args = {"arguments": {"x-expires": 5000}}
+        result = self.channel._get_queue_expire(args)
+        assert result == 5000
+
+    def test_get_queue_expire_missing_arguments(self):
+        """Test _get_queue_expire with empty args dictionary."""
+        args = {}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_missing_x_expires(self):
+        """Test _get_queue_expire with missing x-expires key."""
+        args = {"arguments": {}}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_non_numeric(self):
+        """Test _get_queue_expire with non-numeric value."""
+        args = {"arguments": {"x-expires": "invalid"}}
+        result = self.channel._get_queue_expire(args)
+        assert result is None
+
+    def test_get_queue_expire_none(self):
+        """Test _get_queue_expire with None args."""
+        result = self.channel._get_queue_expire(None)
+        assert result is None
+
+    def test_maybe_update_queues_expire(self):
+        with Connection(transport=Transport) as conn:
+            channel = conn.channel()
+            channel._expires = {'test_queue': 5000}
+
+            client_mock = Mock()
+            pipeline_mock = Mock()
+            pipeline_mock.__enter__ = lambda self: pipeline_mock
+            pipeline_mock.__exit__ = lambda self, *args: None
+            client_mock.pipeline.return_value = pipeline_mock
+
+            channel._maybe_update_queues_expire(client_mock, 'test_queue')
+
+            expected_calls = [
+                call.pexpire('test_queue', 5000)
+            ]
+            actual_calls = pipeline_mock.method_calls
+            for expected_call in expected_calls:
+                assert expected_call in actual_calls
+
+
+class test_Channel_streaming_reauth:
+    """Streaming credential re-authentication of long-lived connections.
+
+    Redis-py defers re-authentication (``AUTH``) for *in-use* pooled
+    connections until they are released back to the pool.  The transport's
+    BRPOP and pub/sub (LISTEN) connections are held for the whole lifetime of
+    the worker and never released, so rotated tokens emitted by a
+    ``StreamingCredentialProvider`` never reach them.  The channel therefore
+    flushes them itself at safe points.
+
+    See https://github.com/celery/kombu/issues/2509.
+    """
+
+    def setup_method(self):
+        self.connection = Connection(
+            transport=Transport,
+            transport_options={'fanout_patterns': True},
+        )
+        self.channel = self.connection.default_channel
+
+    def _conn(self, token=None, protocol=2, connected=True):
+        conn = Mock(name='connection')
+        conn._re_auth_token = token
+        conn.get_protocol.return_value = protocol
+        # redis-py sets Connection._sock to the socket when connected and back
+        # to None on disconnect; the flush guards off it.
+        conn._sock = object() if connected else None
+        return conn
+
+    def _prime_client(self, conn):
+        client = Mock(name='client')
+        client.connection = conn
+        self.channel.__dict__['client'] = client
+        return client
+
+    def _prime_subclient(self, conn):
+        subclient = Mock(name='subclient')
+        subclient.connection = conn
+        self.channel.__dict__['subclient'] = subclient
+        return subclient
+
+    # -- _pending_reauth_token -------------------------------------------
+
+    def test_pending_reauth_token_none_connection(self):
+        assert self.channel._pending_reauth_token(None) is None
+
+    def test_pending_reauth_token_missing_attr(self):
+        assert self.channel._pending_reauth_token(object()) is None
+
+    def test_pending_reauth_token_unset(self):
+        conn = Mock()
+        conn._re_auth_token = None
+        assert self.channel._pending_reauth_token(conn) is None
+
+    def test_pending_reauth_token_present(self):
+        token = object()
+        conn = Mock()
+        conn._re_auth_token = token
+        assert self.channel._pending_reauth_token(conn) is token
+
+    def test_pending_reauth_token_reads_real_redis_attribute(self):
+        """Guard against redis-py renaming the stored-token attribute."""
+        conn = redis.redis.Connection()
+        assert self.channel._pending_reauth_token(conn) is None
+        token = Mock(name='token')
+        conn.set_re_auth_token(token)
+        assert self.channel._pending_reauth_token(conn) is token
+
+    # -- _pubsub_reauth_handled_by_redis ---------------------------------
+
+    def test_pubsub_reauth_handled_by_redis_resp3_int(self):
+        assert self.channel._pubsub_reauth_handled_by_redis(
+            self._conn(protocol=3)) is True
+
+    def test_pubsub_reauth_handled_by_redis_resp3_str(self):
+        assert self.channel._pubsub_reauth_handled_by_redis(
+            self._conn(protocol="3")) is True
+
+    def test_pubsub_reauth_handled_by_redis_resp2(self):
+        assert self.channel._pubsub_reauth_handled_by_redis(
+            self._conn(protocol=2)) is False
+
+    def test_pubsub_reauth_handled_by_redis_no_get_protocol(self):
+        conn = Mock(spec=['protocol'])
+        conn.protocol = 3
+        assert self.channel._pubsub_reauth_handled_by_redis(conn) is True
+
+    def test_pubsub_reauth_handled_by_redis_real_connection(self):
+        assert self.channel._pubsub_reauth_handled_by_redis(
+            redis.redis.Connection(protocol=2)) is False
+        assert self.channel._pubsub_reauth_handled_by_redis(
+            redis.redis.Connection(protocol=3)) is True
+
+    # -- _flush_brpop_reauth ---------------------------------------------
+
+    def test_flush_brpop_reauth_sends_auth_when_idle(self):
+        self.channel._in_poll = False
+        conn = self._conn(token=object())
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()
+        conn.re_auth.assert_called_once_with()
+
+    def test_flush_brpop_reauth_skips_while_brpop_in_flight(self):
+        # A BRPOP is outstanding: sending AUTH now would interleave with the
+        # blocking pop's reply, so it must be deferred.
+        self.channel._in_poll = Mock(name='outstanding-brpop')
+        conn = self._conn(token=object())
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()
+        conn.re_auth.assert_not_called()
+
+    def test_flush_brpop_reauth_noop_without_pending_token(self):
+        self.channel._in_poll = False
+        conn = self._conn(token=None)
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()
+        conn.re_auth.assert_not_called()
+
+    def test_flush_brpop_reauth_noop_without_cached_client(self):
+        self.channel._in_poll = False
+        self.channel.__dict__.pop('client', None)
+        self.channel._flush_brpop_reauth()  # must not raise
+
+    def test_flush_brpop_reauth_skips_when_socket_down(self):
+        # If the BRPOP socket is already disconnected (e.g. a connection error
+        # just dropped it), re_auth must NOT be called: sending AUTH would
+        # transparently reconnect a fresh socket behind the poller's back,
+        # which _register_BRPOP would never re-register -> silent stall.
+        self.channel._in_poll = False
+        conn = self._conn(token=object(), connected=False)
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()
+        conn.re_auth.assert_not_called()
+
+    def test_flush_brpop_reauth_disconnects_and_clears_token_on_error(self):
+        self.channel._in_poll = False
+
+        class ConnError(Exception):
+            pass
+
+        self.channel.connection_errors = (ConnError,)
+        conn = self._conn(token=object())
+        conn.re_auth.side_effect = ConnError('boom')
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()  # must not raise
+        conn.disconnect.assert_called_once_with()
+        # The token is cleared so we do not re-send the same failing token in
+        # place on every tick (reconnect re-auths via on_connect instead).
+        conn.set_re_auth_token.assert_called_once_with(None)
+
+    def test_flush_brpop_reauth_disconnects_on_response_error(self):
+        # A rejected token surfaces as a ResponseError (a channel error, not a
+        # connection error); it must still be recovered from by reconnecting,
+        # and must not escape _brpop_read's finally block.
+        self.channel._in_poll = False
+        conn = self._conn(token=object())
+        conn.re_auth.side_effect = self.channel.ResponseError('WRONGPASS')
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()  # must not raise
+        conn.disconnect.assert_called_once_with()
+        conn.set_re_auth_token.assert_called_once_with(None)
+
+    def test_flush_brpop_reauth_swallows_disconnect_error(self):
+        self.channel._in_poll = False
+
+        class ConnError(Exception):
+            pass
+
+        self.channel.connection_errors = (ConnError,)
+        conn = self._conn(token=object())
+        conn.re_auth.side_effect = ConnError('boom')
+        conn.disconnect.side_effect = ConnError('still down')
+        self._prime_client(conn)
+        self.channel._flush_brpop_reauth()  # must not raise
+
+    # -- _flush_listen_reauth --------------------------------------------
+
+    def test_flush_listen_reauth_reconnects_under_resp2(self):
+        conn = self._conn(token=object(), protocol=2)
+        self._prime_subclient(conn)
+        self.channel._in_listen = conn
+        self.channel._flush_listen_reauth()
+        conn.set_re_auth_token.assert_called_once_with(None)
+        conn.disconnect.assert_called_once_with()
+        assert self.channel._in_listen is None
+
+    def test_flush_listen_reauth_left_to_redis_under_resp3(self):
+        conn = self._conn(token=object(), protocol=3)
+        self._prime_subclient(conn)
+        self.channel._flush_listen_reauth()
+        conn.disconnect.assert_not_called()
+        conn.set_re_auth_token.assert_not_called()
+
+    def test_flush_listen_reauth_noop_without_pending_token(self):
+        conn = self._conn(token=None, protocol=2)
+        self._prime_subclient(conn)
+        self.channel._flush_listen_reauth()
+        conn.disconnect.assert_not_called()
+
+    def test_flush_listen_reauth_noop_without_cached_subclient(self):
+        self.channel.__dict__.pop('subclient', None)
+        self.channel._flush_listen_reauth()  # must not raise
+
+    def test_flush_listen_reauth_tolerates_missing_set_token(self):
+        conn = Mock(spec=['get_protocol', 'disconnect', '_re_auth_token'])
+        conn._re_auth_token = object()
+        conn.get_protocol.return_value = 2
+        self._prime_subclient(conn)
+        self.channel._flush_listen_reauth()  # must not raise
+        conn.disconnect.assert_called_once_with()
+
+    # -- maybe_reauth / _brpop_read integration --------------------------
+
+    def test_maybe_reauth_flushes_both_connections(self):
+        self.channel._flush_brpop_reauth = Mock(name='brpop')
+        self.channel._flush_listen_reauth = Mock(name='listen')
+        self.channel.maybe_reauth()
+        self.channel._flush_brpop_reauth.assert_called_once_with()
+        self.channel._flush_listen_reauth.assert_called_once_with()
+
+    def test_brpop_read_flushes_reauth_on_completion(self):
+        # _brpop_read must flush the BRPOP re-auth token in its finally block,
+        # i.e. at the exact moment the connection becomes idle again.
+        self.channel._flush_brpop_reauth = Mock(name='flush')
+        client = Mock(name='client')
+        client.parse_response.return_value = None  # BRPOP timed out (nil)
+        self.channel.__dict__['client'] = client
+        with pytest.raises(Empty):
+            self.channel._brpop_read()
+        assert self.channel._in_poll is None
+        self.channel._flush_brpop_reauth.assert_called_once_with()
+
+    def test_brpop_read_connection_error_does_not_eager_reconnect(self):
+        # Regression guard for #2509: after a BRPOP connection error drops the
+        # socket, the finally-block re-auth flush must NOT reconnect it (via
+        # re_auth -> send_command).  An eagerly-reconnected socket would be
+        # skipped by _register_BRPOP (its _chan_to_sock entry survives the
+        # disconnect) and never handed to the poller, silently stalling the
+        # channel.  The socket must be left down for _register_BRPOP to
+        # reconnect *and* re-register.
+        class ConnError(Exception):
+            pass
+
+        self.channel.connection_errors = (ConnError,)
+
+        conn = self._conn(token=object(), connected=True)
+
+        def _disconnect():
+            conn._sock = None  # mirror redis-py: disconnect clears the socket
+
+        conn.disconnect.side_effect = _disconnect
+        client = Mock(name='client')
+        client.connection = conn
+        client.parse_response.side_effect = ConnError('server closed')
+        self.channel.__dict__['client'] = client
+
+        with pytest.raises(ConnError):
+            self.channel._brpop_read()
+
+        conn.disconnect.assert_called_once_with()   # from the error path
+        conn.re_auth.assert_not_called()            # no eager reconnect
+        assert conn._sock is None                   # left down for _register
+
 
 class test_Redis:
 
@@ -1627,7 +2365,133 @@ class test_MultiChannelPoller:
         p.on_poll_init(poller)
         chan1.qos.restore_visible.assert_called_with(
             num=chan1.unacked_restore_limit,
+            interval=chan1.unacked_restore_throttle,
         )
+
+    def test_maybe_restore_messages_calls_restore_visible(self):
+        """Happy path: restore_visible is called for a channel with active queues."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        channel.active_queues = ['a_queue']
+        p._channels = [channel]
+
+        p.maybe_restore_messages()
+
+        channel.qos.restore_visible.assert_called_once_with(
+            num=channel.unacked_restore_limit,
+            interval=channel.unacked_restore_throttle,
+        )
+
+    def test_maybe_restore_messages_skips_channel_without_active_queues(self):
+        """Channels with no active queues must be ignored."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        channel.active_queues = []
+        p._channels = [channel]
+
+        p.maybe_restore_messages()
+
+        channel.qos.restore_visible.assert_not_called()
+
+    def test_maybe_restore_messages_swallows_connection_error(self):
+        """Connection errors from timer callbacks must not propagate.
+
+        maybe_restore_messages is scheduled via call_repeatedly and runs
+        inside fire_timers. If a ConnectionError escapes, it matches
+        hub.propagate_errors and tears down the entire event loop.
+        The fix catches channel.connection_errors and returns early.
+        """
+        p = self.Poller()
+
+        class ConnError(Exception):
+            pass
+
+        channel = Mock(name='channel')
+        channel.active_queues = ['a_queue']
+        channel.connection_errors = (ConnError,)
+        channel.qos.restore_visible.side_effect = ConnError('connection lost')
+        p._channels = [channel]
+
+        # Must not raise
+        p.maybe_restore_messages()
+
+        channel.qos.restore_visible.assert_called_once()
+
+    def test_maybe_check_subclient_health_calls_check_health(self):
+        """Happy path: check_health is called when subclient is cached."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient')
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()
+
+        client.check_health.assert_called_once()
+
+    def test_maybe_check_subclient_health_skips_when_no_subclient(self):
+        """Channels with no cached subclient must be silently skipped."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        # Ensure 'subclient' is not in __dict__ (not yet accessed/cached)
+        channel.__dict__.pop('subclient', None)
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()  # must not raise
+
+    def test_maybe_check_subclient_health_swallows_connection_error(self):
+        """Connection errors from timer callbacks must not propagate.
+
+        Same reasoning as test_maybe_restore_messages_swallows_connection_error:
+        the fix catches channel.connection_errors and returns early instead of
+        letting the exception bubble up through fire_timers.
+        """
+        p = self.Poller()
+
+        class ConnError(Exception):
+            pass
+
+        channel = Mock(name='channel')
+        channel.connection_errors = (ConnError,)
+        client = Mock(name='subclient')
+        client.check_health.side_effect = ConnError('connection lost')
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        # Must not raise
+        p.maybe_check_subclient_health()
+
+        client.check_health.assert_called_once()
+
+    def test_maybe_reauth_delegates_to_channels(self):
+        """Happy path: the timer flushes re-auth on every channel."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        p._channels = [channel]
+
+        p.maybe_reauth()
+
+        channel.maybe_reauth.assert_called_once_with()
+
+    def test_maybe_reauth_swallows_connection_error(self):
+        """Connection errors from the re-auth timer must not tear down the loop.
+
+        Same reasoning as test_maybe_restore_messages_swallows_connection_error.
+        """
+        p = self.Poller()
+
+        class ConnError(Exception):
+            pass
+
+        channel = Mock(name='channel')
+        channel.connection_errors = (ConnError,)
+        channel.maybe_reauth.side_effect = ConnError('connection lost')
+        p._channels = [channel]
+
+        # Must not raise
+        p.maybe_reauth()
+
+        channel.maybe_reauth.assert_called_once()
 
     def test_handle_event(self):
         p = self.Poller()
@@ -1647,6 +2511,17 @@ class test_MultiChannelPoller:
         chan._poll_error.assert_called_with('BRPOP')
 
         p.handle_event(13, ~(redis.READ | redis.ERR))
+
+    def test_on_readable_ignores_unmapped_fd(self):
+        p = self.Poller()
+        assert 35 not in p._fd_to_chan
+        p.on_readable(35)
+
+    def test_handle_event_ignores_unmapped_fd(self):
+        p = self.Poller()
+        assert 35 not in p._fd_to_chan
+        assert p.handle_event(35, redis.READ) is None
+        assert p.handle_event(35, redis.ERR) is None
 
     def test_fds(self):
         p = self.Poller()
@@ -1930,7 +2805,8 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None)
+                username=None, retry_on_timeout=None, client_name=None,
+                health_check_interval=25)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1956,7 +2832,8 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None)
+                username=None, retry_on_timeout=None, client_name=None,
+                health_check_interval=25)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -1987,7 +2864,8 @@ class test_RedisSentinel:
                 min_other_sentinels=0, password=None, sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name='kombu-worker')
+                username=None, retry_on_timeout=None, client_name='kombu-worker',
+                health_check_interval=25)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -2017,7 +2895,8 @@ class test_RedisSentinel:
                 sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username='myuser', retry_on_timeout=None, client_name=None)
+                username='myuser', retry_on_timeout=None, client_name=None,
+                health_check_interval=25)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()
@@ -2047,7 +2926,8 @@ class test_RedisSentinel:
                 sentinel_kwargs=None,
                 socket_connect_timeout=None, socket_keepalive=None,
                 socket_keepalive_options=None, socket_timeout=None,
-                username=None, retry_on_timeout=None, client_name=None)
+                username=None, retry_on_timeout=None, client_name=None,
+                health_check_interval=25)
 
             master_for = patched.return_value.master_for
             master_for.assert_called()

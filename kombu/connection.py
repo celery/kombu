@@ -126,6 +126,21 @@ class Connection:
         keyword argument at the same time.
     :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
+        Can be a string or a callable returning a string.
+        If a callable is provided, it will be invoked on each
+        connection/reconnection attempt, enabling credential refresh
+        (e.g., for expiring tokens).
+        Note: during connection establishment, callable passwords are
+        currently resolved by the ``pyamqp`` transport only. Other
+        transports (e.g. ``librabbitmq``) will not invoke the callable.
+        Additionally, :meth:`as_uri` will invoke the callable when
+        ``include_password=True``.
+        Callable passwords are only supported via programmatic
+        configuration, not via URL-based configuration.
+        The callable must be thread-safe if used in a multi-threaded
+        context, and picklable if using the ``spawn`` start method.
+
+        .. versionadded:: 5.7
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
     """
@@ -448,9 +463,14 @@ class Connection:
             round = self.completes_cycle(retries)
             if round:
                 interval = next(intervals)
-            if errback:
-                errback(exc, interval)
-            self.maybe_switch_next()  # select next host
+            try:
+                if errback:
+                    errback(exc, interval)
+            finally:
+                # Select next host after invoking errback so that the
+                # callback can inspect the failing host, but always
+                # switch even if errback raises.
+                self.maybe_switch_next()
 
             return interval if round else 0
 
@@ -562,6 +582,7 @@ class Connection:
                         self._debug('ensure retry policy error: %r',
                                     exc, exc_info=1)
                     except conn_errors as exc:
+                        self.maybe_switch_next()  # select next host
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
                             # recoverable/irrecoverable errors, so we propagate
@@ -732,6 +753,10 @@ class Connection:
             return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
+        if not include_password:
+            password = mask
+        elif callable(password):
+            password = password()
 
         return as_url(
             transport, hostname, port, userid, password, quote(vhost),
