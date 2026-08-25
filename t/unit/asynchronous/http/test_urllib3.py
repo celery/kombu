@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from unittest.mock import Mock, patch
+import sys
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -254,3 +255,243 @@ class test_Urllib3Client:
             assert len(client._active_requests) + len(client._pending) == 4
 
         client.close()
+
+    def test_import_error_without_urllib3(self):
+        """Test that Urllib3Client raises ImportError when urllib3 is not available."""
+        import kombu.asynchronous.http.urllib3_client as mod
+        original = mod.urllib3
+        mod.urllib3 = None
+        try:
+            with pytest.raises(ImportError, match='urllib3'):
+                Urllib3Client(self.hub)
+        finally:
+            mod.urllib3 = original
+
+    def test_get_pool_with_network_interface(self):
+        """Test _get_pool uses source_address when network_interface is set."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = '10.0.0.1'
+        request.validate_cert = False
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = None
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert call_kwargs['source_address'] == ('10.0.0.1', 0)
+
+    def test_get_pool_with_custom_ca_certs(self):
+        """Test _get_pool uses custom ca_certs when provided."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = True
+        request.ca_certs = '/path/to/cacerts.pem'
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = None
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert call_kwargs['ca_certs'] == '/path/to/cacerts.pem'
+
+    def test_get_pool_with_certifi_fallback(self):
+        """Test _get_pool falls back to certifi when validate_cert=True and no ca_certs."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = True
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = None
+
+        certifi_mock = MagicMock()
+        certifi_mock.where.return_value = '/certifi/cacert.pem'
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            with patch.dict(sys.modules, {'certifi': certifi_mock}):
+                self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert call_kwargs['ca_certs'] == '/certifi/cacert.pem'
+
+    def test_get_pool_with_certifi_not_available(self):
+        """Test _get_pool proceeds gracefully when certifi is not available."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = True
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = None
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            with patch.dict(sys.modules, {'certifi': None}):
+                self.client._get_pool(request)
+            # Should succeed without ca_certs
+            mock_conn.assert_called_once()
+
+    def test_get_pool_with_client_cert_and_key(self):
+        """Test _get_pool sets cert_file and key_file when client_cert/key provided."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = False
+        request.ca_certs = None
+        request.client_cert = '/path/to/client.crt'
+        request.client_key = '/path/to/client.key'
+        request.proxy_host = None
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert call_kwargs['cert_file'] == '/path/to/client.crt'
+            assert call_kwargs['key_file'] == '/path/to/client.key'
+
+    def test_get_pool_with_proxy_and_credentials(self):
+        """Test _get_pool sets proxy headers when proxy credentials provided."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = False
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = 'proxy.example.com'
+        request.proxy_port = 3128
+        request.proxy_username = 'proxyuser'
+        request.proxy_password = 'proxypass'
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert '_proxy' in call_kwargs
+            assert '_proxy_headers' in call_kwargs
+
+    def test_get_pool_with_proxy_no_credentials(self):
+        """Test _get_pool sets proxy without headers when no proxy credentials provided."""
+        import urllib3 as urllib3_mod
+
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = False
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = 'proxy.example.com'
+        request.proxy_port = 3128
+        request.proxy_username = None  # No credentials
+
+        with patch.object(urllib3_mod, 'connection_from_url') as mock_conn:
+            mock_conn.return_value = Mock()
+            self.client._get_pool(request)
+            call_kwargs = mock_conn.call_args[1]
+            assert '_proxy' in call_kwargs
+            assert '_proxy_headers' not in call_kwargs
+
+    def test_timeout_check_calls_process_queue(self):
+        """Test that _timeout_check triggers _process_queue."""
+        with patch.object(self.client, '_process_queue') as mock_pq:
+            self.client._timeout_check()
+            mock_pq.assert_called_once()
+
+    def test_request_complete_missing_id(self):
+        """Test _request_complete does not raise when request_id is not tracked."""
+        # Should not raise even when request_id is not in _active_requests
+        self.client._request_complete(99999)
+
+    def test_execute_request_with_string_body(self):
+        """Test _execute_request encodes string body to bytes for POST."""
+        pool_mock = self._setup_pool_mock()
+
+        with patch.object(self.client, '_get_pool', return_value=pool_mock):
+            request = Mock()
+            request.method = 'POST'
+            request.url = 'http://example.com'
+            request.headers = {}
+            request.body = 'hello world'  # String body, not bytes
+            request.proxy_host = None
+            request.network_interface = None
+            request.validate_cert = False
+            request.ca_certs = None
+            request.client_cert = None
+            request.client_key = None
+            request.auth_username = None
+            request.use_gzip = False
+            request.follow_redirects = True
+            request.user_agent = None
+
+            with patch.object(self.client, '_request_complete'):
+                self.client._execute_request(request)
+
+            call_kwargs = pool_mock.request.call_args[1]
+            assert call_kwargs['body'] == b'hello world'
+            request.on_ready.assert_called_once()
+
+    def test_execute_request_urllib3_http_error(self):
+        """Test _execute_request handles urllib3.exceptions.HTTPError."""
+        import urllib3.exceptions
+
+        pool_mock = Mock()
+        pool_mock.request.side_effect = urllib3.exceptions.HTTPError('connection failed')
+
+        with patch.object(self.client, '_get_pool', return_value=pool_mock):
+            request = Mock()
+            request.method = 'GET'
+            request.url = 'http://example.com'
+            request.headers = {}
+            request.body = None
+            request.proxy_host = None
+            request.network_interface = None
+            request.validate_cert = False
+            request.ca_certs = None
+            request.client_cert = None
+            request.client_key = None
+            request.auth_username = None
+            request.use_gzip = False
+            request.follow_redirects = True
+            request.user_agent = None
+
+            with patch.object(self.client, '_request_complete'):
+                self.client._execute_request(request)
+
+            request.on_ready.assert_called_once()
+            response = request.on_ready.call_args[0][0]
+            assert response.code == 599
+            assert response.error is not None
+            assert 'connection failed' in str(response.error)
+
+    def test_on_readable(self):
+        """Test on_readable is a no-op compatibility method."""
+        # Should not raise
+        self.client.on_readable(5)
+
+    def test_on_writable(self):
+        """Test on_writable is a no-op compatibility method."""
+        # Should not raise
+        self.client.on_writable(5)
+

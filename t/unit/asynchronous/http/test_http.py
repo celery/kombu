@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 from vine import promise
@@ -153,3 +153,51 @@ class test_Client:
         client2 = http.get_client(hub)
         assert client2 is client
         assert client2.hub is hub
+
+    def test_client_uses_curl_when_available(self, hub):
+        """Test that Client() returns CurlClient when pycurl is available."""
+        mock_curl_client = Mock(name='CurlClient')
+        mock_curl_client.Curl = Mock()  # Curl is available
+
+        with patch('kombu.asynchronous.http.curl.CurlClient', mock_curl_client):
+            client = http.Client(hub)
+            assert client is mock_curl_client.return_value
+
+    def test_client_falls_back_to_urllib3_when_curl_unavailable(self, hub):
+        """Test that Client() falls back to Urllib3Client when pycurl is not available."""
+        mock_curl_client = Mock(name='CurlClient')
+        mock_curl_client.Curl = None  # Curl is NOT available
+
+        mock_urllib3_client = Mock(name='Urllib3Client')
+        mock_urllib3_client_instance = Mock()
+        mock_urllib3_client.return_value = mock_urllib3_client_instance
+
+        with patch('kombu.asynchronous.http.curl.CurlClient', mock_curl_client):
+            with patch('kombu.asynchronous.http.urllib3_client.Urllib3Client', mock_urllib3_client):
+                client = http.Client(hub)
+                assert client is mock_urllib3_client_instance
+
+    def test_get_client_creates_new_client_when_none_exists(self, hub):
+        """Test get_client creates a new client when hub has no existing client."""
+        # Remove any previously cached client
+        if hasattr(hub, '_current_http_client'):
+            del hub._current_http_client
+
+        mock_client = Mock(name='client')
+
+        with patch('kombu.asynchronous.http.Client', return_value=mock_client) as mock_client_fn:
+            client = http.get_client(hub)
+            mock_client_fn.assert_called_once_with(hub)
+            assert client is mock_client
+            assert hub._current_http_client is mock_client
+
+    def test_get_client_returns_existing_client(self, hub):
+        """Test get_client returns existing cached client from hub."""
+        existing_client = Mock(name='existing_client')
+        hub._current_http_client = existing_client
+
+        with patch('kombu.asynchronous.http.Client') as mock_client_fn:
+            client = http.get_client(hub)
+            mock_client_fn.assert_not_called()
+            assert client is existing_client
+
