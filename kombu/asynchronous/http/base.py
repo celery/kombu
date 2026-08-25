@@ -236,6 +236,8 @@ def header_parser(keyt=normalize_header):
 
 
 class BaseClient:
+    """Base HTTP client."""
+
     Headers = Headers
     Request = Request
     Response = Response
