@@ -284,6 +284,30 @@ class test_retry_over_time:
             max_retries=None, errback=None, interval_max=14) == 42
         assert fun.calls == 11
 
+    def test_never_sleeps_longer_than_interval_max(self, monkeypatch):
+        durations = []
+        pending = [0.0]
+
+        def fun():
+            # record the total time slept since the previous attempt.
+            durations.append(pending[0])
+            pending[0] = 0.0
+            raise KeyError()
+
+        def fake_sleep(seconds):
+            pending[0] += seconds
+
+        monkeypatch.setattr(utils, 'sleep', fake_sleep)
+
+        with pytest.raises(KeyError):
+            retry_over_time(
+                fun, (KeyError,),
+                max_retries=10,
+                interval_start=1, interval_step=2, interval_max=6,
+            )
+
+        assert max(durations) <= 6
+
 
 @pytest.mark.parametrize('obj,expected', [
     (None, None),

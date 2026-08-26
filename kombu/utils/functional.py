@@ -326,6 +326,9 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                 callback()
             tts = float(errback(exc, interval_range, retries) if errback
                         else next(interval_range))
+            # the last value of fxrange can be above interval_max,
+            # as its stop argument is inflated by interval_start.
+            tts = min(tts, float(interval_max))
             if tts:
                 for _ in range(int(tts)):
                     if callback:
