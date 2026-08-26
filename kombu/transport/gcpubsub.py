@@ -51,8 +51,6 @@ import datetime
 import os
 import string
 import threading
-from _socket import gethostname
-from _socket import timeout as socket_timeout
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
                                 wait)
 from contextlib import suppress
@@ -62,6 +60,8 @@ from threading import Lock
 from time import monotonic, sleep
 from uuid import NAMESPACE_OID, uuid3
 
+from _socket import gethostname
+from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         GoogleAPICallError, NotFound,
                                         PermissionDenied)
