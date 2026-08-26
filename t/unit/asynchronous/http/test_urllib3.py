@@ -5,6 +5,8 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
+pytest.importorskip('urllib3')
+
 from kombu.asynchronous.http.urllib3_client import Urllib3Client
 
 
