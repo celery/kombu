@@ -9,6 +9,7 @@ import redis
 
 import kombu
 from kombu.transport.redis import Transport
+from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
                      BasicFunctionality)
@@ -215,6 +216,171 @@ class test_RedisPriority(BasePriority):
                 assert received_message_bodies[1] == {'msg': 'second'}
                 assert received_message_bodies[2] == {'msg': 'first'}
                 assert received_message_bodies[3] == {'msg': 'third'}
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisPublishBatch:
+
+    def test_retry_on_timeout_keeps_publication_immediate(self, connection):
+        connection.transport_options = {
+            **connection.transport_options,
+            'retry_on_timeout': True,
+        }
+        queue = kombu.Queue('batch_retry_on_timeout_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+
+                assert producer.supports_batch_publish is False
+                with producer.batch():
+                    producer.publish(
+                        {'delivery': 'immediate'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    message = queue(channel).get(no_ack=True)
+
+        assert message.payload == {'delivery': 'immediate'}
+
+    def test_manual_flush_sends_and_batch_continues(self, connection):
+        queue = kombu.Queue('batch_manual_flush_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+                bound_queue = queue(channel)
+
+                with producer.batch() as batch:
+                    producer.publish(
+                        {'position': 'first'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    batch.flush()
+                    first = bound_queue.get(no_ack=True)
+                    producer.publish(
+                        {'position': 'second'},
+                        exchange='',
+                        routing_key=queue.name,
+                    )
+
+                second = bound_queue.get(no_ack=True)
+
+        assert first.payload == {'position': 'first'}
+        assert second.payload == {'position': 'second'}
+
+    def test_direct_priority_and_fifo(self, connection):
+        exchange = kombu.Exchange('batch_direct_exchange', type='direct')
+        queue = kombu.Queue(
+            'batch_direct_queue',
+            exchange=exchange,
+            routing_key='batch.direct',
+            max_priority=10,
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    for body, priority in [
+                        ({'position': 'first'}, 6),
+                        ({'position': 'second'}, 3),
+                        ({'position': 'third'}, 6),
+                    ]:
+                        producer.publish(
+                            body,
+                            exchange=exchange,
+                            routing_key='batch.direct',
+                            declare=[queue],
+                            serializer='json',
+                            priority=priority,
+                        )
+
+                bound_queue = queue(channel)
+                received = [
+                    bound_queue.get(no_ack=True).payload
+                    for _ in range(3)
+                ]
+
+        assert received == [
+            {'position': 'second'},
+            {'position': 'first'},
+            {'position': 'third'},
+        ]
+
+    def test_topic_routing(self, connection):
+        exchange = kombu.Exchange('batch_topic_exchange', type='topic')
+        queue = kombu.Queue(
+            'batch_topic_queue',
+            exchange=exchange,
+            routing_key='events.*',
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    producer.publish(
+                        {'event': 'matching'},
+                        exchange=exchange,
+                        routing_key='events.created',
+                        declare=[queue],
+                        serializer='json',
+                    )
+                    producer.publish(
+                        {'event': 'other'},
+                        exchange=exchange,
+                        routing_key='other.created',
+                        serializer='json',
+                    )
+
+                bound_queue = queue(channel)
+                message = bound_queue.get(no_ack=True)
+                assert message.payload == {'event': 'matching'}
+                assert bound_queue.get(no_ack=True) is None
+
+    def test_fanout_is_deferred_until_flush(self, connection, redis_client):
+        exchange = kombu.Exchange('batch_fanout_exchange', type='fanout')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                channel.pool
+                topic = channel._get_publish_topic(
+                    exchange.name,
+                    'worker.created',
+                )
+                keyprefix = connection.transport_options.get(
+                    'global_keyprefix',
+                    '',
+                )
+                with redis_client.pubsub() as subscriber:
+                    subscriber.subscribe(f'{keyprefix}{topic}')
+                    subscribed = subscriber.get_message(timeout=1)
+                    assert subscribed['type'] == 'subscribe'
+
+                    producer = kombu.Producer(channel)
+                    with producer.batch():
+                        producer.publish(
+                            {'event': 'fanout'},
+                            exchange=exchange,
+                            routing_key='worker.created',
+                            declare=[exchange],
+                            serializer='json',
+                        )
+                        assert subscriber.get_message(timeout=0.05) is None
+
+                    published = subscriber.get_message(timeout=1)
+
+        assert published['type'] == 'message'
+        message = loads(published['data'])
+        assert message['properties']['delivery_info'] == {
+            'exchange': exchange.name,
+            'routing_key': 'worker.created',
+        }
 
 
 @pytest.mark.env('redis')
