@@ -126,6 +126,21 @@ class Connection:
         keyword argument at the same time.
     :keyword userid: Default user name if not provided in the URL.
     :keyword password: Default password if not provided in the URL.
+        Can be a string or a callable returning a string.
+        If a callable is provided, it will be invoked on each
+        connection/reconnection attempt, enabling credential refresh
+        (e.g., for expiring tokens).
+        Note: during connection establishment, callable passwords are
+        currently resolved by the ``pyamqp`` transport only. Other
+        transports (e.g. ``librabbitmq``) will not invoke the callable.
+        Additionally, :meth:`as_uri` will invoke the callable when
+        ``include_password=True``.
+        Callable passwords are only supported via programmatic
+        configuration, not via URL-based configuration.
+        The callable must be thread-safe if used in a multi-threaded
+        context, and picklable if using the ``spawn`` start method.
+
+        .. versionadded:: 5.7
     :keyword virtual_host: Default virtual host if not provided in the URL.
     :keyword port: Default port if not provided in the URL.
     """
@@ -171,7 +186,7 @@ class Connection:
                  ssl=False, transport=None, connect_timeout=5,
                  transport_options=None, login_method=None, uri_prefix=None,
                  heartbeat=0, failover_strategy='round-robin',
-                 alternates=None, **kwargs):
+                 alternates=None, credential_provider=None, **kwargs):
         alt = [] if alternates is None else alternates
         # have to spell the args out, just to get nice docstrings :(
         params = self._initial_params = {
@@ -179,7 +194,8 @@ class Connection:
             'password': password, 'virtual_host': virtual_host,
             'port': port, 'insist': insist, 'ssl': ssl,
             'transport': transport, 'connect_timeout': connect_timeout,
-            'login_method': login_method, 'heartbeat': heartbeat
+            'login_method': login_method, 'heartbeat': heartbeat,
+            'credential_provider': credential_provider
         }
 
         if hostname and not isinstance(hostname, str):
@@ -260,7 +276,7 @@ class Connection:
 
     def _init_params(self, hostname, userid, password, virtual_host, port,
                      insist, ssl, transport, connect_timeout,
-                     login_method, heartbeat):
+                     login_method, heartbeat, credential_provider):
         transport = transport or 'amqp'
         if transport == 'amqp' and supports_librabbitmq():
             transport = 'librabbitmq'
@@ -281,6 +297,7 @@ class Connection:
         self.ssl = ssl
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)
+        self.credential_provider = credential_provider
 
     def register_with_event_loop(self, loop):
         self.transport.register_with_event_loop(self.connection, loop)
@@ -446,9 +463,14 @@ class Connection:
             round = self.completes_cycle(retries)
             if round:
                 interval = next(intervals)
-            if errback:
-                errback(exc, interval)
-            self.maybe_switch_next()  # select next host
+            try:
+                if errback:
+                    errback(exc, interval)
+            finally:
+                # Select next host after invoking errback so that the
+                # callback can inspect the failing host, but always
+                # switch even if errback raises.
+                self.maybe_switch_next()
 
             return interval if round else 0
 
@@ -560,6 +582,7 @@ class Connection:
                         self._debug('ensure retry policy error: %r',
                                     exc, exc_info=1)
                     except conn_errors as exc:
+                        self.maybe_switch_next()  # select next host
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
                             # recoverable/irrecoverable errors, so we propagate
@@ -692,6 +715,7 @@ class Connection:
             ('heartbeat', self.heartbeat),
             ('failover_strategy', self._failover_strategy),
             ('alternates', self.alt),
+            ('credential_provider', self.credential_provider),
         )
         return info
 
@@ -729,6 +753,10 @@ class Connection:
             return connection_as_uri
         fields = self.info()
         port, userid, password, vhost, transport = getfields(fields)
+        if not include_password:
+            password = mask
+        elif callable(password):
+            password = password()
 
         return as_url(
             transport, hostname, port, userid, password, quote(vhost),

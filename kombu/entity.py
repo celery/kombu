@@ -249,7 +249,8 @@ class Exchange(MaybeChannelBound):
             headers (Dict): Message headers.
         """
         properties = {} if properties is None else properties
-        properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
+        properties['delivery_mode'] = maybe_delivery_mode(
+            delivery_mode or self.delivery_mode)
         if (isinstance(body, str) and
                 properties.get('content_encoding', None)) is None:
             kwargs['content_encoding'] = 'utf-8'
@@ -468,8 +469,8 @@ class Queue(MaybeChannelBound):
 
             See https://www.rabbitmq.com/ttl.html#queue-ttl
 
-            **RabbitMQ extension**: Only available when using RabbitMQ.
-
+            **RabbitMQ extension**: Available when using RabbitMQ.
+            **Redis extension**: Available when using Redis.
         message_ttl (float): Message time to live in seconds.
 
             This setting controls how long messages can stay in the queue

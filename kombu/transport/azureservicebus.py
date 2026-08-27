@@ -7,12 +7,13 @@ queues and delete old queues as required.
 
 Notes when using with Celery if you are experiencing issues with programs not
 terminating properly. The Azure Service Bus SDK uses the Azure uAMQP library
-which in turn creates some threads. If the AzureServiceBus Channel is closed,
-said threads will be closed properly, but it seems there are times when Celery
-does not do this so these threads will be left running. As the uAMQP threads
-are not marked as Daemon threads, they will not be killed when the main thread
-exits. Setting the ``uamqp_keep_alive_interval`` transport option to 0 will
-prevent the keep_alive thread from starting
+which in turn creates some threads. If the AzureServiceBus Connection is
+closed (e.g. via ``Connection.release()``), said threads will be closed
+properly, but it seems there are times when Celery does not do this so these
+threads will be left running. As the uAMQP threads are not marked as Daemon
+threads, they will not be killed when the main thread exits. Setting the
+``uamqp_keep_alive_interval`` transport option to 0 will prevent the
+keep_alive thread from starting
 
 
 More information about Azure Service Bus:
@@ -53,6 +54,11 @@ Transport Options
 * ``retry_backoff_factor`` - Azure SDK exponential backoff factor.
   Default ``0.8``
 * ``retry_backoff_max`` - Azure SDK retry total time. Default ``120``
+* ``use_lock_renewal`` - Enable Azure SDK ``AutoLockRenewer`` to keep
+  message locks alive while a worker is processing. Only effective when
+  receive mode is ``PEEK_LOCK`` (the default). Default ``False``.
+* ``max_lock_renewal_duration`` - Time in seconds that locks registered
+  to the renewer should be maintained for. Default ``3600`` (1 hour).
 """
 
 from __future__ import annotations
@@ -64,9 +70,20 @@ from typing import Any
 import azure.core.exceptions
 import azure.servicebus.exceptions
 import isodate
-from azure.servicebus import (ServiceBusClient, ServiceBusMessage,
-                              ServiceBusReceiveMode, ServiceBusReceiver,
-                              ServiceBusSender)
+from azure.servicebus import (AutoLockRenewer, ServiceBusClient,
+                              ServiceBusMessage, ServiceBusReceiveMode,
+                              ServiceBusReceiver, ServiceBusSender)
+from azure.servicebus.exceptions import (OperationTimeoutError,
+                                         ServiceBusCommunicationError,
+                                         ServiceBusConnectionError,
+                                         ServiceBusServerBusyError)
+
+try:
+    from azure.servicebus._pyamqp.error import (AMQPConnectionError,
+                                                AMQPLinkError,
+                                                AMQPSessionError)
+except ImportError:
+    AMQPConnectionError = AMQPLinkError = AMQPSessionError = None
 from azure.servicebus.management import ServiceBusAdministrationClient
 
 try:
@@ -76,26 +93,43 @@ except ImportError:
     DefaultAzureCredential = None
     ManagedIdentityCredential = None
 
+from kombu.log import get_logger
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
 
+logger = get_logger(__name__)
+
+_TRANSIENT_ERRORS = tuple(
+    filter(
+        None,
+        (
+            ServiceBusConnectionError,
+            ServiceBusCommunicationError,
+            OperationTimeoutError,
+            ServiceBusServerBusyError,
+            AMQPConnectionError,
+            AMQPSessionError,
+            AMQPLinkError,
+        ),
+    )
+)
+
 # dots are replaced by dash, all other punctuation replaced by underscore.
-PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_', '.', '-'}
-CHARS_REPLACE_TABLE = {
-    ord('.'): ord('-'),
-    **{ord(c): ord('_') for c in PUNCTUATIONS_TO_REPLACE}
-}
+PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {"_", ".", "-"}
+CHARS_REPLACE_TABLE = {**{ord(c): ord("_") for c in PUNCTUATIONS_TO_REPLACE}}
 
 
 class SendReceive:
     """Container for Sender and Receiver."""
 
-    def __init__(self,
-                 receiver: ServiceBusReceiver | None = None,
-                 sender: ServiceBusSender | None = None):
+    def __init__(
+        self,
+        receiver: ServiceBusReceiver | None = None,
+        sender: ServiceBusSender | None = None,
+    ):
         self.receiver: ServiceBusReceiver = receiver
         self.sender: ServiceBusSender = sender
 
@@ -121,9 +155,10 @@ class Channel(virtual.Channel):
     default_retry_backoff_factor: float = 0.8
     # Max time to backoff (is the default from service bus repo)
     default_retry_backoff_max: int = 120
-    domain_format: str = 'kombu%(vhost)s'
-    _queue_cache: dict[str, SendReceive] = {}
-    _noack_queues: set[str] = set()
+    default_use_lock_renewal: bool = False
+    default_max_lock_renewal_duration: float = 3600.0  # in seconds (1 hour)
+
+    domain_format: str = "kombu%(vhost)s"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,8 +173,7 @@ class Channel(virtual.Channel):
         self.qos.restore_at_shutdown = False
 
     def _try_parse_connection_string(self) -> None:
-        self._namespace, self._credential = Transport.parse_uri(
-            self.conninfo.hostname)
+        self._namespace, self._credential = Transport.parse_uri(self.conninfo.hostname)
 
         if (
             DefaultAzureCredential is not None
@@ -151,33 +185,33 @@ class Channel(virtual.Channel):
             return None
 
         if ":" in self._credential:
-            self._policy, self._sas_key = self._credential.split(':', 1)
+            self._policy, self._sas_key = self._credential.split(":", 1)
 
         conn_dict = {
-            'Endpoint': 'sb://' + self._namespace,
-            'SharedAccessKeyName': self._policy,
-            'SharedAccessKey': self._sas_key,
+            "Endpoint": "sb://" + self._namespace,
+            "SharedAccessKeyName": self._policy,
+            "SharedAccessKey": self._sas_key,
         }
-        self._connection_string = ';'.join(
-            [key + '=' + value for key, value in conn_dict.items()])
+        self._connection_string = ";".join(
+            [key + "=" + value for key, value in conn_dict.items()]
+        )
 
-    def basic_consume(self, queue, no_ack, *args, **kwargs):
+    def basic_consume(self, queue, no_ack, callback, consumer_tag, *args, **kwargs):
         if no_ack:
-            self._noack_queues.add(queue)
+            self.connection._noack_consumer_tags.add(consumer_tag)
         return super().basic_consume(
-            queue, no_ack, *args, **kwargs
+            queue, no_ack, callback, consumer_tag, *args, **kwargs
         )
 
     def basic_cancel(self, consumer_tag):
-        if consumer_tag in self._consumers:
-            queue = self._tag_to_queue[consumer_tag]
-            self._noack_queues.discard(queue)
+        self.connection._noack_consumer_tags.discard(consumer_tag)
         return super().basic_cancel(consumer_tag)
 
     def _add_queue_to_cache(
-            self, name: str,
-            receiver: ServiceBusReceiver | None = None,
-            sender: ServiceBusSender | None = None
+        self,
+        name: str,
+        receiver: ServiceBusReceiver | None = None,
+        sender: ServiceBusSender | None = None,
     ) -> SendReceive:
         if name in self._queue_cache:
             obj = self._queue_cache[name]
@@ -192,25 +226,75 @@ class Channel(virtual.Channel):
         queue_obj = self._queue_cache.get(queue, None)
         if queue_obj is None or queue_obj.sender is None:
             sender = self.queue_service.get_queue_sender(
-                queue, keep_alive=self.uamqp_keep_alive_interval)
+                queue, keep_alive=self.uamqp_keep_alive_interval
+            )
             queue_obj = self._add_queue_to_cache(queue, sender=sender)
         return queue_obj
 
+    @staticmethod
+    def _receiver_cache_key(
+        queue: str,
+        recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
+    ) -> str:
+        return f"{queue}::{recv_mode.name}"
+
     def _get_asb_receiver(
-            self, queue: str,
-            recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
-            queue_cache_key: str | None = None) -> SendReceive:
-        cache_key = queue_cache_key or queue
+        self,
+        queue: str,
+        recv_mode: ServiceBusReceiveMode = ServiceBusReceiveMode.PEEK_LOCK,
+        queue_cache_key: str | None = None,
+    ) -> SendReceive:
+        cache_key = queue_cache_key or self._receiver_cache_key(queue, recv_mode)
         queue_obj = self._queue_cache.get(cache_key, None)
         if queue_obj is None or queue_obj.receiver is None:
             receiver = self.queue_service.get_queue_receiver(
-                queue_name=queue, receive_mode=recv_mode,
-                keep_alive=self.uamqp_keep_alive_interval)
+                queue_name=queue,
+                receive_mode=recv_mode,
+                keep_alive=self.uamqp_keep_alive_interval,
+            )
             queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
         return queue_obj
 
-    def entity_name(
-            self, name: str, table: dict[int, int] | None = None) -> str:
+    def _close_cached_receiver(self, queue: str, recv_mode) -> None:
+        """Close and evict a cached receiver so the next call creates a fresh one."""
+        cache_key = self._receiver_cache_key(queue, recv_mode)
+        obj = self._queue_cache.pop(cache_key, None)
+        if obj is not None and obj.receiver is not None:
+            try:
+                obj.receiver.close()
+            except Exception:
+                pass
+
+    def _get_renewal_receiver(self, queue: str) -> SendReceive:
+        """Get or create a receiver dedicated to lock renewal.
+
+        One receiver per queue, created lazily on first message.
+        Uses a separate AMQP connection so renewal management
+        requests don't contend with the receive loop's socket_lock.
+        Opened eagerly because the SDK rejects renew_message_lock
+        when the receiver's ``_running`` flag is False.
+        """
+        cache_key = f"{queue}::_renewal"
+        queue_obj = self._queue_cache.get(cache_key, None)
+        if queue_obj is None or queue_obj.receiver is None:
+            receiver = self.queue_service.get_queue_receiver(
+                queue_name=queue,
+                receive_mode=ServiceBusReceiveMode.PEEK_LOCK,
+                prefetch_count=0,
+                keep_alive=self.uamqp_keep_alive_interval,
+            )
+            # Explicitly open the AMQP link: the SDK rejects
+            # renew_message_lock unless the receiver is open.
+            # Closed via Transport.close_connection, not __exit__.
+            # __enter__ calls _open_with_retry internally.
+            if hasattr(receiver, "_open_with_retry"):
+                receiver._open_with_retry()
+            else:
+                receiver.__enter__()
+            queue_obj = self._add_queue_to_cache(cache_key, receiver=receiver)
+        return queue_obj
+
+    def entity_name(self, name: str, table: dict[int, int] | None = None) -> str:
         """Format AMQP queue name into a valid ServiceBus queue name."""
         return str(safe_str(name)).translate(table or CHARS_REPLACE_TABLE)
 
@@ -220,6 +304,34 @@ class Channel(virtual.Channel):
         # message.delivery_info.pop('azure_message', None)
         # super()._restore(message)
         pass
+
+    def _create_auto_lock_renewer(self) -> AutoLockRenewer:
+        return AutoLockRenewer(
+            max_lock_renewal_duration=self.max_lock_renewal_duration,
+            on_lock_renew_failure=self._on_lock_renew_failure,
+        )
+
+    def _on_lock_renew_failure(self, renewable, error):
+        if renewable._lock_expired or renewable._settled:
+            return
+
+        retries = getattr(renewable, "_kombu_renew_retries", 0)
+        if retries >= 3:
+            logger.error("Lock renewal giving up after %d retries: %s", retries, error)
+            return
+
+        renewable._kombu_renew_retries = retries + 1
+        renewable.auto_renew_error = None
+        logger.warning(
+            "Lock renewal failed (retry %d/3), re-registering: %s", retries + 1, error
+        )
+        try:
+            receiver = getattr(
+                renewable, "_kombu_renewal_receiver", renewable._receiver
+            )
+            self.connection._renewer.register(receiver, renewable)
+        except Exception:
+            logger.exception("Failed to re-register for lock renewal")
 
     def _new_queue(self, queue: str, **kwargs) -> SendReceive:
         """Ensure a queue exists in ServiceBus."""
@@ -231,10 +343,12 @@ class Channel(virtual.Channel):
             # Converts seconds into ISO8601 duration format
             # ie 66seconds = P1M6S
             lock_duration = isodate.duration_isoformat(
-                isodate.Duration(seconds=self.peek_lock_seconds))
+                isodate.Duration(seconds=self.peek_lock_seconds)
+            )
             try:
                 self.queue_mgmt_service.create_queue(
-                    queue_name=queue, lock_duration=lock_duration)
+                    queue_name=queue, lock_duration=lock_duration
+                )
             except azure.core.exceptions.ResourceExistsError:
                 pass
             return self._add_queue_to_cache(queue)
@@ -242,11 +356,20 @@ class Channel(virtual.Channel):
     def _delete(self, queue: str, *args, **kwargs) -> None:
         """Delete queue by name."""
         queue = self.entity_name(self.queue_name_prefix + queue)
-
         self.queue_mgmt_service.delete_queue(queue)
-        send_receive_obj = self._queue_cache.pop(queue, None)
-        if send_receive_obj:
-            send_receive_obj.close()
+        keys = [
+            k for k in self._queue_cache if k == queue or k.startswith(f"{queue}::")
+        ]
+        for k in keys:
+            obj = self._queue_cache.pop(k, None)
+            if obj is None:
+                continue
+            try:
+                obj.close()
+            except Exception:
+                logger.exception(
+                    "Failed to close cached SendReceive for %r; continuing", k
+                )
 
     def _put(self, queue: str, message, **kwargs) -> None:
         """Put message onto queue."""
@@ -256,21 +379,30 @@ class Channel(virtual.Channel):
         queue_obj = self._get_asb_sender(queue)
         queue_obj.sender.send_messages(msg)
 
-    def _get(
-            self, queue: str,
-            timeout: float | int | None = None
-    ) -> dict[str, Any]:
+    def _get(self, queue: str, timeout: float | int | None = None) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
         # If we're not ack'ing for this queue, just change receive_mode
-        recv_mode = ServiceBusReceiveMode.RECEIVE_AND_DELETE \
-            if queue in self._noack_queues else ServiceBusReceiveMode.PEEK_LOCK
+        recv_mode = (
+            ServiceBusReceiveMode.RECEIVE_AND_DELETE
+            if queue in self._noack_queues
+            else ServiceBusReceiveMode.PEEK_LOCK
+        )
 
         queue = self.entity_name(self.queue_name_prefix + queue)
 
         queue_obj = self._get_asb_receiver(queue, recv_mode)
-        messages = queue_obj.receiver.receive_messages(
-            max_message_count=1,
-            max_wait_time=timeout or self.wait_time_seconds)
+        try:
+            messages = queue_obj.receiver.receive_messages(
+                max_message_count=1, max_wait_time=timeout or self.wait_time_seconds
+            )
+        except _TRANSIENT_ERRORS:
+            logger.warning(
+                "Transient error receiving from %r, resetting receiver",
+                queue,
+                exc_info=True,
+            )
+            self._close_cached_receiver(queue, recv_mode)
+            raise Empty()
 
         if not messages:
             raise Empty()
@@ -278,15 +410,33 @@ class Channel(virtual.Channel):
         # message.body is either byte or generator[bytes]
         message = messages[0]
         if not isinstance(message.body, bytes):
-            body = b''.join(message.body)
+            body = b"".join(message.body)
         else:
             body = message.body
 
         msg = loads(bytes_to_str(body))
-        msg['properties']['delivery_info']['azure_message'] = message
-        msg['properties']['delivery_info']['azure_queue_name'] = queue
+        msg["properties"]["delivery_info"]["azure_message"] = message
+        msg["properties"]["delivery_info"]["azure_queue_name"] = queue
+
+        if self.use_lock_renewal and recv_mode == ServiceBusReceiveMode.PEEK_LOCK:
+            try:
+                self._register_for_renewal(queue, message)
+            except Exception:
+                logger.warning(
+                    "Failed to register message for lock renewal on "
+                    "%r; processing without renewal",
+                    queue,
+                    exc_info=True,
+                )
 
         return msg
+
+    def _register_for_renewal(self, queue, message):
+        if self.connection._renewer is None:
+            self.connection._renewer = self._create_auto_lock_renewer()
+        renewal_obj = self._get_renewal_receiver(queue)
+        message._kombu_renewal_receiver = renewal_obj.receiver
+        self.connection._renewer.register(renewal_obj.receiver, message)
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
         try:
@@ -294,16 +444,25 @@ class Channel(virtual.Channel):
         except KeyError:
             super().basic_ack(delivery_tag)
         else:
-            queue = delivery_info['azure_queue_name']
+            queue = delivery_info["azure_queue_name"]
             # recv_mode is PEEK_LOCK when ack'ing messages
             queue_obj = self._get_asb_receiver(queue)
 
             try:
-                queue_obj.receiver.complete_message(
-                    delivery_info['azure_message'])
+                queue_obj.receiver.complete_message(delivery_info["azure_message"])
             except azure.servicebus.exceptions.MessageAlreadySettled:
                 super().basic_ack(delivery_tag)
+            except azure.servicebus.exceptions.MessageLockLostError:
+                logger.warning(
+                    "complete_message on queue %r failed with "
+                    "MessageLockLostError; the broker may have redelivered "
+                    "this message. Consider shorter handlers or enabling "
+                    "lock renewal.",
+                    queue,
+                )
+                super().basic_reject(delivery_tag)
             except Exception:
+                logger.exception("complete_message on queue %r failed", queue)
                 super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
@@ -317,42 +476,32 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue) -> int:
         """Delete all current messages in a queue."""
-        # Azure doesn't provide a purge api yet
+        # Azure has no broker-side purge API. Drain via an ephemeral
+        # RECEIVE_AND_DELETE receiver scoped to this call so we do not
+        # leak the receiver into _queue_cache.
         n = 0
         max_purge_count = 10
         queue = self.entity_name(self.queue_name_prefix + queue)
 
-        # By default all the receivers will be in PEEK_LOCK receive mode
-        queue_obj = self._queue_cache.get(queue, None)
-        if queue not in self._noack_queues or \
-           queue_obj is None or queue_obj.receiver is None:
-            queue_obj = self._get_asb_receiver(
-                queue,
-                ServiceBusReceiveMode.RECEIVE_AND_DELETE, 'purge_' + queue
-            )
-
-        while True:
-            messages = queue_obj.receiver.receive_messages(
-                max_message_count=max_purge_count,
-                max_wait_time=0.2
-            )
-            n += len(messages)
-
-            if len(messages) < max_purge_count:
-                break
+        with self.queue_service.get_queue_receiver(
+            queue_name=queue,
+            receive_mode=ServiceBusReceiveMode.RECEIVE_AND_DELETE,
+            keep_alive=self.uamqp_keep_alive_interval,
+        ) as receiver:
+            while True:
+                messages = receiver.receive_messages(
+                    max_message_count=max_purge_count,
+                    max_wait_time=0.2,
+                )
+                n += len(messages)
+                if len(messages) < max_purge_count:
+                    break
 
         return n
 
     def close(self) -> None:
-        # receivers and senders spawn threads so clean them up
-        if not self.closed:
-            self.closed = True
-            for queue_obj in self._queue_cache.values():
-                queue_obj.close()
-            self._queue_cache.clear()
-
-            if self.connection is not None:
-                self.connection.close_channel(self)
+        # Cache and noack set live on Transport; see Transport.close_connection.
+        super().close()
 
     @cached_property
     def queue_service(self) -> ServiceBusClient:
@@ -361,7 +510,7 @@ class Channel(virtual.Channel):
                 self._connection_string,
                 retry_total=self.retry_total,
                 retry_backoff_factor=self.retry_backoff_factor,
-                retry_backoff_max=self.retry_backoff_max
+                retry_backoff_max=self.retry_backoff_max,
             )
 
         return ServiceBusClient(
@@ -369,7 +518,7 @@ class Channel(virtual.Channel):
             self._credential,
             retry_total=self.retry_total,
             retry_backoff_factor=self.retry_backoff_factor,
-            retry_backoff_max=self.retry_backoff_max
+            retry_backoff_max=self.retry_backoff_max,
         )
 
     @cached_property
@@ -379,9 +528,7 @@ class Channel(virtual.Channel):
                 self._connection_string
             )
 
-        return ServiceBusAdministrationClient(
-            self._namespace, self._credential
-        )
+        return ServiceBusAdministrationClient(self._namespace, self._credential)
 
     @property
     def conninfo(self):
@@ -391,42 +538,73 @@ class Channel(virtual.Channel):
     def transport_options(self):
         return self.connection.client.transport_options
 
+    @property
+    def _queue_cache(self) -> dict[str, SendReceive]:
+        return self.connection._queue_cache
+
+    @property
+    def _noack_queues(self) -> set[str]:
+        tag_to_queue = self._tag_to_queue
+        return {
+            tag_to_queue[t]
+            for t in self.connection._noack_consumer_tags
+            if t in tag_to_queue
+        }
+
     @cached_property
     def queue_name_prefix(self) -> str:
-        return self.transport_options.get('queue_name_prefix', '')
+        return self.transport_options.get("queue_name_prefix", "")
 
     @cached_property
     def wait_time_seconds(self) -> int:
-        return self.transport_options.get('wait_time_seconds',
-                                          self.default_wait_time_seconds)
+        return self.transport_options.get(
+            "wait_time_seconds", self.default_wait_time_seconds
+        )
 
     @cached_property
     def peek_lock_seconds(self) -> int:
-        return min(self.transport_options.get('peek_lock_seconds',
-                                              self.default_peek_lock_seconds),
-                   300)  # Limit upper bounds to 300
+        return min(
+            self.transport_options.get(
+                "peek_lock_seconds", self.default_peek_lock_seconds
+            ),
+            300,
+        )  # Limit upper bounds to 300
 
     @cached_property
     def uamqp_keep_alive_interval(self) -> int:
         return self.transport_options.get(
-            'uamqp_keep_alive_interval',
-            self.default_uamqp_keep_alive_interval
+            "uamqp_keep_alive_interval", self.default_uamqp_keep_alive_interval
         )
 
     @cached_property
     def retry_total(self) -> int:
-        return self.transport_options.get(
-            'retry_total', self.default_retry_total)
+        return self.transport_options.get("retry_total", self.default_retry_total)
 
     @cached_property
     def retry_backoff_factor(self) -> float:
         return self.transport_options.get(
-            'retry_backoff_factor', self.default_retry_backoff_factor)
+            "retry_backoff_factor", self.default_retry_backoff_factor
+        )
 
     @cached_property
     def retry_backoff_max(self) -> int:
         return self.transport_options.get(
-            'retry_backoff_max', self.default_retry_backoff_max)
+            "retry_backoff_max", self.default_retry_backoff_max
+        )
+
+    @cached_property
+    def use_lock_renewal(self) -> bool:
+        return self.transport_options.get(
+            "use_lock_renewal", self.default_use_lock_renewal
+        )
+
+    @cached_property
+    def max_lock_renewal_duration(self) -> float:
+        return float(
+            self.transport_options.get(
+                "max_lock_renewal_duration", self.default_max_lock_renewal_duration
+            )
+        )
 
 
 class Transport(virtual.Transport):
@@ -438,61 +616,90 @@ class Transport(virtual.Transport):
     default_port = None
     can_parse_url = True
 
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self._queue_cache: dict[str, SendReceive] = {}
+        self._noack_consumer_tags: set[str] = set()
+        self._renewer: AutoLockRenewer | None = None
+
+    def close_connection(self, connection) -> None:
+        try:
+            super().close_connection(connection)
+        finally:
+            if self._renewer is not None:
+                try:
+                    self._renewer.close()
+                except Exception:
+                    logger.exception("Failed to close AutoLockRenewer; continuing")
+                self._renewer = None
+            for queue_obj in self._queue_cache.values():
+                try:
+                    queue_obj.close()
+                except Exception:
+                    logger.exception("Failed to close cached SendReceive; continuing")
+            self._queue_cache.clear()
+            self._noack_consumer_tags.clear()
+
     @staticmethod
-    def parse_uri(uri: str) -> tuple[str, str | DefaultAzureCredential |
-                                     ManagedIdentityCredential]:
+    def parse_uri(
+        uri: str,
+    ) -> tuple[str, str | DefaultAzureCredential | ManagedIdentityCredential]:
         # URL like:
         #  azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace}
         # urllib parse does not work as the sas key could contain a slash
         # e.g.: azureservicebus://rootpolicy:some/key@somenamespace
 
         # > 'rootpolicy:some/key@somenamespace'
-        uri = uri.replace('azureservicebus://', '')
+        uri = uri.replace("azureservicebus://", "")
         # > 'rootpolicy:some/key',  'somenamespace'
-        credential, namespace = uri.rsplit('@', 1)
-
-        if not namespace.endswith('.net'):
-            namespace += '.servicebus.windows.net'
-
-        if "DefaultAzureCredential".lower() == credential.lower():
-            if DefaultAzureCredential is None:
-                raise ImportError('Azure Service Bus transport with a '
-                                  'DefaultAzureCredential requires the '
-                                  'azure-identity library')
-            credential = DefaultAzureCredential()
-        elif "ManagedIdentityCredential".lower() == credential.lower():
-            if ManagedIdentityCredential is None:
-                raise ImportError('Azure Service Bus transport with a '
-                                  'ManagedIdentityCredential requires the '
-                                  'azure-identity library')
-            credential = ManagedIdentityCredential()
+        if "@" not in uri:
+            credential, namespace = "", ""
         else:
-            # > 'rootpolicy', 'some/key'
-            policy, sas_key = credential.split(':', 1)
-            credential = f"{policy}:{sas_key}"
+            credential, namespace = uri.rsplit("@", 1)
 
         # Validate ASB connection string
         if not all([namespace, credential]):
             raise ValueError(
-                'Need a URI like '
-                'azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} ' # noqa
-                'or the azure Endpoint connection string'
+                "Need a URI like "
+                "azureservicebus://{SAS policy name}:{SAS key}@{ServiceBus Namespace} "
+                "or the azure Endpoint connection string"
             )
+
+        if not namespace.endswith(".net"):
+            namespace += ".servicebus.windows.net"
+
+        if "DefaultAzureCredential".lower() == credential.lower():
+            if DefaultAzureCredential is None:
+                raise ImportError(
+                    "Azure Service Bus transport with a "
+                    "DefaultAzureCredential requires the "
+                    "azure-identity library"
+                )
+            credential = DefaultAzureCredential()
+        elif "ManagedIdentityCredential".lower() == credential.lower():
+            if ManagedIdentityCredential is None:
+                raise ImportError(
+                    "Azure Service Bus transport with a "
+                    "ManagedIdentityCredential requires the "
+                    "azure-identity library"
+                )
+            credential = ManagedIdentityCredential()
+        else:
+            # > 'rootpolicy', 'some/key'
+            policy, sas_key = credential.split(":", 1)
+            credential = f"{policy}:{sas_key}"
 
         return namespace, credential
 
     @classmethod
-    def as_uri(cls, uri: str, include_password=False, mask='**') -> str:
+    def as_uri(cls, uri: str, include_password=False, mask="**") -> str:
         namespace, credential = cls.parse_uri(uri)
         if isinstance(credential, str) and ":" in credential:
-            policy, sas_key = credential.split(':', 1)
-            return 'azureservicebus://{}:{}@{}'.format(
-                policy,
-                sas_key if include_password else mask,
-                namespace
+            policy, sas_key = credential.split(":", 1)
+            return "azureservicebus://{}:{}@{}".format(
+                policy, sas_key if include_password else mask, namespace
             )
 
-        return 'azureservicebus://{}@{}'.format(
-            credential.__class__.__name__,
-            namespace
+        return "azureservicebus://{}@{}".format(
+            credential.__class__.__name__, namespace
         )

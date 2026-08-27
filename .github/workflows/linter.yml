@@ -3,16 +3,6 @@ name: Linter
 on: [pull_request, workflow_dispatch]
 
 jobs:
-  pre-commit:
-    runs-on: blacksmith-4vcpu-ubuntu-2204
-    steps:
-
-      - name: Checkout branch
-        uses: actions/checkout@v5
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-
   lint:
     runs-on: blacksmith-4vcpu-ubuntu-2204
     strategy:
@@ -22,10 +12,10 @@ jobs:
       - name: Install system packages
         run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
       - name: Check out code from GitHub
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Set up Python ${{ matrix.python-version }}
         id: python
-        uses: useblacksmith/setup-python@v6
+        uses: actions/setup-python@v7
         with:
             python-version: ${{ matrix.python-version }}
       - name: Install dependencies
