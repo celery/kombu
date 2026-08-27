@@ -8,8 +8,7 @@ import pytest
 import redis
 
 import kombu
-from kombu.transport.redis import SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
-from kombu.transport.redis import Transport
+from kombu.transport.redis import SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Transport
 from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
