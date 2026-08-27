@@ -693,6 +693,15 @@ class MultiChannelPoller:
         return self._fd_to_chan
 
 
+def _batch_publish_retry_safe(connection_kwargs):
+    """Return whether Redis will execute a pipeline without retrying it."""
+    return not (
+        connection_kwargs.get('retry_on_timeout')
+        or connection_kwargs.get('retry_on_error')
+        or connection_kwargs.get('retry') is not None
+    )
+
+
 class PublishBatch:
     """Buffer Redis publish commands in a non-transactional pipeline."""
 
@@ -832,6 +841,14 @@ class Channel(virtual.Channel):
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
     client_name = None
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether pipelines can run without ambiguous write replay."""
+        return (
+            not self.retry_on_timeout
+            and _batch_publish_retry_safe(self.pool.connection_kwargs)
+        )
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -1751,6 +1768,17 @@ class Transport(virtual.Transport):
         batch_publish=True,
         exchange_type=frozenset(['direct', 'topic', 'fanout']),
     )
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether configured timeout handling permits safe batching."""
+        if not _batch_publish_retry_safe(self.client.transport_options):
+            return False
+        hostname = self.client.hostname or ''
+        if '://' not in hostname:
+            return True
+        *_, query = _parse_url(hostname)
+        return _batch_publish_retry_safe(query)
 
     if redis:
         connection_errors, channel_errors = get_redis_error_classes()

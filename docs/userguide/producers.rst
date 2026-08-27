@@ -107,6 +107,8 @@ empty string, and set the routing key to be the name of the queue:
 Batch publishing
 ----------------
 
+.. versionadded:: 5.7
+
 :meth:`~kombu.Producer.batch` groups normal :meth:`~kombu.Producer.publish`
 calls so a supporting transport can send their final broker operations
 together:
@@ -172,7 +174,11 @@ The standard Redis, Redis TLS, and Redis Sentinel transports share this batch
 implementation. Standard Redis is covered by integration tests. TLS and
 Sentinel use the same channel implementation but are not covered by
 real-service batch integration tests. Redis Cluster is not currently an
-upstream Kombu transport and is not supported or tested by this API.
+upstream Kombu transport and is not supported or tested by this API. Redis
+publishing also remains immediate when the underlying connection pool enables
+automatic retries, including ``retry_on_timeout`` or a custom retry policy,
+because replaying a pipeline after an ambiguous failure can publish duplicate
+messages.
 
 Serialization
 =============

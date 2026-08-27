@@ -22,25 +22,6 @@ __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 DEFAULT_BATCH_SIZE = 1000
 
 
-class _ImmediatePublishBatch:
-    """Transport-neutral batch that retains immediate publication."""
-
-    def __init__(self, channel):
-        self.channel = channel
-
-    def publish(self, message, **kwargs):
-        return self.channel.basic_publish(message, **kwargs)
-
-    def flush(self):
-        """Flush buffered messages (there are none)."""
-
-    def discard(self):
-        """Discard buffered messages (there are none)."""
-
-    def close(self):
-        """Release batch resources (there are none)."""
-
-
 class _ProducerBatchState:
     """State shared by nested batch contexts in one producer thread."""
 
@@ -48,15 +29,18 @@ class _ProducerBatchState:
         self.max_size = max_size
         self.aborted = False
         self.session = None
+        self.immediate = False
 
     def _get_session(self, channel):
+        if self.immediate:
+            return None
         if self.session is None:
             create_batch = getattr(channel, 'create_publish_batch', None)
-            self.session = (
-                create_batch(max_size=self.max_size)
-                if create_batch is not None
-                else _ImmediatePublishBatch(channel)
-            )
+            supports_batch = getattr(channel, 'supports_batch_publish', True)
+            if create_batch is None or not supports_batch:
+                self.immediate = True
+                return None
+            self.session = create_batch(max_size=self.max_size)
         elif self.session.channel is not channel:
             raise RuntimeError(
                 'Producer channel changed while a publish batch was active',
@@ -66,7 +50,10 @@ class _ProducerBatchState:
     def publish(self, channel, message, **kwargs):
         if self.aborted:
             raise RuntimeError('Cannot publish through an aborted batch')
-        return self._get_session(channel).publish(message, **kwargs)
+        session = self._get_session(channel)
+        if session is None:
+            return channel.basic_publish(message, **kwargs)
+        return session.publish(message, **kwargs)
 
     def flush(self):
         if self.aborted:
@@ -116,19 +103,33 @@ class _ProducerBatch:
         if state is None:
             return None
 
+        cleanup_error = None
         try:
-            if exc_type is not None:
-                state.abort()
-
             if self.is_outermost:
                 del self.producer._batch_local.current
+
+            if exc_type is not None:
                 try:
-                    if exc_type is None and not state.aborted:
+                    state.abort()
+                except BaseException as exc:
+                    cleanup_error = exc
+
+            if self.is_outermost:
+                if exc_type is None and not state.aborted:
+                    try:
                         state.flush()
-                finally:
+                    except BaseException as exc:
+                        cleanup_error = exc
+                try:
                     state.close()
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
         finally:
             self.active = False
+
+        if exc_type is None and cleanup_error is not None:
+            raise cleanup_error
         return None
 
     def flush(self):
@@ -233,9 +234,23 @@ class Producer:
         if connection is None:
             return False
         try:
-            return connection.transport.implements.batch_publish
+            transport_support = connection.transport.implements.batch_publish
         except AttributeError:
             return False
+        channel = self._channel
+        if channel is not None and not isinstance(channel, ChannelPromise):
+            configured_support = getattr(
+                channel,
+                'supports_batch_publish',
+                transport_support,
+            )
+        else:
+            configured_support = getattr(
+                connection.transport,
+                'supports_batch_publish',
+                transport_support,
+            )
+        return bool(transport_support and configured_support)
 
     def batch(self, max_size=DEFAULT_BATCH_SIZE):
         """Group normal :meth:`publish` calls into transport-owned batches.

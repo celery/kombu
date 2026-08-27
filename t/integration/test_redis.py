@@ -222,6 +222,57 @@ class test_RedisPriority(BasePriority):
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisPublishBatch:
 
+    def test_retry_on_timeout_keeps_publication_immediate(self, connection):
+        connection.transport_options = {
+            **connection.transport_options,
+            'retry_on_timeout': True,
+        }
+        queue = kombu.Queue('batch_retry_on_timeout_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+
+                assert producer.supports_batch_publish is False
+                with producer.batch():
+                    producer.publish(
+                        {'delivery': 'immediate'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    message = queue(channel).get(no_ack=True)
+
+        assert message.payload == {'delivery': 'immediate'}
+
+    def test_manual_flush_sends_and_batch_continues(self, connection):
+        queue = kombu.Queue('batch_manual_flush_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+                bound_queue = queue(channel)
+
+                with producer.batch() as batch:
+                    producer.publish(
+                        {'position': 'first'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    batch.flush()
+                    first = bound_queue.get(no_ack=True)
+                    producer.publish(
+                        {'position': 'second'},
+                        exchange='',
+                        routing_key=queue.name,
+                    )
+
+                second = bound_queue.get(no_ack=True)
+
+        assert first.payload == {'position': 'first'}
+        assert second.payload == {'position': 'second'}
+
     def test_direct_priority_and_fifo(self, connection):
         exchange = kombu.Exchange('batch_direct_exchange', type='direct')
         queue = kombu.Queue(

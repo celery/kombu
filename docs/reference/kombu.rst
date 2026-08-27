@@ -162,7 +162,9 @@
         .. autoattribute:: auto_declare
         .. autoattribute:: on_return
         .. autoattribute:: connection
+        .. autoattribute:: supports_batch_publish
 
+        .. automethod:: batch
         .. automethod:: declare
         .. automethod:: maybe_declare
         .. automethod:: publish

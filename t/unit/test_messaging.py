@@ -25,6 +25,8 @@ class RecordingPublishBatch:
         self.discard_count = 0
         self.close_count = 0
         self.flush_error = None
+        self.discard_error = None
+        self.close_error = None
 
     def publish(self, message, **kwargs):
         self.published.append((message, kwargs))
@@ -41,9 +43,13 @@ class RecordingPublishBatch:
     def discard(self):
         self.discard_count += 1
         self.pending = 0
+        if self.discard_error is not None:
+            raise self.discard_error
 
     def close(self):
         self.close_count += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 class test_Producer:
@@ -322,6 +328,20 @@ class test_Producer:
         assert result[0]['body'] == '{"message": 1}'
         assert producer.supports_batch_publish is False
 
+    def test_unsupported_batch_tracks_a_revived_channel(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        producer = Producer(first_channel, serializer='json')
+
+        with producer.batch():
+            producer.publish({'channel': 'first'})
+            producer.revive(second_channel)
+            result = producer.publish({'channel': 'second'})
+
+        assert 'basic_publish' in first_channel
+        assert 'basic_publish' in second_channel
+        assert result[0]['body'] == '{"channel": "second"}'
+
     def test_batch_successful_exit_flushes(self):
         channel = self.connection.channel()
         sessions = []
@@ -368,6 +388,14 @@ class test_Producer:
         with pytest.raises(RuntimeError, match='not active'):
             batch.flush()
 
+    def test_batch_context_cannot_be_reentered(self):
+        producer = Producer(self.connection.channel())
+        batch = producer.batch()
+
+        with batch:
+            with pytest.raises(RuntimeError, match='cannot be re-entered'):
+                batch.__enter__()
+
     def test_empty_batch_does_not_create_transport_session(self):
         channel = self.connection.channel()
         channel.create_publish_batch = Mock()
@@ -393,6 +421,23 @@ class test_Producer:
         channel.create_publish_batch.assert_called_once_with(max_size=10)
         assert session.flush_count == 1
 
+    def test_supported_batch_fails_closed_after_channel_revival(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        session = RecordingPublishBatch(first_channel, 1000)
+        first_channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(first_channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='channel changed'):
+            with producer.batch():
+                producer.publish({'channel': 'first'})
+                producer.revive(second_channel)
+                producer.publish({'channel': 'second'})
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+        assert 'basic_publish' not in second_channel
+
     def test_batch_exception_discards_and_restores_producer(self):
         channel = self.connection.channel()
         session = RecordingPublishBatch(channel, 1000)
@@ -408,6 +453,24 @@ class test_Producer:
         assert session.flush_count == 0
         assert session.close_count == 1
 
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_body_error_survives_discard_and_close_errors(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.discard_error = RuntimeError('discard failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='body failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+                raise ValueError('body failed')
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
         producer.publish({'message': 2})
         assert 'basic_publish' in channel
 
@@ -476,6 +539,22 @@ class test_Producer:
         producer = Producer(channel, serializer='json')
 
         with pytest.raises(RuntimeError, match='broker response lost'):
+            with producer.batch():
+                producer.publish({'message': 1})
+
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_flush_error_survives_close_error(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.flush_error = ValueError('flush failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='flush failed'):
             with producer.batch():
                 producer.publish({'message': 1})
 

@@ -268,7 +268,7 @@ class Channel(redis.Channel):
         return Client
 
     def _get_pool(self, asynchronous=False):
-        return Mock()
+        return Mock(connection_kwargs={})
 
     def _get_response_error(self):
         return ResponseError
@@ -310,8 +310,9 @@ class test_Channel:
             pymsg = chan.message_to_python(payload)
             return pymsg.delivery_tag
 
-    def _recording_batch_client(self):
-        client = MagicMock(wraps=self.channel._create_client())
+    def _recording_batch_client(self, channel=None):
+        channel = channel or self.channel
+        client = MagicMock(wraps=channel._create_client())
         pipeline = MagicMock()
         pipeline.__enter__.return_value = pipeline
         pipeline.__exit__.return_value = None
@@ -322,7 +323,7 @@ class test_Channel:
             yield client or client_instance
 
         client_instance = client
-        self.channel.conn_or_acquire = acquire
+        channel.conn_or_acquire = acquire
         return client, pipeline
 
     def test_publish_batch_capability_is_advertised(self):
@@ -330,6 +331,65 @@ class test_Channel:
 
         assert producer.supports_batch_publish is True
         assert self.connection.transport.implements.batch_publish is True
+
+    def test_publish_batch_falls_back_when_redis_may_retry_timeouts(self):
+        connection = self.create_connection(
+            transport_options={'retry_on_timeout': True},
+        )
+        channel = connection.default_channel
+        channel.queue_declare('batch-retry-on-timeout')
+        client, pipeline = self._recording_batch_client(channel)
+        producer = Producer(channel)
+
+        try:
+            assert channel.retry_on_timeout is True
+            assert producer.supports_batch_publish is False
+            with producer.batch():
+                producer.publish(
+                    'message',
+                    exchange='',
+                    routing_key='batch-retry-on-timeout',
+                )
+        finally:
+            connection.close()
+
+        client.lpush.assert_called_once()
+        client.pipeline.assert_not_called()
+        pipeline.execute.assert_not_called()
+
+    def test_publish_batch_falls_back_for_socket_url_timeout_retry(self):
+        with patch('kombu.transport.redis.Channel._create_client'):
+            with Connection(
+                'redis+socket:///tmp/redis.sock?retry_on_timeout=True',
+            ) as connection:
+                lazy_producer = Producer(connection)
+                assert lazy_producer.supports_batch_publish is False
+
+                channel = connection.default_channel
+                producer = Producer(channel)
+
+                assert channel.pool.connection_kwargs[
+                    'retry_on_timeout'
+                ] == 'True'
+                assert channel.supports_batch_publish is False
+                assert producer.supports_batch_publish is False
+
+    @pytest.mark.parametrize(
+        'retry_options',
+        [
+            {'retry_on_error': [redis.redis.TimeoutError]},
+            {'retry': object()},
+        ],
+    )
+    def test_publish_batch_falls_back_for_pool_retry_policy(
+        self,
+        retry_options,
+    ):
+        self.channel._pool = Mock(connection_kwargs=retry_options)
+        producer = Producer(self.channel)
+
+        assert self.channel.supports_batch_publish is False
+        assert producer.supports_batch_publish is False
 
     def test_publish_batch_uses_non_transactional_pipeline(self):
         client, pipeline = self._recording_batch_client()
@@ -442,6 +502,38 @@ class test_Channel:
 
         assert pipeline.execute.call_count == 2
 
+    def test_publish_batch_flushes_before_multi_command_publication(self):
+        queue = Queue('batch-expiring-boundary', expires=5)
+        queue(self.channel).declare()
+        self.channel._expires[queue.name] = 5000
+        _, pipeline = self._recording_batch_client()
+        producer = Producer(self.channel, serializer='json')
+
+        with producer.batch(max_size=3):
+            producer.publish(
+                {'event': 'first'},
+                exchange='',
+                routing_key='batch-simple-boundary',
+            )
+            producer.publish(
+                {'event': 'second'},
+                exchange='',
+                routing_key=queue.name,
+            )
+
+        execute_indexes = [
+            index
+            for index, method_call in enumerate(pipeline.method_calls)
+            if method_call[0] == 'execute'
+        ]
+        lpush_indexes = [
+            index
+            for index, method_call in enumerate(pipeline.method_calls)
+            if method_call[0] == 'lpush'
+        ]
+        assert len(execute_indexes) == 2
+        assert lpush_indexes[0] < execute_indexes[0] < lpush_indexes[1]
+
     def test_publish_batch_includes_queue_expiry_commands(self):
         queue = Queue('batch-expiring', expires=5)
         queue(self.channel).declare()
@@ -525,6 +617,89 @@ class test_Channel:
         pipeline.execute.assert_not_called()
         pipeline.reset.assert_called()
         pipeline.__exit__.assert_called_once()
+
+    def test_publish_batch_creation_failure_releases_connection(self):
+        client = Mock()
+        client.pipeline.side_effect = RuntimeError('cannot create pipeline')
+        released = False
+
+        @contextmanager
+        def acquire():
+            nonlocal released
+            try:
+                yield client
+            finally:
+                released = True
+
+        self.channel.conn_or_acquire = acquire
+
+        with pytest.raises(RuntimeError, match='cannot create pipeline'):
+            redis.PublishBatch(self.channel, max_size=10)
+
+        assert released is True
+
+    def test_publish_batch_rejects_commands_outside_publication(self):
+        _, pipeline = self._recording_batch_client()
+        batch = redis.PublishBatch(self.channel, max_size=10)
+
+        try:
+            with pytest.raises(RuntimeError, match='outside publication'):
+                batch.add('lpush', 'queue', 'message')
+            pipeline.execute.assert_not_called()
+        finally:
+            batch.close()
+
+    def test_publish_batch_empty_flush_does_not_execute_pipeline(self):
+        _, pipeline = self._recording_batch_client()
+        batch = redis.PublishBatch(self.channel, max_size=10)
+
+        try:
+            batch.flush()
+            pipeline.execute.assert_not_called()
+        finally:
+            batch.close()
+
+    @pytest.mark.parametrize(
+        ('finish', 'error'),
+        [
+            ('discard', 'aborted'),
+            ('close', 'closed'),
+        ],
+    )
+    def test_publish_batch_cannot_publish_after_finish(self, finish, error):
+        self._recording_batch_client()
+        batch = redis.PublishBatch(self.channel, max_size=10)
+
+        getattr(batch, finish)()
+        with pytest.raises(RuntimeError, match=error):
+            batch.publish(
+                self.channel.prepare_message('message'),
+                exchange='',
+                routing_key='batch-finished',
+            )
+        batch.close()
+
+    def test_publish_batch_cannot_continue_after_command_queueing_failure(self):
+        _, pipeline = self._recording_batch_client()
+        pipeline.lpush.side_effect = RuntimeError('cannot queue command')
+        batch = redis.PublishBatch(self.channel, max_size=10)
+        message = self.channel.prepare_message('message')
+
+        try:
+            with pytest.raises(RuntimeError, match='cannot queue command'):
+                batch.publish(
+                    message,
+                    exchange='',
+                    routing_key='batch-failure',
+                )
+            with pytest.raises(BatchPublishError, match='previous failure'):
+                batch.publish(
+                    message,
+                    exchange='',
+                    routing_key='batch-after-failure',
+                )
+        finally:
+            batch.close()
 
     def test_sentinel_inherits_publish_batch_support(self):
         assert issubclass(redis.SentinelChannel, redis.Channel)
