@@ -8,6 +8,7 @@ import pytest
 import redis
 
 import kombu
+from kombu.transport.redis import SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
 from kombu.transport.redis import Transport
 from kombu.utils.json import loads
 
@@ -581,3 +582,90 @@ class test_RedisQueueExpiration:
         for key in priority_keys:
             ttl = redis_client.pttl(key)
             assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisSubclientHealthCheck:
+    """Integration tests for dropping half-open fanout (pub/sub) connections.
+
+    On a half-open socket (managed broker failover, expired NAT entry) the
+    health check PING write lands in the kernel buffer and no error is
+    raised, so the subclient health check alone never notices the dead
+    connection.  kombu counts unanswered pings through redis-py's
+    ``health_check_response_counter`` and drops the connection once two
+    full health check intervals pass with no PONG.
+    """
+
+    def _fanout_consumer(self, conn, name, received):
+        """Return a channel subscribed to a fanout exchange over pub/sub."""
+        exchange = kombu.Exchange(f'{name}_exchange', type='fanout')
+        queue = kombu.Queue(f'{name}_queue', exchange=exchange)
+        channel = conn.channel()
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        # first drain registers the subclient with the poller (LISTEN mode)
+        # and sends SUBSCRIBE; it may return on the subscribe confirmation
+        # or time out waiting for one
+        try:
+            conn.drain_events(timeout=0.1)
+        except socket.timeout:
+            pass
+        return channel, exchange
+
+    def test_healthy_subclient_connection_not_dropped(self, connection):
+        """A pub/sub connection with no missed PONGs must stay up."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_live', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            # below the missed-pong threshold the connection is kept
+            assert subclient.connection._sock is not None
+
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'alive'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'alive'}]
+
+    def test_missed_pongs_drop_connection_and_resubscribe(self, connection):
+        """Unanswered PINGs drop the connection; the next poll resubscribes."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_drop', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            # two health check intervals passed without a PONG: the socket
+            # is half-open and the connection must be dropped
+            subclient.health_check_response_counter = \
+                SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            assert subclient.connection._sock is None
+            assert subclient.health_check_response_counter == 0
+
+            # the next poll cycle reconnects and resubscribes
+            try:
+                conn.drain_events(timeout=0.1)
+            except socket.timeout:
+                pass
+
+            # fanout messages flow again
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'recovered'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'recovered'}]
