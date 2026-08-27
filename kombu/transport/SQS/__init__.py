@@ -239,7 +239,7 @@ from kombu.transport.SQS.exceptions import (AccessDeniedQueueException,
                                             DoesNotExistQueueException,
                                             InvalidQueueException,
                                             UndefinedQueueException)
-from kombu.transport.SQS.SNS import SNS
+from kombu.transport.SQS.SNS import SNS as SnsFanout
 from kombu.utils import scheduling
 from kombu.utils.encoding import bytes_to_str, safe_str
 from kombu.utils.json import dumps, loads
@@ -928,7 +928,7 @@ class Channel(virtual.Channel):
         return c
 
     @property
-    def fanout(self) -> SNS:
+    def fanout(self) -> SnsFanout:
         """Provides SNS fanout functionality.
 
         This method returns the fanout instance. If an instance of the fanout class
@@ -938,7 +938,7 @@ class Channel(virtual.Channel):
         """
         # If an SNS class has not been initialised, then initialise it
         if not self._fanout:
-            self._fanout = SNS(self)
+            self._fanout = SnsFanout(self)
         return self._fanout
 
     def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:
@@ -1096,8 +1096,12 @@ class Channel(virtual.Channel):
 
     @cached_property
     def visibility_timeout(self):
-        return (self.transport_options.get('visibility_timeout') or
-                self.default_visibility_timeout)
+        # sqs only accepts whole seconds, and 0 is a valid value, so the
+        # default only applies when the option is absent or empty.
+        timeout = self.transport_options.get('visibility_timeout')
+        if timeout is None or timeout == '':
+            timeout = self.default_visibility_timeout
+        return int(float(timeout))
 
     @cached_property
     def predefined_queues(self):

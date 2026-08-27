@@ -15,7 +15,7 @@ import pytest
 
 from kombu import Exchange, Queue
 from kombu.exceptions import KombuError
-from kombu.transport.SQS import SNS
+from kombu.transport.SQS import SnsFanout
 from kombu.transport.SQS.exceptions import (
     UnableToUnsubscribeQueueFromTopicException, UndefinedExchangeException)
 
@@ -1681,8 +1681,8 @@ class _SqsSnsE2eTestBase:
         return channel_mock
 
     @pytest.fixture
-    def sns_instance(self, mock_channel) -> SNS:
-        return SNS(mock_channel)
+    def sns_instance(self, mock_channel) -> SnsFanout:
+        return SnsFanout(mock_channel)
 
     @pytest.fixture(autouse=True)
     def _setup(self, caplog):

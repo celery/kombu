@@ -5,7 +5,6 @@ cd requirements || exit 1
 curated_requirements=(
   "default.txt"
   "test.txt"
-  "test-core.txt"
   "pkgutils.txt"
 )
 
