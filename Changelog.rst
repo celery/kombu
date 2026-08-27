@@ -4,12 +4,17 @@
  Change history
 ================
 
-.. _version-unreleased:
 
 Unreleased
 ==========
 
 - Add PGMQ transport for PostgreSQL message queues (#2559)
+
+- Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport
+  uses a non-transactional pipeline to publish multiple messages in fewer
+  network round trips while retaining normal serialization, routing,
+  priorities, queue expiry, and fanout behavior.
+
 
 .. _version-5.6.2:
 
