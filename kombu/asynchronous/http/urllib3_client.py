@@ -46,7 +46,7 @@ class Urllib3Client(BaseClient):
         )
 
     def close(self):
-        """Close the client and all connection pools."""
+        """Close the client and shut down its worker thread pool."""
         self._timeout_check_tref.cancel()
         self._executor.shutdown(wait=False)
 
