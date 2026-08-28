@@ -15,6 +15,7 @@ class test_Urllib3Client:
     def setup_method(self):
         self.hub = Mock(name='hub')
         self.hub.call_repeatedly.return_value = Mock()
+        self.hub.call_soon.side_effect = lambda callback, *args: callback(*args)
 
         # Patch ThreadPoolExecutor in urllib3_client's own namespace to prevent
         # actual thread creation.  Patching 'concurrent.futures.ThreadPoolExecutor'
@@ -565,6 +566,40 @@ class test_Urllib3Client:
             assert response.code == 599
             assert response.error is not None
             assert 'connection failed' in str(response.error)
+
+    def test_execute_request_schedules_on_ready_via_hub(self):
+        """Test _execute_request schedules completion callback via hub.call_soon."""
+        pool_mock = self._setup_pool_mock()
+
+        # In this test we do not auto-run hub callbacks so we can assert scheduling.
+        self.hub.call_soon.side_effect = None
+        self.hub.call_soon.reset_mock()
+
+        with patch.object(self.client, '_get_pool', return_value=pool_mock):
+            request = Mock()
+            request.method = 'GET'
+            request.url = 'http://example.com'
+            request.headers = {}
+            request.body = None
+            request.proxy_host = None
+            request.network_interface = None
+            request.validate_cert = False
+            request.ca_certs = None
+            request.client_cert = None
+            request.client_key = None
+            request.auth_username = None
+            request.use_gzip = False
+            request.follow_redirects = True
+            request.user_agent = None
+
+            with patch.object(self.client, '_request_complete'):
+                self.client._execute_request(request)
+
+            request.on_ready.assert_not_called()
+            self.hub.call_soon.assert_called_once()
+            call_args = self.hub.call_soon.call_args[0]
+            assert call_args[0] is request.on_ready
+            assert call_args[1].request is request
 
     def test_on_readable(self):
         """Test on_readable is a no-op compatibility method."""

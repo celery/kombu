@@ -218,8 +218,8 @@ class Urllib3Client(BaseClient):
                 error=HttpError(599, str(e))
             )
 
-        # Notify request completion
-        request.on_ready(response_obj)
+        # Notify request completion on the hub thread to avoid worker-thread callback races.
+        self.hub.call_soon(request.on_ready, response_obj)
 
     def on_readable(self, fd):
         """Compatibility method for the event loop."""
