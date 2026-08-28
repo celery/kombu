@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-pytest.importorskip('urllib3')
-
 from kombu.asynchronous.http.urllib3_client import Urllib3Client
+
+pytest.importorskip('urllib3')
 
 
 class test_Urllib3Client:
@@ -129,7 +129,7 @@ class test_Urllib3Client:
 
             # If we can't find it directly, look for auth in header creation
             if not auth_header_present:
-                with patch('urllib3.util.make_headers') as mock_make_headers:
+                with patch('kombu.asynchronous.http.urllib3_client.make_headers') as mock_make_headers:
                     mock_make_headers.return_value = {'Authorization': 'Basic dXNlcjpwYXNz'}
                     self.client._execute_request(request)
                     # Check if basic_auth was used in make_headers
