@@ -37,7 +37,7 @@ class test_Urllib3Client:
     def test_client_creation(self):
         assert self.client.hub is self.hub
         assert self.client.max_clients == 10
-        assert isinstance(self.client._pending, type(self.client._pending))
+        assert hasattr(self.client._pending, 'popleft')
         assert isinstance(self.client._active_requests, dict)
         assert self.hub.call_repeatedly.called
         # Verify that the executor was created via the mock (not a real thread pool)
