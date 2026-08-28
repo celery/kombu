@@ -417,6 +417,22 @@ class test_Urllib3Client:
             assert '_proxy' in call_kwargs
             assert '_proxy_headers' not in call_kwargs
 
+    def test_get_pool_with_proxy_missing_port_raises(self):
+        """Test _get_pool rejects proxy_host without proxy_port."""
+        request = Mock()
+        request.url = 'http://example.com'
+        request.network_interface = None
+        request.validate_cert = False
+        request.ca_certs = None
+        request.client_cert = None
+        request.client_key = None
+        request.proxy_host = 'proxy.example.com'
+        request.proxy_port = None
+        request.proxy_username = None
+
+        with pytest.raises(ValueError, match='proxy_host but no proxy_port'):
+            self.client._get_pool(request)
+
     def test_timeout_check_calls_process_queue(self):
         """Test that _timeout_check triggers _process_queue."""
         with patch.object(self.client, '_process_queue') as mock_pq:

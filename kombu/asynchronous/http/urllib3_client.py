@@ -87,6 +87,8 @@ class Urllib3Client(BaseClient):
 
         # Handle proxy configuration
         if request.proxy_host:
+            if not request.proxy_port:
+                raise ValueError('Request with proxy_host but no proxy_port')
             conn_kwargs['_proxy'] = Url(
                 scheme=None,
                 host=request.proxy_host,
