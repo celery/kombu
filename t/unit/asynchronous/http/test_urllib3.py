@@ -456,6 +456,67 @@ class test_Urllib3Client:
             assert call_kwargs['body'] == b'hello world'
             request.on_ready.assert_called_once()
 
+    def test_execute_request_with_empty_post_body(self):
+        """Test _execute_request sends explicit empty bytes for empty POST bodies."""
+        pool_mock = self._setup_pool_mock()
+
+        with patch.object(self.client, '_get_pool', return_value=pool_mock):
+            request = Mock()
+            request.method = 'POST'
+            request.url = 'http://example.com'
+            request.headers = {}
+            request.body = None
+            request.proxy_host = None
+            request.network_interface = None
+            request.validate_cert = False
+            request.ca_certs = None
+            request.client_cert = None
+            request.client_key = None
+            request.auth_username = None
+            request.use_gzip = False
+            request.follow_redirects = True
+            request.user_agent = None
+
+            with patch.object(self.client, '_request_complete'):
+                self.client._execute_request(request)
+
+            call_kwargs = pool_mock.request.call_args[1]
+            assert call_kwargs['body'] == b''
+            request.on_ready.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ('follow_redirects', 'expected_redirect_retries'),
+        [(True, 5), (False, 0)],
+    )
+    def test_execute_request_redirects_follow_flag(self, follow_redirects, expected_redirect_retries):
+        """Test _execute_request maps follow_redirects to urllib3 retry redirect policy."""
+        pool_mock = self._setup_pool_mock()
+
+        with patch.object(self.client, '_get_pool', return_value=pool_mock):
+            request = Mock()
+            request.method = 'GET'
+            request.url = 'http://example.com'
+            request.headers = {}
+            request.body = None
+            request.proxy_host = None
+            request.network_interface = None
+            request.validate_cert = False
+            request.ca_certs = None
+            request.client_cert = None
+            request.client_key = None
+            request.auth_username = None
+            request.use_gzip = False
+            request.follow_redirects = follow_redirects
+            request.user_agent = None
+
+            with patch.object(self.client, '_request_complete'):
+                self.client._execute_request(request)
+
+            call_kwargs = pool_mock.request.call_args[1]
+            assert call_kwargs['redirect'] is follow_redirects
+            assert call_kwargs['retries'].redirect == expected_redirect_retries
+            request.on_ready.assert_called_once()
+
     def test_execute_request_urllib3_http_error(self):
         """Test _execute_request handles urllib3.exceptions.HTTPError."""
         import urllib3.exceptions

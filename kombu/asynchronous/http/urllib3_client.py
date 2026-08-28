@@ -12,7 +12,7 @@ try:
 except ImportError:  # pragma: no cover
     urllib3 = None
 else:
-    from urllib3.util import Url, make_headers
+    from urllib3.util import Retry, Url, make_headers
 
 from kombu.asynchronous.hub import Hub, get_event_loop
 from kombu.exceptions import HttpError
@@ -152,8 +152,23 @@ class Urllib3Client(BaseClient):
 
         # Process request body
         body = None
-        if request.method in ('POST', 'PUT') and request.body:
-            body = request.body if isinstance(request.body, bytes) else request.body.encode('utf-8')
+        if request.method in ('POST', 'PUT'):
+            if request.body:
+                body = request.body if isinstance(request.body, bytes) else request.body.encode('utf-8')
+            else:
+                # Keep parity with CurlClient: explicit empty body for POST/PUT.
+                body = b''
+
+        # Let urllib3 follow redirects when requested without enabling other retries.
+        retries = Retry(
+            total=None,
+            connect=0,
+            read=0,
+            redirect=5 if request.follow_redirects else 0,
+            status=0,
+            other=0,
+            raise_on_redirect=False,
+        )
 
         # Make the request using urllib3
         try:
@@ -167,7 +182,7 @@ class Urllib3Client(BaseClient):
                 body=body,
                 preload_content=True,  # We want to preload content for compatibility
                 redirect=request.follow_redirects,
-                retries=False,  # Handle redirects manually to match pycurl behavior
+                retries=retries,
             )
 
             # Process response
