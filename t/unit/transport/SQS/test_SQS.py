@@ -972,7 +972,7 @@ class test_Channel:
         assert mock_async_sqs.call_args_list == [
             call(
                 sqs_connection=expected_queue_mock,
-                region='us-east-1',
+                region=self.channel.region,
                 message_system_attribute_names=['ApproximateReceiveCount'],
                 message_attribute_names=[]
             )
