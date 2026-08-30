@@ -532,6 +532,7 @@ class Channel(virtual.Channel):
         if (
             sqs_extended_client and
             isinstance(payload, list)
+            and len(payload) > 0
             and payload[0] == sqs_extended_client.client.MESSAGE_POINTER_CLASS
         ):
             # Used the sqs_extended_client, so we need to fetch the file from S3 and use that as the payload
