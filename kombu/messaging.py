@@ -607,12 +607,9 @@ class Consumer:
         if self.prefetch_count is not None:
             self.qos(prefetch_count=self.prefetch_count)
 
-        if previously_active:
-            # re-register the AMQP consumers on the new channel, but only
-            # for the queues that were actually being consumed from before
-            # (queues added via add_queue() but never consumed from should
-            # stay that way).
-            self.consume_previously_active(previously_active)
+        # re-register the AMQP consumers, but only for queues that were
+        # actually being consumed from before (not merely registered).
+        self._consume_previously_active(previously_active)
 
     def declare(self):
         """Declare queues, exchanges and bindings.
@@ -682,7 +679,7 @@ class Consumer:
         """
         self._consume_queues(list(self._queues.values()), no_ack)
 
-    def consume_previously_active(self, queue_names, no_ack=None):
+    def _consume_previously_active(self, queue_names, no_ack=None):
         """Start consuming only from the given, previously active queues.
 
         Unlike :meth:`consume`, this will not start consuming from
@@ -691,8 +688,8 @@ class Consumer:
 
         Arguments:
         ---------
-            queue_names (Iterable[str]): Names of the queues to resume
-                consuming from.
+            queue_names (list): Names of the queues to resume consuming
+                from.
             no_ack (bool): See :attr:`no_ack`.
         """
         queue_names = set(queue_names)

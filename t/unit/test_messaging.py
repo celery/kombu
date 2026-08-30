@@ -1119,10 +1119,7 @@ class test_Consumer:
         assert 'qname2' not in consumer._active_tags
 
     def test_active_tags_reflects_intent_not_broker_ack(self):
-        # _add_tag() records the tag in _active_tags before
-        # channel.basic_consume is called. Even if the broker
-        # never gets/acks the request (e.g. connection resets),
-        # the tag should be recorded locally.
+        # tag is recorded before channel.basic_consume is called
         channel = self.connection.channel()
         b1 = Queue('qname1', self.exchange, 'rkey')
         consumer = Consumer(channel, [b1])
