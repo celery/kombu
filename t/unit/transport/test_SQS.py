@@ -523,7 +523,8 @@ class test_Channel:
             secret_access_key='test_secret_key'
         )
 
-        # assert isinstance(client, boto3.client('s3').__class__)
+        client = mock_session().client('s3')
+        assert isinstance(client, boto3.client('s3').__class__)
         mock_session.assert_called_once_with(
             region_name='us-west-2',
             aws_access_key_id='test_access_key',
