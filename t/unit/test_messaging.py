@@ -1100,6 +1100,24 @@ class test_Consumer:
         assert not consumer._active_tags
         assert 'basic_consume' not in channel2
 
+    def test_revive__does_not_resume_never_active_queue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert 'qname1' in consumer._active_tags
+
+        # registered but deliberately not consumed from yet
+        consumer.add_queue(b2)
+        assert 'qname2' not in consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert 'qname1' in consumer._active_tags
+        assert 'qname2' not in consumer._active_tags
+
     def test_active_tags_reflects_intent_not_broker_ack(self):
         # _add_tag() records the tag in _active_tags before
         # channel.basic_consume is called. Even if the broker

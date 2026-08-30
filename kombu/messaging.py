@@ -591,7 +591,7 @@ class Consumer:
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
-        was_consuming = bool(self._active_tags)
+        previously_active = set(self._active_tags)
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
@@ -607,9 +607,12 @@ class Consumer:
         if self.prefetch_count is not None:
             self.qos(prefetch_count=self.prefetch_count)
 
-        if was_consuming:
-            # re-register the AMQP consumers on the new channel.
-            self.consume()
+        if previously_active:
+            # re-register the AMQP consumers on the new channel, but only
+            # for the queues that were actually being consumed from before
+            # (queues added via add_queue() but never consumed from should
+            # stay that way).
+            self.consume_previously_active(previously_active)
 
     def declare(self):
         """Declare queues, exchanges and bindings.
@@ -677,7 +680,26 @@ class Consumer:
         ---------
             no_ack (bool): See :attr:`no_ack`.
         """
-        queues = list(self._queues.values())
+        self._consume_queues(list(self._queues.values()), no_ack)
+
+    def consume_previously_active(self, queue_names, no_ack=None):
+        """Start consuming only from the given, previously active queues.
+
+        Unlike :meth:`consume`, this will not start consuming from
+        queues that were registered (e.g. via :meth:`add_queue`) but
+        never actually consumed from.
+
+        Arguments:
+        ---------
+            queue_names (Iterable[str]): Names of the queues to resume
+                consuming from.
+            no_ack (bool): See :attr:`no_ack`.
+        """
+        queue_names = set(queue_names)
+        queues = [q for q in self._queues.values() if q.name in queue_names]
+        self._consume_queues(queues, no_ack)
+
+    def _consume_queues(self, queues, no_ack=None):
         if queues:
             no_ack = self.no_ack if no_ack is None else no_ack
 
