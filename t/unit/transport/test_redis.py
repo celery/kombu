@@ -2923,7 +2923,7 @@ class test_MultiChannelPoller:
 
 
     def test_connection_errors_include_keyerror(self):
-        errors = self.Transport.connection_errors
+        errors = redis.Transport.connection_errors
         assert KeyError in errors
 
     def test_on_readable_ignores_unmapped_fd(self):
