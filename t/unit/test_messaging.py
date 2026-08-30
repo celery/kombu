@@ -1078,6 +1078,47 @@ class test_Consumer:
         assert consumer.queues[0].channel is channel2
         assert consumer.queues[0].exchange.channel is channel2
 
+    def test_revive__resumes_consuming_if_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert consumer._active_tags
+        assert 'basic_consume' in channel2
+
+    def test_revive__does_not_consume_if_not_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert not consumer._active_tags
+        assert 'basic_consume' not in channel2
+
+    def test_active_tags_reflects_intent_not_broker_ack(self):
+        # _add_tag() records the tag in _active_tags before
+        # channel.basic_consume is called. Even if the broker
+        # never gets/acks the request (e.g. connection resets),
+        # the tag should be recorded locally.
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        def _boom(*args, **kwargs):
+            raise OperationalError('connection lost before broker ack')
+        channel.basic_consume = _boom
+
+        with pytest.raises(OperationalError):
+            consumer.consume()
+
+        assert consumer._active_tags
+        assert 'basic_consume' not in channel
+
     def test_revive__with_prefetch_count(self):
         channel = Mock(name='channel')
         b1 = Queue('qname1', self.exchange, 'rkey')

@@ -591,6 +591,7 @@ class Consumer:
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
+        was_consuming = bool(self._active_tags)
         self._active_tags.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
@@ -605,6 +606,10 @@ class Consumer:
 
         if self.prefetch_count is not None:
             self.qos(prefetch_count=self.prefetch_count)
+
+        if was_consuming:
+            # re-register the AMQP consumers on the new channel.
+            self.consume()
 
     def declare(self):
         """Declare queues, exchanges and bindings.
