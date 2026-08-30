@@ -325,7 +325,7 @@ class Channel(virtual.Channel):
         if not isinstance(queue, str):
             return queue
 
-        if queue.endswith('reply-celery-pidbox'):
+        if queue.endswith(REPLY_CELERY_PIDBOX_QUEUE_SUFFIX):
             raise GossipUsingSQSIsNotSupportedException()
 
         # Translate to SQS name for consistency with initial
