@@ -47,3 +47,13 @@ repos:
     hooks:
     -   id: mypy
         pass_filenames: false
+
+  - repo: local
+    hooks:
+      - id: ty-check
+        name: ty-check
+        language: python
+        entry: ty check
+        pass_filenames: false
+        args: [--exclude=kombu/resource.py, --output-format=concise]
+        additional_dependencies: [ty]
