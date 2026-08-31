@@ -106,7 +106,11 @@ class CurlClient(BaseClient):
     def _set_timeout(self, msecs):
         if self._tref is not None:
             self._tref.cancel()
-        self._tref = self.hub.call_later(msecs / 1000.0, self._timeout_check)
+            self._tref = None
+        if msecs >= 0:
+            self._tref = self.hub.call_later(
+                msecs / 1000.0, self._timeout_check
+            )
 
     def _timeout_check(self, _pycurl=pycurl):
         self._pop_from_hub()
