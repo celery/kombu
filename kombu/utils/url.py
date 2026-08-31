@@ -40,7 +40,21 @@ def parse_url(url):
         password=password,
         virtual_host=path
     )
-    _result.update(query)
+    # Allow overriding virtual_host explicitly via query parameter,
+    # but prevent other query keys from overwriting core components.
+    if isinstance(query, Mapping):
+        vhost_from_query = query.get('virtual_host')
+        if vhost_from_query is not None:
+            _result['virtual_host'] = vhost_from_query
+        extra_query = {
+            key: value
+            for key, value in query.items()
+            if key not in _result and key != 'virtual_host'
+        }
+        _result.update(extra_query)
+    else:
+        # Fallback for non-mapping query objects (for backwards compatibility).
+        _result.update(query)
     return _result
 
 
