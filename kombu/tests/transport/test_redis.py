@@ -227,10 +227,10 @@ class Channel(redis.Channel):
     def _get_async_client(self):
         return Client
 
-    def _create_client(self, async=False):
+    def _create_client(self, asynchronous=False):
         return Client()
 
-    def _get_pool(self, async=False):
+    def _get_pool(self, asynchronous=False):
         return Mock()
 
     @contextmanager
@@ -309,7 +309,7 @@ class test_Channel(Case):
                 self._pool = pool_at_init[0]
                 super(XChannel, self).__init__(*args, **kwargs)
 
-            def _create_client(self, async=False):
+            def _create_client(self, asynchronous=False):
                 return client
 
         class XTransport(Transport):

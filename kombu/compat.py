@@ -25,7 +25,7 @@ def _iterconsume(connection, consumer, no_ack=False, limit=None):
     consumer.consume(no_ack=no_ack)
     for iteration in count(0):  # for infinity
         if limit and iteration >= limit:
-            raise StopIteration
+            return
         yield connection.drain_events()
 
 
@@ -167,7 +167,7 @@ class Consumer(messaging.Consumer):
             item = self.fetch()
             if (not infinite and item is None) or \
                     (limit and items_since_start >= limit):
-                raise StopIteration
+                return
             yield item
 
 

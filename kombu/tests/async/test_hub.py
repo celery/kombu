@@ -1,7 +1,7 @@
 from __future__ import absolute_import
 
-from kombu.async import hub as _hub
-from kombu.async.hub import Hub, get_event_loop, set_event_loop
+from kombu.asynchronous import hub as _hub
+from kombu.asynchronous.hub import Hub, get_event_loop, set_event_loop
 
 from kombu.tests.case import Case
 
