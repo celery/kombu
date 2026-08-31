@@ -8,7 +8,8 @@ import pytest
 import redis
 
 import kombu
-from kombu.transport.redis import Transport
+from kombu.transport.redis import SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Transport
+from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
                      BasicFunctionality)
@@ -219,6 +220,171 @@ class test_RedisPriority(BasePriority):
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisPublishBatch:
+
+    def test_retry_on_timeout_keeps_publication_immediate(self, connection):
+        connection.transport_options = {
+            **connection.transport_options,
+            'retry_on_timeout': True,
+        }
+        queue = kombu.Queue('batch_retry_on_timeout_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+
+                assert producer.supports_batch_publish is False
+                with producer.batch():
+                    producer.publish(
+                        {'delivery': 'immediate'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    message = queue(channel).get(no_ack=True)
+
+        assert message.payload == {'delivery': 'immediate'}
+
+    def test_manual_flush_sends_and_batch_continues(self, connection):
+        queue = kombu.Queue('batch_manual_flush_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+                bound_queue = queue(channel)
+
+                with producer.batch() as batch:
+                    producer.publish(
+                        {'position': 'first'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    batch.flush()
+                    first = bound_queue.get(no_ack=True)
+                    producer.publish(
+                        {'position': 'second'},
+                        exchange='',
+                        routing_key=queue.name,
+                    )
+
+                second = bound_queue.get(no_ack=True)
+
+        assert first.payload == {'position': 'first'}
+        assert second.payload == {'position': 'second'}
+
+    def test_direct_priority_and_fifo(self, connection):
+        exchange = kombu.Exchange('batch_direct_exchange', type='direct')
+        queue = kombu.Queue(
+            'batch_direct_queue',
+            exchange=exchange,
+            routing_key='batch.direct',
+            max_priority=10,
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    for body, priority in [
+                        ({'position': 'first'}, 6),
+                        ({'position': 'second'}, 3),
+                        ({'position': 'third'}, 6),
+                    ]:
+                        producer.publish(
+                            body,
+                            exchange=exchange,
+                            routing_key='batch.direct',
+                            declare=[queue],
+                            serializer='json',
+                            priority=priority,
+                        )
+
+                bound_queue = queue(channel)
+                received = [
+                    bound_queue.get(no_ack=True).payload
+                    for _ in range(3)
+                ]
+
+        assert received == [
+            {'position': 'second'},
+            {'position': 'first'},
+            {'position': 'third'},
+        ]
+
+    def test_topic_routing(self, connection):
+        exchange = kombu.Exchange('batch_topic_exchange', type='topic')
+        queue = kombu.Queue(
+            'batch_topic_queue',
+            exchange=exchange,
+            routing_key='events.*',
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    producer.publish(
+                        {'event': 'matching'},
+                        exchange=exchange,
+                        routing_key='events.created',
+                        declare=[queue],
+                        serializer='json',
+                    )
+                    producer.publish(
+                        {'event': 'other'},
+                        exchange=exchange,
+                        routing_key='other.created',
+                        serializer='json',
+                    )
+
+                bound_queue = queue(channel)
+                message = bound_queue.get(no_ack=True)
+                assert message.payload == {'event': 'matching'}
+                assert bound_queue.get(no_ack=True) is None
+
+    def test_fanout_is_deferred_until_flush(self, connection, redis_client):
+        exchange = kombu.Exchange('batch_fanout_exchange', type='fanout')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                channel.pool
+                topic = channel._get_publish_topic(
+                    exchange.name,
+                    'worker.created',
+                )
+                keyprefix = connection.transport_options.get(
+                    'global_keyprefix',
+                    '',
+                )
+                with redis_client.pubsub() as subscriber:
+                    subscriber.subscribe(f'{keyprefix}{topic}')
+                    subscribed = subscriber.get_message(timeout=1)
+                    assert subscribed['type'] == 'subscribe'
+
+                    producer = kombu.Producer(channel)
+                    with producer.batch():
+                        producer.publish(
+                            {'event': 'fanout'},
+                            exchange=exchange,
+                            routing_key='worker.created',
+                            declare=[exchange],
+                            serializer='json',
+                        )
+                        assert subscriber.get_message(timeout=0.05) is None
+
+                    published = subscriber.get_message(timeout=1)
+
+        assert published['type'] == 'message'
+        message = loads(published['data'])
+        assert message['properties']['delivery_info'] == {
+            'exchange': exchange.name,
+            'routing_key': 'worker.created',
+        }
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisMessage(BaseMessage):
     pass
 
@@ -415,3 +581,90 @@ class test_RedisQueueExpiration:
         for key in priority_keys:
             ttl = redis_client.pttl(key)
             assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisSubclientHealthCheck:
+    """Integration tests for dropping half-open fanout (pub/sub) connections.
+
+    On a half-open socket (managed broker failover, expired NAT entry) the
+    health check PING write lands in the kernel buffer and no error is
+    raised, so the subclient health check alone never notices the dead
+    connection.  kombu counts unanswered pings through redis-py's
+    ``health_check_response_counter`` and drops the connection once two
+    full health check intervals pass with no PONG.
+    """
+
+    def _fanout_consumer(self, conn, name, received):
+        """Return a channel subscribed to a fanout exchange over pub/sub."""
+        exchange = kombu.Exchange(f'{name}_exchange', type='fanout')
+        queue = kombu.Queue(f'{name}_queue', exchange=exchange)
+        channel = conn.channel()
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        # first drain registers the subclient with the poller (LISTEN mode)
+        # and sends SUBSCRIBE; it may return on the subscribe confirmation
+        # or time out waiting for one
+        try:
+            conn.drain_events(timeout=0.1)
+        except socket.timeout:
+            pass
+        return channel, exchange
+
+    def test_healthy_subclient_connection_not_dropped(self, connection):
+        """A pub/sub connection with no missed PONGs must stay up."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_live', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            # below the missed-pong threshold the connection is kept
+            assert subclient.connection._sock is not None
+
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'alive'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'alive'}]
+
+    def test_missed_pongs_drop_connection_and_resubscribe(self, connection):
+        """Unanswered PINGs drop the connection; the next poll resubscribes."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_drop', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            # two health check intervals passed without a PONG: the socket
+            # is half-open and the connection must be dropped
+            subclient.health_check_response_counter = \
+                SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            assert subclient.connection._sock is None
+            assert subclient.health_check_response_counter == 0
+
+            # the next poll cycle reconnects and resubscribes
+            try:
+                conn.drain_events(timeout=0.1)
+            except socket.timeout:
+                pass
+
+            # fanout messages flow again
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'recovered'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'recovered'}]
