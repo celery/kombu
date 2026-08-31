@@ -76,13 +76,17 @@
     .. versionadded:: 5.6.0
 
     The `Mailbox` supports several configuration options that affect
-    the behavior of its exchanges and queues.
+    the behavior of its queues.
 
-    - ``durable``: If True, declares durable exchanges that survive broker restarts.
-    - ``exclusive``: If True, declares exclusive exchanges (usable by only one connection).
+    - ``queue_durable``: If True, declares durable queues that survive broker restarts.
+      Defaults to False.
+    - ``queue_exclusive``: If True, declares exclusive queues (usable by only
+      one connection, auto-deleted on disconnect). Defaults to True.
 
-    These provide finer control over broker-side behavior and are useful
-    in production environments where queue durability matters.\
+    .. versionchanged:: 5.7.0
+       ``queue_exclusive`` now defaults to ``True`` for RabbitMQ 4.3.0
+       compatibility. RabbitMQ 4.3.0 rejects transient non-exclusive queues
+       by default.
 
     Node
     ----

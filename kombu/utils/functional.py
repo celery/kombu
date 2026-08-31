@@ -31,8 +31,9 @@ class ChannelPromise:
         try:
             return self.__value__
         except AttributeError:
-            value = self.__value__ = self.__contract__()
-            return value
+            pass
+        value = self.__value__ = self.__contract__()
+        return value
 
     def __repr__(self):
         try:
