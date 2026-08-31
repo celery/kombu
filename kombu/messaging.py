@@ -609,7 +609,7 @@ class Consumer:
 
         # re-register the AMQP consumers, but only for queues that were
         # actually being consumed from before (not merely registered).
-        self._consume_previously_active(previously_active)
+        self._consume_previously_active(previously_active, no_ack=getattr(self, '_active_no_ack', None))
 
     def declare(self):
         """Declare queues, exchanges and bindings.
