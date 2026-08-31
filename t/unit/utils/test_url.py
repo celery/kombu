@@ -23,6 +23,13 @@ def test_can_extract_virtual_host_from_query():
     assert "my/vhost" == parsed["virtual_host"]
 
 
+def test_virtual_host_query_overrides_path():
+    parsed = parse_url(
+        'amqp://user:pass@localhost:5672//?virtual_host=my/vhost'
+    )
+    # When both a path-derived vhost and a query parameter are present,
+    # the query parameter should determine the effective virtual_host.
+    assert "my/vhost" == parsed["virtual_host"]
 @pytest.mark.parametrize('urltuple,expected', [
     (('https',), 'https:///'),
     (('https', 'e.com'), 'https://e.com/'),
