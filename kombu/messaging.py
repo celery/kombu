@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from itertools import count
+from threading import local
 from typing import TYPE_CHECKING
 
 from .common import maybe_declare
@@ -17,6 +18,125 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
+
+DEFAULT_BATCH_SIZE = 1000
+
+
+class _ProducerBatchState:
+    """State shared by nested batch contexts in one producer thread."""
+
+    def __init__(self, max_size):
+        self.max_size = max_size
+        self.aborted = False
+        self.session = None
+        self.immediate = False
+
+    def _get_session(self, channel):
+        if self.immediate:
+            return None
+        if self.session is None:
+            create_batch = getattr(channel, 'create_publish_batch', None)
+            supports_batch = getattr(channel, 'supports_batch_publish', True)
+            if create_batch is None or not supports_batch:
+                self.immediate = True
+                return None
+            self.session = create_batch(max_size=self.max_size)
+        elif self.session.channel is not channel:
+            raise RuntimeError(
+                'Producer channel changed while a publish batch was active',
+            )
+        return self.session
+
+    def publish(self, channel, message, **kwargs):
+        if self.aborted:
+            raise RuntimeError('Cannot publish through an aborted batch')
+        session = self._get_session(channel)
+        if session is None:
+            return channel.basic_publish(message, **kwargs)
+        return session.publish(message, **kwargs)
+
+    def flush(self):
+        if self.aborted:
+            raise RuntimeError('Cannot flush an aborted batch')
+        if self.session is not None:
+            self.session.flush()
+
+    def abort(self):
+        if self.aborted:
+            return
+        self.aborted = True
+        if self.session is not None:
+            self.session.discard()
+
+    def close(self):
+        if self.session is not None:
+            self.session.close()
+
+
+class _ProducerBatch:
+    """Context manager returned by :meth:`Producer.batch`."""
+
+    def __init__(self, producer, max_size):
+        self.producer = producer
+        self.max_size = max_size
+        self.state = None
+        self.is_outermost = False
+        self.entered = False
+        self.active = False
+
+    def __enter__(self):
+        if self.entered:
+            raise RuntimeError('Publish batch context cannot be re-entered')
+        self.entered = True
+        self.active = True
+
+        state = getattr(self.producer._batch_local, 'current', None)
+        if state is None:
+            state = _ProducerBatchState(self.max_size)
+            self.producer._batch_local.current = state
+            self.is_outermost = True
+        self.state = state
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        state = self.state
+        if state is None:
+            return None
+
+        cleanup_error = None
+        try:
+            if self.is_outermost:
+                del self.producer._batch_local.current
+
+            if exc_type is not None:
+                try:
+                    state.abort()
+                except BaseException as exc:
+                    cleanup_error = exc
+
+            if self.is_outermost:
+                if exc_type is None and not state.aborted:
+                    try:
+                        state.flush()
+                    except BaseException as exc:
+                        cleanup_error = exc
+                try:
+                    state.close()
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
+        finally:
+            self.active = False
+
+        if exc_type is None and cleanup_error is not None:
+            raise cleanup_error
+        return None
+
+    def flush(self):
+        """Flush messages buffered by the active batch."""
+        if not self.active:
+            raise RuntimeError('Publish batch context is not active')
+        self.state.flush()
 
 
 class Producer:
@@ -72,6 +192,7 @@ class Producer:
         self.compression = compression or self.compression
         self.on_return = on_return or self.on_return
         self._channel_promise = None
+        self._batch_local = local()
         if self.exchange is None:
             self.exchange = Exchange('')
         if auto_declare is not None:
@@ -105,6 +226,47 @@ class Producer:
         """Declare exchange if not already declared during this session."""
         if entity:
             return maybe_declare(entity, self.channel, retry, **retry_policy)
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether the active transport can defer batched publishes."""
+        connection = self.connection
+        if connection is None:
+            return False
+        try:
+            transport_support = connection.transport.implements.batch_publish
+        except AttributeError:
+            return False
+        channel = self._channel
+        if channel is not None and not isinstance(channel, ChannelPromise):
+            configured_support = getattr(
+                channel,
+                'supports_batch_publish',
+                transport_support,
+            )
+        else:
+            configured_support = getattr(
+                connection.transport,
+                'supports_batch_publish',
+                transport_support,
+            )
+        return bool(transport_support and configured_support)
+
+    def batch(self, max_size=DEFAULT_BATCH_SIZE):
+        """Group normal :meth:`publish` calls into transport-owned batches.
+
+        Unsupported transports retain immediate publication.  A successful
+        outermost context exit flushes pending messages; an exceptional exit
+        discards messages that have not already been flushed.
+
+        :param max_size: Maximum transport operations to buffer before an
+            automatic flush. Must be a positive integer.
+        :type max_size: int
+        """
+        if (isinstance(max_size, bool) or
+                not isinstance(max_size, int) or max_size <= 0):
+            raise ValueError('max_size must be a positive integer')
+        return _ProducerBatch(self, max_size)
 
     def _delivery_details(self, exchange, delivery_mode=None,
                           maybe_delivery_mode=maybe_delivery_mode,
@@ -211,12 +373,18 @@ class Producer:
         reply_to = properties.get('reply_to')
         if isinstance(reply_to, Queue):
             properties['reply_to'] = reply_to.name
-        return channel.basic_publish(
-            message,
-            exchange=exchange, routing_key=routing_key,
-            mandatory=mandatory, immediate=immediate,
-            timeout=timeout, confirm_timeout=confirm_timeout
-        )
+        publish_kwargs = {
+            'exchange': exchange,
+            'routing_key': routing_key,
+            'mandatory': mandatory,
+            'immediate': immediate,
+            'timeout': timeout,
+            'confirm_timeout': confirm_timeout,
+        }
+        batch = getattr(self._batch_local, 'current', None)
+        if batch is not None:
+            return batch.publish(channel, message, **publish_kwargs)
+        return channel.basic_publish(message, **publish_kwargs)
 
     def _get_channel(self):
         channel = self._channel
