@@ -2872,6 +2872,90 @@ class test_MultiChannelPoller:
 
         client.check_health.assert_called_once()
 
+    def test_maybe_check_subclient_health_drops_stale_connection(self):
+        """Unanswered PINGs mean the pub/sub path is half-open.
+
+        check_health() only sends PING, and a half-open socket accepts the
+        write without error, so once health_check_response_counter reaches
+        the threshold the connection must be dropped to force a resubscribe.
+        """
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient')
+        client.health_check_response_counter = \
+            redis.SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()
+
+        client.connection.disconnect.assert_called_once()
+        assert client.health_check_response_counter == 0
+        client.check_health.assert_not_called()
+
+    def test_maybe_check_subclient_health_below_threshold_still_pings(self):
+        """A single outstanding PONG is tolerated (event loop may stall)."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient')
+        client.health_check_response_counter = \
+            redis.SUBCLIENT_MAX_MISSED_HEALTH_CHECKS - 1
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()
+
+        client.check_health.assert_called_once()
+        client.connection.disconnect.assert_not_called()
+
+    def test_maybe_check_subclient_health_counter_reset_after_drop(self):
+        """The counter survives redis-py reconnects; reset it on our drop.
+
+        clean_health_check_responses() only drains responses that actually
+        arrive, so a counter inflated by the dead connection would otherwise
+        stay at the threshold forever and cause a reconnect loop.
+        """
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient')
+        client.health_check_response_counter = \
+            redis.SUBCLIENT_MAX_MISSED_HEALTH_CHECKS + 3
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()
+
+        assert client.health_check_response_counter == 0
+        client.connection.disconnect.assert_called_once()
+
+    def test_maybe_check_subclient_health_no_counter_attribute(self):
+        """redis-py without health_check_response_counter: just send PING."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient', spec=['check_health'])
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()
+
+        client.check_health.assert_called_once()
+
+    def test_maybe_check_subclient_health_stale_without_connection(self):
+        """Stale counter with no connection object must not raise."""
+        p = self.Poller()
+        channel = Mock(name='channel')
+        client = Mock(name='subclient')
+        client.health_check_response_counter = \
+            redis.SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
+        client.connection = None
+        channel.__dict__['subclient'] = client
+        p._channels = [channel]
+
+        p.maybe_check_subclient_health()  # must not raise
+
+        assert client.health_check_response_counter == 0
+        client.check_health.assert_not_called()
+
     def test_maybe_reauth_delegates_to_channels(self):
         """Happy path: the timer flushes re-auth on every channel."""
         p = self.Poller()

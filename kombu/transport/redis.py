@@ -128,6 +128,11 @@ DEFAULT_DB = 0
 
 DEFAULT_HEALTH_CHECK_INTERVAL = 25
 
+#: Unanswered subclient PINGs tolerated before the pub/sub connection is
+#: treated as half-open and dropped.  Two full intervals must pass without
+#: a PONG, so a stalled event loop alone cannot trigger a reconnect.
+SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
+
 #: How often (in seconds) to flush pending streaming re-authentication
 #: tokens onto the long-lived BRPOP and pub/sub connections.  See
 #: :meth:`Channel.maybe_reauth` for why this is needed.
@@ -622,6 +627,23 @@ class MultiChannelPoller:
             if client is not None \
                     and callable(getattr(client, 'check_health', None)):
                 try:
+                    missed = getattr(
+                        client, 'health_check_response_counter', None)
+                    if isinstance(missed, int) and \
+                            missed >= SUBCLIENT_MAX_MISSED_HEALTH_CHECKS:
+                        # check_health() only *sends* PING; a half-open
+                        # socket accepts the write and the missing PONG is
+                        # never an error, so count unanswered pings and
+                        # drop the connection to force a resubscribe.
+                        warning(
+                            'Redis pub/sub connection missed %d health '
+                            'check responses; dropping stale connection',
+                            missed)
+                        client.health_check_response_counter = 0
+                        connection = client.connection
+                        if connection is not None:
+                            connection.disconnect()
+                        continue
                     client.check_health()
                 except channel.connection_errors:
                     logger.debug(
