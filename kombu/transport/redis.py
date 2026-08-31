@@ -2096,12 +2096,17 @@ class SentinelChannel(Channel):
         the new formatted topic and the legacy literal topic so that
         workers on kombu < 5.4.0 still receive broadcast messages.
         """
+        publish_batch = kwargs.get('_publish_batch')
         super()._put_fanout(exchange, message, routing_key, **kwargs)
         if self._compat_enabled:
             legacy_topic = self._get_legacy_publish_topic(
                 exchange, routing_key)
-            with self.conn_or_acquire() as client:
-                client.publish(legacy_topic, dumps(message))
+            payload = dumps(message)
+            if publish_batch is not None:
+                publish_batch.add('publish', legacy_topic, payload)
+            else:
+                with self.conn_or_acquire() as client:
+                    client.publish(legacy_topic, payload)
 
     def _subscribe(self):
         """Subscribe to fanout PUB/SUB patterns.
