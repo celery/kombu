@@ -1118,6 +1118,27 @@ class test_Consumer:
         assert 'qname1' in consumer._active_tags
         assert 'qname2' not in consumer._active_tags
 
+    def test_revive__preserves_per_call_no_ack_override(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume(no_ack=True)
+
+        # a later consume() call with a different override only
+        # affects the queue that wasn't already consuming.
+        consumer.add_queue(b2)
+        consumer.consume(no_ack=False)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
     def test_active_tags_reflects_intent_not_broker_ack(self):
         # tag is recorded before channel.basic_consume is called
         channel = self.connection.channel()
