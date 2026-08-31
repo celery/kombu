@@ -116,7 +116,7 @@ import numbers
 import socket
 from bisect import bisect
 from collections import namedtuple
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
 from time import time
@@ -124,7 +124,8 @@ from time import time
 from packaging.version import Version
 from vine import promise
 
-from kombu.exceptions import InconsistencyError, VersionMismatch
+from kombu.exceptions import (BatchPublishError, InconsistencyError,
+                              VersionMismatch)
 from kombu.log import get_logger
 from kombu.transport.base import to_rabbitmq_queue_arguments
 from kombu.utils import symbol_by_name
@@ -159,6 +160,11 @@ DEFAULT_PORT = 6379
 DEFAULT_DB = 0
 
 DEFAULT_HEALTH_CHECK_INTERVAL = 25
+
+#: Unanswered subclient PINGs tolerated before the pub/sub connection is
+#: treated as half-open and dropped.  Two full intervals must pass without
+#: a PONG, so a stalled event loop alone cannot trigger a reconnect.
+SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
 
 #: How often (in seconds) to flush pending streaming re-authentication
 #: tokens onto the long-lived BRPOP and pub/sub connections.  See
@@ -205,7 +211,13 @@ def get_redis_error_classes():
             exceptions.ConnectionError,
             exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
-            exceptions.TimeoutError)),
+            exceptions.TimeoutError,
+            # A stale fd can still fire on_readable for a channel that was
+            # already dropped after a broker restart (#2582): the poller
+            # guard from #2561 makes the common path a debug log, but any
+            # KeyError that still escapes must be treated as a connection
+            # error so the consumer reconnects instead of dying.
+            KeyError)),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,
@@ -648,6 +660,23 @@ class MultiChannelPoller:
             if client is not None \
                     and callable(getattr(client, 'check_health', None)):
                 try:
+                    missed = getattr(
+                        client, 'health_check_response_counter', None)
+                    if isinstance(missed, int) and \
+                            missed >= SUBCLIENT_MAX_MISSED_HEALTH_CHECKS:
+                        # check_health() only *sends* PING; a half-open
+                        # socket accepts the write and the missing PONG is
+                        # never an error, so count unanswered pings and
+                        # drop the connection to force a resubscribe.
+                        warning(
+                            'Redis pub/sub connection missed %d health '
+                            'check responses; dropping stale connection',
+                            missed)
+                        client.health_check_response_counter = 0
+                        connection = client.connection
+                        if connection is not None:
+                            connection.disconnect()
+                        continue
                     client.check_health()
                 except channel.connection_errors:
                     logger.debug(
@@ -725,6 +754,113 @@ class MultiChannelPoller:
         return self._fd_to_chan
 
 
+def _batch_publish_retry_safe(connection_kwargs):
+    """Return whether Redis will execute a pipeline without retrying it."""
+    return not (
+        connection_kwargs.get('retry_on_timeout')
+        or connection_kwargs.get('retry_on_error')
+        or connection_kwargs.get('retry') is not None
+    )
+
+
+class PublishBatch:
+    """Buffer Redis publish commands in a non-transactional pipeline."""
+
+    def __init__(self, channel, max_size):
+        self.channel = channel
+        self.max_size = max_size
+        self._buffered = 0
+        self._collecting = None
+        self._failed = None
+        self._aborted = False
+        self._closed = False
+        self._stack = ExitStack()
+        try:
+            client = self._stack.enter_context(channel.conn_or_acquire())
+            self.pipeline = self._stack.enter_context(
+                client.pipeline(transaction=False),
+            )
+        except BaseException:
+            self._stack.close()
+            raise
+
+    def publish(self, message, **kwargs):
+        """Route one prepared message and buffer its final Redis commands."""
+        self._check_usable()
+        commands = []
+        self._collecting = commands
+        try:
+            result = self.channel.basic_publish(
+                message,
+                _publish_batch=self,
+                **kwargs,
+            )
+        finally:
+            self._collecting = None
+
+        if commands:
+            if self._buffered and self._buffered + len(commands) > self.max_size:
+                self.flush()
+            try:
+                for name, args in commands:
+                    getattr(self.pipeline, name)(*args)
+            except BaseException as exc:
+                self._failed = exc
+                self._buffered = 0
+                self.pipeline.reset()
+                raise
+            self._buffered += len(commands)
+            if self._buffered >= self.max_size:
+                self.flush()
+        return result
+
+    def add(self, name, *args):
+        """Add one final Redis command for the message being routed."""
+        if self._collecting is None:
+            raise RuntimeError('Redis publish command added outside publication')
+        self._collecting.append((name, args))
+
+    def flush(self):
+        """Execute all pending Redis commands once, without automatic retry."""
+        self._check_usable()
+        if not self._buffered:
+            return
+        try:
+            self.pipeline.execute()
+        except BaseException as exc:
+            self._failed = exc
+            self._buffered = 0
+            self.pipeline.reset()
+            if isinstance(exc, Exception):
+                raise BatchPublishError(
+                    'Redis publish batch failed; delivery is uncertain',
+                ) from exc
+            raise
+        self._buffered = 0
+
+    def discard(self):
+        """Discard commands that have not already been executed."""
+        self._aborted = True
+        self._buffered = 0
+        self.pipeline.reset()
+
+    def close(self):
+        """Reset the pipeline and release its resources."""
+        if not self._closed:
+            self._closed = True
+            self._stack.close()
+
+    def _check_usable(self):
+        if self._closed:
+            raise RuntimeError('Redis publish batch is closed')
+        if self._aborted:
+            raise RuntimeError('Redis publish batch is aborted')
+        if self._failed is not None:
+            raise BatchPublishError(
+                'Redis publish batch cannot be reused after a previous failure',
+            ) from self._failed
+
+
 class Channel(virtual.Channel):
     """Redis Channel."""
 
@@ -766,6 +902,14 @@ class Channel(virtual.Channel):
     max_connections = 10
     health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
     client_name = None
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether pipelines can run without ambiguous write replay."""
+        return (
+            not self.retry_on_timeout
+            and _batch_publish_retry_safe(self.pool.connection_kwargs)
+        )
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -1293,10 +1437,26 @@ class Channel(virtual.Channel):
         steps = self.priority_steps
         return steps[bisect(steps, n) - 1]
 
+    def create_publish_batch(self, max_size):
+        """Create a producer-scoped Redis publish batch."""
+        return PublishBatch(self, max_size)
+
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
         pri = self._get_message_priority(message, reverse=False)
         key = self._q_for_pri(queue, pri)
+        publish_batch = kwargs.pop('_publish_batch', None)
+
+        if publish_batch is not None:
+            publish_batch.add('lpush', key, dumps(message))
+            if self._expires and queue in self._expires:
+                for p in self.priority_steps:
+                    publish_batch.add(
+                        'pexpire',
+                        self._q_for_pri(queue, p),
+                        self._expires[queue],
+                    )
+            return
 
         with self.conn_or_acquire() as client:
             if self._expires and queue in self._expires:
@@ -1310,11 +1470,14 @@ class Channel(virtual.Channel):
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
+        publish_batch = kwargs.pop('_publish_batch', None)
+        topic = self._get_publish_topic(exchange, routing_key)
+        payload = dumps(message)
+        if publish_batch is not None:
+            publish_batch.add('publish', topic, payload)
+            return
         with self.conn_or_acquire() as client:
-            client.publish(
-                self._get_publish_topic(exchange, routing_key),
-                dumps(message),
-            )
+            client.publish(topic, payload)
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
@@ -1663,8 +1826,20 @@ class Transport(virtual.Transport):
 
     implements = virtual.Transport.implements.extend(
         asynchronous=True,
-        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+        batch_publish=True,
+        exchange_type=frozenset(['direct', 'topic', 'fanout']),
     )
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether configured timeout handling permits safe batching."""
+        if not _batch_publish_retry_safe(self.client.transport_options):
+            return False
+        hostname = self.client.hostname or ''
+        if '://' not in hostname:
+            return True
+        *_, query = _parse_url(hostname)
+        return _batch_publish_retry_safe(query)
 
     if redis:
         connection_errors, channel_errors = get_redis_error_classes()

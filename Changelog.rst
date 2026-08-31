@@ -4,6 +4,17 @@
  Change history
 ================
 
+Next release
+============
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport
+  uses a non-transactional pipeline to publish multiple messages in fewer
+  network round trips while retaining normal serialization, routing,
+  priorities, queue expiry, and fanout behavior.
+
 .. _version-5.6.2:
 
 5.6.2
