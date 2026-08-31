@@ -37,16 +37,11 @@ Transport Options
 
       Once a Redis broker has live ``_kombu.binding.*`` entries written
       with one ``sep`` value, changing ``sep`` in
-      ``broker_transport_options`` of a subsequent deploy will produce::
-
-          ValueError: not enough values to unpack (expected 3, got 1)
-
-      from ``DirectExchange.lookup()`` in
-      ``kombu/transport/virtual/exchange.py`` when those stale entries
-      are read.  ``get_table()`` splits each stored entry on the *new*
-      separator; if the old separator is not present the split returns a
-      1-element tuple rather than the required ``(routing_key, pattern,
-      queue)`` 3-tuple.
+      ``broker_transport_options`` of a subsequent deploy can make existing
+      binding rows decode incorrectly, causing unpacking errors or incorrect
+      routing.  ``get_table()`` splits each stored entry on the *new* separator;
+      if that separator is absent, the split returns a 1-element tuple rather
+      than the required ``(routing_key, pattern, queue)`` 3-tuple.
 
       **Before deploying a** ``sep`` **change against a live Redis**,
       either delete the existing binding keys:
