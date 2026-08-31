@@ -173,7 +173,13 @@ def get_redis_error_classes():
             exceptions.ConnectionError,
             exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
-            exceptions.TimeoutError)),
+            exceptions.TimeoutError,
+            # A stale fd can still fire on_readable for a channel that was
+            # already dropped after a broker restart (#2582): the poller
+            # guard from #2561 makes the common path a debug log, but any
+            # KeyError that still escapes must be treated as a connection
+            # error so the consumer reconnects instead of dying.
+            KeyError)),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,

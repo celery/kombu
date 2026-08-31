@@ -2921,6 +2921,10 @@ class test_MultiChannelPoller:
 
         p.handle_event(13, ~(redis.READ | redis.ERR))
 
+    def test_connection_errors_include_keyerror(self):
+        errors = redis.Transport.connection_errors
+        assert KeyError in errors
+
     def test_on_readable_ignores_unmapped_fd(self):
         p = self.Poller()
         assert 35 not in p._fd_to_chan
