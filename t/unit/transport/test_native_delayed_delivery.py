@@ -22,6 +22,15 @@ class test_native_delayed_delivery_level_name:
     def test_level_name_with_level_1(self):
         assert level_name(1) == 'celery_delayed_1'
 
+    def test_level_name_with_prefix(self):
+        assert level_name(0, 'my_prefix') == 'my_prefix_celery_delayed_0'
+
+    def test_level_name_with_empty_prefix(self):
+        assert level_name(0, '') == 'celery_delayed_0'
+
+    def test_level_name_with_none_prefix(self):
+        assert level_name(0, None) == 'celery_delayed_0'
+
 
 class test_declare_native_delayed_delivery_exchanges_and_queues:
     def test_invalid_queue_type(self):
@@ -33,6 +42,10 @@ class test_declare_native_delayed_delivery_exchanges_and_queues:
 
     def test_quorum_queue_type(self):
         declare_native_delayed_delivery_exchanges_and_queues(Mock(), 'quorum')
+
+    def test_with_prefix(self):
+        declare_native_delayed_delivery_exchanges_and_queues(
+            Mock(), 'quorum', 'my_prefix')
 
 
 class test_bind_queue_to_native_delayed_delivery_exchange:
@@ -115,6 +128,23 @@ class test_bind_queue_to_native_delayed_delivery_exchange:
             routing_key="#.foo"
         )
 
+    def test_bind_to_topic_exchange_with_prefix(self):
+        queue_mock = Mock()
+        queue_mock.bind().exchange.bind().type = 'topic'
+        queue_mock.bind().exchange.bind().name = 'foo'
+        queue_mock.bind().routing_key = 'foo'
+
+        bind_queue_to_native_delayed_delivery_exchange(
+            Mock(), queue_mock, 'my_prefix')
+        queue_mock.bind().exchange.bind().bind_to.assert_called_once_with(
+            'my_prefix_' + CELERY_DELAYED_DELIVERY_EXCHANGE,
+            routing_key="#.foo"
+        )
+        queue_mock.bind().bind_to.assert_called_once_with(
+            'foo',
+            routing_key="#.foo"
+        )
+
 
 class test_calculate_routing_key:
     def test_calculate_routing_key(self):
@@ -136,3 +166,14 @@ class test_calculate_routing_key:
     def test_none_routing_key(self):
         with pytest.raises(ValueError, match="routing_key must be non-empty"):
             calculate_routing_key(1, None)
+
+    def test_does_not_accumulate_prefix_on_retry(self):
+        first = calculate_routing_key(1, 'destination')
+        second = calculate_routing_key(2, first)
+        assert second == calculate_routing_key(2, 'destination')
+
+    def test_does_not_strip_a_partial_prefix_look_alike(self):
+        # '0.destination' only has a single leading segment, not the full
+        # 28-segment prefix, so it must not be mistaken for one and stripped.
+        assert (calculate_routing_key(1, '0.destination')
+                == '0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.destination')
