@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import uuid
 
 import pytest
@@ -144,3 +145,65 @@ class test_PyAMQPConnectionPool:
             producer.publish(
                 {"foo": "bar"}, routing_key=str(uuid.uuid4()), retry=False, timeout=3
             )
+
+
+@pytest.mark.env('py-amqp')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_PyAMQPConsumerRevive:
+    """Regression tests for #814."""
+
+    def test_revive_resumes_active_queue_only(self, connection):
+        active_name = f'revive_active_{uuid.uuid4()}'
+        inactive_name = f'revive_inactive_{uuid.uuid4()}'
+        # default exchange requires routing_key == queue name
+        active_queue = kombu.Queue(active_name, routing_key=active_name)
+        inactive_queue = kombu.Queue(inactive_name, routing_key=inactive_name)
+
+        received = []
+
+        def callback(body, message):
+            received.append(body)
+            message.ack()
+
+        def _drain(conn, timeout):
+            try:
+                conn.drain_events(timeout=timeout)
+            except socket.timeout:
+                pass
+
+        with connection as conn:
+            with conn.channel():
+                consumer = kombu.Consumer(
+                    conn, [active_queue], accept=['pickle']
+                )
+                consumer.register_callback(callback)
+
+                with consumer:
+                    # registered but never consumed from
+                    consumer.add_queue(inactive_queue)
+                    assert inactive_queue.name not in consumer._active_tags
+
+                    # kill the socket to simulate the broker vanishing
+                    sock = conn.connection.transport.sock
+                    sock.shutdown(socket.SHUT_RDWR)
+                    sock.close()
+
+                    safe_drain = conn.ensure(consumer, _drain, max_retries=3)
+                    safe_drain(conn, 1)
+
+                    assert active_queue.name in consumer._active_tags
+                    assert inactive_queue.name not in consumer._active_tags
+
+                    # confirm messages are actually delivered post-recovery
+                    producer = kombu.Producer(conn)
+                    producer.publish(
+                        {'hello': 'world'},
+                        retry=True,
+                        exchange=active_queue.exchange,
+                        routing_key=active_queue.routing_key,
+                        declare=[active_queue],
+                        serializer='pickle',
+                    )
+                    safe_drain(conn, 1)
+
+        assert received == [{'hello': 'world'}]
