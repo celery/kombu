@@ -1078,6 +1078,83 @@ class test_Consumer:
         assert consumer.queues[0].channel is channel2
         assert consumer.queues[0].exchange.channel is channel2
 
+    def test_revive__resumes_consuming_if_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert consumer._active_tags
+        assert 'basic_consume' in channel2
+
+    def test_revive__does_not_consume_if_not_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert not consumer._active_tags
+        assert 'basic_consume' not in channel2
+
+    def test_revive__does_not_resume_never_active_queue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert 'qname1' in consumer._active_tags
+
+        # registered but deliberately not consumed from yet
+        consumer.add_queue(b2)
+        assert 'qname2' not in consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert 'qname1' in consumer._active_tags
+        assert 'qname2' not in consumer._active_tags
+
+    def test_revive__preserves_per_call_no_ack_override(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume(no_ack=True)
+
+        # a later consume() call with a different override only
+        # affects the queue that wasn't already consuming.
+        consumer.add_queue(b2)
+        consumer.consume(no_ack=False)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+    def test_active_tags_reflects_intent_not_broker_ack(self):
+        # tag is recorded before channel.basic_consume is called
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        def _boom(*args, **kwargs):
+            raise OperationalError('connection lost before broker ack')
+        channel.basic_consume = _boom
+
+        with pytest.raises(OperationalError):
+            consumer.consume()
+
+        assert consumer._active_tags
+        assert 'basic_consume' not in channel
+
     def test_revive__with_prefetch_count(self):
         channel = Mock(name='channel')
         b1 = Queue('qname1', self.exchange, 'rkey')

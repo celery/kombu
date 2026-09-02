@@ -571,6 +571,7 @@ class Consumer:
         self.on_message = on_message
         self.tag_prefix = tag_prefix
         self._active_tags = {}
+        self._active_queue_no_ack = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
@@ -591,7 +592,9 @@ class Consumer:
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
+        previous_no_ack = self._active_queue_no_ack.copy()
         self._active_tags.clear()
+        self._active_queue_no_ack.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
         for qname, queue in list(self._queues.items()):
@@ -605,6 +608,10 @@ class Consumer:
 
         if self.prefetch_count is not None:
             self.qos(prefetch_count=self.prefetch_count)
+
+        # re-register the AMQP consumers, but only for queues that were
+        # actually being consumed from before (not merely registered).
+        self._consume_previously_active(previous_no_ack)
 
     def declare(self):
         """Declare queues, exchanges and bindings.
@@ -672,14 +679,42 @@ class Consumer:
         ---------
             no_ack (bool): See :attr:`no_ack`.
         """
-        queues = list(self._queues.values())
-        if queues:
-            no_ack = self.no_ack if no_ack is None else no_ack
+        no_ack = self.no_ack if no_ack is None else no_ack
+        self._consume_queues(
+            {queue.name: no_ack for queue in self._queues.values()}
+        )
 
-            H, T = queues[:-1], queues[-1]
-            for queue in H:
-                self._basic_consume(queue, no_ack=no_ack, nowait=True)
-            self._basic_consume(T, no_ack=no_ack, nowait=False)
+    def _consume_previously_active(self, active_no_ack):
+        """Start consuming only from the given, previously active queues.
+
+        Unlike :meth:`consume`, this will not start consuming from
+        queues that were registered (e.g. via :meth:`add_queue`) but
+        never actually consumed from, and it restores each queue's
+        own effective ``no_ack`` value instead of applying one value
+        to every queue.
+
+        Arguments:
+        ---------
+            active_no_ack (dict): Mapping of queue name to the
+                ``no_ack`` value it was consumed with.
+        """
+        # thin wrapper kept for readability/intent at the revive() call site
+        self._consume_queues(active_no_ack)
+
+    def _consume_queues(self, no_ack_by_queue):
+        queues = [
+            q for q in self._queues.values() if q.name in no_ack_by_queue
+        ]
+        if not queues:
+            return
+        H, T = queues[:-1], queues[-1]
+        for queue in H:
+            self._basic_consume(
+                queue, no_ack=no_ack_by_queue[queue.name], nowait=True
+            )
+        self._basic_consume(
+            T, no_ack=no_ack_by_queue[T.name], nowait=False
+        )
 
     def cancel(self):
         """End all active queue consumers.
@@ -693,12 +728,14 @@ class Consumer:
         for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
+        self._active_queue_no_ack.clear()
 
     close = cancel
 
     def cancel_by_queue(self, queue):
         """Cancel consumer by queue name."""
         qname = queue.name if isinstance(queue, Queue) else queue
+        self._active_queue_no_ack.pop(qname, None)
         try:
             tag = self._active_tags.pop(qname)
         except KeyError:
@@ -805,7 +842,9 @@ class Consumer:
                        no_ack=no_ack, nowait=True):
         tag = self._active_tags.get(queue.name)
         if tag is None:
+            no_ack = queue.no_ack if no_ack is None else no_ack
             tag = self._add_tag(queue, consumer_tag)
+            self._active_queue_no_ack[queue.name] = no_ack
             queue.consume(tag, self._receive_callback,
                           no_ack=no_ack, nowait=nowait)
         return tag
