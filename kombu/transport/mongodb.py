@@ -35,7 +35,8 @@ Transport Options
 
 from __future__ import annotations
 
-import datetime
+import warnings
+from datetime import datetime, timedelta, timezone
 from queue import Empty
 
 import pymongo
@@ -321,6 +322,25 @@ class Channel(virtual.Channel):
                                  if self.connect_timeout else None),
         }
         options.update(parsed['options'])
+        normalized = {}
+        for k, v in options.items():
+            val = v[0] if isinstance(v, list) and len(v) == 1 else v
+            normalized[k] = val
+            lk = k.lower()
+            # Only set the lowercase key if it does not exist, or if it exists and has the same value
+            if lk not in normalized or normalized[lk] == val:
+                normalized[lk] = val
+            elif normalized[lk] == val:
+                # Values match, no action needed
+                pass
+            else:
+                # Conflict: keys differ only in case and have different values; log a warning
+                warnings.warn(
+                    f"MongoDB transport: Option conflict for key '{k}' and '{lk}' with different values: "
+                    f"{normalized.get(lk)!r} vs {val!r}. Using value for '{k}'."
+                )
+                # Do not overwrite the existing value for lk
+        options = normalized
         options = self._prepare_client_options(options)
 
         if 'tls' in options:
@@ -452,7 +472,7 @@ class Channel(virtual.Channel):
     def _get_message_expire(self, message):
         value = message.get('properties', {}).get('expiration')
         if value is not None:
-            return self.get_now() + datetime.timedelta(milliseconds=int(value))
+            return self.get_now() + timedelta(milliseconds=int(value))
 
     def _get_queue_expire(self, queue, argument):
         """Get expiration header named `argument` of queue definition.
@@ -476,7 +496,7 @@ class Channel(virtual.Channel):
         except (KeyError, TypeError):
             return
 
-        return self.get_now() + datetime.timedelta(milliseconds=value)
+        return self.get_now() + timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
         """Update expiration field on queues documents."""
@@ -492,7 +512,7 @@ class Channel(virtual.Channel):
 
     def get_now(self):
         """Return current time in UTC."""
-        return datetime.datetime.utcnow()
+        return datetime.now(timezone.utc)
 
 
 class Transport(virtual.Transport):

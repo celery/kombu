@@ -11,6 +11,7 @@ from kombu.log import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger
+    from types import TracebackType
     from typing import Any, Callable
 
     from kombu.transport.base import Transport
@@ -33,8 +34,6 @@ def setup_logging(
 class Logwrapped:
     """Wrap all object methods, to log on call."""
 
-    __ignore = ('__enter__', '__exit__')
-
     def __init__(
         self,
         instance: Transport,
@@ -48,7 +47,7 @@ class Logwrapped:
     def __getattr__(self, key: str) -> Callable:
         meth = getattr(self.instance, key)
 
-        if not callable(meth) or key in self.__ignore:
+        if not callable(meth):
             return meth
 
         @wraps(meth)
@@ -69,6 +68,18 @@ class Logwrapped:
             return meth(*args, **kwargs)
 
         return __wrapped
+
+    def __enter__(self) -> Logwrapped:
+        self.instance.__enter__()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> bool | None:
+        return self.instance.__exit__(exc_type, exc_val, exc_tb)
 
     def __repr__(self) -> str:
         return repr(self.instance)

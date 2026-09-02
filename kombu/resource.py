@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import os
-from collections import deque
-from queue import Empty
-from queue import LifoQueue as _LifoQueue
-from typing import TYPE_CHECKING
+from contextlib import nullcontext
+from queue import Empty, LifoQueue
 
 from . import exceptions
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
-
-if TYPE_CHECKING:
-    from types import TracebackType
 
 
 def _after_fork_cleanup_resource(resource):
@@ -21,13 +16,6 @@ def _after_fork_cleanup_resource(resource):
         resource.force_close_all()
     except Exception:
         pass
-
-
-class LifoQueue(_LifoQueue):
-    """Last in first out version of Queue."""
-
-    def _init(self, maxsize):
-        self.queue = deque()
 
 
 class Resource:
@@ -170,9 +158,6 @@ class Resource:
             except AttributeError:  # Issue #78
                 pass
         while 1:  # - available
-            # deque supports '.clear', but lists do not, so for that
-            # reason we use pop here, so that the underlying object can
-            # be any object supporting '.pop' and '.append'.
             try:
                 res = resource.queue.pop()
             except IndexError:
@@ -201,25 +186,13 @@ class Resource:
             self._shrink_down(collect=limit > 0)
 
     def _shrink_down(self, collect=True):
-        class Noop:
-            def __enter__(self):
-                pass
-
-            def __exit__(
-                self,
-                exc_type: type,
-                exc_val: Exception,
-                exc_tb: TracebackType
-            ) -> None:
-                pass
-
         resource = self._resource
-        # Items to the left are last recently used, so we remove those first.
-        with getattr(resource, 'mutex', Noop()):
+        # we should remove the least recently used item, but there is no public API in LifoQueue to
+        # do so.
+        with getattr(resource, 'mutex', nullcontext()):
             # keep in mind the dirty resources are not shrinking
-            while len(resource.queue) and \
-                    (len(resource.queue) + len(self._dirty)) > self.limit:
-                R = resource.queue.popleft()
+            while len(resource.queue) and (len(resource.queue) + len(self._dirty)) > self.limit:
+                R = resource.queue.pop()
                 if collect:
                     self.collect_resource(R)
 

@@ -331,7 +331,24 @@ def register_yaml():
     """
     try:
         import yaml
-        registry.register('yaml', yaml.safe_dump, yaml.safe_load,
+
+        def yaml_loads(s):
+            """Deserialize yaml from a string, bytes or a buffer.
+
+            ``yaml.safe_load`` treats anything that is not a string or
+            bytes as a stream and calls ``.read()`` on it, so the buffers
+            some transports hand us have to be copied into bytes first.
+            Bytes are passed through as they are, because PyYAML detects
+            the encoding (utf-8/utf-16-le/utf-16-be) from the BOM itself.
+            """
+            if isinstance(s, memoryview):
+                s = s.tobytes()
+            elif isinstance(s, bytearray):
+                s = bytes(s)
+
+            return yaml.safe_load(s)
+
+        registry.register('yaml', yaml.safe_dump, yaml_loads,
                           content_type='application/x-yaml',
                           content_encoding='utf-8')
     except ImportError:

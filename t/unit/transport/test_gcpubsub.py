@@ -1,17 +1,21 @@
 from __future__ import annotations
 
+import os
+from _socket import timeout as socket_timeout
 from concurrent.futures import Future
 from datetime import datetime
 from queue import Empty
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
-from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
+                                        GoogleAPICallError, NotFound,
                                         PermissionDenied)
+from google.api_core.retry import Retry
 from google.pubsub_v1.types.pubsub import Subscription
 
-from kombu.transport.gcpubsub import (AtomicCounter, Channel, QueueDescriptor,
+from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE_DEFAULT,
+                                      AtomicCounter, Channel, QueueDescriptor,
                                       Transport, UnackedIds)
 
 
@@ -79,6 +83,8 @@ def channel():
         channel.subscriber = MagicMock()
         channel.publisher = MagicMock()
         channel.closed = False
+        channel.ack_deadline_seconds = 240
+        channel.expiration_seconds = 86400
         with patch.object(
             Channel, 'conninfo', new_callable=MagicMock
         ), patch.object(
@@ -243,26 +249,23 @@ class test_Channel:
 
     def test_is_topic_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        mock_topic = MagicMock()
-        mock_topic.name = topic_path
-        channel.publisher.list_topics.return_value = [mock_topic]
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is True
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_is_topic_not_exists(self, channel):
         topic_path = "projects/project-id/topics/test_topic"
-        channel.publisher.list_topics.return_value = []
+        channel.publisher.get_topic.side_effect = NotFound("not found")
 
         result = channel._is_topic_exists(topic_path)
 
         assert result is False
-        channel.publisher.list_topics.assert_called_once_with(
-            request={"project": f'projects/{channel.project_id}'}
+        channel.publisher.get_topic.assert_called_once_with(
+            request={"topic": topic_path}
         )
 
     def test_create_subscription(self, channel):
@@ -294,6 +297,113 @@ class test_Channel:
             'filter': 'attributes.routing_key="1111-2222"',
         }
         Subscription(request)
+
+    def test_create_subscription_updates_when_exists(self, channel):
+        """Subscription settings are updated when the subscription exists."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        channel.ack_deadline_seconds = 60
+        channel.expiration_seconds = 86400
+        channel.enable_exactly_once_delivery = True
+
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        channel.subscriber.update_subscription = MagicMock()
+
+        result = channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+        )
+
+        assert result == subscription_path
+        channel.subscriber.create_subscription.assert_called_once()
+        channel.subscriber.update_subscription.assert_called_once()
+        update_call = channel.subscriber.update_subscription.call_args[1]
+        assert 'subscription' in update_call['request']
+        assert 'update_mask' in update_call['request']
+
+        subscription = update_call['request']['subscription']
+        assert subscription.name == subscription_path
+        assert subscription.topic == topic_path
+        assert subscription.ack_deadline_seconds == 60
+        assert subscription.expiration_policy.ttl.total_seconds() == 86400
+        assert subscription.message_retention_duration.total_seconds() == 86400
+        assert subscription.enable_exactly_once_delivery is True
+
+        update_mask_paths = update_call['request']['update_mask'].paths
+        assert 'ack_deadline_seconds' in update_mask_paths
+        assert 'expiration_policy.ttl' in update_mask_paths
+        assert 'message_retention_duration' in update_mask_paths
+        assert 'enable_exactly_once_delivery' in update_mask_paths
+
+    def test_create_subscription_with_filter(self, channel):
+        """Filter is included in update mask when present."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        channel.enable_exactly_once_delivery = False
+        filter_args = {'filter': 'attributes.routing_key="test"'}
+
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        channel.subscriber.update_subscription = MagicMock()
+
+        channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+            filter_args=filter_args,
+        )
+
+        channel.subscriber.update_subscription.assert_called_once()
+        update_call = channel.subscriber.update_subscription.call_args[1]
+        update_mask_paths = update_call['request']['update_mask'].paths
+        assert 'filter' in update_mask_paths
+
+    def test_create_subscription_handles_update_failure_gracefully(self, channel):
+        """Update failures must not crash the worker."""
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+        channel.enable_exactly_once_delivery = False
+
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock(
+            side_effect=AlreadyExists("Subscription exists")
+        )
+        channel.subscriber.update_subscription = MagicMock(
+            side_effect=GoogleAPICallError("API Error")
+        )
+
+        result = channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id=topic_id,
+            subscription_path=subscription_path,
+            topic_path=topic_path,
+        )
+
+        assert result == subscription_path
+        channel.subscriber.update_subscription.assert_called_once()
 
     def test_delete(self, channel):
         queue = "test_queue"
@@ -328,8 +438,37 @@ class test_Channel:
         )
         channel._get_routing_key = MagicMock(return_value="test_key")
         channel.publisher.publish = MagicMock()
+        channel.retry_timeout_seconds = 300
         channel._put(queue, message)
-        channel.publisher.publish.assert_called_once()
+        channel.publisher.publish.assert_called_once_with(
+            "topic_path",
+            ANY,
+            routing_key="test_key",
+            retry=ANY,
+        )
+        call_kwargs = channel.publisher.publish.call_args[1]
+        assert isinstance(call_kwargs['retry'], Retry)
+        assert call_kwargs['retry']._timeout == 300
+
+    def test_put_uses_custom_retry_timeout(self, channel):
+        queue = "test_queue"
+        message = {
+            "properties": {"delivery_info": {"routing_key": "test_key"}}
+        }
+        channel.entity_name = MagicMock(return_value=queue)
+        channel._queue_cache[channel.entity_name(queue)] = QueueDescriptor(
+            name=queue,
+            topic_path="topic_path",
+            subscription_id=queue,
+            subscription_path="subscription_path",
+        )
+        channel._get_routing_key = MagicMock(return_value="test_key")
+        channel.publisher.publish = MagicMock()
+        channel.retry_timeout_seconds = 60
+        channel._put(queue, message)
+        call_kwargs = channel.publisher.publish.call_args[1]
+        assert isinstance(call_kwargs['retry'], Retry)
+        assert call_kwargs['retry']._timeout == 60
 
     def test_put_fanout(self, channel):
         exchange = "test_exchange"
@@ -451,9 +590,12 @@ class test_Channel:
         )
         assert result == [exchange]
 
+    @patch.dict(os.environ, {}, clear=False)
     @patch('kombu.transport.gcpubsub.monitoring_v3')
     @patch('kombu.transport.gcpubsub.query.Query')
     def test_size(self, mock_query, mock_monitor, channel):
+        # Ensure emulator env var is not set so we test the real path
+        os.environ.pop('PUBSUB_EMULATOR_HOST', None)
         queue = "test_queue"
         subscription_id = "test_subscription"
         qdesc = QueueDescriptor(
@@ -484,6 +626,25 @@ class test_Channel:
         mock_query_result.select_resources.return_value = [mock_item]
         size = channel._size(queue)
         assert size == -1
+
+    @patch.dict(os.environ, {"PUBSUB_EMULATOR_HOST": "localhost:8085"})
+    @patch('kombu.transport.gcpubsub.query.Query')
+    def test_size_with_emulator(self, mock_query, channel):
+        queue = "test_queue"
+        subscription_id = "test_subscription"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id=subscription_id,
+            subscription_path="projects/project-id/subscriptions/test_subscription",  # E501
+        )
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+
+        size = channel._size(queue)
+
+        assert size == -1
+        # Verify the monitoring query API was never accessed
+        mock_query.assert_not_called()
 
     def test_basic_ack(self, channel):
         delivery_tag = "test_delivery_tag"
@@ -571,6 +732,7 @@ class test_Channel:
             subscription_path=subscription_path,
         )
         channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
         channel._queue_cache[channel.entity_name(queue)] = qdesc
         qdesc.unacked_ids.extend(ack_ids)
 
@@ -598,6 +760,346 @@ class test_Channel:
             == modify_ack_deadline_calls
         )
 
+    def test_extend_unacked_deadline_handles_exception(self, channel):
+        """Test that exceptions in modify_ack_deadline don't crash the thread."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1", "ack_id2"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=[Exception("Test error"), None]
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The thread continues processing and logs the error
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+            assert error_call_args[1]['exc_info'] is True
+
+    @pytest.mark.parametrize(
+        "exception_class,exception_message",
+        [
+            (DeadlineExceeded, "Timeout"),
+            (PermissionDenied, "Access denied"),
+        ],
+    )
+    def test_extend_unacked_deadline_handles_specific_exceptions(
+        self, channel, exception_class, exception_message
+    ):
+        """Test handling of specific exception types."""
+        # Given: A queue with unacked messages and modify_ack_deadline raises an exception
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        ack_ids = ["ack_id1"]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=exception_class(exception_message)
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger') as mock_logger:
+            channel._extend_unacked_deadline()
+
+            # Then: The error is logged appropriately
+            mock_logger.error.assert_called_once()
+            error_call_args = mock_logger.error.call_args
+            assert 'failed to extend ack deadline' in error_call_args[0][0]
+
+    def test_extend_unacked_deadline_continues_after_exception(self, channel):
+        """Test that the thread continues processing other queues after exception."""
+        # Given: Two queues with unacked messages, first raises exception, second succeeds
+        queue1 = "test_queue1"
+        queue2 = "test_queue2"
+        subscription_path1 = (
+            "projects/project-id/subscriptions/test_subscription1"
+        )
+        subscription_path2 = (
+            "projects/project-id/subscriptions/test_subscription2"
+        )
+        ack_ids = ["ack_id1"]
+
+        qdesc1 = QueueDescriptor(
+            name=queue1,
+            topic_path="projects/project-id/topics/test_topic1",
+            subscription_id="test_subscription1",
+            subscription_path=subscription_path1,
+        )
+        qdesc2 = QueueDescriptor(
+            name=queue2,
+            topic_path="projects/project-id/topics/test_topic2",
+            subscription_id="test_subscription2",
+            subscription_path=subscription_path2,
+        )
+
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        channel._queue_cache[channel.entity_name(queue1)] = qdesc1
+        channel._queue_cache[channel.entity_name(queue2)] = qdesc2
+        qdesc1.unacked_ids.extend(ack_ids)
+        qdesc2.unacked_ids.extend(ack_ids)
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+
+        call_count = [0]
+
+        def modify_side_effect(*args, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise Exception("First queue error")
+            return None
+
+        channel.subscriber.modify_ack_deadline = MagicMock(
+            side_effect=modify_side_effect
+        )
+
+        # When: The deadline extension thread runs
+        with patch('kombu.transport.gcpubsub.logger'):
+            channel._extend_unacked_deadline()
+
+            # Then: Both queues are processed despite the first one failing
+            assert channel.subscriber.modify_ack_deadline.call_count == 2
+
+    def test_get_assigns_unique_delivery_tag(self, channel):
+        queue = "test_queue"
+        channel.entity_name = MagicMock(return_value=queue)
+        channel._queue_cache[queue] = QueueDescriptor(
+            name=queue,
+            topic_path="topic_path",
+            subscription_id=queue,
+            subscription_path="subscription_path",
+        )
+        original_tag = "original-publish-time-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 1}}'
+        )
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack_A1",
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+        )
+        channel.subscriber.acknowledge = MagicMock()
+
+        payload1 = channel._get(queue)
+        tag1 = payload1['properties']['delivery_tag']
+        assert tag1 != original_tag
+
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack_A2",
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+        )
+        payload2 = channel._get(queue)
+        tag2 = payload2['properties']['delivery_tag']
+        assert tag2 != original_tag
+        assert tag1 != tag2
+
+    def test_get_bulk_assigns_unique_delivery_tags(self, channel):
+        queue = "test_queue"
+        subscription_path = "projects/p/subscriptions/test_queue"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/p/topics/t",
+            subscription_id=queue,
+            subscription_path=subscription_path,
+        )
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        original_tag = "same-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 2}}'
+        )
+        channel.subscriber.pull = MagicMock(
+            return_value=MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id="ack1",
+                        message=MagicMock(data=data, message_id="m1"),
+                    ),
+                    MagicMock(
+                        ack_id="ack2",
+                        message=MagicMock(data=data, message_id="m1"),
+                    ),
+                ]
+            )
+        )
+        channel.bulk_max_messages = 10
+        channel._is_auto_ack = MagicMock(return_value=False)
+        channel.qos.can_consume_max_estimate = MagicMock(return_value=None)
+
+        with patch.object(
+            channel, "_next_delivery_tag", side_effect=["det-tag-1", "det-tag-2"]
+        ):
+            _queue, payloads = channel._get_bulk(queue, timeout=10)
+        tags = [p['properties']['delivery_tag'] for p in payloads]
+        assert tags == ["det-tag-1", "det-tag-2"]
+        assert tags[0] != original_tag
+        assert tags[1] != original_tag
+
+    def test_redelivery_ack_uses_correct_ack_id(self, channel):
+        """Two deliveries of the same message get distinct delivery_tags.
+
+        basic_ack for each delivery must use the correct ack_id.
+        """
+        queue = "test_queue"
+        subscription_path = "projects/p/subscriptions/q"
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/p/topics/t",
+            subscription_id=queue,
+            subscription_path=subscription_path,
+        )
+        channel._queue_cache[queue] = qdesc
+        channel.entity_name = MagicMock(return_value=queue)
+
+        from kombu.transport.virtual.base import QoS
+
+        qos = QoS(channel, prefetch_count=10)
+        channel.qos = qos
+
+        original_tag = "publish-tag"
+        data = (
+            b'{"properties": {"delivery_tag": "' + original_tag.encode()
+            + b'", "delivery_info": {"exchange": "ex"}, "delivery_mode": 2}}'
+        )
+
+        def make_pull(ack_id):
+            return MagicMock(
+                received_messages=[
+                    MagicMock(
+                        ack_id=ack_id,
+                        message=MagicMock(data=data, message_id="m1"),
+                    )
+                ]
+            )
+
+        with patch.object(
+            channel,
+            "_next_delivery_tag",
+            side_effect=["det-tag-1", "det-tag-2"],
+        ):
+            channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A1"))
+            payload1 = channel._get(queue)
+            msg1 = channel.Message(payload1, channel=channel)
+            qos.append(msg1, msg1.delivery_tag)
+
+            channel.subscriber.pull = MagicMock(return_value=make_pull("ack_A2"))
+            payload2 = channel._get(queue)
+            msg2 = channel.Message(payload2, channel=channel)
+            qos.append(msg2, msg2.delivery_tag)
+
+        assert msg1.delivery_tag != msg2.delivery_tag
+        assert len(qos._delivered) == 2
+
+        channel._do_ack = MagicMock()
+        channel.basic_ack(msg1.delivery_tag)
+        channel._do_ack.assert_called_once_with(["ack_A1"], subscription_path)
+
+        channel._do_ack.reset_mock()
+        channel.basic_ack(msg2.delivery_tag)
+        channel._do_ack.assert_called_once_with(["ack_A2"], subscription_path)
+
+    def test_extend_unacked_deadline_batches_requests(self, channel):
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        n_ids = _ACK_MODIFY_BATCH_SIZE_DEFAULT + 50
+        ack_ids = [f"ack_{i}" for i in range(n_ids)]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {"ack_deadline_seconds": 240}
+        channel.ack_modify_batch_size = _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock()
+
+        channel._extend_unacked_deadline()
+
+        assert channel.subscriber.modify_ack_deadline.call_count == 2
+        first_call = channel.subscriber.modify_ack_deadline.call_args_list[0]
+        second_call = channel.subscriber.modify_ack_deadline.call_args_list[1]
+        assert len(first_call[1]['request']['ack_ids']) == _ACK_MODIFY_BATCH_SIZE_DEFAULT
+        assert len(second_call[1]['request']['ack_ids']) == 50
+
+    def test_extend_unacked_deadline_custom_batch_size(self, channel):
+        """transport_options['ack_modify_batch_size'] overrides the default."""
+        queue = "test_queue"
+        subscription_path = (
+            "projects/project-id/subscriptions/test_subscription"
+        )
+        custom_batch = 3
+        ack_ids = [f"ack_{i}" for i in range(7)]
+        qdesc = QueueDescriptor(
+            name=queue,
+            topic_path="projects/project-id/topics/test_topic",
+            subscription_id="test_subscription",
+            subscription_path=subscription_path,
+        )
+        channel.transport_options = {
+            "ack_deadline_seconds": 240,
+            "ack_modify_batch_size": custom_batch,
+        }
+        channel.__dict__.pop("ack_modify_batch_size", None)
+        channel._queue_cache[channel.entity_name(queue)] = qdesc
+        qdesc.unacked_ids.extend(ack_ids)
+
+        channel._stop_extender.wait = MagicMock(side_effect=[False, True])
+        channel.subscriber.modify_ack_deadline = MagicMock()
+
+        channel._extend_unacked_deadline()
+
+        assert channel.subscriber.modify_ack_deadline.call_count == 3
+        calls = channel.subscriber.modify_ack_deadline.call_args_list
+        assert len(calls[0][1]['request']['ack_ids']) == 3
+        assert len(calls[1][1]['request']['ack_ids']) == 3
+        assert len(calls[2][1]['request']['ack_ids']) == 1
+
     def test_after_reply_message_received(self, channel):
         queue = 'test-queue'
         subscription_path = f'projects/test-project/subscriptions/{queue}'
@@ -621,6 +1123,78 @@ class test_Channel:
         assert channel.bulk_max_messages == channel.transport_options.get(
             'bulk_max_messages'
         )
+
+    @pytest.mark.parametrize(
+        "transport_options,expected_value",
+        [
+            ({}, False),  # default
+            ({'enable_exactly_once_delivery': True}, True),  # enabled
+            ({'enable_exactly_once_delivery': False}, False),  # disabled
+        ],
+    )
+    def test_enable_exactly_once_delivery(
+        self, channel, transport_options, expected_value
+    ):
+        """Test enable_exactly_once_delivery property with different configurations."""
+        # Given: A channel with specific transport_options
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock, return_value=transport_options
+        ):
+            # When: Accessing the enable_exactly_once_delivery property
+            # Then: It should return the expected value
+            assert channel.enable_exactly_once_delivery is expected_value
+
+    @pytest.mark.parametrize(
+        "enable_exactly_once,expected_value",
+        [
+            (None, False),  # default behaviour
+            (True, True),  # with exactly-once delivery
+            (False, False),  # without exactly-once delivery
+        ],
+    )
+    def test_create_subscription_exactly_once_delivery(
+        self, channel, enable_exactly_once, expected_value
+    ):
+        """Test that create_subscription correctly handles exactly-once delivery setting."""
+        # Given: A channel with specified exactly-once delivery configuration
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        subscription_path = "subscription_path"
+        topic_path = "topic_path"
+
+        channel.subscriber.subscription_path = MagicMock(
+            return_value=subscription_path
+        )
+        channel.publisher.topic_path = MagicMock(return_value=topic_path)
+        channel.subscriber.create_subscription = MagicMock()
+
+        transport_opts = {
+            'ack_deadline_seconds': 240,
+            'expiration_seconds': 86400,
+        }
+        if enable_exactly_once is not None:
+            transport_opts['enable_exactly_once_delivery'] = enable_exactly_once
+
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock,
+            return_value=transport_opts
+        ):
+            # When: Creating a subscription
+            result = channel._create_subscription(
+                project_id=channel.project_id,
+                topic_id=topic_id,
+                subscription_path=subscription_path,
+                topic_path=topic_path,
+            )
+
+            # Then: The subscription should be created with correct exactly-once delivery setting
+            assert result == subscription_path
+            channel.subscriber.create_subscription.assert_called_once()
+            call_args = channel.subscriber.create_subscription.call_args
+            request_config = call_args[1]['request']
+            assert request_config['enable_exactly_once_delivery'] is expected_value
 
     def test_close(self, channel):
         channel._tmp_subscriptions = {'sub1', 'sub2'}
