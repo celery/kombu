@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from itertools import count
+from threading import local
 from typing import TYPE_CHECKING
 
 from .common import maybe_declare
@@ -17,6 +18,125 @@ if TYPE_CHECKING:
     from types import TracebackType
 
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
+
+DEFAULT_BATCH_SIZE = 1000
+
+
+class _ProducerBatchState:
+    """State shared by nested batch contexts in one producer thread."""
+
+    def __init__(self, max_size):
+        self.max_size = max_size
+        self.aborted = False
+        self.session = None
+        self.immediate = False
+
+    def _get_session(self, channel):
+        if self.immediate:
+            return None
+        if self.session is None:
+            create_batch = getattr(channel, 'create_publish_batch', None)
+            supports_batch = getattr(channel, 'supports_batch_publish', True)
+            if create_batch is None or not supports_batch:
+                self.immediate = True
+                return None
+            self.session = create_batch(max_size=self.max_size)
+        elif self.session.channel is not channel:
+            raise RuntimeError(
+                'Producer channel changed while a publish batch was active',
+            )
+        return self.session
+
+    def publish(self, channel, message, **kwargs):
+        if self.aborted:
+            raise RuntimeError('Cannot publish through an aborted batch')
+        session = self._get_session(channel)
+        if session is None:
+            return channel.basic_publish(message, **kwargs)
+        return session.publish(message, **kwargs)
+
+    def flush(self):
+        if self.aborted:
+            raise RuntimeError('Cannot flush an aborted batch')
+        if self.session is not None:
+            self.session.flush()
+
+    def abort(self):
+        if self.aborted:
+            return
+        self.aborted = True
+        if self.session is not None:
+            self.session.discard()
+
+    def close(self):
+        if self.session is not None:
+            self.session.close()
+
+
+class _ProducerBatch:
+    """Context manager returned by :meth:`Producer.batch`."""
+
+    def __init__(self, producer, max_size):
+        self.producer = producer
+        self.max_size = max_size
+        self.state = None
+        self.is_outermost = False
+        self.entered = False
+        self.active = False
+
+    def __enter__(self):
+        if self.entered:
+            raise RuntimeError('Publish batch context cannot be re-entered')
+        self.entered = True
+        self.active = True
+
+        state = getattr(self.producer._batch_local, 'current', None)
+        if state is None:
+            state = _ProducerBatchState(self.max_size)
+            self.producer._batch_local.current = state
+            self.is_outermost = True
+        self.state = state
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        state = self.state
+        if state is None:
+            return None
+
+        cleanup_error = None
+        try:
+            if self.is_outermost:
+                del self.producer._batch_local.current
+
+            if exc_type is not None:
+                try:
+                    state.abort()
+                except BaseException as exc:
+                    cleanup_error = exc
+
+            if self.is_outermost:
+                if exc_type is None and not state.aborted:
+                    try:
+                        state.flush()
+                    except BaseException as exc:
+                        cleanup_error = exc
+                try:
+                    state.close()
+                except BaseException as exc:
+                    if cleanup_error is None:
+                        cleanup_error = exc
+        finally:
+            self.active = False
+
+        if exc_type is None and cleanup_error is not None:
+            raise cleanup_error
+        return None
+
+    def flush(self):
+        """Flush messages buffered by the active batch."""
+        if not self.active:
+            raise RuntimeError('Publish batch context is not active')
+        self.state.flush()
 
 
 class Producer:
@@ -72,6 +192,7 @@ class Producer:
         self.compression = compression or self.compression
         self.on_return = on_return or self.on_return
         self._channel_promise = None
+        self._batch_local = local()
         if self.exchange is None:
             self.exchange = Exchange('')
         if auto_declare is not None:
@@ -105,6 +226,47 @@ class Producer:
         """Declare exchange if not already declared during this session."""
         if entity:
             return maybe_declare(entity, self.channel, retry, **retry_policy)
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether the active transport can defer batched publishes."""
+        connection = self.connection
+        if connection is None:
+            return False
+        try:
+            transport_support = connection.transport.implements.batch_publish
+        except AttributeError:
+            return False
+        channel = self._channel
+        if channel is not None and not isinstance(channel, ChannelPromise):
+            configured_support = getattr(
+                channel,
+                'supports_batch_publish',
+                transport_support,
+            )
+        else:
+            configured_support = getattr(
+                connection.transport,
+                'supports_batch_publish',
+                transport_support,
+            )
+        return bool(transport_support and configured_support)
+
+    def batch(self, max_size=DEFAULT_BATCH_SIZE):
+        """Group normal :meth:`publish` calls into transport-owned batches.
+
+        Unsupported transports retain immediate publication.  A successful
+        outermost context exit flushes pending messages; an exceptional exit
+        discards messages that have not already been flushed.
+
+        :param max_size: Maximum transport operations to buffer before an
+            automatic flush. Must be a positive integer.
+        :type max_size: int
+        """
+        if (isinstance(max_size, bool) or
+                not isinstance(max_size, int) or max_size <= 0):
+            raise ValueError('max_size must be a positive integer')
+        return _ProducerBatch(self, max_size)
 
     def _delivery_details(self, exchange, delivery_mode=None,
                           maybe_delivery_mode=maybe_delivery_mode,
@@ -211,12 +373,18 @@ class Producer:
         reply_to = properties.get('reply_to')
         if isinstance(reply_to, Queue):
             properties['reply_to'] = reply_to.name
-        return channel.basic_publish(
-            message,
-            exchange=exchange, routing_key=routing_key,
-            mandatory=mandatory, immediate=immediate,
-            timeout=timeout, confirm_timeout=confirm_timeout
-        )
+        publish_kwargs = {
+            'exchange': exchange,
+            'routing_key': routing_key,
+            'mandatory': mandatory,
+            'immediate': immediate,
+            'timeout': timeout,
+            'confirm_timeout': confirm_timeout,
+        }
+        batch = getattr(self._batch_local, 'current', None)
+        if batch is not None:
+            return batch.publish(channel, message, **publish_kwargs)
+        return channel.basic_publish(message, **publish_kwargs)
 
     def _get_channel(self):
         channel = self._channel
@@ -403,6 +571,7 @@ class Consumer:
         self.on_message = on_message
         self.tag_prefix = tag_prefix
         self._active_tags = {}
+        self._active_queue_no_ack = {}
         if auto_declare is not None:
             self.auto_declare = auto_declare
         if on_decode_error is not None:
@@ -423,7 +592,9 @@ class Consumer:
 
     def revive(self, channel):
         """Revive consumer after connection loss."""
+        previous_no_ack = self._active_queue_no_ack.copy()
         self._active_tags.clear()
+        self._active_queue_no_ack.clear()
         channel = self.channel = maybe_channel(channel)
         # modify dict size while iterating over it is not allowed
         for qname, queue in list(self._queues.items()):
@@ -437,6 +608,10 @@ class Consumer:
 
         if self.prefetch_count is not None:
             self.qos(prefetch_count=self.prefetch_count)
+
+        # re-register the AMQP consumers, but only for queues that were
+        # actually being consumed from before (not merely registered).
+        self._consume_previously_active(previous_no_ack)
 
     def declare(self):
         """Declare queues, exchanges and bindings.
@@ -504,14 +679,42 @@ class Consumer:
         ---------
             no_ack (bool): See :attr:`no_ack`.
         """
-        queues = list(self._queues.values())
-        if queues:
-            no_ack = self.no_ack if no_ack is None else no_ack
+        no_ack = self.no_ack if no_ack is None else no_ack
+        self._consume_queues(
+            {queue.name: no_ack for queue in self._queues.values()}
+        )
 
-            H, T = queues[:-1], queues[-1]
-            for queue in H:
-                self._basic_consume(queue, no_ack=no_ack, nowait=True)
-            self._basic_consume(T, no_ack=no_ack, nowait=False)
+    def _consume_previously_active(self, active_no_ack):
+        """Start consuming only from the given, previously active queues.
+
+        Unlike :meth:`consume`, this will not start consuming from
+        queues that were registered (e.g. via :meth:`add_queue`) but
+        never actually consumed from, and it restores each queue's
+        own effective ``no_ack`` value instead of applying one value
+        to every queue.
+
+        Arguments:
+        ---------
+            active_no_ack (dict): Mapping of queue name to the
+                ``no_ack`` value it was consumed with.
+        """
+        # thin wrapper kept for readability/intent at the revive() call site
+        self._consume_queues(active_no_ack)
+
+    def _consume_queues(self, no_ack_by_queue):
+        queues = [
+            q for q in self._queues.values() if q.name in no_ack_by_queue
+        ]
+        if not queues:
+            return
+        H, T = queues[:-1], queues[-1]
+        for queue in H:
+            self._basic_consume(
+                queue, no_ack=no_ack_by_queue[queue.name], nowait=True
+            )
+        self._basic_consume(
+            T, no_ack=no_ack_by_queue[T.name], nowait=False
+        )
 
     def cancel(self):
         """End all active queue consumers.
@@ -525,12 +728,14 @@ class Consumer:
         for tag in self._active_tags.values():
             cancel(tag)
         self._active_tags.clear()
+        self._active_queue_no_ack.clear()
 
     close = cancel
 
     def cancel_by_queue(self, queue):
         """Cancel consumer by queue name."""
         qname = queue.name if isinstance(queue, Queue) else queue
+        self._active_queue_no_ack.pop(qname, None)
         try:
             tag = self._active_tags.pop(qname)
         except KeyError:
@@ -637,7 +842,9 @@ class Consumer:
                        no_ack=no_ack, nowait=True):
         tag = self._active_tags.get(queue.name)
         if tag is None:
+            no_ack = queue.no_ack if no_ack is None else no_ack
             tag = self._add_tag(queue, consumer_tag)
+            self._active_queue_no_ack[queue.name] = no_ack
             queue.consume(tag, self._receive_callback,
                           no_ack=no_ack, nowait=nowait)
         return tag
