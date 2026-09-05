@@ -34,7 +34,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_, `PGMQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -70,6 +70,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
+.. _`PGMQ`: https://pgmq.github.io/pgmq/
 .. _`AWS SNS`: https://aws.amazon.com/sns/
 
 .. _transport-comparison:
@@ -87,6 +88,8 @@ Transport Comparison
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *mongodb*     | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *pgmq*        | Virtual  | Yes        | Yes        | Yes           | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+

@@ -187,7 +187,8 @@ keyword arguments, these are:
 :transport: Default transport if not provided in the URL.
   Can be a string specifying the path to the class. (e.g.
   ``kombu.transport.pyamqp:Transport``), or one of the aliases:
-  ``pyamqp``, ``librabbitmq``, ``redis``, ``qpid``, ``memory``, and so on.
+  ``pyamqp``, ``librabbitmq``, ``redis``, ``qpid``, ``memory``,
+  ``pgmq``, and so on.
 
 :ssl: Use SSL to connect to the server. Default is ``False``.
   Only supported by the amqp and qpid transports.
@@ -229,6 +230,8 @@ Transport Comparison
 | *qpid*        | Native   | Yes        | Yes        | Yes           | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          |
++---------------+----------+------------+------------+---------------+--------------+
+| *pgmq*        | Virtual  | Yes        | Yes        | Yes           | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           |
 +---------------+----------+------------+------------+---------------+--------------+
