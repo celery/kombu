@@ -67,6 +67,20 @@ class SerializerRegistry:
         self.type_to_name = {}
         self.name_to_type = {}
 
+    __slots__ = (
+        '_encoders',
+        '_decoders',
+        '_default_encode',
+        '_default_content_type',
+        '_default_content_encoding',
+        '_disabled_content_types',
+        'type_to_name',
+        'name_to_type',
+        # Include '__dict__' to allow dynamic attribute assignment when needed.
+        '__dict__',
+        '__weakref__',
+    )
+
     def register(self, name, encoder, decoder, content_type,
                  content_encoding='utf-8'):
         """Register a new encoder/decoder.
