@@ -1,4 +1,4 @@
-setuptools>=47.0.0
+setuptools>=84.0.0
 wheel>=0.47.0
 flake8==7.3.0
 tox==4.61.2
