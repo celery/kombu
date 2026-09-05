@@ -1,9 +1,9 @@
 setuptools>=47.0.0
 wheel>=0.47.0
 flake8==7.3.0
-tox==4.30.3
+tox==4.61.2
 sphinx2rst==1.1.0
 bumpversion==0.6.0
 pydocstyle==6.3.0
-mypy==1.19.1
-typing_extensions==4.15.0; python_version<"3.10"
+typing_extensions==4.16.0; python_version<"3.10"
+mypy==2.3.1
