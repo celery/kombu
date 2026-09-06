@@ -68,7 +68,7 @@ and the `Wikipedia article about AMQP`_.
 .. _`carrot`: https://pypi.org/project/carrot/
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
-.. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`SoftLayer MQ`: https://web.archive.org/web/20180313081320/http://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
 .. _`AWS SNS`: https://aws.amazon.com/sns/
 
