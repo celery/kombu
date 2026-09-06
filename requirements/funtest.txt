@@ -2,7 +2,7 @@
 redis>=4.5.2,!=5.0.2,!=4.5.5
 
 # MongoDB transport
-pymongo==4.17.0
+pymongo==4.18.0
 
 # Zookeeper transport
 kazoo==2.11.0
