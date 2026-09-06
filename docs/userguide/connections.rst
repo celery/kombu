@@ -147,6 +147,12 @@ All of these are valid URLs:
     # Using Pyro with name server running on 'localhost'
     pyro://localhost/kombu.broker
 
+    # Using NATS JetStream
+    nats://localhost:4222/
+
+    # Using NATS with authentication
+    nats://user:password@localhost:4222/
+
 
 The query part of the URL can also be used to set options, e.g.:
 
@@ -237,6 +243,8 @@ Transport Comparison
 | *in-memory*   | Virtual  | Yes        | Yes [#f1]_ | No            | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 | *SLMQ*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           |
++---------------+----------+------------+------------+---------------+--------------+
+| *NATS*        | Virtual  | Yes        | Yes        | Yes           | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 
 
