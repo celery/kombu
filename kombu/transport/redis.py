@@ -108,6 +108,7 @@ from . import virtual
 
 try:
     import redis
+    from redis import client, exceptions
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
@@ -220,7 +221,7 @@ def Mutex(client, name, expire):
         if lock_acquired:
             try:
                 lock.release()
-            except redis.exceptions.LockNotOwnedError:
+            except exceptions.LockNotOwnedError:
                 # when lock is expired
                 pass
 
@@ -328,7 +329,7 @@ class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
         )
 
 
-class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
+class PrefixedRedisPipeline(GlobalKeyPrefixMixin, client.Pipeline):
     """Custom Redis pipeline that takes global_keyprefix into consideration.
 
     As the ``PrefixedStrictRedis`` client uses the `global_keyprefix` to prefix
@@ -338,10 +339,10 @@ class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
 
     def __init__(self, *args, **kwargs):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
-        redis.client.Pipeline.__init__(self, *args, **kwargs)
+        client.Pipeline.__init__(self, *args, **kwargs)
 
 
-class PrefixedRedisPubSub(redis.client.PubSub):
+class PrefixedRedisPubSub(client.PubSub):
     """Redis pubsub client that takes global_keyprefix into consideration."""
 
     PUBSUB_COMMANDS = (

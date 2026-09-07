@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import copy
+import importlib
 import socket
+import sys
 import types
 from collections import defaultdict
 from contextlib import contextmanager
@@ -3579,3 +3581,17 @@ class test_GlobalKeyPrefixMixin:
             f"{self.global_keyprefix}fake_key",
             "not_prefixed",
         ]
+
+
+def test_transport_imports_when_redis_parent_module_was_evicted():
+    import kombu.transport
+
+    saved_redis = sys.modules.pop('redis')
+    saved_transport = sys.modules.pop('kombu.transport.redis')
+    try:
+        assert not hasattr(importlib.import_module('redis'), 'client')
+        assert importlib.import_module('kombu.transport.redis').Transport
+    finally:
+        sys.modules['redis'] = saved_redis
+        sys.modules['kombu.transport.redis'] = saved_transport
+        kombu.transport.redis = saved_transport
