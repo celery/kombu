@@ -103,6 +103,25 @@ class test_LRUCache:
         x[7] = 7
         assert list(x.keys()), [3, 6 == 7]
 
+    def test_setitem_existing_key_does_not_evict(self):
+        x = LRUCache(limit=3)
+        x['a'], x['b'], x['c'] = 1, 2, 3
+
+        # overwriting a key already in the cache does not make it grow,
+        # so nothing may be evicted to make room for it.
+        x['c'] = 30
+
+        assert list(x.items()) == [('a', 1), ('b', 2), ('c', 30)]
+        assert len(x) == 3
+
+    def test_setitem_new_key_evicts_least_recently_used(self):
+        x = LRUCache(limit=2)
+        x['a'], x['b'] = 1, 2
+
+        x['c'] = 3
+
+        assert list(x.items()) == [('b', 2), ('c', 3)]
+
     def test_update_larger_than_cache_size(self):
         x = LRUCache(2)
         x.update({x: x for x in range(100)})
