@@ -1202,8 +1202,9 @@ class test_Channel:
 
     def test_qos_restore_visible_without_limit(self):
         # ``unacked_restore_limit`` defaults to None, which the poller passes
-        # through as ``num=None``.  redis-py rejects ``offset`` without
-        # ``num`` (and vice versa), so both must stay unset to skip LIMIT.
+        # through as ``num=None``.  redis-py raises DataError when only one
+        # of ``offset``/``num`` is given, so both must be passed as None,
+        # which it treats as "no LIMIT clause".
         client = self.channel._create_client = Mock(name='client')
         client = client()
 
@@ -1724,6 +1725,14 @@ class test_Channel:
             R.VERSION = (2, 4, 0)
             with pytest.raises(VersionMismatch):
                 redis.Channel._get_client(self.channel)
+
+            # The floor matches requirements/extras/redis.txt: anything
+            # below 5.3.1 is refused, 5.3.1 itself is accepted.
+            R.VERSION = (5, 3, 0)
+            with pytest.raises(VersionMismatch, match='5.3.1 or later'):
+                redis.Channel._get_client(self.channel)
+            R.VERSION = (5, 3, 1)
+            assert redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
                 R.VERSION = Rv

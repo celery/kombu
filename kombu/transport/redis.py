@@ -477,7 +477,9 @@ class QoS(virtual.QoS):
                     # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
                     # replacement.  With ``REV`` the first bound is the
                     # highest score, so ``(ceil, 0)`` keeps the same order
-                    # and returns the same rows as the old command.
+                    # and returns the same rows as the old command.  The
+                    # ``byscore``/``offset``/``num`` arguments need redis-py
+                    # >= 4.0, which ``_get_client`` guarantees.
                     visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
                         desc=True, byscore=True,
@@ -1765,9 +1767,10 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (3, 2, 0):
+        # Keep in sync with requirements/extras/redis.txt.
+        if redis.VERSION < (5, 3, 1):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 3.2.0 or later. '
+                'Redis transport requires redis-py versions 5.3.1 or later. '
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
