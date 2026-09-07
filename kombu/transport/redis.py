@@ -75,6 +75,8 @@ Transport Options
   broadcast messages, and remove it once everything has been upgraded.
   Defaults to ``False``.
 
+  .. versionadded:: 5.7.0
+
 Queue Arguments
 ===============
 * ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
@@ -2003,6 +2005,10 @@ class SentinelChannel(Channel):
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
 
+    Optional transport options:
+     * `sentinel_fanout_compat` - also use the fanout topic of kombu < 5.4.0
+       while performing a rolling upgrade, see :attr:`sentinel_fanout_compat`.
+
     Example:
     -------
     .. code-block:: python
@@ -2033,6 +2039,8 @@ class SentinelChannel(Channel):
     #:
     #: Disabled by default; enable it via ``transport_options`` on every
     #: upgraded worker and control client for the duration of the upgrade.
+    #:
+    #: .. versionadded:: 5.7.0
     sentinel_fanout_compat = False
 
     #: Number of recently delivered fanout messages remembered for
