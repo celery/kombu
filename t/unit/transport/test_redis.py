@@ -1233,9 +1233,23 @@ class test_Channel:
         self.channel.subclient.connection.connect.assert_called_with()
 
     def test_handle_unsubscribe_message(self):
-        s = self.channel.subclient
-        s.subscribed = True
-        self.channel._handle_message(s, ['unsubscribe', 'a', 0])
+        from redis.client import PubSub
+
+        # a real PubSub, so that redis-py's own bookkeeping is exercised
+        pool = Mock(name='pool')
+        pool.get_encoder.return_value = redis.redis.Redis().get_encoder()
+        s = PubSub(connection_pool=pool)
+        s.psubscribe(['a', 'b'])
+        s.punsubscribe(['a', 'b'])
+        assert s.subscribed
+
+        payload = self.channel._handle_message(s, [b'punsubscribe', b'a', 1])
+        assert payload == {
+            'type': b'punsubscribe', 'pattern': None, 'channel': b'a',
+            'data': 1,
+        }
+        assert s.subscribed
+        assert self.channel._handle_message(s, [b'punsubscribe', b'b', 0])
         assert not s.subscribed
 
     def test_handle_pmessage_message(self):
@@ -1281,6 +1295,29 @@ class test_Channel:
         self.channel.connection._deliver.assert_called_once_with(
             message, 'b',
         )
+
+    def test_unsubscribe_from(self):
+        self.channel.subclient = Mock()
+        self.channel._fanout_queues = {'a': ('a', '')}
+
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once_with(
+            ['/{db}.a'])
+        self.channel.subclient.unsubscribe.assert_not_called()
+
+        # nothing to do without a live subscription connection
+        self.channel.subclient.connection._sock = None
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once()
+
+    def test_receive_final_unsubscribe_reply_is_ignored(self):
+        s = self.channel.subclient = Mock()
+        self.channel.connection._deliver = Mock(name='_deliver')
+        s.parse_response.return_value = ['punsubscribe', '/{db}.a', 0]
+
+        assert self.channel._receive_one(s) is None
+        s.handle_message.assert_called_once_with(['punsubscribe', '/{db}.a', 0])
+        self.channel.connection._deliver.assert_not_called()
 
     def test_receive_raises_for_connection_error(self):
         self.channel._in_listen = True
@@ -3517,6 +3554,223 @@ class test_RedisSentinel:
                 == 'some_prefix'
             )
             connection.close()
+
+
+class test_SentinelChannel_fanout_compat:
+    """The ``sentinel_fanout_compat`` transport option.
+
+    kombu < 5.4.0 used the literal ``/{db}.`` fanout prefix with Redis
+    Sentinel, while newer versions substitute the database number, so
+    mixed-version workers publish and listen on different PUB/SUB topics.
+    See https://github.com/celery/kombu/issues/2152.
+    """
+
+    def _channel(self, db=0, **transport_options):
+        from kombu.transport.redis import SentinelChannel
+
+        transport_options.setdefault('master_name', 'not_important')
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                f'sentinel://localhost:65532/{db}',
+                transport_options=transport_options,
+            )
+            return connection.channel()
+
+    def _receiving_channel(self, **transport_options):
+        channel = self._channel(**transport_options)
+        channel._fanout_to_queue['celery.pidbox'] = 'q'
+        channel.connection._deliver = Mock(name='_deliver')
+        channel.subclient = Mock(name='subclient')
+        return channel
+
+    @staticmethod
+    def _receive(channel, topic, message):
+        channel.subclient.parse_response.return_value = [
+            'pmessage', topic, topic, dumps(message),
+        ]
+        return channel._receive_one(channel.subclient)
+
+    @staticmethod
+    def _message(tag):
+        return {
+            'body': 'ping',
+            'properties': {
+                'delivery_tag': tag,
+                'delivery_info': {'exchange': 'celery.pidbox',
+                                  'routing_key': ''},
+            },
+        }
+
+    def test_disabled_by_default(self):
+        channel = self._channel()
+
+        assert channel.sentinel_fanout_compat is False
+        assert channel.keyprefix_fanout == '/0.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert not channel._fanout_compat_active
+        assert channel._get_publish_topics('celery.pidbox', '') == [
+            '/0.celery.pidbox',
+        ]
+
+    def test_enabled_uses_current_and_legacy_topics(self):
+        channel = self._channel(db=3, sentinel_fanout_compat=True)
+
+        assert channel.sentinel_fanout_compat is True
+        assert channel.keyprefix_fanout == '/3.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert channel._fanout_compat_active
+        assert channel._get_publish_topics('celery.pidbox', '') == [
+            '/3.celery.pidbox', '/{db}.celery.pidbox',
+        ]
+
+    def test_legacy_prefix_survives_creating_a_second_pool(self):
+        from kombu.transport.redis import SentinelChannel
+
+        channel = self._channel(sentinel_fanout_compat=True)
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            channel._get_pool(asynchronous=True)
+
+        assert channel.keyprefix_fanout == '/0.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert channel._fanout_compat_active
+
+    def test_enabled_topics_honour_fanout_patterns(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+
+        assert channel._get_publish_topics('celery.pidbox', 'worker.*') == [
+            '/0.celery.pidbox/worker.*', '/{db}.celery.pidbox/worker.*',
+        ]
+
+    @pytest.mark.parametrize('fanout_prefix', [False, 'custom.'])
+    def test_inactive_when_prefix_has_no_db_placeholder(self, fanout_prefix):
+        channel = self._channel(
+            sentinel_fanout_compat=True, fanout_prefix=fanout_prefix)
+
+        assert not channel._fanout_compat_active
+        assert len(channel._get_publish_topics('celery.pidbox', '')) == 1
+
+    def test_put_fanout_publishes_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        client = Mock(name='client')
+        channel._create_client = Mock(return_value=client)
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '')
+
+        channel._create_client.assert_called_once()
+        assert client.publish.call_args_list == [
+            call('/0.celery.pidbox', dumps(body)),
+            call('/{db}.celery.pidbox', dumps(body)),
+        ]
+
+    def test_put_fanout_batch_publishes_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        batch = Mock(name='publish_batch')
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '', _publish_batch=batch)
+
+        assert batch.add.call_args_list == [
+            call('publish', '/0.celery.pidbox', dumps(body)),
+            call('publish', '/{db}.celery.pidbox', dumps(body)),
+        ]
+
+    def test_put_fanout_disabled_publishes_to_current_topic_only(self):
+        channel = self._channel()
+        client = Mock(name='client')
+        channel._create_client = Mock(return_value=client)
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '')
+
+        client.publish.assert_called_once_with(
+            '/0.celery.pidbox', dumps(body))
+
+    def test_subscribe_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+        channel.active_fanout_queues.add('q')
+
+        channel._subscribe()
+
+        channel.subclient.psubscribe.assert_called_once_with(
+            ['/0.celery.pidbox', '/{db}.celery.pidbox'])
+
+    def test_subscribe_disabled_uses_current_topic_only(self):
+        channel = self._channel()
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+        channel.active_fanout_queues.add('q')
+
+        channel._subscribe()
+
+        channel.subclient.psubscribe.assert_called_once_with(
+            ['/0.celery.pidbox'])
+
+    def test_unsubscribe_from_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+
+        channel._unsubscribe_from('q')
+
+        channel.subclient.punsubscribe.assert_called_once_with(
+            ['/0.celery.pidbox', '/{db}.celery.pidbox'])
+        channel.subclient.unsubscribe.assert_not_called()
+
+    def test_message_received_on_both_topics_is_delivered_once(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        message = self._message('tag-1')
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', message) is False
+
+        channel.connection._deliver.assert_called_once_with(message, 'q')
+
+    def test_distinct_messages_are_all_delivered(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        first, second = self._message('tag-1'), self._message('tag-2')
+
+        assert self._receive(channel, '/0.celery.pidbox', first) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', second) is True
+
+        assert channel.connection._deliver.call_args_list == [
+            call(first, 'q'), call(second, 'q'),
+        ]
+
+    def test_messages_without_delivery_tag_are_not_deduplicated(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        message = {'body': 'ping', 'properties': {}}
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', message) is True
+
+        assert channel.connection._deliver.call_count == 2
+
+    def test_deduplication_history_is_bounded(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        channel._fanout_compat_dedup_size = 2
+
+        for tag in ('tag-1', 'tag-2', 'tag-3'):
+            self._receive(channel, '/0.celery.pidbox', self._message(tag))
+
+        assert list(channel._seen_fanout_tags) == [
+            ('celery.pidbox', 'tag-2'), ('celery.pidbox', 'tag-3'),
+        ]
+        # An evicted tag is no longer recognised as a duplicate.
+        assert self._receive(
+            channel, '/{db}.celery.pidbox', self._message('tag-1')) is True
+
+    def test_disabled_does_not_deduplicate(self):
+        channel = self._receiving_channel()
+        message = self._message('tag-1')
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+
+        assert channel.connection._deliver.call_count == 2
+        assert not channel._seen_fanout_tags
 
 
 class test_GlobalKeyPrefixMixin:
