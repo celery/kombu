@@ -7,9 +7,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from kombu.exceptions import OperationalError
 from kombu.transport.pgmq import (FANOUT_TOPIC_PREFIX, PGMQ_MAX_MESSAGES,
-                                  Channel, Transport, _NotifyWaiter)
+                                  TOPIC_PREFIX, Channel, Transport,
+                                  _NotifyWaiter)
 
 pytest.importorskip("pgmq")
 psycopg = pytest.importorskip("psycopg")
@@ -86,7 +86,7 @@ class test_PGMQ:
             "body": "hello",
             "headers": {"trace": "abc"},
             "properties": {
-                "expiration": "2500",
+                "DelaySeconds": 2,
                 "MessageGroupId": "group-1",
             },
         }
@@ -112,7 +112,7 @@ class test_PGMQ:
         message = {"body": "hello", "properties": {}}
         self.channel._put_topic("orders", message, "orders.created")
         self.transport._pgmq_client.send_topic.assert_called_once_with(
-            "orders.orders.created", message
+            f"{TOPIC_PREFIX}.orders.orders.created", message
         )
 
     def test_topic_exchange_deliver_uses_send_topic(self):
@@ -120,9 +120,34 @@ class test_PGMQ:
         exchange_type = self.channel.exchange_types["topic"]
         exchange_type.deliver(message, "test_topic", "orders.created")
         self.transport._pgmq_client.send_topic.assert_called_once_with(
-            "test_topic.orders.created", message
+            f"{TOPIC_PREFIX}.test_topic.orders.created", message
         )
         self.transport._pgmq_client.send.assert_not_called()
+
+    def test_topic_key_encodes_exchange_as_one_segment(self):
+        assert self.channel._topic_key("foo", "bar.x") == (
+            f"{TOPIC_PREFIX}.foo.bar.x"
+        )
+        assert self.channel._topic_key("foo.bar", "x") == (
+            f"{TOPIC_PREFIX}.foo-d-bar.x"
+        )
+
+    def test_topic_key_encodes_wildcards_in_exchange(self):
+        assert self.channel._topic_key("foo*", "x") == (
+            f"{TOPIC_PREFIX}.foo-s-.x"
+        )
+        assert self.channel._topic_key("foo#", "x") == (
+            f"{TOPIC_PREFIX}.foo-h-.x"
+        )
+        segment = self.channel._topic_key("foo*", "x").split(".")[2]
+        assert "*" not in segment
+        assert "#" not in self.channel._topic_key("foo#", "x").split(".")[2]
+
+    def test_encode_exchange_rejects_non_ascii(self):
+        encoded = self.channel._encode_exchange("café")
+        assert "é" not in encoded
+        assert encoded.replace("-", "").replace("_", "").isalnum()
+        assert all(char.isascii() for char in encoded)
 
     def test_queue_bind_fanout(self):
         exchange_type = Mock(type="fanout")
@@ -138,7 +163,29 @@ class test_PGMQ:
         with patch.object(self.channel, "typeof", return_value=exchange_type):
             self.channel._queue_bind("test_topic", "orders.*", None, "orders_q")
         self.transport._pgmq_client.bind_topic.assert_called_once_with(
-            "test_topic.orders.*", "orders_q"
+            f"{TOPIC_PREFIX}.test_topic.orders.*", "orders_q"
+        )
+
+    def test_queue_unbind_topic(self):
+        self.connection.state = self.transport.state
+        self.channel.exchange_declare("test_topic", type="topic")
+        self.channel.queue_declare("orders_q")
+        self.channel.queue_bind("orders_q", "test_topic", "orders.*")
+        self.transport._pgmq_client.unbind_topic.reset_mock()
+        self.channel.queue_unbind("orders_q", "test_topic", "orders.*")
+        self.transport._pgmq_client.unbind_topic.assert_called_once_with(
+            f"{TOPIC_PREFIX}.test_topic.orders.*", "orders_q"
+        )
+
+    def test_queue_unbind_fanout(self):
+        self.connection.state = self.transport.state
+        self.channel.exchange_declare("test_fanout", type="fanout")
+        self.channel.queue_declare("workers")
+        self.channel.queue_bind("workers", "test_fanout", "")
+        self.transport._pgmq_client.unbind_topic.reset_mock()
+        self.channel.queue_unbind("workers", "test_fanout", "")
+        self.transport._pgmq_client.unbind_topic.assert_called_once_with(
+            f"{FANOUT_TOPIC_PREFIX}.test_fanout", "workers"
         )
 
     def test_put_fanout(self):
@@ -176,7 +223,7 @@ class test_PGMQ:
             "properties": {"delivery_info": {}},
         }
         pgmq_message = Mock(msg_id=42, read_ct=1, message=payload)
-        self.transport._pgmq_client.read_with_poll.return_value = [pgmq_message]
+        self.transport._pgmq_client.read.return_value = [pgmq_message]
 
         result = self.channel._get("celery")
 
@@ -187,13 +234,11 @@ class test_PGMQ:
             "msg_id": 42,
             "read_ct": 1,
         }
-        self.transport._pgmq_client.read_with_poll.assert_called_once_with(
-            "celery",
-            vt=1800,
-            qty=1,
-            max_poll_seconds=10,
-            poll_interval_ms=100,
+        assert self.channel.wait_time_seconds == 10
+        self.transport._pgmq_client.read.assert_called_once_with(
+            "celery", vt=1800, qty=1
         )
+        self.transport._pgmq_client.read_with_poll.assert_not_called()
 
     def test_get_no_ack(self):
         self.channel._noack_queues.add("celery")
@@ -211,8 +256,23 @@ class test_PGMQ:
         assert "pgmq_msg_id" not in result["properties"]["delivery_info"]
         self.transport._pgmq_client.pop.assert_called_once_with("celery", qty=1)
 
+    def test_basic_get_no_ack_uses_pop_without_touching_noack_queues(self):
+        self.channel._noack_queues.add("consumer-q")
+        payload = {
+            "body": "hello",
+            "properties": {"delivery_tag": "tag-1", "delivery_info": {}},
+        }
+        pgmq_message = Mock(msg_id=42, read_ct=1, message=payload)
+        self.transport._pgmq_client.pop.return_value = pgmq_message
+
+        self.channel.basic_get("celery", no_ack=True)
+
+        self.transport._pgmq_client.pop.assert_called_once_with("celery", qty=1)
+        assert "consumer-q" in self.channel._noack_queues
+        assert "celery" not in self.channel._noack_queues
+
     def test_get_empty(self):
-        self.transport._pgmq_client.read_with_poll.return_value = []
+        self.transport._pgmq_client.read.return_value = []
         with pytest.raises(Empty):
             self.channel._get("celery")
 
@@ -238,6 +298,22 @@ class test_PGMQ:
             poll_interval_ms=100,
         )
         assert self.connection._deliver.call_count == 2
+
+    def test_get_bulk_caps_poll_to_timeout(self):
+        self.channel.qos.prefetch_count = 1
+        self.transport._pgmq_client.read_with_poll.return_value = []
+
+        with pytest.raises(Empty):
+            self.channel._get_bulk("celery", timeout=1)
+
+        self.transport._pgmq_client.read_with_poll.assert_called_once_with(
+            "celery",
+            vt=1800,
+            qty=1,
+            max_poll_seconds=1,
+            poll_interval_ms=100,
+        )
+        self.transport._pgmq_client.read.assert_not_called()
 
     def test_get_bulk_respects_max_messages(self):
         self.channel.qos.prefetch_count = 100
@@ -321,6 +397,11 @@ class test_PGMQ:
         self.kombu_connection.transport_options = {"max_poll_seconds": 5}
         channel = Channel(connection=self.connection)
         assert channel.wait_time_seconds == 5
+
+    def test_wait_time_seconds_string(self):
+        self.kombu_connection.transport_options = {"wait_time_seconds": "10"}
+        channel = Channel(connection=self.connection)
+        assert channel.wait_time_seconds == 10
 
     def test_visibility_timeout_default(self):
         channel = Channel(connection=self.connection)
@@ -590,6 +671,11 @@ class test_PGMQ_additional:
         self.channel._put("celery", message)
         self.transport._pgmq_client.send.assert_called_once_with("celery", message)
 
+    def test_expiration_is_not_mapped_to_delay(self):
+        message = {"body": "hello", "properties": {"expiration": "2500"}}
+        self.channel._put("celery", message)
+        self.transport._pgmq_client.send.assert_called_once_with("celery", message)
+
     def test_put_with_invalid_delay_seconds(self):
         message = {"body": "hello", "properties": {"DelaySeconds": "not-a-number"}}
         self.channel._put("celery", message)
@@ -643,13 +729,14 @@ class test_PGMQ_additional:
     def test_get_fifo_grouped_with_poll(self):
         self.kombu_connection.transport_options = {"fifo_mode": "grouped"}
         channel = Channel(connection=self.connection)
+        channel.qos.prefetch_count = 1
         payload = {"body": "hello", "properties": {"delivery_info": {}}}
         pgmq_message = Mock(msg_id=42, read_ct=1, message=payload)
         self.transport._pgmq_client.read_grouped_with_poll.return_value = [
             pgmq_message,
         ]
 
-        channel._get("celery")
+        channel._get_bulk("celery")
 
         self.transport._pgmq_client.read_grouped_with_poll.assert_called_once_with(
             "celery",
@@ -710,7 +797,7 @@ class test_PGMQ_additional:
         self.channel.basic_reject("tag-1", requeue=True)
         self.transport._pgmq_client.set_vt.assert_not_called()
 
-    def test_restore_strips_pgmq_delivery_info(self):
+    def test_restore_pgmq_message_sets_vt_zero(self):
         message = Mock()
         message.delivery_info = {
             "exchange": "",
@@ -719,17 +806,12 @@ class test_PGMQ_additional:
             "pgmq_msg_id": 1,
             "pgmq_message": {"msg_id": 1},
         }
-        message.serializable.return_value = {
-            "body": "hello",
-            "properties": {"delivery_info": message.delivery_info.copy()},
-        }
-        with patch.object(self.channel, "_lookup", return_value=["celery"]):
-            with patch.object(self.channel, "_put") as put:
-                self.channel._restore(message)
-        assert "pgmq_queue" not in message.delivery_info
-        assert "pgmq_msg_id" not in message.delivery_info
-        assert "pgmq_message" not in message.delivery_info
-        put.assert_called_once()
+        with patch.object(self.channel, "_put") as put:
+            self.channel._restore(message)
+        self.transport._pgmq_client.set_vt.assert_called_once_with(
+            "celery", 1, 0
+        )
+        put.assert_not_called()
 
     def test_conninfo(self):
         assert self.channel.conninfo is self.kombu_connection
@@ -878,6 +960,12 @@ class test_PGMQ_additional:
             self.channel.drain_events(timeout=1)
         poll.assert_called_once()
 
+    def test_poll_forwards_timeout(self):
+        cycle = Mock()
+        callback = Mock()
+        self.channel._poll(cycle, callback, timeout=1)
+        cycle.get.assert_called_once_with(callback, timeout=1)
+
     def test_url_connection_empty_database(self):
         with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
             conn = Mock()
@@ -924,19 +1012,27 @@ class test_PGMQ_additional:
 
     def test_establish_connection_failure(self):
         transport = Transport(self.kombu_connection)
-        with patch.object(transport, "verify_connection", return_value=False):
-            with pytest.raises(OperationalError, match="Could not connect"):
+        with patch.object(transport, "_get_pgmq_client") as get_client:
+            get_client.return_value.list_queues.side_effect = (
+                psycopg.OperationalError("could not connect")
+            )
+            with pytest.raises(psycopg.OperationalError):
                 transport.establish_connection()
 
     def test_establish_connection_success(self):
         transport = Transport(self.kombu_connection)
-        with patch.object(transport, "verify_connection", return_value=True):
+        with patch.object(transport, "_get_pgmq_client") as get_client:
+            get_client.return_value.list_queues.return_value = []
             with patch.object(
                 transport, "create_channel", return_value=Mock()
             ) as create_channel:
                 connection = transport.establish_connection()
+        get_client.return_value.list_queues.assert_called_once()
         create_channel.assert_called_once()
         assert connection is transport
+
+    def test_transport_implements_fanout(self):
+        assert "fanout" in Transport.implements.exchange_type
 
     def test_close_connection_closes_notify_waiter(self):
         transport = Transport(self.kombu_connection)

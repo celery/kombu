@@ -13,9 +13,11 @@ Long Polling
 ------------
 
 Long polling is enabled by setting the ``wait_time_seconds`` transport
-option to a value greater than 0 (default ``10``).  When set, each read
-uses PGMQ's ``read_with_poll`` and blocks up to that many seconds before
-returning empty.
+option to a value greater than 0 (default ``10``).  When set,
+``drain_events`` / ``_get_bulk`` use PGMQ's ``read_with_poll`` and block
+up to that many seconds before returning empty.  Direct gets
+(``basic_get``, ``SimpleQueue.get_nowait``) always use ``read`` or
+``pop`` and do not long-poll.
 
 Polling Interval
 ----------------
@@ -39,9 +41,11 @@ Topic Routing
 PGMQ's native `topic routing`_ is used for fanout and topic exchanges.
 Bindings are namespaced by exchange name so fanout and topic traffic do
 not interfere.  Fanout queues bind to ``kombu.fanout.<exchange>``;
-topic queues bind to ``<exchange>.<pattern>``.  Publishing to fanout or
-topic exchanges calls ``send_topic`` once and PGMQ delivers copies to
-every matching queue.
+topic queues bind to ``kombu.topic.<exchange>.<pattern>``.  The exchange
+name is encoded as one PGMQ routing-key segment (``[A-Za-z0-9_-]`` only).
+Routing keys keep ``.``, ``*`` and ``#``.  Publishing to fanout or topic
+exchanges calls ``send_topic`` once and PGMQ delivers copies to every
+matching queue.
 
 Direct exchanges continue to use Kombu's standard virtual routing
 (``_put`` per queue).  PGMQ topic patterns use the same ``*`` and
@@ -50,9 +54,9 @@ Direct exchanges continue to use Kombu's standard virtual routing
 Delayed Delivery
 ----------------
 
-Per-message delay is supported via Kombu's ``expiration`` publish argument
-(milliseconds) or the ``DelaySeconds`` message property (seconds).  These
-map to PGMQ's ``delay`` parameter on ``send`` and ``send_topic``.
+Per-message delay is supported via the ``DelaySeconds`` message property
+(seconds).  This maps to PGMQ's ``delay`` parameter on ``send`` and
+``send_topic``.  Kombu ``expiration``/TTL is not supported.
 
 FIFO Reads
 ----------
@@ -118,7 +122,6 @@ import warnings
 from queue import Empty
 from time import monotonic, sleep
 
-from kombu.exceptions import OperationalError
 from kombu.log import get_logger
 from kombu.utils import scheduling
 from kombu.utils.encoding import safe_str
@@ -143,6 +146,7 @@ PGMQ_MAX_MESSAGES = 10
 
 # Prefix used to namespace fanout publishes in PGMQ topic routing.
 FANOUT_TOPIC_PREFIX = 'kombu.fanout'
+TOPIC_PREFIX = 'kombu.topic'
 
 # PGMQ queue names allow alphanumeric characters and underscores.
 PUNCTUATIONS_TO_REPLACE = set(string.punctuation) - {'_'}
@@ -280,11 +284,23 @@ class Channel(virtual.Channel):
                 self._noack_queues.discard(queue)
         return super().basic_cancel(consumer_tag)
 
+    def basic_get(self, queue, no_ack=False, **kwargs):
+        try:
+            message = self.Message(self._get(queue, no_ack=no_ack), channel=self)
+            if not no_ack:
+                self.qos.append(message, message.delivery_tag)
+            return message
+        except Empty:
+            pass
+
     def drain_events(self, timeout=None, callback=None, **kwargs):
         """Return payload message(s) from one of our queues."""
         if not self._consumers or not self.qos.can_consume():
             raise Empty()
         self._poll(self.cycle, callback, timeout=timeout)
+
+    def _poll(self, cycle, callback, timeout=None):
+        return cycle.get(callback, timeout=timeout)
 
     def _reset_cycle(self):
         """Reset the consume cycle to use bulk reads."""
@@ -302,11 +318,34 @@ class Channel(virtual.Channel):
     def _queue_name(self, queue: str) -> str:
         return self.canonical_queue_name(queue)
 
+    def _encode_exchange(self, exchange: str) -> str:
+        """Encode an exchange as one PGMQ routing-key segment.
+
+        PGMQ routing keys allow ``[A-Za-z0-9._-]`` only and treat ``*``
+        and ``#`` as wildcards.  Dots in the exchange would add segments
+        and collide, so they are folded into this one segment.
+        """
+        encoded = []
+        for char in str(exchange):
+            if (char.isascii() and char.isalnum()) or char == '_':
+                encoded.append(char)
+            elif char == '-':
+                encoded.append('--')
+            elif char == '.':
+                encoded.append('-d-')
+            elif char == '*':
+                encoded.append('-s-')
+            elif char == '#':
+                encoded.append('-h-')
+            else:
+                encoded.append(f'-x{ord(char):02x}-')
+        return ''.join(encoded) or '_'
+
     def _fanout_topic_key(self, exchange: str) -> str:
-        return f'{FANOUT_TOPIC_PREFIX}.{exchange}'
+        return f'{FANOUT_TOPIC_PREFIX}.{self._encode_exchange(exchange)}'
 
     def _topic_key(self, exchange: str, routing_key: str) -> str:
-        return f'{exchange}.{routing_key}'
+        return f'{TOPIC_PREFIX}.{self._encode_exchange(exchange)}.{routing_key}'
 
     def _pgmq_send_kwargs(self, message: dict) -> dict:
         """Build PGMQ ``send``/``send_topic`` keyword arguments."""
@@ -327,15 +366,6 @@ class Channel(virtual.Channel):
                 delay = 0
             if delay:
                 kwargs['delay'] = delay
-        else:
-            expiration = properties.get('expiration')
-            if expiration is not None:
-                try:
-                    delay = max(0, int(expiration) // 1000)
-                except (TypeError, ValueError):
-                    delay = 0
-                if delay:
-                    kwargs['delay'] = delay
 
         return kwargs
 
@@ -395,6 +425,19 @@ class Channel(virtual.Channel):
             self.pgmq.bind_topic(
                 self._topic_key(exchange, routing_key), queue_name)
 
+    def queue_unbind(self, queue, exchange=None, routing_key='',
+                     arguments=None, **kwargs):
+        queue_name = self._queue_name(queue)
+        exchange_type = self.typeof(exchange).type
+        if exchange_type == 'fanout':
+            self.pgmq.unbind_topic(
+                self._fanout_topic_key(exchange), queue_name)
+        elif exchange_type == 'topic' and routing_key:
+            self.pgmq.unbind_topic(
+                self._topic_key(exchange, routing_key), queue_name)
+        return super().queue_unbind(
+            queue, exchange, routing_key, arguments, **kwargs)
+
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Broadcast a message using PGMQ ``send_topic``."""
         self.pgmq.send_topic(
@@ -419,41 +462,50 @@ class Channel(virtual.Channel):
     def _fifo_read_method(self) -> str | None:
         return FIFO_READ_METHODS.get(self.fifo_mode)
 
-    def _receive_messages(self, queue: str, qty: int = 1) -> list:
+    def _receive_messages(self, queue: str, qty: int = 1, *,
+                          poll: bool = False, timeout=None,
+                          no_ack: bool = False) -> list:
         """Read up to ``qty`` messages from a PGMQ queue."""
         queue_name = self._queue_name(queue)
 
-        if queue in self._noack_queues:
+        if no_ack or queue in self._noack_queues:
             return self._normalize_messages(
                 self.pgmq.pop(queue_name, qty=qty))
 
         fifo_method = self._fifo_read_method()
-        if fifo_method:
-            if self.wait_time_seconds:
+        max_poll = None
+        if poll:
+            max_poll = self.wait_time_seconds
+            if timeout is not None:
+                max_poll = min(max_poll, timeout)
+            if max_poll < 1:
+                max_poll = None
+
+        if max_poll is not None:
+            if fifo_method:
                 read = getattr(self.pgmq, f'{fifo_method}_with_poll')
                 return self._normalize_messages(read(
                     queue_name,
                     vt=self.visibility_timeout,
                     qty=qty,
-                    max_poll_seconds=self.wait_time_seconds,
+                    max_poll_seconds=int(max_poll),
                     poll_interval_ms=self.poll_interval_ms,
                 ))
+            return self.pgmq.read_with_poll(
+                queue_name,
+                vt=self.visibility_timeout,
+                qty=qty,
+                max_poll_seconds=int(max_poll),
+                poll_interval_ms=self.poll_interval_ms,
+            )
+
+        if fifo_method:
             read = getattr(self.pgmq, fifo_method)
             return self._normalize_messages(read(
                 queue_name,
                 vt=self.visibility_timeout,
                 qty=qty,
             ))
-
-        if self.wait_time_seconds:
-            return self.pgmq.read_with_poll(
-                queue_name,
-                vt=self.visibility_timeout,
-                qty=qty,
-                max_poll_seconds=self.wait_time_seconds,
-                poll_interval_ms=self.poll_interval_ms,
-            )
-
         return self._normalize_messages(self.pgmq.read(
             queue_name,
             vt=self.visibility_timeout,
@@ -493,16 +545,17 @@ class Channel(virtual.Channel):
         if not max_count:
             raise Empty()
 
-        messages = self._receive_messages(queue, qty=max_count)
+        messages = self._receive_messages(
+            queue, qty=max_count, poll=True, timeout=timeout)
         if not messages:
             raise Empty()
 
         for payload in self._pgmq_messages_to_python(messages, queue):
             self.connection._deliver(payload, queue)
 
-    def _get(self, queue, timeout=None):
+    def _get(self, queue, timeout=None, no_ack=False):
         """Try to retrieve a single message from ``queue``."""
-        messages = self._receive_messages(queue, qty=1)
+        messages = self._receive_messages(queue, qty=1, no_ack=no_ack)
         if not messages:
             raise Empty()
         return self._pgmq_message_to_python(messages[0], queue)
@@ -598,8 +651,9 @@ class Channel(virtual.Channel):
         if wait_time is None:
             # Backward compatibility with the initial transport option name.
             wait_time = self.transport_options.get('max_poll_seconds')
-        return (wait_time if wait_time is not None else
-                self.default_wait_time_seconds)
+        if wait_time is None or wait_time == '':
+            wait_time = self.default_wait_time_seconds
+        return int(float(wait_time))
 
     @cached_property
     def init_extension(self) -> bool:

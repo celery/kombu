@@ -173,7 +173,7 @@ class test_PGMQTransportSpecific:
                         conn.drain_events(timeout=1)
 
     def test_delayed_delivery(self, connection):
-        """Messages published with expiration are delayed in PGMQ."""
+        """Messages published with DelaySeconds are delayed in PGMQ."""
         queue_name = 'pgmq_delayed'
         test_queue = kombu.Queue(queue_name, routing_key=queue_name)
 
@@ -187,7 +187,7 @@ class test_PGMQTransportSpecific:
                     routing_key=test_queue.routing_key,
                     declare=[test_queue],
                     serializer='json',
-                    expiration=2,
+                    DelaySeconds=2,
                 )
 
             with closing(conn.SimpleQueue(queue_name)) as queue:
