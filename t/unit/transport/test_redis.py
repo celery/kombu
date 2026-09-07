@@ -1233,9 +1233,23 @@ class test_Channel:
         self.channel.subclient.connection.connect.assert_called_with()
 
     def test_handle_unsubscribe_message(self):
-        s = self.channel.subclient
-        s.subscribed = True
-        self.channel._handle_message(s, ['unsubscribe', 'a', 0])
+        from redis.client import PubSub
+
+        # a real PubSub, so that redis-py's own bookkeeping is exercised
+        pool = Mock(name='pool')
+        pool.get_encoder.return_value = redis.redis.Redis().get_encoder()
+        s = PubSub(connection_pool=pool)
+        s.psubscribe(['a', 'b'])
+        s.punsubscribe(['a', 'b'])
+        assert s.subscribed
+
+        payload = self.channel._handle_message(s, [b'punsubscribe', b'a', 1])
+        assert payload == {
+            'type': b'punsubscribe', 'pattern': None, 'channel': b'a',
+            'data': 1,
+        }
+        assert s.subscribed
+        assert self.channel._handle_message(s, [b'punsubscribe', b'b', 0])
         assert not s.subscribed
 
     def test_handle_pmessage_message(self):
@@ -1281,6 +1295,29 @@ class test_Channel:
         self.channel.connection._deliver.assert_called_once_with(
             message, 'b',
         )
+
+    def test_unsubscribe_from(self):
+        self.channel.subclient = Mock()
+        self.channel._fanout_queues = {'a': ('a', '')}
+
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once_with(
+            ['/{db}.a'])
+        self.channel.subclient.unsubscribe.assert_not_called()
+
+        # nothing to do without a live subscription connection
+        self.channel.subclient.connection._sock = None
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once()
+
+    def test_receive_final_unsubscribe_reply_is_ignored(self):
+        s = self.channel.subclient = Mock()
+        self.channel.connection._deliver = Mock(name='_deliver')
+        s.parse_response.return_value = ['punsubscribe', '/{db}.a', 0]
+
+        assert self.channel._receive_one(s) is None
+        s.handle_message.assert_called_once_with(['punsubscribe', '/{db}.a', 0])
+        self.channel.connection._deliver.assert_not_called()
 
     def test_receive_raises_for_connection_error(self):
         self.channel._in_listen = True
@@ -3678,8 +3715,9 @@ class test_SentinelChannel_fanout_compat:
 
         channel._unsubscribe_from('q')
 
-        channel.subclient.unsubscribe.assert_called_once_with(
+        channel.subclient.punsubscribe.assert_called_once_with(
             ['/0.celery.pidbox', '/{db}.celery.pidbox'])
+        channel.subclient.unsubscribe.assert_not_called()
 
     def test_message_received_on_both_topics_is_delivered_once(self):
         channel = self._receiving_channel(sentinel_fanout_compat=True)

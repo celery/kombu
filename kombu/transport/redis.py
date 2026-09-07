@@ -68,10 +68,11 @@ Transport Options
 * ``sentinel_fanout_compat``: (bool) Sentinel only.  When enabled the
   channel also publishes to, and subscribes on, the legacy fanout topic
   (literally ``/{db}.<exchange>``) used by kombu < 5.4.0, next to the
-  current ``/<db>.<exchange>`` topic.  Enable it on every worker while
-  performing a rolling upgrade from kombu < 5.4.0, so that mixed-version
-  workers keep exchanging broadcast messages such as Celery control
-  commands, and remove it once every worker has been upgraded.
+  current ``/<db>.<exchange>`` topic.  Enable it on every upgraded
+  participant of fanout traffic (workers as well as Flower or any other
+  client sending control commands) while performing a rolling upgrade
+  from kombu < 5.4.0, so that mixed-version participants keep exchanging
+  broadcast messages, and remove it once everything has been upgraded.
   Defaults to ``False``.
 
 Queue Arguments
@@ -1157,19 +1158,23 @@ class Channel(virtual.Channel):
         topics = self._get_subscribe_topics(queue)
         c = self.subclient
         if c.connection and c.connection._sock:
-            c.unsubscribe(topics)
+            # topics were registered with PSUBSCRIBE, so only PUNSUBSCRIBE
+            # removes them again.
+            c.punsubscribe(topics)
 
     def _handle_message(self, client, r):
-        if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
-            client.subscribed = False
-            return
-
-        if bytes_to_str(r[0]) == 'pmessage':
-            type, pattern, channel, data = r[0], r[1], r[2], r[3]
+        message_type = bytes_to_str(r[0])
+        if message_type == 'pmessage':
+            pattern, channel, data = r[1], r[2], r[3]
         else:
-            type, pattern, channel, data = r[0], None, r[1], r[2]
+            pattern, channel, data = None, r[1], r[2]
+        if message_type in ('unsubscribe', 'punsubscribe'):
+            # Let redis-py update its own subscription bookkeeping, so that
+            # ``client.subscribed`` is cleared once nothing is left and a
+            # cancelled pattern is not re-subscribed to on reconnect.
+            client.handle_message(r)
         return {
-            'type': type,
+            'type': r[0],
             'pattern': pattern,
             'channel': channel,
             'data': data,
@@ -2021,13 +2026,13 @@ class SentinelChannel(Channel):
 
     #: Also publish to, and subscribe on, the legacy fanout topic used by
     #: kombu < 5.4.0 (literally ``/{db}.<exchange>``) in addition to the
-    #: current ``/<db>.<exchange>`` topic, so that workers running either
-    #: version keep exchanging broadcast messages (for example Celery
-    #: control commands) during a rolling upgrade.  A message that arrives
-    #: on both topics is delivered only once.
+    #: current ``/<db>.<exchange>`` topic, so that participants running
+    #: either version keep exchanging broadcast messages (for example
+    #: Celery control commands) during a rolling upgrade.  A message that
+    #: arrives on both topics is delivered only once.
     #:
-    #: Disabled by default; enable it via ``transport_options`` for the
-    #: duration of the upgrade only.
+    #: Disabled by default; enable it via ``transport_options`` on every
+    #: upgraded worker and control client for the duration of the upgrade.
     sentinel_fanout_compat = False
 
     #: Number of recently delivered fanout messages remembered for
