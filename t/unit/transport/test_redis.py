@@ -3586,6 +3586,17 @@ class test_SentinelChannel_fanout_compat:
             '/3.celery.pidbox', '/{db}.celery.pidbox',
         ]
 
+    def test_legacy_prefix_survives_creating_a_second_pool(self):
+        from kombu.transport.redis import SentinelChannel
+
+        channel = self._channel(sentinel_fanout_compat=True)
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            channel._get_pool(asynchronous=True)
+
+        assert channel.keyprefix_fanout == '/0.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert channel._fanout_compat_active
+
     def test_enabled_topics_honour_fanout_patterns(self):
         channel = self._channel(sentinel_fanout_compat=True)
 
