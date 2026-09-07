@@ -79,7 +79,13 @@ class LRUCache(UserDict):
     def __setitem__(self, key, value):
         # remove least recently used key.
         with self.mutex:
-            if self.limit and len(self.data) >= self.limit:
+            # Only an insert can push the cache over its limit; overwriting
+            # a key that is already there keeps the same number of entries,
+            # so evicting for it would shrink the cache below the limit and
+            # throw away an unrelated key. ``update`` already gets this
+            # right, it only trims once the data has actually grown.
+            if (key not in self.data and
+                    self.limit and len(self.data) >= self.limit):
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 

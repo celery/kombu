@@ -166,3 +166,14 @@ class test_calculate_routing_key:
     def test_none_routing_key(self):
         with pytest.raises(ValueError, match="routing_key must be non-empty"):
             calculate_routing_key(1, None)
+
+    def test_does_not_accumulate_prefix_on_retry(self):
+        first = calculate_routing_key(1, 'destination')
+        second = calculate_routing_key(2, first)
+        assert second == calculate_routing_key(2, 'destination')
+
+    def test_does_not_strip_a_partial_prefix_look_alike(self):
+        # '0.destination' only has a single leading segment, not the full
+        # 28-segment prefix, so it must not be mistaken for one and stripped.
+        assert (calculate_routing_key(1, '0.destination')
+                == '0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1.0.destination')
