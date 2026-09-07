@@ -1099,7 +1099,7 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = [
+        client.zrange.return_value = [
             (1, 10),
             (2, 20),
             (3, 30),
@@ -1108,7 +1108,7 @@ class test_Channel:
         restore = qos.restore_by_tag = Mock(name='restore_by_tag')
         qos._vrestore_count = 1
         qos.restore_visible()
-        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_not_called()
         assert qos._vrestore_count == 2
 
         qos._vrestore_count = 0
@@ -1120,7 +1120,7 @@ class test_Channel:
 
         qos._vrestore_count = 0
         restore.reset_mock()
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos.restore_visible()
         restore.assert_not_called()
         assert qos._vrestore_count == 1
@@ -1136,22 +1136,22 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos = redis.QoS(self.channel)
         qos.restore_by_tag = Mock(name='restore_by_tag')
 
         # interval=3 -> only the 1st and 4th calls perform an actual scan.
         qos._vrestore_count = 0
         qos.restore_visible(interval=3)
-        client.zrevrangebyscore.assert_called_once()
-        client.zrevrangebyscore.reset_mock()
+        client.zrange.assert_called_once()
+        client.zrange.reset_mock()
 
         qos.restore_visible(interval=3)   # 2nd call -> skip
         qos.restore_visible(interval=3)   # 3rd call -> skip
-        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_not_called()
 
         qos.restore_visible(interval=3)   # 4th call -> scan
-        client.zrevrangebyscore.assert_called_once()
+        client.zrange.assert_called_once()
 
     def test_qos_restore_visible_zero_interval_no_zerodivision(self):
         client = self.channel._create_client = Mock(name='client')
@@ -1160,7 +1160,7 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos = redis.QoS(self.channel)
         qos.restore_by_tag = Mock(name='restore_by_tag')
 
@@ -1168,7 +1168,60 @@ class test_Channel:
         qos._vrestore_count = 0
         qos.restore_visible(interval=0)
         qos.restore_visible(interval=0)
-        assert client.zrevrangebyscore.call_count == 2
+        assert client.zrange.call_count == 2
+
+    def test_qos_restore_visible_uses_zrange_byscore_rev(self):
+        """Regression test for #2050.
+
+        ``ZREVRANGEBYSCORE`` is deprecated since Redis 6.2 and is not
+        implemented by every Redis-compatible server, so ``restore_visible``
+        must issue the equivalent ``ZRANGE ... BYSCORE REV`` query.  With
+        ``REV`` the first bound is the highest score, so the bounds keep the
+        ``(ceil, 0)`` order of the old command.
+        """
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrange.return_value = [(1, 10)]
+
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+        with patch('kombu.transport.redis.time', return_value=1000000.0):
+            qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_called_once_with(
+            qos.unacked_index_key, 1000000.0 - qos.visibility_timeout, 0,
+            desc=True, byscore=True, offset=0, num=10, withscores=True,
+        )
+        restore.assert_called_once_with(1, client)
+
+    def test_qos_restore_visible_without_limit(self):
+        # ``unacked_restore_limit`` defaults to None, which the poller passes
+        # through as ``num=None``.  redis-py rejects ``offset`` without
+        # ``num`` (and vice versa), so both must stay unset to skip LIMIT.
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrange.return_value = []
+
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+        with patch('kombu.transport.redis.time', return_value=1000000.0):
+            qos.restore_visible(num=None)
+
+        client.zrange.assert_called_once_with(
+            qos.unacked_index_key, 1000000.0 - qos.visibility_timeout, 0,
+            desc=True, byscore=True, offset=None, num=None, withscores=True,
+        )
 
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
@@ -2256,6 +2309,42 @@ class test_Channel:
                 ('ZREM', 'foo_unacked_index', 'test-tag'),
                 ('HDEL', 'foo_unacked', 'test-tag')
             ]
+
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_restore_visible(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        def execute_command(command, *args, **kwargs):
+            # Let the mutex ``SET ... NX`` and its release succeed, and
+            # report no visible tags for the range query.
+            return [] if command == 'ZRANGE' else True
+        mock_execute_command.side_effect = execute_command
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos._vrestore_count = 0
+            with patch('kombu.transport.redis.time', return_value=1000000.0):
+                channel.qos.restore_visible(start=0, num=10)
+
+            commands = [
+                call.args for call in mock_execute_command.mock_calls
+                if call.args
+            ]
+            assert not any(
+                args[0] == 'ZREVRANGEBYSCORE' for args in commands
+            )
+            # The key is prefixed and the query has the ZREVRANGEBYSCORE
+            # semantics: highest score first, then LIMIT and WITHSCORES.
+            assert [args for args in commands if args[0] == 'ZRANGE'] == [(
+                'ZRANGE', 'foo_unacked_index',
+                1000000.0 - channel.visibility_timeout, 0,
+                'BYSCORE', 'REV', 'LIMIT', 0, 10, 'WITHSCORES',
+            )]
 
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""

@@ -253,8 +253,8 @@ class GlobalKeyPrefixMixin:
         "SET",
         "SMEMBERS",
         "ZADD",
+        "ZRANGE",
         "ZREM",
-        "ZREVRANGEBYSCORE",
         "PEXPIRE",
     ]
 
@@ -461,9 +461,16 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
-                    visible = client.zrevrangebyscore(
+                    # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
+                    # not implemented by every Redis-compatible server
+                    # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
+                    # replacement.  With ``REV`` the first bound is the
+                    # highest score, so ``(ceil, 0)`` keeps the same order
+                    # and returns the same rows as the old command.
+                    visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
-                        start=num and start, num=num, withscores=True)
+                        desc=True, byscore=True,
+                        offset=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
