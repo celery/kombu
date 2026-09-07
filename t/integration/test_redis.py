@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import os
 import socket
-from time import sleep
+from time import monotonic, sleep
+from unittest.mock import patch
 
 import pytest
 import redis
 
 import kombu
-from kombu.transport.redis import SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Transport
+from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
+                                   SentinelChannel, Transport)
 from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
@@ -738,3 +740,189 @@ class test_RedisSubclientHealthCheck:
             conn.drain_events(timeout=1)
 
         assert received == [{'msg': 'recovered'}]
+
+
+class _LegacySentinelChannel(Channel):
+    """Behave like the ``SentinelChannel`` of kombu < 5.4.0.
+
+    Those versions never substituted the database number into the fanout
+    prefix, so their PUB/SUB topics are literally ``/{db}.<exchange>``.
+    """
+
+    def _get_pool(self, asynchronous=False):
+        return redis.ConnectionPool(**self._connparams(asynchronous))
+
+
+class _LegacySentinelTransport(Transport):
+    Channel = _LegacySentinelChannel
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisSentinelFanoutCompat:
+    """``sentinel_fanout_compat`` keeps fanout working across kombu versions.
+
+    kombu < 5.4.0 sentinel workers use the literal ``/{db}.<exchange>``
+    PUB/SUB topic while newer ones use ``/<db>.<exchange>``, so broadcast
+    messages such as Celery control commands stop flowing between them
+    (celery/kombu#2152).
+
+    The integration environment runs no Sentinel, so master discovery is
+    bypassed and ``SentinelChannel`` connects straight to the Redis server;
+    the topic selection, PUB/SUB handling and de-duplication under test are
+    the real code.  The old side of the conversation is played by
+    :class:`_LegacySentinelChannel`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def direct_sentinel_channel(self):
+        def direct_pool(channel, asynchronous=False):
+            return redis.ConnectionPool(**channel._connparams(asynchronous))
+
+        with patch.object(SentinelChannel, 'connection_class',
+                          redis.Connection), \
+                patch.object(SentinelChannel, '_sentinel_managed_pool',
+                             direct_pool):
+            yield
+
+    @staticmethod
+    def _host_port():
+        return (os.environ.get('REDIS_HOST', 'localhost'),
+                os.environ.get('REDIS_6379_TCP', '6379'))
+
+    def _sentinel_connection(self, **transport_options):
+        host, port = self._host_port()
+        transport_options.setdefault('master_name', 'mymaster')
+        return kombu.Connection(
+            f'sentinel://{host}:{port}/0',
+            transport_options=transport_options,
+        )
+
+    def _legacy_connection(self):
+        """Return a connection behaving like a kombu < 5.4.0 sentinel worker."""
+        host, port = self._host_port()
+        return kombu.Connection(
+            f'redis://{host}:{port}/0', transport=_LegacySentinelTransport)
+
+    @staticmethod
+    def _consume(channel, exchange, queue_name, received):
+        """Consume *exchange* on *channel*, collecting bodies in *received*."""
+        queue = kombu.Queue(queue_name, exchange=exchange)
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        return consumer
+
+    @staticmethod
+    def _drain(conn, timeout):
+        """Handle events on *conn* for *timeout* seconds.
+
+        ``drain_events()`` returns on any readable event, including
+        subscription confirmations, so keep draining until the time is
+        up and let the tests assert on what was received.
+        """
+        deadline = monotonic() + timeout
+        while (remaining := deadline - monotonic()) > 0:
+            try:
+                conn.drain_events(timeout=remaining)
+            except socket.timeout:
+                return
+
+    @classmethod
+    def _subscribe(cls, conn):
+        # the first drain registers the pub/sub connection with the poller
+        # and sends PSUBSCRIBE; give the server time to confirm it.
+        cls._drain(conn, 0.2)
+
+    @staticmethod
+    def _publish(conn, exchange, body):
+        # declare the exchange on the publishing channel, otherwise the
+        # virtual transport treats an unknown exchange as a direct one.
+        kombu.Producer(
+            conn.default_channel, exchange=exchange, serializer='json',
+        ).publish(body, declare=[exchange])
+
+    def test_legacy_consumer_receives_compat_publisher(self):
+        exchange = kombu.Exchange('sfc_compat_to_legacy', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as new:
+            self._consume(legacy, exchange, 'sfc_compat_to_legacy_q', received)
+            self._subscribe(legacy)
+
+            self._publish(new, exchange, {'cmd': 'ping'})
+            self._drain(legacy, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_compat_consumer_receives_legacy_publisher(self):
+        exchange = kombu.Exchange('sfc_legacy_to_compat', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as new:
+            self._consume(new, exchange, 'sfc_legacy_to_compat_q', received)
+            self._subscribe(new)
+
+            self._publish(legacy, exchange, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_compat_peers_receive_each_message_once(self):
+        exchange = kombu.Exchange('sfc_compat_to_compat', type='fanout')
+        received = []
+        with self._sentinel_connection(sentinel_fanout_compat=True) as one, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as two:
+            self._consume(one, exchange, 'sfc_compat_to_compat_q', received)
+            self._subscribe(one)
+
+            # published to both topics, so it arrives twice on the
+            # subscription connection and must be delivered once.
+            self._publish(two, exchange, {'cmd': 'ping'})
+            self._drain(one, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_without_compat_legacy_and_current_topics_are_isolated(self):
+        # the situation reported in celery/kombu#2152
+        exchange = kombu.Exchange('sfc_isolated', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection() as new:
+            self._consume(new, exchange, 'sfc_isolated_new_q', received)
+            self._subscribe(new)
+            self._publish(legacy, exchange, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+            self._consume(legacy, exchange, 'sfc_isolated_legacy_q', received)
+            self._subscribe(legacy)
+            self._publish(new, exchange, {'cmd': 'ping'})
+            self._drain(legacy, 1)
+
+        assert received == []
+
+    def test_cancelled_consumer_no_longer_receives(self):
+        """Cancelling must PUNSUBSCRIBE from both topics.
+
+        A leaked pattern subscription would deliver the message published
+        after the cancellation for an exchange the channel no longer
+        consumes from.
+        """
+        cancelled = kombu.Exchange('sfc_cancelled', type='fanout')
+        kept = kombu.Exchange('sfc_kept', type='fanout')
+        received = []
+        with self._sentinel_connection(sentinel_fanout_compat=True) as new, \
+                self._legacy_connection() as legacy:
+            consumer = self._consume(
+                new, cancelled, 'sfc_cancelled_q', received)
+            self._consume(new, kept, 'sfc_kept_q', received)
+            self._subscribe(new)
+
+            consumer.cancel()
+            self._publish(legacy, cancelled, {'cmd': 'stale'})
+            self._publish(legacy, kept, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+        assert received == [{'cmd': 'ping'}]

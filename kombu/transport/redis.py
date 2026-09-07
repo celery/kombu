@@ -65,6 +65,17 @@ Transport Options
 * ``retry_on_timeout``
 * ``priority_steps``
 * ``client_name``: (str) The name to use when connecting to Redis server.
+* ``sentinel_fanout_compat``: (bool) Sentinel only.  When enabled the
+  channel also publishes to, and subscribes on, the legacy fanout topic
+  (literally ``/{db}.<exchange>``) used by kombu < 5.4.0, next to the
+  current ``/<db>.<exchange>`` topic.  Enable it on every upgraded
+  participant of fanout traffic (workers as well as Flower or any other
+  client sending control commands) while performing a rolling upgrade
+  from kombu < 5.4.0, so that mixed-version participants keep exchanging
+  broadcast messages, and remove it once everything has been upgraded.
+  Defaults to ``False``.
+
+  .. versionadded:: 5.7.0
 
 Queue Arguments
 ===============
@@ -82,7 +93,7 @@ import inspect
 import numbers
 import socket
 from bisect import bisect
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
@@ -1124,13 +1135,26 @@ class Channel(virtual.Channel):
             return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
         return ''.join([self.keyprefix_fanout, exchange])
 
+    def _get_publish_topics(self, exchange, routing_key):
+        """Return every PUB/SUB topic a fanout message is published to.
+
+        Subclasses can return additional topics when the same message
+        has to reach subscribers that use a different topic layout.
+        """
+        return [self._get_publish_topic(exchange, routing_key)]
+
     def _get_subscribe_topic(self, queue):
         exchange, routing_key = self._fanout_queues[queue]
         return self._get_publish_topic(exchange, routing_key)
 
+    def _get_subscribe_topics(self, queue):
+        exchange, routing_key = self._fanout_queues[queue]
+        return self._get_publish_topics(exchange, routing_key)
+
     def _subscribe(self):
-        keys = [self._get_subscribe_topic(queue)
-                for queue in self.active_fanout_queues]
+        keys = [topic
+                for queue in self.active_fanout_queues
+                for topic in self._get_subscribe_topics(queue)]
         if not keys:
             return
         c = self.subclient
@@ -1140,22 +1164,26 @@ class Channel(virtual.Channel):
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
-        topic = self._get_subscribe_topic(queue)
+        topics = self._get_subscribe_topics(queue)
         c = self.subclient
         if c.connection and c.connection._sock:
-            c.unsubscribe([topic])
+            # topics were registered with PSUBSCRIBE, so only PUNSUBSCRIBE
+            # removes them again.
+            c.punsubscribe(topics)
 
     def _handle_message(self, client, r):
-        if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
-            client.subscribed = False
-            return
-
-        if bytes_to_str(r[0]) == 'pmessage':
-            type, pattern, channel, data = r[0], r[1], r[2], r[3]
+        message_type = bytes_to_str(r[0])
+        if message_type == 'pmessage':
+            pattern, channel, data = r[1], r[2], r[3]
         else:
-            type, pattern, channel, data = r[0], None, r[1], r[2]
+            pattern, channel, data = None, r[1], r[2]
+        if message_type in ('unsubscribe', 'punsubscribe'):
+            # Let redis-py update its own subscription bookkeeping, so that
+            # ``client.subscribed`` is cleared once nothing is left and a
+            # cancelled pattern is not re-subscribed to on reconnect.
+            client.handle_message(r)
         return {
-            'type': type,
+            'type': r[0],
             'pattern': pattern,
             'channel': channel,
             'data': data,
@@ -1193,9 +1221,15 @@ class Channel(virtual.Channel):
                                 channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
-                    self.connection._deliver(
-                        message, self._fanout_to_queue[exchange])
-                    return True
+                    return self._deliver_fanout_message(message, exchange)
+
+    def _deliver_fanout_message(self, message, exchange):
+        """Deliver a decoded fanout *message* received for *exchange*.
+
+        Returns True once the message has been delivered.
+        """
+        self.connection._deliver(message, self._fanout_to_queue[exchange])
+        return True
 
     def _brpop_start(self, timeout=None):
         if timeout is None:
@@ -1446,13 +1480,15 @@ class Channel(virtual.Channel):
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         publish_batch = kwargs.pop('_publish_batch', None)
-        topic = self._get_publish_topic(exchange, routing_key)
+        topics = self._get_publish_topics(exchange, routing_key)
         payload = dumps(message)
         if publish_batch is not None:
-            publish_batch.add('publish', topic, payload)
+            for topic in topics:
+                publish_batch.add('publish', topic, payload)
             return
         with self.conn_or_acquire() as client:
-            client.publish(topic, payload)
+            for topic in topics:
+                client.publish(topic, payload)
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
@@ -1976,6 +2012,10 @@ class SentinelChannel(Channel):
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
 
+    Optional transport options:
+     * `sentinel_fanout_compat` - also use the fanout topic of kombu < 5.4.0
+       while performing a rolling upgrade, see :attr:`sentinel_fanout_compat`.
+
     Example:
     -------
     .. code-block:: python
@@ -1991,10 +2031,36 @@ class SentinelChannel(Channel):
     from_transport_options = Channel.from_transport_options + (
         'master_name',
         'min_other_sentinels',
-        'sentinel_kwargs')
+        'sentinel_kwargs',
+        'sentinel_fanout_compat')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
     connection_class_ssl = SentinelManagedSSLConnection if sentinel else None
+
+    #: Also publish to, and subscribe on, the legacy fanout topic used by
+    #: kombu < 5.4.0 (literally ``/{db}.<exchange>``) in addition to the
+    #: current ``/<db>.<exchange>`` topic, so that participants running
+    #: either version keep exchanging broadcast messages (for example
+    #: Celery control commands) during a rolling upgrade.  A message that
+    #: arrives on both topics is delivered only once.
+    #:
+    #: Disabled by default; enable it via ``transport_options`` on every
+    #: upgraded worker and control client for the duration of the upgrade.
+    #:
+    #: .. versionadded:: 5.7.0
+    sentinel_fanout_compat = False
+
+    #: Number of recently delivered fanout messages remembered for
+    #: de-duplication while :attr:`sentinel_fanout_compat` is enabled.
+    _fanout_compat_dedup_size = 1000
+
+    #: The unformatted fanout prefix (``/{db}.``), captured before
+    #: :meth:`_get_pool` substitutes the database number into it.
+    _legacy_keyprefix_fanout = None
+
+    def __init__(self, *args, **kwargs):
+        self._seen_fanout_tags = OrderedDict()
+        super().__init__(*args, **kwargs)
 
     def _sentinel_managed_pool(self, asynchronous=False):
         connparams = self._connparams(asynchronous)
@@ -2041,8 +2107,73 @@ class SentinelChannel(Channel):
 
     def _get_pool(self, asynchronous=False):
         params = self._connparams(asynchronous=asynchronous)
+        if self._legacy_keyprefix_fanout is None:
+            # kombu < 5.4.0 never substituted the database number into the
+            # sentinel fanout prefix, so older workers publish and listen
+            # on the literal '/{db}.' topic.  Keep the unformatted prefix
+            # so that ``sentinel_fanout_compat`` can still address them.
+            self._legacy_keyprefix_fanout = self.keyprefix_fanout
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
+
+    @property
+    def _fanout_compat_active(self):
+        """Whether fanout traffic must also use the legacy topic.
+
+        This is the case when :attr:`sentinel_fanout_compat` is enabled
+        and formatting the prefix actually changed it: with a custom
+        prefix that has no ``{db}`` placeholder, old and new workers
+        already share the same topic.
+        """
+        return bool(
+            self.sentinel_fanout_compat
+            and self._legacy_keyprefix_fanout is not None
+            and self._legacy_keyprefix_fanout != self.keyprefix_fanout
+        )
+
+    def _get_legacy_publish_topic(self, exchange, routing_key):
+        # Same layout as _get_publish_topic, using the unformatted prefix.
+        if routing_key and self.fanout_patterns:
+            return ''.join([
+                self._legacy_keyprefix_fanout, exchange, '/', routing_key,
+            ])
+        return ''.join([self._legacy_keyprefix_fanout, exchange])
+
+    def _get_publish_topics(self, exchange, routing_key):
+        topics = super()._get_publish_topics(exchange, routing_key)
+        if self._fanout_compat_active:
+            topics.append(
+                self._get_legacy_publish_topic(exchange, routing_key))
+        return topics
+
+    def _deliver_fanout_message(self, message, exchange):
+        if (self._fanout_compat_active and
+                self._is_duplicate_fanout_message(message, exchange)):
+            return False
+        return super()._deliver_fanout_message(message, exchange)
+
+    def _is_duplicate_fanout_message(self, message, exchange):
+        """Return True if *message* was already received on the other topic.
+
+        Every message published through kombu carries a unique
+        ``delivery_tag`` (see
+        :meth:`kombu.transport.virtual.Channel._inplace_augment_message`),
+        so seeing a tag again means the message arrived on both the
+        current and the legacy topic.  Messages without a tag cannot be
+        told apart and are never treated as duplicates.
+        """
+        try:
+            tag = message['properties']['delivery_tag']
+        except (KeyError, TypeError):
+            return False
+        key = (exchange, tag)
+        seen = self._seen_fanout_tags
+        if key in seen:
+            return True
+        seen[key] = None
+        if len(seen) > self._fanout_compat_dedup_size:
+            seen.popitem(last=False)
+        return False
 
 
 class SentinelTransport(Transport):
