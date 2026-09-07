@@ -14,6 +14,12 @@ What's Changed
   uses a non-transactional pipeline to publish multiple messages in fewer
   network round trips while retaining normal serialization, routing,
   priorities, queue expiry, and fanout behavior.
+- Add the ``sentinel_fanout_compat`` transport option to the Redis Sentinel
+  transport. When enabled, fanout messages are published to and consumed from
+  both the current ``/<db>.`` PUB/SUB topic and the legacy ``/{db}.`` topic
+  used by kombu < 5.4.0, so that mixed-version workers keep exchanging
+  broadcast messages such as Celery control commands during a rolling
+  upgrade (#2152).
 
 .. _version-5.6.2:
 
