@@ -30,7 +30,7 @@ def get_connection(hostname, port, database, username='postgres',
 def connection(request):
     return get_connection(
         hostname=os.environ.get('PGMQ_HOST', 'localhost'),
-        port=os.environ.get('PGMQ_PORT', '5433'),
+        port=os.environ.get('PGMQ_PORT', '5432'),
         database=os.environ.get('PGMQ_DATABASE', 'postgres'),
         username=os.environ.get('PGMQ_USERNAME', 'postgres'),
         password=os.environ.get('PGMQ_PASSWORD', 'postgres'),

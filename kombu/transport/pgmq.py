@@ -551,8 +551,13 @@ class Channel(virtual.Channel):
             'pgmq_message', 'pgmq_msg_id', 'pgmq_queue',
         ),
     ):
+        delivery_info = message.delivery_info
+        queue = delivery_info.get('pgmq_queue')
+        msg_id = delivery_info.get('pgmq_msg_id')
+        if queue is not None and msg_id is not None:
+            return self.pgmq.set_vt(queue, msg_id, 0)
         for unwanted_key in unwanted_delivery_info:
-            message.delivery_info.pop(unwanted_key, None)
+            delivery_info.pop(unwanted_key, None)
         return super()._restore(message)
 
     def _purge(self, queue):
@@ -644,6 +649,10 @@ class Transport(virtual.Transport):
     """PGMQ transport."""
 
     Channel = Channel
+
+    implements = virtual.Transport.implements.extend(
+        exchange_type=frozenset(['direct', 'topic', 'fanout']),
+    )
 
     # Let Kombu parse pgmq://user:pass@host:port/db into connection
     # components.  (Transports that set can_parse_url=True must parse the
@@ -752,10 +761,10 @@ class Transport(virtual.Transport):
         )
 
     def establish_connection(self):
-        if not self.verify_connection(self):
-            raise OperationalError('Could not connect to PGMQ')
-        self._avail_channels.append(self.create_channel(self))
-        return self
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', UserWarning)
+            self._get_pgmq_client().list_queues()
+        return super().establish_connection()
 
     def close_connection(self, connection) -> None:
         try:
