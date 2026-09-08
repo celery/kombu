@@ -587,6 +587,80 @@ class test_RedisQueueExpiration:
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisRestoreVisible:
+    """Ack-emulation restores unacked messages after ``visibility_timeout``.
+
+    ``restore_visible`` scans the unacked index with
+    ``ZRANGE ... BYSCORE REV`` (the replacement for the deprecated
+    ``ZREVRANGEBYSCORE``, see #2050), so this drives that query against a
+    real server with and without ``global_keyprefix``.
+    """
+
+    def test_restore_visible_requeues_expired_unacked(
+            self, connection, redis_client):
+        visibility_timeout = 1
+        # Private unacked keys so the sweep cannot touch messages that other
+        # (possibly concurrent) tests are holding unacked.
+        unacked_key = 'restore_visible_test_unacked'
+        unacked_index_key = 'restore_visible_test_unacked_index'
+        unacked_mutex_key = 'restore_visible_test_unacked_mutex'
+        connection = connection.clone(transport_options={
+            **connection.transport_options,
+            'visibility_timeout': visibility_timeout,
+            'unacked_key': unacked_key,
+            'unacked_index_key': unacked_index_key,
+            'unacked_mutex_key': unacked_mutex_key,
+        })
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        unacked_key = f'{keyprefix}{unacked_key}'
+        unacked_index_key = f'{keyprefix}{unacked_index_key}'
+        unacked_mutex_key = f'{keyprefix}{unacked_mutex_key}'
+        # Clear leftovers from an earlier run.  A stale mutex in particular
+        # would make restore_visible() skip the sweep until its TTL expires.
+        redis_client.delete(unacked_key, unacked_index_key, unacked_mutex_key)
+
+        test_queue = kombu.Queue(
+            'restore_visible_test', routing_key='restore_visible_test'
+        )
+        payload = {'msg': 'restore me'}
+
+        with connection as conn:
+            with conn.channel() as channel:
+                bound_queue = test_queue(channel)
+                bound_queue.declare()
+                bound_queue.purge()
+
+                kombu.Producer(channel).publish(
+                    payload,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    serializer='json',
+                )
+
+                message = bound_queue.get(no_ack=False)
+                assert message.payload == payload
+                tag = message.delivery_tag
+                assert redis_client.hexists(unacked_key, tag)
+                assert redis_client.zscore(unacked_index_key, tag) is not None
+
+                # Still within the visibility timeout: nothing is restored.
+                channel.qos.restore_visible(interval=1)
+                assert bound_queue.get(no_ack=True) is None
+                assert redis_client.hexists(unacked_key, tag)
+
+                sleep(visibility_timeout + 0.5)
+                channel.qos.restore_visible(interval=1)
+
+                assert not redis_client.hexists(unacked_key, tag)
+                assert redis_client.zscore(unacked_index_key, tag) is None
+                restored = bound_queue.get(no_ack=True)
+                assert restored is not None
+                assert restored.payload == payload
+                assert restored.headers['redelivered'] is True
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisSubclientHealthCheck:
     """Integration tests for dropping half-open fanout (pub/sub) connections.
 

@@ -264,8 +264,8 @@ class GlobalKeyPrefixMixin:
         "SET",
         "SMEMBERS",
         "ZADD",
+        "ZRANGE",
         "ZREM",
-        "ZREVRANGEBYSCORE",
         "PEXPIRE",
     ]
 
@@ -472,9 +472,18 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
-                    visible = client.zrevrangebyscore(
+                    # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
+                    # not implemented by every Redis-compatible server
+                    # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
+                    # replacement.  With ``REV`` the first bound is the
+                    # highest score, so ``(ceil, 0)`` keeps the same order
+                    # and returns the same rows as the old command.  The
+                    # ``byscore``/``offset``/``num`` arguments need redis-py
+                    # >= 4.0, which ``_get_client`` guarantees.
+                    visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
-                        start=num and start, num=num, withscores=True)
+                        desc=True, byscore=True,
+                        offset=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
@@ -1758,9 +1767,10 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (3, 2, 0):
+        # Keep in sync with requirements/extras/redis.txt.
+        if redis.VERSION < (6, 1, 0):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 3.2.0 or later. '
+                'Redis transport requires redis-py versions 6.1.0 or later. '
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
