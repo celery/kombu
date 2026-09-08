@@ -1731,7 +1731,7 @@ class test_Channel:
             R.VERSION = (5, 3, 0)
             with pytest.raises(VersionMismatch, match='5.3.1 or later'):
                 redis.Channel._get_client(self.channel)
-            R.VERSION = (5, 3, 1)
+            R.VERSION = (6, 1, 0)
             assert redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
