@@ -984,6 +984,11 @@ class Channel(virtual.Channel):
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
         self._registered = False
+        #: redis.Sentinel instance(s) created by :meth:`_sentinel_managed_pool`,
+        #: kept so their per-sentinel-node connections can be closed again in
+        #: :meth:`_disconnect_pools` (celery/kombu#1108).
+        self._sentinel_manager = None
+        self._async_sentinel_manager = None
         self._expires = {}
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
@@ -1034,6 +1039,36 @@ class Channel(virtual.Channel):
 
         if async_pool is not None:
             async_pool.disconnect()
+
+        # Close the connections kombu opened to the Sentinel nodes
+        # themselves.  ``pool.disconnect()`` above only tears down the
+        # master/slave connection pool; every ``redis.Sentinel`` instance
+        # keeps its own pool per sentinel node which was previously left
+        # open (celery/kombu#1108): when a sentinel node goes away, kombu
+        # never closes the socket whose peer is gone, and those
+        # connections linger in CLOSE_WAIT until the file descriptor
+        # limit is reached.
+        manager = self._sentinel_manager
+        async_manager = self._async_sentinel_manager
+
+        self._sentinel_manager = self._async_sentinel_manager = None
+
+        if manager is not None and hasattr(manager, 'close'):
+            # redis-py >= 8.1.0 provides Sentinel.close()
+            # (redis/redis-py#4184); older versions have no such API and
+            # keep the previous behaviour.
+            manager.close()
+
+        if async_manager is not None and hasattr(async_manager, 'aclose'):
+            # ``redis.asyncio.sentinel.Sentinel.aclose`` is a coroutine
+            # and kombu's redis transport has no async teardown hook yet,
+            # so schedule it on the currently running loop as a
+            # best-effort cleanup.
+            try:
+                import asyncio
+                asyncio.get_running_loop().create_task(async_manager.aclose())
+            except RuntimeError:  # pragma: no cover - no running loop
+                pass
 
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
@@ -2089,6 +2124,14 @@ class SentinelChannel(Channel):
             min_other_sentinels=getattr(self, 'min_other_sentinels', 0),
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
+
+        # Keep a reference to the Sentinel instance so that the
+        # connections it opened to the sentinel nodes can be closed again
+        # in :meth:`_disconnect_pools` (celery/kombu#1108).
+        if asynchronous:
+            self._async_sentinel_manager = sentinel_inst
+        else:
+            self._sentinel_manager = sentinel_inst
 
         master_name = getattr(self, 'master_name', None)
 
