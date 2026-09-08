@@ -1768,7 +1768,7 @@ class Channel(virtual.Channel):
 
     def _get_client(self):
         # Keep in sync with requirements/extras/redis.txt.
-        if redis.VERSION < (5, 3, 1):
+        if redis.VERSION < (6, 1, 0):
             raise VersionMismatch(
                 'Redis transport requires redis-py versions 5.3.1 or later. '
                 'You have {0.__version__}'.format(redis))
