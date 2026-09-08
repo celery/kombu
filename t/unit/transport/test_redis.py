@@ -1729,7 +1729,7 @@ class test_Channel:
             # The floor matches requirements/extras/redis.txt: anything
             # below 6.1.0 is refused, 6.1.0 itself is accepted.
             R.VERSION = (5, 3, 0)
-            with pytest.raises(VersionMismatch, match='5.3.1 or later'):
+            with pytest.raises(VersionMismatch, match='6.1.0 or later'):
                 redis.Channel._get_client(self.channel)
             R.VERSION = (6, 1, 0)
             assert redis.Channel._get_client(self.channel)
