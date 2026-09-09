@@ -3720,6 +3720,35 @@ class test_RedisSentinel:
 
             connection.close()
 
+    def test_disconnect_pools_closes_async_sentinel_manager(self):
+        # _async_sentinel_manager does not hold a redis.asyncio Sentinel:
+        # asynchronous=True only switches the master/slave connection
+        # class via _connparams, while _sentinel_managed_pool still
+        # creates the synchronous redis.sentinel.Sentinel.  So close()
+        # must be used for it as well; skipping it (e.g. because aclose
+        # is missing) would leak the sentinel-node connections
+        # (celery/kombu#1108).  spec limits the mock to the real API so
+        # a regression back to hasattr(aclose) fails this test.
+        RedisSentinel = redis.redis.sentinel.Sentinel  # real class, pre-patch
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+
+            async_manager = Mock(spec=RedisSentinel)
+            channel._async_sentinel_manager = async_manager
+
+            channel._disconnect_pools()
+            async_manager.close.assert_called_once_with()
+
+            assert channel._async_sentinel_manager is None
+
+            connection.close()
+
 
 class test_SentinelChannel_fanout_compat:
     """The ``sentinel_fanout_compat`` transport option.

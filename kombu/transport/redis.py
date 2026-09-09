@@ -1053,22 +1053,17 @@ class Channel(virtual.Channel):
 
         self._sentinel_manager = self._async_sentinel_manager = None
 
-        if manager is not None and hasattr(manager, 'close'):
-            # redis-py >= 8.1.0 provides Sentinel.close()
-            # (redis/redis-py#4184); older versions have no such API and
-            # keep the previous behaviour.
-            manager.close()
-
-        if async_manager is not None and hasattr(async_manager, 'aclose'):
-            # ``redis.asyncio.sentinel.Sentinel.aclose`` is a coroutine
-            # and kombu's redis transport has no async teardown hook yet,
-            # so schedule it on the currently running loop as a
-            # best-effort cleanup.
-            try:
-                import asyncio
-                asyncio.get_running_loop().create_task(async_manager.aclose())
-            except RuntimeError:  # pragma: no cover - no running loop
-                pass
+        for sentinel_manager in (manager, async_manager):
+            if sentinel_manager is not None and hasattr(sentinel_manager, 'close'):
+                # redis-py >= 8.1.0 provides Sentinel.close()
+                # (redis/redis-py#4184); older versions have no such API
+                # and keep the previous behaviour.  Both managers hold the
+                # same kind of synchronous ``redis.sentinel.Sentinel``:
+                # ``asynchronous=True`` only switches the master/slave
+                # connection class via ``_connparams`` and never creates a
+                # ``redis.asyncio`` Sentinel, so ``close()`` is the API to
+                # use for both (see review on celery/kombu#2631).
+                sentinel_manager.close()
 
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
