@@ -3490,6 +3490,102 @@ class test_RedisSentinel:
             )
             connection.close()
 
+    def test_sentinel_managers_saved_by_managed_pool(self):
+        # The Sentinel instance created by _sentinel_managed_pool must be
+        # kept around so that _disconnect_pools can close the connections
+        # it opened to the sentinel nodes themselves (celery/kombu#1108).
+        # The async pool is created eagerly by ``channel.client``, the sync
+        # pool lazily on first access.
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+
+            assert channel._async_sentinel_manager is patched.return_value
+            assert channel._sentinel_manager is None
+
+            channel.pool  # force sync pool creation
+            assert channel._sentinel_manager is patched.return_value
+
+            connection.close()
+
+    def test_disconnect_pools_closes_sentinel_manager_once(self):
+        # close() must be called exactly once, and a repeated call must
+        # not close again (references are cleared -> idempotent).
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+            manager = Mock()
+            channel._sentinel_manager = manager
+            channel._async_sentinel_manager = object()  # no aclose on old redis-py
+
+            channel._disconnect_pools()
+            manager.close.assert_called_once_with()
+
+            channel._disconnect_pools()
+            manager.close.assert_called_once_with()  # not called again
+
+            assert channel._sentinel_manager is None
+            assert channel._async_sentinel_manager is None
+
+            connection.close()
+
+    def test_disconnect_pools_without_sentinel_close_is_noop(self):
+        # Older redis-py (< 8.1.0) has no Sentinel.close(); this must be a
+        # safe no-op, not an AttributeError.
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+            channel._sentinel_manager = object()  # no close attribute
+            channel._async_sentinel_manager = object()  # no aclose attribute
+
+            channel._disconnect_pools()  # must not raise
+
+            connection.close()
+
+    def test_disconnect_pools_closes_async_sentinel_manager(self):
+        # _async_sentinel_manager does not hold a redis.asyncio Sentinel:
+        # asynchronous=True only switches the master/slave connection
+        # class via _connparams, while _sentinel_managed_pool still
+        # creates the synchronous redis.sentinel.Sentinel.  So close()
+        # must be used for it as well; skipping it (e.g. because aclose
+        # is missing) would leak the sentinel-node connections
+        # (celery/kombu#1108).  spec limits the mock to the real API so
+        # a regression back to hasattr(aclose) fails this test.
+        RedisSentinel = redis.redis.sentinel.Sentinel  # real class, pre-patch
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+
+            async_manager = Mock(spec=RedisSentinel)
+            channel._async_sentinel_manager = async_manager
+
+            channel._disconnect_pools()
+            async_manager.close.assert_called_once_with()
+
+            assert channel._async_sentinel_manager is None
+
+            connection.close()
+
 
 class test_SentinelChannel_fanout_compat:
     """The ``sentinel_fanout_compat`` transport option.
