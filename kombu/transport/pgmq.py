@@ -88,11 +88,6 @@ Connection String
 .. code-block::
 
     pgmq://USERNAME:PASSWORD@HOST:PORT/DATABASE
-
-Examples:
-
-.. code-block::
-
     pgmq://postgres:postgres@localhost:5432/postgres
 
 Transport Options
@@ -105,6 +100,8 @@ Transport Options
 * ``poll_interval_ms``: Poll interval for long-poll reads (default ``100``).
 * ``init_extension``: Create the PGMQ extension on connect (default ``True``).
 * ``pool_size``: Connection pool size (default ``10``).
+* ``pool_timeout``: Seconds to wait for a pooled connection (default
+  is the psycopg pool default, ``30``).
 * ``conn_string``: Optional full PostgreSQL connection string. When set, it
   overrides host/port/database/username/password from the URL.
 * ``fifo_mode``: ``grouped`` or ``round_robin`` to enable FIFO-ordered reads.
@@ -786,7 +783,7 @@ class Transport(virtual.Transport):
         visibility_timeout = int(float(visibility_timeout))
 
         if conn_string := transport_options.get('conn_string'):
-            return PGMQueue(
+            client = PGMQueue(
                 conn_string=conn_string,
                 vt=visibility_timeout,
                 init_extension=transport_options.get(
@@ -794,25 +791,34 @@ class Transport(virtual.Transport):
                 pool_size=transport_options.get(
                     'pool_size', Channel.default_pool_size),
             )
+        else:
+            database = conninfo.virtual_host
+            if database in ('/', None, ''):
+                database = 'postgres'
+            elif database.startswith('/'):
+                database = database[1:]
 
-        database = conninfo.virtual_host
-        if database in ('/', None, ''):
-            database = 'postgres'
-        elif database.startswith('/'):
-            database = database[1:]
+            client = PGMQueue(
+                host=conninfo.hostname or 'localhost',
+                port=str(conninfo.port or self.default_port),
+                database=database,
+                username=conninfo.userid or 'postgres',
+                password=conninfo.password or '',
+                vt=visibility_timeout,
+                init_extension=transport_options.get(
+                    'init_extension', Channel.default_init_extension),
+                pool_size=transport_options.get(
+                    'pool_size', Channel.default_pool_size),
+            )
+        self._apply_pool_timeout(client, transport_options)
+        return client
 
-        return PGMQueue(
-            host=conninfo.hostname or 'localhost',
-            port=str(conninfo.port or self.default_port),
-            database=database,
-            username=conninfo.userid or 'postgres',
-            password=conninfo.password or '',
-            vt=visibility_timeout,
-            init_extension=transport_options.get(
-                'init_extension', Channel.default_init_extension),
-            pool_size=transport_options.get(
-                'pool_size', Channel.default_pool_size),
-        )
+    def _apply_pool_timeout(self, client, transport_options) -> None:
+        timeout = transport_options.get('pool_timeout')
+        pool = getattr(client, 'pool', None)
+        if timeout is None or pool is None:
+            return
+        pool.timeout = float(timeout)
 
     def establish_connection(self):
         with warnings.catch_warnings():

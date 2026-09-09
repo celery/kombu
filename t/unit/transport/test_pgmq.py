@@ -948,6 +948,19 @@ class test_PGMQ_additional:
                 pool_size=10,
             )
 
+    def test_pool_timeout_is_applied(self):
+        with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
+            client = Mock()
+            PGMQueueMock.return_value = client
+            conn = Mock()
+            conn.transport_options = {
+                "conn_string": "postgresql://custom/db",
+                "pool_timeout": 1,
+            }
+            transport = Transport(conn)
+            transport._get_pgmq_client()
+        assert client.pool.timeout == 1.0
+
     def test_basic_cancel_unknown_consumer_tag(self):
         self.channel.basic_cancel("unknown-tag")
 

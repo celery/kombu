@@ -5,12 +5,16 @@ import socket
 from contextlib import closing
 from time import sleep, time
 
+import psycopg
 import pytest
 
 import kombu
 from kombu.exceptions import OperationalError
 
 from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
+
+# connect() does not wrap the transport error as kombu OperationalError.
+_CONN_FAIL = (OperationalError, psycopg.OperationalError, psycopg.InterfaceError)
 
 
 def get_connection(hostname, port, database, username='postgres',
@@ -43,6 +47,8 @@ def invalid_connection():
         'pgmq://postgres:postgres@127.0.0.1:1/postgres',
         transport_options={
             'max_retries': 1,
+            'init_extension': False,
+            'pool_timeout': 1,
             'conn_string': (
                 'postgresql://postgres:postgres@127.0.0.1:1/postgres'
                 '?connect_timeout=1'
@@ -56,20 +62,24 @@ def invalid_connection():
 class test_PGMQBasicFunctionality(BasicFunctionality):
 
     def test_failed_connect(self, invalid_connection):
-        with pytest.raises(OperationalError):
+        with pytest.raises(_CONN_FAIL):
             invalid_connection.connect()
 
     def test_failed_connection(self, invalid_connection):
-        with pytest.raises(OperationalError):
+        with pytest.raises(_CONN_FAIL):
             invalid_connection.connection
 
     def test_failed_channel(self, invalid_connection):
-        with pytest.raises(OperationalError):
+        with pytest.raises(_CONN_FAIL):
             invalid_connection.channel()
 
     def test_failed_default_channel(self, invalid_connection):
-        invalid_connection.transport_options = {'max_retries': 1}
-        with pytest.raises(OperationalError):
+        invalid_connection.transport_options = {
+            'max_retries': 1,
+            'init_extension': False,
+            'pool_timeout': 1,
+        }
+        with pytest.raises(_CONN_FAIL):
             invalid_connection.default_channel
 
 
