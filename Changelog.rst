@@ -4,11 +4,11 @@
  Change history
 ================
 
-Next release
-============
 
-What's Changed
-~~~~~~~~~~~~~~
+Unreleased
+==========
+
+- Add PGMQ transport for PostgreSQL message queues (#2559)
 
 - Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport
   uses a non-transactional pipeline to publish multiple messages in fewer
@@ -24,6 +24,7 @@ What's Changed
   although it subscribes with ``PSUBSCRIBE``, which left the pattern
   subscriptions active on the pub/sub connection after a consumer was
   cancelled.
+
 
 .. _version-5.6.2:
 
