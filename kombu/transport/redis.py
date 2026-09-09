@@ -65,6 +65,17 @@ Transport Options
 * ``retry_on_timeout``
 * ``priority_steps``
 * ``client_name``: (str) The name to use when connecting to Redis server.
+* ``sentinel_fanout_compat``: (bool) Sentinel only.  When enabled the
+  channel also publishes to, and subscribes on, the legacy fanout topic
+  (literally ``/{db}.<exchange>``) used by kombu < 5.4.0, next to the
+  current ``/<db>.<exchange>`` topic.  Enable it on every upgraded
+  participant of fanout traffic (workers as well as Flower or any other
+  client sending control commands) while performing a rolling upgrade
+  from kombu < 5.4.0, so that mixed-version participants keep exchanging
+  broadcast messages, and remove it once everything has been upgraded.
+  Defaults to ``False``.
+
+  .. versionadded:: 5.7.0
 
 Queue Arguments
 ===============
@@ -82,7 +93,7 @@ import inspect
 import numbers
 import socket
 from bisect import bisect
-from collections import namedtuple
+from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
@@ -108,6 +119,7 @@ from . import virtual
 
 try:
     import redis
+    from redis import client, exceptions
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
 except ImportError:  # pragma: no cover
     redis = None
@@ -220,7 +232,7 @@ def Mutex(client, name, expire):
         if lock_acquired:
             try:
                 lock.release()
-            except redis.exceptions.LockNotOwnedError:
+            except exceptions.LockNotOwnedError:
                 # when lock is expired
                 pass
 
@@ -252,8 +264,8 @@ class GlobalKeyPrefixMixin:
         "SET",
         "SMEMBERS",
         "ZADD",
+        "ZRANGE",
         "ZREM",
-        "ZREVRANGEBYSCORE",
         "PEXPIRE",
     ]
 
@@ -328,7 +340,7 @@ class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
         )
 
 
-class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
+class PrefixedRedisPipeline(GlobalKeyPrefixMixin, client.Pipeline):
     """Custom Redis pipeline that takes global_keyprefix into consideration.
 
     As the ``PrefixedStrictRedis`` client uses the `global_keyprefix` to prefix
@@ -338,10 +350,10 @@ class PrefixedRedisPipeline(GlobalKeyPrefixMixin, redis.client.Pipeline):
 
     def __init__(self, *args, **kwargs):
         self.global_keyprefix = kwargs.pop('global_keyprefix', '')
-        redis.client.Pipeline.__init__(self, *args, **kwargs)
+        client.Pipeline.__init__(self, *args, **kwargs)
 
 
-class PrefixedRedisPubSub(redis.client.PubSub):
+class PrefixedRedisPubSub(client.PubSub):
     """Redis pubsub client that takes global_keyprefix into consideration."""
 
     PUBSUB_COMMANDS = (
@@ -460,9 +472,18 @@ class QoS(virtual.QoS):
             try:
                 with Mutex(client, self.unacked_mutex_key,
                            self.unacked_mutex_expire):
-                    visible = client.zrevrangebyscore(
+                    # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
+                    # not implemented by every Redis-compatible server
+                    # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
+                    # replacement.  With ``REV`` the first bound is the
+                    # highest score, so ``(ceil, 0)`` keeps the same order
+                    # and returns the same rows as the old command.  The
+                    # ``byscore``/``offset``/``num`` arguments need redis-py
+                    # >= 4.0, which ``_get_client`` guarantees.
+                    visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
-                        start=num and start, num=num, withscores=True)
+                        desc=True, byscore=True,
+                        offset=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
@@ -963,6 +984,11 @@ class Channel(virtual.Channel):
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
         self._registered = False
+        #: redis.Sentinel instance(s) created by :meth:`_sentinel_managed_pool`,
+        #: kept so their per-sentinel-node connections can be closed again in
+        #: :meth:`_disconnect_pools` (celery/kombu#1108).
+        self._sentinel_manager = None
+        self._async_sentinel_manager = None
         self._expires = {}
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
@@ -1013,6 +1039,31 @@ class Channel(virtual.Channel):
 
         if async_pool is not None:
             async_pool.disconnect()
+
+        # Close the connections kombu opened to the Sentinel nodes
+        # themselves.  ``pool.disconnect()`` above only tears down the
+        # master/slave connection pool; every ``redis.Sentinel`` instance
+        # keeps its own pool per sentinel node which was previously left
+        # open (celery/kombu#1108): when a sentinel node goes away, kombu
+        # never closes the socket whose peer is gone, and those
+        # connections linger in CLOSE_WAIT until the file descriptor
+        # limit is reached.
+        manager = self._sentinel_manager
+        async_manager = self._async_sentinel_manager
+
+        self._sentinel_manager = self._async_sentinel_manager = None
+
+        for sentinel_manager in (manager, async_manager):
+            if sentinel_manager is not None and hasattr(sentinel_manager, 'close'):
+                # redis-py >= 8.1.0 provides Sentinel.close()
+                # (redis/redis-py#4184); older versions have no such API
+                # and keep the previous behaviour.  Both managers hold the
+                # same kind of synchronous ``redis.sentinel.Sentinel``:
+                # ``asynchronous=True`` only switches the master/slave
+                # connection class via ``_connparams`` and never creates a
+                # ``redis.asyncio`` Sentinel, so ``close()`` is the API to
+                # use for both (see review on celery/kombu#2631).
+                sentinel_manager.close()
 
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
@@ -1116,13 +1167,26 @@ class Channel(virtual.Channel):
             return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
         return ''.join([self.keyprefix_fanout, exchange])
 
+    def _get_publish_topics(self, exchange, routing_key):
+        """Return every PUB/SUB topic a fanout message is published to.
+
+        Subclasses can return additional topics when the same message
+        has to reach subscribers that use a different topic layout.
+        """
+        return [self._get_publish_topic(exchange, routing_key)]
+
     def _get_subscribe_topic(self, queue):
         exchange, routing_key = self._fanout_queues[queue]
         return self._get_publish_topic(exchange, routing_key)
 
+    def _get_subscribe_topics(self, queue):
+        exchange, routing_key = self._fanout_queues[queue]
+        return self._get_publish_topics(exchange, routing_key)
+
     def _subscribe(self):
-        keys = [self._get_subscribe_topic(queue)
-                for queue in self.active_fanout_queues]
+        keys = [topic
+                for queue in self.active_fanout_queues
+                for topic in self._get_subscribe_topics(queue)]
         if not keys:
             return
         c = self.subclient
@@ -1132,22 +1196,26 @@ class Channel(virtual.Channel):
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
-        topic = self._get_subscribe_topic(queue)
+        topics = self._get_subscribe_topics(queue)
         c = self.subclient
         if c.connection and c.connection._sock:
-            c.unsubscribe([topic])
+            # topics were registered with PSUBSCRIBE, so only PUNSUBSCRIBE
+            # removes them again.
+            c.punsubscribe(topics)
 
     def _handle_message(self, client, r):
-        if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
-            client.subscribed = False
-            return
-
-        if bytes_to_str(r[0]) == 'pmessage':
-            type, pattern, channel, data = r[0], r[1], r[2], r[3]
+        message_type = bytes_to_str(r[0])
+        if message_type == 'pmessage':
+            pattern, channel, data = r[1], r[2], r[3]
         else:
-            type, pattern, channel, data = r[0], None, r[1], r[2]
+            pattern, channel, data = None, r[1], r[2]
+        if message_type in ('unsubscribe', 'punsubscribe'):
+            # Let redis-py update its own subscription bookkeeping, so that
+            # ``client.subscribed`` is cleared once nothing is left and a
+            # cancelled pattern is not re-subscribed to on reconnect.
+            client.handle_message(r)
         return {
-            'type': type,
+            'type': r[0],
             'pattern': pattern,
             'channel': channel,
             'data': data,
@@ -1185,9 +1253,15 @@ class Channel(virtual.Channel):
                                 channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
-                    self.connection._deliver(
-                        message, self._fanout_to_queue[exchange])
-                    return True
+                    return self._deliver_fanout_message(message, exchange)
+
+    def _deliver_fanout_message(self, message, exchange):
+        """Deliver a decoded fanout *message* received for *exchange*.
+
+        Returns True once the message has been delivered.
+        """
+        self.connection._deliver(message, self._fanout_to_queue[exchange])
+        return True
 
     def _brpop_start(self, timeout=None):
         if timeout is None:
@@ -1438,13 +1512,15 @@ class Channel(virtual.Channel):
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
         publish_batch = kwargs.pop('_publish_batch', None)
-        topic = self._get_publish_topic(exchange, routing_key)
+        topics = self._get_publish_topics(exchange, routing_key)
         payload = dumps(message)
         if publish_batch is not None:
-            publish_batch.add('publish', topic, payload)
+            for topic in topics:
+                publish_batch.add('publish', topic, payload)
             return
         with self.conn_or_acquire() as client:
-            client.publish(topic, payload)
+            for topic in topics:
+                client.publish(topic, payload)
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
@@ -1721,9 +1797,10 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (3, 2, 0):
+        # Keep in sync with requirements/extras/redis.txt.
+        if redis.VERSION < (6, 1, 0):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 3.2.0 or later. '
+                'Redis transport requires redis-py versions 6.1.0 or later. '
                 'You have {0.__version__}'.format(redis))
 
         if self.global_keyprefix:
@@ -1968,6 +2045,10 @@ class SentinelChannel(Channel):
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
 
+    Optional transport options:
+     * `sentinel_fanout_compat` - also use the fanout topic of kombu < 5.4.0
+       while performing a rolling upgrade, see :attr:`sentinel_fanout_compat`.
+
     Example:
     -------
     .. code-block:: python
@@ -1983,10 +2064,36 @@ class SentinelChannel(Channel):
     from_transport_options = Channel.from_transport_options + (
         'master_name',
         'min_other_sentinels',
-        'sentinel_kwargs')
+        'sentinel_kwargs',
+        'sentinel_fanout_compat')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
     connection_class_ssl = SentinelManagedSSLConnection if sentinel else None
+
+    #: Also publish to, and subscribe on, the legacy fanout topic used by
+    #: kombu < 5.4.0 (literally ``/{db}.<exchange>``) in addition to the
+    #: current ``/<db>.<exchange>`` topic, so that participants running
+    #: either version keep exchanging broadcast messages (for example
+    #: Celery control commands) during a rolling upgrade.  A message that
+    #: arrives on both topics is delivered only once.
+    #:
+    #: Disabled by default; enable it via ``transport_options`` on every
+    #: upgraded worker and control client for the duration of the upgrade.
+    #:
+    #: .. versionadded:: 5.7.0
+    sentinel_fanout_compat = False
+
+    #: Number of recently delivered fanout messages remembered for
+    #: de-duplication while :attr:`sentinel_fanout_compat` is enabled.
+    _fanout_compat_dedup_size = 1000
+
+    #: The unformatted fanout prefix (``/{db}.``), captured before
+    #: :meth:`_get_pool` substitutes the database number into it.
+    _legacy_keyprefix_fanout = None
+
+    def __init__(self, *args, **kwargs):
+        self._seen_fanout_tags = OrderedDict()
+        super().__init__(*args, **kwargs)
 
     def _sentinel_managed_pool(self, asynchronous=False):
         connparams = self._connparams(asynchronous)
@@ -2013,6 +2120,14 @@ class SentinelChannel(Channel):
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
 
+        # Keep a reference to the Sentinel instance so that the
+        # connections it opened to the sentinel nodes can be closed again
+        # in :meth:`_disconnect_pools` (celery/kombu#1108).
+        if asynchronous:
+            self._async_sentinel_manager = sentinel_inst
+        else:
+            self._sentinel_manager = sentinel_inst
+
         master_name = getattr(self, 'master_name', None)
 
         if master_name is None:
@@ -2033,8 +2148,73 @@ class SentinelChannel(Channel):
 
     def _get_pool(self, asynchronous=False):
         params = self._connparams(asynchronous=asynchronous)
+        if self._legacy_keyprefix_fanout is None:
+            # kombu < 5.4.0 never substituted the database number into the
+            # sentinel fanout prefix, so older workers publish and listen
+            # on the literal '/{db}.' topic.  Keep the unformatted prefix
+            # so that ``sentinel_fanout_compat`` can still address them.
+            self._legacy_keyprefix_fanout = self.keyprefix_fanout
         self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
+
+    @property
+    def _fanout_compat_active(self):
+        """Whether fanout traffic must also use the legacy topic.
+
+        This is the case when :attr:`sentinel_fanout_compat` is enabled
+        and formatting the prefix actually changed it: with a custom
+        prefix that has no ``{db}`` placeholder, old and new workers
+        already share the same topic.
+        """
+        return bool(
+            self.sentinel_fanout_compat
+            and self._legacy_keyprefix_fanout is not None
+            and self._legacy_keyprefix_fanout != self.keyprefix_fanout
+        )
+
+    def _get_legacy_publish_topic(self, exchange, routing_key):
+        # Same layout as _get_publish_topic, using the unformatted prefix.
+        if routing_key and self.fanout_patterns:
+            return ''.join([
+                self._legacy_keyprefix_fanout, exchange, '/', routing_key,
+            ])
+        return ''.join([self._legacy_keyprefix_fanout, exchange])
+
+    def _get_publish_topics(self, exchange, routing_key):
+        topics = super()._get_publish_topics(exchange, routing_key)
+        if self._fanout_compat_active:
+            topics.append(
+                self._get_legacy_publish_topic(exchange, routing_key))
+        return topics
+
+    def _deliver_fanout_message(self, message, exchange):
+        if (self._fanout_compat_active and
+                self._is_duplicate_fanout_message(message, exchange)):
+            return False
+        return super()._deliver_fanout_message(message, exchange)
+
+    def _is_duplicate_fanout_message(self, message, exchange):
+        """Return True if *message* was already received on the other topic.
+
+        Every message published through kombu carries a unique
+        ``delivery_tag`` (see
+        :meth:`kombu.transport.virtual.Channel._inplace_augment_message`),
+        so seeing a tag again means the message arrived on both the
+        current and the legacy topic.  Messages without a tag cannot be
+        told apart and are never treated as duplicates.
+        """
+        try:
+            tag = message['properties']['delivery_tag']
+        except (KeyError, TypeError):
+            return False
+        key = (exchange, tag)
+        seen = self._seen_fanout_tags
+        if key in seen:
+            return True
+        seen[key] = None
+        if len(seen) > self._fanout_compat_dedup_size:
+            seen.popitem(last=False)
+        return False
 
 
 class SentinelTransport(Transport):

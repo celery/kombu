@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import copy
+import importlib
 import socket
+import sys
 import types
 from collections import defaultdict
 from contextlib import contextmanager
@@ -1097,7 +1099,7 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = [
+        client.zrange.return_value = [
             (1, 10),
             (2, 20),
             (3, 30),
@@ -1106,7 +1108,7 @@ class test_Channel:
         restore = qos.restore_by_tag = Mock(name='restore_by_tag')
         qos._vrestore_count = 1
         qos.restore_visible()
-        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_not_called()
         assert qos._vrestore_count == 2
 
         qos._vrestore_count = 0
@@ -1118,7 +1120,7 @@ class test_Channel:
 
         qos._vrestore_count = 0
         restore.reset_mock()
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos.restore_visible()
         restore.assert_not_called()
         assert qos._vrestore_count == 1
@@ -1134,22 +1136,22 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos = redis.QoS(self.channel)
         qos.restore_by_tag = Mock(name='restore_by_tag')
 
         # interval=3 -> only the 1st and 4th calls perform an actual scan.
         qos._vrestore_count = 0
         qos.restore_visible(interval=3)
-        client.zrevrangebyscore.assert_called_once()
-        client.zrevrangebyscore.reset_mock()
+        client.zrange.assert_called_once()
+        client.zrange.reset_mock()
 
         qos.restore_visible(interval=3)   # 2nd call -> skip
         qos.restore_visible(interval=3)   # 3rd call -> skip
-        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_not_called()
 
         qos.restore_visible(interval=3)   # 4th call -> scan
-        client.zrevrangebyscore.assert_called_once()
+        client.zrange.assert_called_once()
 
     def test_qos_restore_visible_zero_interval_no_zerodivision(self):
         client = self.channel._create_client = Mock(name='client')
@@ -1158,7 +1160,7 @@ class test_Channel:
         def pipe(*args, **kwargs):
             return Pipeline(client)
         client.pipeline = pipe
-        client.zrevrangebyscore.return_value = []
+        client.zrange.return_value = []
         qos = redis.QoS(self.channel)
         qos.restore_by_tag = Mock(name='restore_by_tag')
 
@@ -1166,7 +1168,61 @@ class test_Channel:
         qos._vrestore_count = 0
         qos.restore_visible(interval=0)
         qos.restore_visible(interval=0)
-        assert client.zrevrangebyscore.call_count == 2
+        assert client.zrange.call_count == 2
+
+    def test_qos_restore_visible_uses_zrange_byscore_rev(self):
+        """Regression test for #2050.
+
+        ``ZREVRANGEBYSCORE`` is deprecated since Redis 6.2 and is not
+        implemented by every Redis-compatible server, so ``restore_visible``
+        must issue the equivalent ``ZRANGE ... BYSCORE REV`` query.  With
+        ``REV`` the first bound is the highest score, so the bounds keep the
+        ``(ceil, 0)`` order of the old command.
+        """
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrange.return_value = [(1, 10)]
+
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+        with patch('kombu.transport.redis.time', return_value=1000000.0):
+            qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_not_called()
+        client.zrange.assert_called_once_with(
+            qos.unacked_index_key, 1000000.0 - qos.visibility_timeout, 0,
+            desc=True, byscore=True, offset=0, num=10, withscores=True,
+        )
+        restore.assert_called_once_with(1, client)
+
+    def test_qos_restore_visible_without_limit(self):
+        # ``unacked_restore_limit`` defaults to None, which the poller passes
+        # through as ``num=None``.  redis-py raises DataError when only one
+        # of ``offset``/``num`` is given, so both must be passed as None,
+        # which it treats as "no LIMIT clause".
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+
+        def pipe(*args, **kwargs):
+            return Pipeline(client)
+        client.pipeline = pipe
+        client.zrange.return_value = []
+
+        qos = redis.QoS(self.channel)
+        qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+        with patch('kombu.transport.redis.time', return_value=1000000.0):
+            qos.restore_visible(num=None)
+
+        client.zrange.assert_called_once_with(
+            qos.unacked_index_key, 1000000.0 - qos.visibility_timeout, 0,
+            desc=True, byscore=True, offset=None, num=None, withscores=True,
+        )
 
     def test_basic_consume_when_fanout_queue(self):
         self.channel.exchange_declare(exchange='txconfan', type='fanout')
@@ -1231,9 +1287,23 @@ class test_Channel:
         self.channel.subclient.connection.connect.assert_called_with()
 
     def test_handle_unsubscribe_message(self):
-        s = self.channel.subclient
-        s.subscribed = True
-        self.channel._handle_message(s, ['unsubscribe', 'a', 0])
+        from redis.client import PubSub
+
+        # a real PubSub, so that redis-py's own bookkeeping is exercised
+        pool = Mock(name='pool')
+        pool.get_encoder.return_value = redis.redis.Redis().get_encoder()
+        s = PubSub(connection_pool=pool)
+        s.psubscribe(['a', 'b'])
+        s.punsubscribe(['a', 'b'])
+        assert s.subscribed
+
+        payload = self.channel._handle_message(s, [b'punsubscribe', b'a', 1])
+        assert payload == {
+            'type': b'punsubscribe', 'pattern': None, 'channel': b'a',
+            'data': 1,
+        }
+        assert s.subscribed
+        assert self.channel._handle_message(s, [b'punsubscribe', b'b', 0])
         assert not s.subscribed
 
     def test_handle_pmessage_message(self):
@@ -1279,6 +1349,29 @@ class test_Channel:
         self.channel.connection._deliver.assert_called_once_with(
             message, 'b',
         )
+
+    def test_unsubscribe_from(self):
+        self.channel.subclient = Mock()
+        self.channel._fanout_queues = {'a': ('a', '')}
+
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once_with(
+            ['/{db}.a'])
+        self.channel.subclient.unsubscribe.assert_not_called()
+
+        # nothing to do without a live subscription connection
+        self.channel.subclient.connection._sock = None
+        self.channel._unsubscribe_from('a')
+        self.channel.subclient.punsubscribe.assert_called_once()
+
+    def test_receive_final_unsubscribe_reply_is_ignored(self):
+        s = self.channel.subclient = Mock()
+        self.channel.connection._deliver = Mock(name='_deliver')
+        s.parse_response.return_value = ['punsubscribe', '/{db}.a', 0]
+
+        assert self.channel._receive_one(s) is None
+        s.handle_message.assert_called_once_with(['punsubscribe', '/{db}.a', 0])
+        self.channel.connection._deliver.assert_not_called()
 
     def test_receive_raises_for_connection_error(self):
         self.channel._in_listen = True
@@ -1632,6 +1725,14 @@ class test_Channel:
             R.VERSION = (2, 4, 0)
             with pytest.raises(VersionMismatch):
                 redis.Channel._get_client(self.channel)
+
+            # The floor matches requirements/extras/redis.txt: anything
+            # below 6.1.0 is refused, 6.1.0 itself is accepted.
+            R.VERSION = (5, 3, 0)
+            with pytest.raises(VersionMismatch, match='6.1.0 or later'):
+                redis.Channel._get_client(self.channel)
+            R.VERSION = (6, 1, 0)
+            assert redis.Channel._get_client(self.channel)
         finally:
             if Rv is not None:
                 R.VERSION = Rv
@@ -2254,6 +2355,42 @@ class test_Channel:
                 ('ZREM', 'foo_unacked_index', 'test-tag'),
                 ('HDEL', 'foo_unacked', 'test-tag')
             ]
+
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_restore_visible(self, mock_execute_command):
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        def execute_command(command, *args, **kwargs):
+            # Let the mutex ``SET ... NX`` and its release succeed, and
+            # report no visible tags for the range query.
+            return [] if command == 'ZRANGE' else True
+        mock_execute_command.side_effect = execute_command
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos._vrestore_count = 0
+            with patch('kombu.transport.redis.time', return_value=1000000.0):
+                channel.qos.restore_visible(start=0, num=10)
+
+            commands = [
+                call.args for call in mock_execute_command.mock_calls
+                if call.args
+            ]
+            assert not any(
+                args[0] == 'ZREVRANGEBYSCORE' for args in commands
+            )
+            # The key is prefixed and the query has the ZREVRANGEBYSCORE
+            # semantics: highest score first, then LIMIT and WITHSCORES.
+            assert [args for args in commands if args[0] == 'ZRANGE'] == [(
+                'ZRANGE', 'foo_unacked_index',
+                1000000.0 - channel.visibility_timeout, 0,
+                'BYSCORE', 'REV', 'LIMIT', 0, 10, 'WITHSCORES',
+            )]
 
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""
@@ -3516,6 +3653,319 @@ class test_RedisSentinel:
             )
             connection.close()
 
+    def test_sentinel_managers_saved_by_managed_pool(self):
+        # The Sentinel instance created by _sentinel_managed_pool must be
+        # kept around so that _disconnect_pools can close the connections
+        # it opened to the sentinel nodes themselves (celery/kombu#1108).
+        # The async pool is created eagerly by ``channel.client``, the sync
+        # pool lazily on first access.
+        with patch('redis.sentinel.Sentinel') as patched:
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+
+            assert channel._async_sentinel_manager is patched.return_value
+            assert channel._sentinel_manager is None
+
+            channel.pool  # force sync pool creation
+            assert channel._sentinel_manager is patched.return_value
+
+            connection.close()
+
+    def test_disconnect_pools_closes_sentinel_manager_once(self):
+        # close() must be called exactly once, and a repeated call must
+        # not close again (references are cleared -> idempotent).
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+            manager = Mock()
+            channel._sentinel_manager = manager
+            channel._async_sentinel_manager = object()  # no aclose on old redis-py
+
+            channel._disconnect_pools()
+            manager.close.assert_called_once_with()
+
+            channel._disconnect_pools()
+            manager.close.assert_called_once_with()  # not called again
+
+            assert channel._sentinel_manager is None
+            assert channel._async_sentinel_manager is None
+
+            connection.close()
+
+    def test_disconnect_pools_without_sentinel_close_is_noop(self):
+        # Older redis-py (< 8.1.0) has no Sentinel.close(); this must be a
+        # safe no-op, not an AttributeError.
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+            channel._sentinel_manager = object()  # no close attribute
+            channel._async_sentinel_manager = object()  # no aclose attribute
+
+            channel._disconnect_pools()  # must not raise
+
+            connection.close()
+
+    def test_disconnect_pools_closes_async_sentinel_manager(self):
+        # _async_sentinel_manager does not hold a redis.asyncio Sentinel:
+        # asynchronous=True only switches the master/slave connection
+        # class via _connparams, while _sentinel_managed_pool still
+        # creates the synchronous redis.sentinel.Sentinel.  So close()
+        # must be used for it as well; skipping it (e.g. because aclose
+        # is missing) would leak the sentinel-node connections
+        # (celery/kombu#1108).  spec limits the mock to the real API so
+        # a regression back to hasattr(aclose) fails this test.
+        RedisSentinel = redis.redis.sentinel.Sentinel  # real class, pre-patch
+        with patch('redis.sentinel.Sentinel'):
+            connection = Connection(
+                'sentinel://localhost:65534/',
+                transport_options={
+                    'master_name': 'not_important',
+                },
+            )
+            channel = connection.channel()
+
+            async_manager = Mock(spec=RedisSentinel)
+            channel._async_sentinel_manager = async_manager
+
+            channel._disconnect_pools()
+            async_manager.close.assert_called_once_with()
+
+            assert channel._async_sentinel_manager is None
+
+            connection.close()
+
+
+class test_SentinelChannel_fanout_compat:
+    """The ``sentinel_fanout_compat`` transport option.
+
+    kombu < 5.4.0 used the literal ``/{db}.`` fanout prefix with Redis
+    Sentinel, while newer versions substitute the database number, so
+    mixed-version workers publish and listen on different PUB/SUB topics.
+    See https://github.com/celery/kombu/issues/2152.
+    """
+
+    def _channel(self, db=0, **transport_options):
+        from kombu.transport.redis import SentinelChannel
+
+        transport_options.setdefault('master_name', 'not_important')
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            connection = Connection(
+                f'sentinel://localhost:65532/{db}',
+                transport_options=transport_options,
+            )
+            return connection.channel()
+
+    def _receiving_channel(self, **transport_options):
+        channel = self._channel(**transport_options)
+        channel._fanout_to_queue['celery.pidbox'] = 'q'
+        channel.connection._deliver = Mock(name='_deliver')
+        channel.subclient = Mock(name='subclient')
+        return channel
+
+    @staticmethod
+    def _receive(channel, topic, message):
+        channel.subclient.parse_response.return_value = [
+            'pmessage', topic, topic, dumps(message),
+        ]
+        return channel._receive_one(channel.subclient)
+
+    @staticmethod
+    def _message(tag):
+        return {
+            'body': 'ping',
+            'properties': {
+                'delivery_tag': tag,
+                'delivery_info': {'exchange': 'celery.pidbox',
+                                  'routing_key': ''},
+            },
+        }
+
+    def test_disabled_by_default(self):
+        channel = self._channel()
+
+        assert channel.sentinel_fanout_compat is False
+        assert channel.keyprefix_fanout == '/0.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert not channel._fanout_compat_active
+        assert channel._get_publish_topics('celery.pidbox', '') == [
+            '/0.celery.pidbox',
+        ]
+
+    def test_enabled_uses_current_and_legacy_topics(self):
+        channel = self._channel(db=3, sentinel_fanout_compat=True)
+
+        assert channel.sentinel_fanout_compat is True
+        assert channel.keyprefix_fanout == '/3.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert channel._fanout_compat_active
+        assert channel._get_publish_topics('celery.pidbox', '') == [
+            '/3.celery.pidbox', '/{db}.celery.pidbox',
+        ]
+
+    def test_legacy_prefix_survives_creating_a_second_pool(self):
+        from kombu.transport.redis import SentinelChannel
+
+        channel = self._channel(sentinel_fanout_compat=True)
+        with patch.object(SentinelChannel, '_sentinel_managed_pool'):
+            channel._get_pool(asynchronous=True)
+
+        assert channel.keyprefix_fanout == '/0.'
+        assert channel._legacy_keyprefix_fanout == '/{db}.'
+        assert channel._fanout_compat_active
+
+    def test_enabled_topics_honour_fanout_patterns(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+
+        assert channel._get_publish_topics('celery.pidbox', 'worker.*') == [
+            '/0.celery.pidbox/worker.*', '/{db}.celery.pidbox/worker.*',
+        ]
+
+    @pytest.mark.parametrize('fanout_prefix', [False, 'custom.'])
+    def test_inactive_when_prefix_has_no_db_placeholder(self, fanout_prefix):
+        channel = self._channel(
+            sentinel_fanout_compat=True, fanout_prefix=fanout_prefix)
+
+        assert not channel._fanout_compat_active
+        assert len(channel._get_publish_topics('celery.pidbox', '')) == 1
+
+    def test_put_fanout_publishes_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        client = Mock(name='client')
+        channel._create_client = Mock(return_value=client)
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '')
+
+        channel._create_client.assert_called_once()
+        assert client.publish.call_args_list == [
+            call('/0.celery.pidbox', dumps(body)),
+            call('/{db}.celery.pidbox', dumps(body)),
+        ]
+
+    def test_put_fanout_batch_publishes_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        batch = Mock(name='publish_batch')
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '', _publish_batch=batch)
+
+        assert batch.add.call_args_list == [
+            call('publish', '/0.celery.pidbox', dumps(body)),
+            call('publish', '/{db}.celery.pidbox', dumps(body)),
+        ]
+
+    def test_put_fanout_disabled_publishes_to_current_topic_only(self):
+        channel = self._channel()
+        client = Mock(name='client')
+        channel._create_client = Mock(return_value=client)
+        body = {'hello': 'world'}
+
+        channel._put_fanout('celery.pidbox', body, '')
+
+        client.publish.assert_called_once_with(
+            '/0.celery.pidbox', dumps(body))
+
+    def test_subscribe_to_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+        channel.active_fanout_queues.add('q')
+
+        channel._subscribe()
+
+        channel.subclient.psubscribe.assert_called_once_with(
+            ['/0.celery.pidbox', '/{db}.celery.pidbox'])
+
+    def test_subscribe_disabled_uses_current_topic_only(self):
+        channel = self._channel()
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+        channel.active_fanout_queues.add('q')
+
+        channel._subscribe()
+
+        channel.subclient.psubscribe.assert_called_once_with(
+            ['/0.celery.pidbox'])
+
+    def test_unsubscribe_from_both_topics(self):
+        channel = self._channel(sentinel_fanout_compat=True)
+        channel.subclient = Mock(name='subclient')
+        channel._fanout_queues = {'q': ('celery.pidbox', '')}
+
+        channel._unsubscribe_from('q')
+
+        channel.subclient.punsubscribe.assert_called_once_with(
+            ['/0.celery.pidbox', '/{db}.celery.pidbox'])
+        channel.subclient.unsubscribe.assert_not_called()
+
+    def test_message_received_on_both_topics_is_delivered_once(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        message = self._message('tag-1')
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', message) is False
+
+        channel.connection._deliver.assert_called_once_with(message, 'q')
+
+    def test_distinct_messages_are_all_delivered(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        first, second = self._message('tag-1'), self._message('tag-2')
+
+        assert self._receive(channel, '/0.celery.pidbox', first) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', second) is True
+
+        assert channel.connection._deliver.call_args_list == [
+            call(first, 'q'), call(second, 'q'),
+        ]
+
+    def test_messages_without_delivery_tag_are_not_deduplicated(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        message = {'body': 'ping', 'properties': {}}
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/{db}.celery.pidbox', message) is True
+
+        assert channel.connection._deliver.call_count == 2
+
+    def test_deduplication_history_is_bounded(self):
+        channel = self._receiving_channel(sentinel_fanout_compat=True)
+        channel._fanout_compat_dedup_size = 2
+
+        for tag in ('tag-1', 'tag-2', 'tag-3'):
+            self._receive(channel, '/0.celery.pidbox', self._message(tag))
+
+        assert list(channel._seen_fanout_tags) == [
+            ('celery.pidbox', 'tag-2'), ('celery.pidbox', 'tag-3'),
+        ]
+        # An evicted tag is no longer recognised as a duplicate.
+        assert self._receive(
+            channel, '/{db}.celery.pidbox', self._message('tag-1')) is True
+
+    def test_disabled_does_not_deduplicate(self):
+        channel = self._receiving_channel()
+        message = self._message('tag-1')
+
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+        assert self._receive(channel, '/0.celery.pidbox', message) is True
+
+        assert channel.connection._deliver.call_count == 2
+        assert not channel._seen_fanout_tags
+
 
 class test_GlobalKeyPrefixMixin:
 
@@ -3579,3 +4029,17 @@ class test_GlobalKeyPrefixMixin:
             f"{self.global_keyprefix}fake_key",
             "not_prefixed",
         ]
+
+
+def test_transport_imports_when_redis_parent_module_was_evicted():
+    import kombu.transport
+
+    saved_redis = sys.modules.pop('redis')
+    saved_transport = sys.modules.pop('kombu.transport.redis')
+    try:
+        assert not hasattr(importlib.import_module('redis'), 'client')
+        assert importlib.import_module('kombu.transport.redis').Transport
+    finally:
+        sys.modules['redis'] = saved_redis
+        sys.modules['kombu.transport.redis'] = saved_transport
+        kombu.transport.redis = saved_transport
