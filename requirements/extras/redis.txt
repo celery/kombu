@@ -1,2 +1,2 @@
-redis>=5.3.1,<9.0.0
-packaging
+redis>=6.1.0,<9.0.0
+packaging==26.3

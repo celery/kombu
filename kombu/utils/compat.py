@@ -108,6 +108,10 @@ def fileno(f):
     """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
+    if f is None:
+        # Celery's iterate_file_descriptors_safely catches ValueError,
+        # not AttributeError, so a closed/missing fd must be ValueError.
+        raise ValueError('file descriptor is None')
     return f.fileno()
 
 

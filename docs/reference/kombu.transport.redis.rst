@@ -157,6 +157,37 @@
     When no streaming credential provider is configured this machinery is a
     cheap no-op, so it is always safe to leave enabled.
 
+    Redis Sentinel: rolling upgrades from kombu < 5.4.0
+    ----------------------------------------------------
+    .. versionadded:: 5.7.0
+
+    kombu 5.4.0 changed the PUB/SUB topic that the Sentinel transport uses
+    for fanout exchanges: it now substitutes the database number into the
+    fanout prefix (``/0.celery.pidbox``), where earlier releases used the
+    literal prefix (``/{db}.celery.pidbox``).  Fanout is how Celery delivers
+    its control commands (``ping``, ``shutdown``, ``rate_limit``, Flower,
+    ...), so during a rolling upgrade workers on either side of that release
+    no longer see each other's broadcasts.
+
+    Set the ``sentinel_fanout_compat`` transport option on every upgraded
+    participant, workers as well as Flower or any other client sending
+    control commands, for the duration of the upgrade:
+
+    .. code-block:: python
+
+        app.conf.broker_transport_options = {
+            "master_name": "mymaster",
+            "sentinel_fanout_compat": True,
+        }
+
+    With the option enabled the channel publishes every fanout message to
+    both topics and subscribes to both, delivering a message that arrives
+    twice only once.  Remove the option once every participant runs a
+    release that understands the current topic; turning it off in a rolling
+    fashion is safe as well.  The option has no effect when ``fanout_prefix``
+    is set to a value without a ``{db}`` placeholder, because old and new
+    workers then already share the same topic.
+
     Queue arguments
     ---------------
     The following queue argument is supported. Pass it per-queue via
