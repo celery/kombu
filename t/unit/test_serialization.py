@@ -226,6 +226,23 @@ class test_Serialization:
             content_type='application/x-yaml',
             content_encoding='utf-8') == py_data
 
+    @pytest.mark.parametrize('buffer_type', [memoryview, bytearray])
+    def test_yaml_loads__buffer(self, buffer_type):
+        pytest.importorskip('yaml')
+        register_yaml()
+        assert loads(
+            buffer_type(yaml_data.encode('utf-8')),
+            content_type='application/x-yaml',
+            content_encoding='utf-8') == py_data
+
+    def test_yaml_loads__utf16_buffer(self):
+        pytest.importorskip('yaml')
+        register_yaml()
+        assert loads(
+            memoryview(yaml_data.encode('utf-16')),
+            content_type='application/x-yaml',
+            content_encoding='utf-16') == py_data
+
     def test_yaml_dumps(self):
         pytest.importorskip('yaml')
         register_yaml()

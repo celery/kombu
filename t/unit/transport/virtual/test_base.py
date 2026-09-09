@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import io
+import logging
 import socket
+import sys
 import warnings
 from array import array
 from time import monotonic
@@ -410,10 +412,28 @@ class test_Channel:
         assert errors[0][1] == 1
         assert not q._delivered
 
+    def test_restore_unacked_ignores_raised_exceptions_when_acked(self):
+        q = self.channel.qos
+        q._flush = Mock()
+        q._delivered = {1: 1}
+
+        def mock_restore_raises_exceptions_due_to_acked_message(*args, **kwargs):
+            q.ack(1)  # simulate concurrent ack of the delivered message
+            raise SystemExit(1)
+
+        q.channel._restore = Mock()
+        q.channel._restore.side_effect = mock_restore_raises_exceptions_due_to_acked_message
+
+        errors = q.restore_unacked()
+        assert not errors
+        assert not q._delivered
+
     @patch('kombu.transport.virtual.base.emergency_dump_state')
     @patch(PRINT_FQDN)
+    @pytest.mark.parametrize("stderr_set", [True, False])
     def test_restore_unacked_once_when_unrestored(self, print_,
-                                                  emergency_dump_state):
+                                                  emergency_dump_state, stderr_set, caplog):
+        stderr = sys.stderr if stderr_set else None
         q = self.channel.qos
         q._flush = Mock()
 
@@ -430,8 +450,16 @@ class test_Channel:
         ru.return_value = [(exc, 1)]
 
         self.channel.do_restore = True
-        q.restore_unacked_once()
-        print_.assert_called()
+        with caplog.at_level(logging.INFO, logger="kombu.transport.virtual.base"):
+            q.restore_unacked_once(stderr=stderr)
+        if stderr_set:
+            print_.assert_called()
+            assert not caplog.messages
+        else:
+            assert caplog.messages[0].startswith("Restoring")
+            assert caplog.messages[0].endswith("unacknowledged message(s)")
+            print_.assert_not_called()
+
         emergency_dump_state.assert_called()
 
     def test_basic_recover(self):
@@ -494,6 +522,22 @@ class test_Channel:
     def test_get_exchanges(self):
         self.channel.exchange_declare(exchange='unique_name')
         assert self.channel.get_exchanges()
+
+    def test_basic_cancel(self):
+        c = self.channel
+        c._consumers.add('x')
+        c._tag_to_queue['x'] = 'foo'
+        c._active_queues = ['foo']
+
+        def mock_reset_cycle():
+            # Ensure queue is removed prior to calling '_reset_cycle'
+            assert 'foo' not in c._active_queues
+
+        c._reset_cycle = Mock(side_effect=mock_reset_cycle)
+
+        c.basic_cancel('x')
+        assert c._active_queues == []
+        c._reset_cycle.assert_called_once_with()
 
     def test_basic_cancel_not_in_active_queues(self):
         c = self.channel

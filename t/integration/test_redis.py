@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import os
 import socket
-from time import sleep
+from time import monotonic, sleep
+from unittest.mock import patch
 
 import pytest
 import redis
 
 import kombu
-from kombu.transport.redis import Transport
+from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
+                                   SentinelChannel, Transport)
+from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
                      BasicFunctionality)
@@ -219,6 +222,171 @@ class test_RedisPriority(BasePriority):
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisPublishBatch:
+
+    def test_retry_on_timeout_keeps_publication_immediate(self, connection):
+        connection.transport_options = {
+            **connection.transport_options,
+            'retry_on_timeout': True,
+        }
+        queue = kombu.Queue('batch_retry_on_timeout_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+
+                assert producer.supports_batch_publish is False
+                with producer.batch():
+                    producer.publish(
+                        {'delivery': 'immediate'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    message = queue(channel).get(no_ack=True)
+
+        assert message.payload == {'delivery': 'immediate'}
+
+    def test_manual_flush_sends_and_batch_continues(self, connection):
+        queue = kombu.Queue('batch_manual_flush_queue')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel, serializer='json')
+                bound_queue = queue(channel)
+
+                with producer.batch() as batch:
+                    producer.publish(
+                        {'position': 'first'},
+                        exchange='',
+                        routing_key=queue.name,
+                        declare=[queue],
+                    )
+                    batch.flush()
+                    first = bound_queue.get(no_ack=True)
+                    producer.publish(
+                        {'position': 'second'},
+                        exchange='',
+                        routing_key=queue.name,
+                    )
+
+                second = bound_queue.get(no_ack=True)
+
+        assert first.payload == {'position': 'first'}
+        assert second.payload == {'position': 'second'}
+
+    def test_direct_priority_and_fifo(self, connection):
+        exchange = kombu.Exchange('batch_direct_exchange', type='direct')
+        queue = kombu.Queue(
+            'batch_direct_queue',
+            exchange=exchange,
+            routing_key='batch.direct',
+            max_priority=10,
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    for body, priority in [
+                        ({'position': 'first'}, 6),
+                        ({'position': 'second'}, 3),
+                        ({'position': 'third'}, 6),
+                    ]:
+                        producer.publish(
+                            body,
+                            exchange=exchange,
+                            routing_key='batch.direct',
+                            declare=[queue],
+                            serializer='json',
+                            priority=priority,
+                        )
+
+                bound_queue = queue(channel)
+                received = [
+                    bound_queue.get(no_ack=True).payload
+                    for _ in range(3)
+                ]
+
+        assert received == [
+            {'position': 'second'},
+            {'position': 'first'},
+            {'position': 'third'},
+        ]
+
+    def test_topic_routing(self, connection):
+        exchange = kombu.Exchange('batch_topic_exchange', type='topic')
+        queue = kombu.Queue(
+            'batch_topic_queue',
+            exchange=exchange,
+            routing_key='events.*',
+        )
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                with producer.batch():
+                    producer.publish(
+                        {'event': 'matching'},
+                        exchange=exchange,
+                        routing_key='events.created',
+                        declare=[queue],
+                        serializer='json',
+                    )
+                    producer.publish(
+                        {'event': 'other'},
+                        exchange=exchange,
+                        routing_key='other.created',
+                        serializer='json',
+                    )
+
+                bound_queue = queue(channel)
+                message = bound_queue.get(no_ack=True)
+                assert message.payload == {'event': 'matching'}
+                assert bound_queue.get(no_ack=True) is None
+
+    def test_fanout_is_deferred_until_flush(self, connection, redis_client):
+        exchange = kombu.Exchange('batch_fanout_exchange', type='fanout')
+
+        with connection as conn:
+            with conn.channel() as channel:
+                channel.pool
+                topic = channel._get_publish_topic(
+                    exchange.name,
+                    'worker.created',
+                )
+                keyprefix = connection.transport_options.get(
+                    'global_keyprefix',
+                    '',
+                )
+                with redis_client.pubsub() as subscriber:
+                    subscriber.subscribe(f'{keyprefix}{topic}')
+                    subscribed = subscriber.get_message(timeout=1)
+                    assert subscribed['type'] == 'subscribe'
+
+                    producer = kombu.Producer(channel)
+                    with producer.batch():
+                        producer.publish(
+                            {'event': 'fanout'},
+                            exchange=exchange,
+                            routing_key='worker.created',
+                            declare=[exchange],
+                            serializer='json',
+                        )
+                        assert subscriber.get_message(timeout=0.05) is None
+
+                    published = subscriber.get_message(timeout=1)
+
+        assert published['type'] == 'message'
+        message = loads(published['data'])
+        assert message['properties']['delivery_info'] == {
+            'exchange': exchange.name,
+            'routing_key': 'worker.created',
+        }
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisMessage(BaseMessage):
     pass
 
@@ -415,3 +583,408 @@ class test_RedisQueueExpiration:
         for key in priority_keys:
             ttl = redis_client.pttl(key)
             assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisRestoreVisible:
+    """Ack-emulation restores unacked messages after ``visibility_timeout``.
+
+    ``restore_visible`` scans the unacked index with
+    ``ZRANGE ... BYSCORE REV`` (the replacement for the deprecated
+    ``ZREVRANGEBYSCORE``, see #2050), so this drives that query against a
+    real server with and without ``global_keyprefix``.
+    """
+
+    def test_restore_visible_requeues_expired_unacked(
+            self, connection, redis_client):
+        visibility_timeout = 1
+        # Private unacked keys so the sweep cannot touch messages that other
+        # (possibly concurrent) tests are holding unacked.
+        unacked_key = 'restore_visible_test_unacked'
+        unacked_index_key = 'restore_visible_test_unacked_index'
+        unacked_mutex_key = 'restore_visible_test_unacked_mutex'
+        connection = connection.clone(transport_options={
+            **connection.transport_options,
+            'visibility_timeout': visibility_timeout,
+            'unacked_key': unacked_key,
+            'unacked_index_key': unacked_index_key,
+            'unacked_mutex_key': unacked_mutex_key,
+        })
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        unacked_key = f'{keyprefix}{unacked_key}'
+        unacked_index_key = f'{keyprefix}{unacked_index_key}'
+        unacked_mutex_key = f'{keyprefix}{unacked_mutex_key}'
+        # Clear leftovers from an earlier run.  A stale mutex in particular
+        # would make restore_visible() skip the sweep until its TTL expires.
+        redis_client.delete(unacked_key, unacked_index_key, unacked_mutex_key)
+
+        test_queue = kombu.Queue(
+            'restore_visible_test', routing_key='restore_visible_test'
+        )
+        payload = {'msg': 'restore me'}
+
+        with connection as conn:
+            with conn.channel() as channel:
+                bound_queue = test_queue(channel)
+                bound_queue.declare()
+                bound_queue.purge()
+
+                kombu.Producer(channel).publish(
+                    payload,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    serializer='json',
+                )
+
+                message = bound_queue.get(no_ack=False)
+                assert message.payload == payload
+                tag = message.delivery_tag
+                assert redis_client.hexists(unacked_key, tag)
+                assert redis_client.zscore(unacked_index_key, tag) is not None
+
+                # Still within the visibility timeout: nothing is restored.
+                channel.qos.restore_visible(interval=1)
+                assert bound_queue.get(no_ack=True) is None
+                assert redis_client.hexists(unacked_key, tag)
+
+                sleep(visibility_timeout + 0.5)
+                channel.qos.restore_visible(interval=1)
+
+                assert not redis_client.hexists(unacked_key, tag)
+                assert redis_client.zscore(unacked_index_key, tag) is None
+                restored = bound_queue.get(no_ack=True)
+                assert restored is not None
+                assert restored.payload == payload
+                assert restored.headers['redelivered'] is True
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisSubclientHealthCheck:
+    """Integration tests for dropping half-open fanout (pub/sub) connections.
+
+    On a half-open socket (managed broker failover, expired NAT entry) the
+    health check PING write lands in the kernel buffer and no error is
+    raised, so the subclient health check alone never notices the dead
+    connection.  kombu counts unanswered pings through redis-py's
+    ``health_check_response_counter`` and drops the connection once two
+    full health check intervals pass with no PONG.
+    """
+
+    def _fanout_consumer(self, conn, name, received):
+        """Return a channel subscribed to a fanout exchange over pub/sub."""
+        exchange = kombu.Exchange(f'{name}_exchange', type='fanout')
+        queue = kombu.Queue(f'{name}_queue', exchange=exchange)
+        channel = conn.channel()
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        # first drain registers the subclient with the poller (LISTEN mode)
+        # and sends SUBSCRIBE; it may return on the subscribe confirmation
+        # or time out waiting for one
+        try:
+            conn.drain_events(timeout=0.1)
+        except socket.timeout:
+            pass
+        return channel, exchange
+
+    def test_healthy_subclient_connection_not_dropped(self, connection):
+        """A pub/sub connection with no missed PONGs must stay up."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_live', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            # below the missed-pong threshold the connection is kept
+            assert subclient.connection._sock is not None
+
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'alive'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'alive'}]
+
+    def test_missed_pongs_drop_connection_and_resubscribe(self, connection):
+        """Unanswered PINGs drop the connection; the next poll resubscribes."""
+        received = []
+        with connection as conn:
+            channel, exchange = self._fanout_consumer(
+                conn, 'health_drop', received)
+            subclient = channel.__dict__['subclient']
+            assert subclient.connection._sock is not None
+
+            # two health check intervals passed without a PONG: the socket
+            # is half-open and the connection must be dropped
+            subclient.health_check_response_counter = \
+                SUBCLIENT_MAX_MISSED_HEALTH_CHECKS
+
+            conn.transport.cycle.maybe_check_subclient_health()
+
+            assert subclient.connection._sock is None
+            assert subclient.health_check_response_counter == 0
+
+            # the next poll cycle reconnects and resubscribes
+            try:
+                conn.drain_events(timeout=0.1)
+            except socket.timeout:
+                pass
+
+            # fanout messages flow again
+            producer = kombu.Producer(channel)
+            producer.publish(
+                {'msg': 'recovered'}, exchange=exchange, serializer='json')
+            conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'recovered'}]
+
+
+class _LegacySentinelChannel(Channel):
+    """Behave like the ``SentinelChannel`` of kombu < 5.4.0.
+
+    Those versions never substituted the database number into the fanout
+    prefix, so their PUB/SUB topics are literally ``/{db}.<exchange>``.
+    """
+
+    def _get_pool(self, asynchronous=False):
+        return redis.ConnectionPool(**self._connparams(asynchronous))
+
+
+class _LegacySentinelTransport(Transport):
+    Channel = _LegacySentinelChannel
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisSentinelFanoutCompat:
+    """``sentinel_fanout_compat`` keeps fanout working across kombu versions.
+
+    kombu < 5.4.0 sentinel workers use the literal ``/{db}.<exchange>``
+    PUB/SUB topic while newer ones use ``/<db>.<exchange>``, so broadcast
+    messages such as Celery control commands stop flowing between them
+    (celery/kombu#2152).
+
+    The integration environment runs no Sentinel, so master discovery is
+    bypassed and ``SentinelChannel`` connects straight to the Redis server;
+    the topic selection, PUB/SUB handling and de-duplication under test are
+    the real code.  The old side of the conversation is played by
+    :class:`_LegacySentinelChannel`.
+    """
+
+    @pytest.fixture(autouse=True)
+    def direct_sentinel_channel(self):
+        def direct_pool(channel, asynchronous=False):
+            return redis.ConnectionPool(**channel._connparams(asynchronous))
+
+        with patch.object(SentinelChannel, 'connection_class',
+                          redis.Connection), \
+                patch.object(SentinelChannel, '_sentinel_managed_pool',
+                             direct_pool):
+            yield
+
+    @staticmethod
+    def _host_port():
+        return (os.environ.get('REDIS_HOST', 'localhost'),
+                os.environ.get('REDIS_6379_TCP', '6379'))
+
+    def _sentinel_connection(self, **transport_options):
+        host, port = self._host_port()
+        transport_options.setdefault('master_name', 'mymaster')
+        return kombu.Connection(
+            f'sentinel://{host}:{port}/0',
+            transport_options=transport_options,
+        )
+
+    def _legacy_connection(self):
+        """Return a connection behaving like a kombu < 5.4.0 sentinel worker."""
+        host, port = self._host_port()
+        return kombu.Connection(
+            f'redis://{host}:{port}/0', transport=_LegacySentinelTransport)
+
+    @staticmethod
+    def _consume(channel, exchange, queue_name, received):
+        """Consume *exchange* on *channel*, collecting bodies in *received*."""
+        queue = kombu.Queue(queue_name, exchange=exchange)
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        return consumer
+
+    @staticmethod
+    def _drain(conn, timeout):
+        """Handle events on *conn* for *timeout* seconds.
+
+        ``drain_events()`` returns on any readable event, including
+        subscription confirmations, so keep draining until the time is
+        up and let the tests assert on what was received.
+        """
+        deadline = monotonic() + timeout
+        while (remaining := deadline - monotonic()) > 0:
+            try:
+                conn.drain_events(timeout=remaining)
+            except socket.timeout:
+                return
+
+    @classmethod
+    def _subscribe(cls, conn):
+        # the first drain registers the pub/sub connection with the poller
+        # and sends PSUBSCRIBE; give the server time to confirm it.
+        cls._drain(conn, 0.2)
+
+    @staticmethod
+    def _publish(conn, exchange, body):
+        # declare the exchange on the publishing channel, otherwise the
+        # virtual transport treats an unknown exchange as a direct one.
+        kombu.Producer(
+            conn.default_channel, exchange=exchange, serializer='json',
+        ).publish(body, declare=[exchange])
+
+    def test_legacy_consumer_receives_compat_publisher(self):
+        exchange = kombu.Exchange('sfc_compat_to_legacy', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as new:
+            self._consume(legacy, exchange, 'sfc_compat_to_legacy_q', received)
+            self._subscribe(legacy)
+
+            self._publish(new, exchange, {'cmd': 'ping'})
+            self._drain(legacy, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_compat_consumer_receives_legacy_publisher(self):
+        exchange = kombu.Exchange('sfc_legacy_to_compat', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as new:
+            self._consume(new, exchange, 'sfc_legacy_to_compat_q', received)
+            self._subscribe(new)
+
+            self._publish(legacy, exchange, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_compat_peers_receive_each_message_once(self):
+        exchange = kombu.Exchange('sfc_compat_to_compat', type='fanout')
+        received = []
+        with self._sentinel_connection(sentinel_fanout_compat=True) as one, \
+                self._sentinel_connection(sentinel_fanout_compat=True) as two:
+            self._consume(one, exchange, 'sfc_compat_to_compat_q', received)
+            self._subscribe(one)
+
+            # published to both topics, so it arrives twice on the
+            # subscription connection and must be delivered once.
+            self._publish(two, exchange, {'cmd': 'ping'})
+            self._drain(one, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+    def test_without_compat_legacy_and_current_topics_are_isolated(self):
+        # the situation reported in celery/kombu#2152
+        exchange = kombu.Exchange('sfc_isolated', type='fanout')
+        received = []
+        with self._legacy_connection() as legacy, \
+                self._sentinel_connection() as new:
+            self._consume(new, exchange, 'sfc_isolated_new_q', received)
+            self._subscribe(new)
+            self._publish(legacy, exchange, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+            self._consume(legacy, exchange, 'sfc_isolated_legacy_q', received)
+            self._subscribe(legacy)
+            self._publish(new, exchange, {'cmd': 'ping'})
+            self._drain(legacy, 1)
+
+        assert received == []
+
+    def test_cancelled_consumer_no_longer_receives(self):
+        """Cancelling must PUNSUBSCRIBE from both topics.
+
+        A leaked pattern subscription would deliver the message published
+        after the cancellation for an exchange the channel no longer
+        consumes from.
+        """
+        cancelled = kombu.Exchange('sfc_cancelled', type='fanout')
+        kept = kombu.Exchange('sfc_kept', type='fanout')
+        received = []
+        with self._sentinel_connection(sentinel_fanout_compat=True) as new, \
+                self._legacy_connection() as legacy:
+            consumer = self._consume(
+                new, cancelled, 'sfc_cancelled_q', received)
+            self._consume(new, kept, 'sfc_kept_q', received)
+            self._subscribe(new)
+
+            consumer.cancel()
+            self._publish(legacy, cancelled, {'cmd': 'stale'})
+            self._publish(legacy, kept, {'cmd': 'ping'})
+            self._drain(new, 1)
+
+        assert received == [{'cmd': 'ping'}]
+
+
+@pytest.mark.env('redis')
+class test_SentinelManagerClose:
+    """``_disconnect_pools()`` must close both Sentinel managers.
+
+    celery/kombu#1108: when a sentinel node goes away, kombu never
+    closes the socket whose peer is gone.  The integration environment
+    runs no Sentinel, so the Sentinel constructor is patched to return a
+    sentinel-like object whose ``master_for`` delegates to a real Redis
+    connection (enabling channel setup), while exposing ``close()`` for
+    verification.
+    """
+
+    @staticmethod
+    def _host_port():
+        return (os.environ.get('REDIS_HOST', 'localhost'),
+                os.environ.get('REDIS_6379_TCP', '6379'))
+
+    def test_disconnect_pools_closes_both_managers(self):
+        host, port = self._host_port()
+
+        class PatchedSentinel:
+            def __init__(self, sentinels, **kw):
+                self.closed = False
+
+            def master_for(self, service_name, redis_class=redis.Redis, **kw):
+                return redis_class(host=host, port=int(port))
+
+            def slave_for(self, service_name, redis_class=redis.Redis, **kw):
+                return redis_class(host=host, port=int(port))
+
+            def close(self):
+                self.closed = True
+
+        with patch('redis.sentinel.Sentinel', PatchedSentinel):
+            connection = kombu.Connection(
+                f'sentinel://{host}:{port}/0',
+                transport_options={'master_name': 'mymaster'},
+            )
+            channel = connection.channel()
+            # trigger creation of both managers
+            _ = channel.client  # async manager
+            _ = channel.pool   # sync manager
+
+            async_mgr = channel._async_sentinel_manager
+            sync_mgr = channel._sentinel_manager
+            assert isinstance(async_mgr, PatchedSentinel)
+            assert isinstance(sync_mgr, PatchedSentinel)
+            assert not async_mgr.closed
+            assert not sync_mgr.closed
+
+            channel._disconnect_pools()
+
+            assert async_mgr.closed
+            assert sync_mgr.closed
+            assert channel._async_sentinel_manager is None
+            assert channel._sentinel_manager is None
