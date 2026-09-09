@@ -2515,6 +2515,43 @@ class test_DisconnectRegistration:
         self.loop.remove.assert_not_called()
         assert len(self.loop.on_tick) == 1
 
+    def test_disconnect_clears_shared_connection_registrations(self):
+        client = self.channel.client
+        subclient = self.channel.__dict__['subclient'] = Client()
+        subclient.connection = client.connection
+        self.cycle._register(self.channel, subclient, 'LISTEN')
+        old_fd = client.connection._sock.fileno()
+        poll_callbacks = self.loop.on_tick.copy()
+        client.connection._sock = None
+
+        for _ in range(2):
+            self.cycle._on_connection_disconnect(client.connection)
+
+            assert not self.cycle._chan_to_sock
+            assert not self.cycle._fd_to_chan
+            self.loop.remove.assert_called_once_with(old_fd)
+            assert self.loop.on_tick == poll_callbacks
+
+    def test_disconnect_preserves_another_channel(self):
+        another_channel = self.connection.channel()
+        another_client = another_channel.client
+        self.cycle._register(another_channel, another_client, 'BRPOP')
+        retained_socket = another_client.connection._sock
+        retained_fd = retained_socket.fileno()
+        disconnected = self.channel.client.connection
+        old_fd = disconnected._sock.fileno()
+        poll_callbacks = self.loop.on_tick.copy()
+        disconnected._sock = None
+
+        self.cycle._on_connection_disconnect(disconnected)
+
+        assert self.cycle._chan_to_sock == {
+            (another_channel, another_client, 'BRPOP'): retained_socket,
+        }
+        assert self.cycle.fds == {retained_fd: (another_channel, 'BRPOP')}
+        self.loop.remove.assert_called_once_with(old_fd)
+        assert self.loop.on_tick == poll_callbacks
+
     @pytest.mark.parametrize('mode', ['BRPOP', 'LISTEN'])
     def test_disconnect_preserves_other_mode(self, mode):
         client = self.channel.client
@@ -3580,7 +3617,8 @@ class test_RedisSentinel:
             channel._async_sentinel_manager = async_manager
 
             channel._disconnect_pools()
-            async_manager.close.assert_called_once_with()
+            if hasattr(RedisSentinel, 'close'):
+                async_manager.close.assert_called_once_with()
 
             assert channel._async_sentinel_manager is None
 

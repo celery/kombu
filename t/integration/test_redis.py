@@ -64,8 +64,11 @@ def invalid_connection():
 
 
 @pytest.mark.env('redis')
-def test_event_loop_consumes_after_connection_reconnect(connection):
-    queue = kombu.Queue(f'reconnect-{uuid4().hex}')
+@pytest.mark.parametrize('mode', ['BRPOP', 'LISTEN'])
+def test_event_loop_consumes_after_connection_reconnect(connection, mode):
+    name = f'reconnect-{uuid4().hex}'
+    exchange = kombu.Exchange(name, type='fanout' if mode == 'LISTEN' else 'direct')
+    queue = kombu.Queue(name, exchange=exchange, routing_key=name)
     received = []
 
     def on_message(body, message):
@@ -80,15 +83,26 @@ def test_event_loop_consumes_after_connection_reconnect(connection):
                 for tick in hub.on_tick:
                     tick()
                 cycle = connection.transport.cycle
-                redis_connection = consumer.channel.client.connection
+                client = (consumer.channel.subclient if mode == 'LISTEN'
+                          else consumer.channel.client)
+                redis_connection = client.connection
                 try:
                     for sequence in range(3):
                         # Reconnect before the next poll tick, as redis-py can do
                         # internally while retrying a command or health check.
                         redis_connection.disconnect()
                         redis_connection.connect()
+                        if mode == 'LISTEN':
+                            for tick in hub.on_tick:
+                                tick()
+                            # Wait for Redis to confirm resubscription before
+                            # publishing; fanout messages are not queued.
+                            response = client.get_message(timeout=5)
+                            assert response is not None
+                            assert response['type'] == 'psubscribe'
                         with connection.clone() as publisher:
-                            kombu.Producer(publisher).publish(sequence, routing_key=queue.name)
+                            kombu.Producer(publisher, exchange=exchange).publish(
+                                sequence, routing_key=queue.name)
                         deadline = monotonic() + 5
                         while len(received) <= sequence and monotonic() < deadline:
                             for tick in hub.on_tick:
@@ -97,7 +111,8 @@ def test_event_loop_consumes_after_connection_reconnect(connection):
                                 callback, args = hub.readers[fd]
                                 callback(*args)
                         assert received == list(range(sequence + 1))
-                        assert 'subclient' not in consumer.channel.__dict__
+                        if mode == 'BRPOP':
+                            assert 'subclient' not in consumer.channel.__dict__
                 finally:
                     queue(consumer.channel).delete()
         assert not cycle._chan_to_sock
