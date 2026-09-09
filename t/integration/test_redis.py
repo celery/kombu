@@ -930,3 +930,61 @@ class test_RedisSentinelFanoutCompat:
             self._drain(new, 1)
 
         assert received == [{'cmd': 'ping'}]
+
+
+@pytest.mark.env('redis')
+class test_SentinelManagerClose:
+    """``_disconnect_pools()`` must close both Sentinel managers.
+
+    celery/kombu#1108: when a sentinel node goes away, kombu never
+    closes the socket whose peer is gone.  The integration environment
+    runs no Sentinel, so the Sentinel constructor is patched to return a
+    sentinel-like object whose ``master_for`` delegates to a real Redis
+    connection (enabling channel setup), while exposing ``close()`` for
+    verification.
+    """
+
+    @staticmethod
+    def _host_port():
+        return (os.environ.get('REDIS_HOST', 'localhost'),
+                os.environ.get('REDIS_6379_TCP', '6379'))
+
+    def test_disconnect_pools_closes_both_managers(self):
+        host, port = self._host_port()
+
+        class PatchedSentinel:
+            def __init__(self, sentinels, **kw):
+                self.closed = False
+
+            def master_for(self, service_name, redis_class=redis.Redis, **kw):
+                return redis_class(host=host, port=int(port))
+
+            def slave_for(self, service_name, redis_class=redis.Redis, **kw):
+                return redis_class(host=host, port=int(port))
+
+            def close(self):
+                self.closed = True
+
+        with patch('redis.sentinel.Sentinel', PatchedSentinel):
+            connection = kombu.Connection(
+                f'sentinel://{host}:{port}/0',
+                transport_options={'master_name': 'mymaster'},
+            )
+            channel = connection.channel()
+            # trigger creation of both managers
+            _ = channel.client  # async manager
+            _ = channel.pool   # sync manager
+
+            async_mgr = channel._async_sentinel_manager
+            sync_mgr = channel._sentinel_manager
+            assert isinstance(async_mgr, PatchedSentinel)
+            assert isinstance(sync_mgr, PatchedSentinel)
+            assert not async_mgr.closed
+            assert not sync_mgr.closed
+
+            channel._disconnect_pools()
+
+            assert async_mgr.closed
+            assert sync_mgr.closed
+            assert channel._async_sentinel_manager is None
+            assert channel._sentinel_manager is None
