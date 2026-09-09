@@ -110,7 +110,11 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
 
         service_model = self.sqs_connection.meta.service_model
         protocol = service_model.protocol
-        all_params = {**(params or {}), **protocol_params.get(protocol, {})}
+        all_params = self._build_make_request_params(
+            params=params,
+            protocol_params=protocol_params,
+            protocol=protocol
+        )
 
         if protocol == 'query':
             request = self._create_query_request(
@@ -128,6 +132,24 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         prepared_request = request.prepare()
 
         return self._mexe(prepared_request, callback=callback)
+
+    @staticmethod
+    def _build_make_request_params(
+        params: dict | None,
+        protocol_params: dict | None,
+        protocol: str | None,
+    ) -> dict:
+        """Build the parameters for the make_request call.
+
+        This method safely builds the request parameters, and correctly handles when parameters are not set.
+
+        :param params: The original request parameters.
+        :param protocol_params: The protocol-specific request parameters.
+        :param protocol: The protocol being used for the request.
+        :return: The combined request parameters.
+        """
+        safe_proto_params = protocol_params or {}
+        return {**(params or {}), **safe_proto_params.get(protocol, {})}
 
     def create_queue(self, queue_name,
                      visibility_timeout=None, callback=None):

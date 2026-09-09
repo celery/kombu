@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from kombu.asynchronous.http import Response
 
 __all__ = (
-    'reraise', 'KombuError', 'OperationalError',
+    'reraise', 'KombuError', 'OperationalError', 'BatchPublishError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
@@ -41,6 +41,10 @@ class KombuError(Exception):
 
 class OperationalError(KombuError):
     """Recoverable message transport connection error."""
+
+
+class BatchPublishError(KombuError):
+    """Batch publication failed with an uncertain delivery outcome."""
 
 
 class SerializationError(KombuError):

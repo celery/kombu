@@ -148,6 +148,20 @@ class test_Exchange:
         Exchange('foo', channel=chan).Message({'foo': 'bar'})
         assert 'prepare_message' in chan
 
+    def test_create_message_delivery_mode(self) -> None:
+        chan = get_conn().channel()
+        exchange = Exchange('foo', channel=chan, delivery_mode='persistent')
+
+        # an explicit delivery_mode overrides the exchange default
+        message = exchange.Message({'foo': 'bar'}, delivery_mode='transient')
+        assert message['properties']['delivery_mode'] == \
+            Exchange.TRANSIENT_DELIVERY_MODE
+
+        # without one, the exchange default is used
+        message = exchange.Message({'foo': 'bar'})
+        assert message['properties']['delivery_mode'] == \
+            Exchange.PERSISTENT_DELIVERY_MODE
+
     def test_publish(self) -> None:
         chan = get_conn().channel()
         Exchange('foo', channel=chan).publish('the quick brown fox')
@@ -422,6 +436,36 @@ class test_Queue:
         q = Queue('foo', self.exchange, 'rk')
         d = q.as_dict(recurse=True)
         assert d['exchange']['name'] == self.exchange.name
+
+    def test_as_dict_from_dict_roundtrip(self) -> None:
+        q = Queue(
+            'foo', Exchange('fooex', type='topic'), 'rk',
+            durable=False, exclusive=True, auto_delete=True, no_ack=True,
+            alias='fooalias', no_declare=True,
+            expires=30.0, message_ttl=20.0,
+            max_length=100, max_length_bytes=1000, max_priority=9,
+            queue_arguments={'x-queue-mode': 'lazy'},
+            binding_arguments={'x-match': 'all'},
+            consumer_arguments={'x-priority': 5},
+        )
+        d = q.as_dict(recurse=True)
+        # ``from_dict`` describes the exchange by name/type, not by object.
+        d['exchange'], d['exchange_type'] = q.exchange.name, q.exchange.type
+        q2 = Queue.from_dict(d['name'], **d)
+
+        for attr, _ in Queue.attrs:
+            if attr == 'exchange':
+                continue
+            assert getattr(q2, attr) == getattr(q, attr), attr
+        assert q2.exchange.name == 'fooex'
+        assert q2.exchange.type == 'topic'
+
+    def test_from_dict_does_not_override_defaults(self) -> None:
+        q = Queue.from_dict('foo', exchange='fooex')
+        assert q.max_length is None
+        assert q.expires is None
+        assert q.durable
+        assert not q.auto_delete
 
     def test_queue_dump(self) -> None:
         b = binding(self.exchange, 'rk')

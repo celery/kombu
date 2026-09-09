@@ -194,10 +194,13 @@ class test_SimpleBuffer(SimpleBase):
         assert q.queue.exchange.auto_delete
 
     def test_queue_opts(self):
-        q = self.Queue('test_queue_opts', queue_opts={'auto_delete': False})
+        q = self.Queue('test_queue_opts',
+                       queue_opts={'auto_delete': False, 'exclusive': False})
         assert not q.queue.durable
         assert not q.queue.auto_delete
+        assert not q.queue.exclusive
 
         q = self.Queue('test_queue_opts')
         assert not q.queue.durable
         assert q.queue.auto_delete
+        assert q.queue.exclusive
