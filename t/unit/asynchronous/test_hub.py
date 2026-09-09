@@ -586,3 +586,30 @@ class test_Hub:
         with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
             self.hub._pop_ready()
             lock.__enter__.assert_called_once()
+
+    def test_close_clears_global_event_loop(self):
+        # Test that closing a hub clears the global event loop if it's the current one
+        prev_loop = get_event_loop()
+        try:
+            hub = Hub()
+            set_event_loop(hub)
+            assert get_event_loop() is hub
+            hub.close()
+            assert get_event_loop() is None
+        finally:
+            set_event_loop(prev_loop)
+
+    def test_close_does_not_clear_other_event_loop(self):
+        # Test that closing a hub doesn't clear the global event loop if it's a different one
+        prev_loop = get_event_loop()
+        try:
+            hub1 = Hub()
+            hub2 = Hub()
+            set_event_loop(hub1)
+            assert get_event_loop() is hub1
+            hub2.close()
+            # hub1 should still be the current loop
+            assert get_event_loop() is hub1
+            hub1.close()
+        finally:
+            set_event_loop(prev_loop)

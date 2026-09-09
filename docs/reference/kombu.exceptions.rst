@@ -15,4 +15,4 @@
     .. autoexception:: LimitExceeded
     .. autoexception:: ConnectionLimitExceeded
     .. autoexception:: ChannelLimitExceeded
-
+    .. autoexception:: BatchPublishError

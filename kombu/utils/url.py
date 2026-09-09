@@ -39,7 +39,9 @@ def parse_url(url):
     if query:
         keys = [key for key in query.keys() if key.startswith('ssl_')]
         for key in keys:
-            if key == 'ssl_cert_reqs':
+            if key == "ssl_check_hostname":
+                query[key] = query[key].lower() != 'false'
+            elif key == 'ssl_cert_reqs':
                 query[key] = parse_ssl_cert_reqs(query[key])
                 if query[key] is None:
                     logger.warning('Defaulting to insecure SSL behaviour.')

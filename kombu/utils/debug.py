@@ -11,7 +11,8 @@ from kombu.log import get_logger
 
 if TYPE_CHECKING:
     from logging import Logger
-    from typing import Any, Callable, Dict, List, Optional
+    from types import TracebackType
+    from typing import Any, Callable
 
     from kombu.transport.base import Transport
 
@@ -19,8 +20,8 @@ __all__ = ('setup_logging', 'Logwrapped')
 
 
 def setup_logging(
-    loglevel: Optional[int] = logging.DEBUG,
-    loggers: Optional[List[str]] = None
+    loglevel: int | None = logging.DEBUG,
+    loggers: list[str] | None = None
 ) -> None:
     """Setup logging to stdout."""
     loggers = ['kombu.connection', 'kombu.channel'] if not loggers else loggers
@@ -33,13 +34,11 @@ def setup_logging(
 class Logwrapped:
     """Wrap all object methods, to log on call."""
 
-    __ignore = ('__enter__', '__exit__')
-
     def __init__(
         self,
         instance: Transport,
-        logger: Optional[Logger] = None,
-        ident: Optional[str] = None
+        logger: Logger | None = None,
+        ident: str | None = None
     ):
         self.instance = instance
         self.logger = get_logger(logger)
@@ -48,11 +47,11 @@ class Logwrapped:
     def __getattr__(self, key: str) -> Callable:
         meth = getattr(self.instance, key)
 
-        if not callable(meth) or key in self.__ignore:
+        if not callable(meth):
             return meth
 
         @wraps(meth)
-        def __wrapped(*args: List[Any], **kwargs: Dict[str, Any]) -> Callable:
+        def __wrapped(*args: list[Any], **kwargs: dict[str, Any]) -> Callable:
             info = ''
             if self.ident:
                 info += self.ident.format(self.instance)
@@ -70,8 +69,20 @@ class Logwrapped:
 
         return __wrapped
 
+    def __enter__(self) -> Logwrapped:
+        self.instance.__enter__()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> bool | None:
+        return self.instance.__exit__(exc_type, exc_val, exc_tb)
+
     def __repr__(self) -> str:
         return repr(self.instance)
 
-    def __dir__(self) -> List[str]:
+    def __dir__(self) -> list[str]:
         return dir(self.instance)

@@ -163,7 +163,7 @@ class test_Connection:
         conn._ensure_connection = Mock()
 
         conn.connect()
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -182,7 +182,7 @@ class test_Connection:
 
         conn.connect()
         # connect() is ignoring transport options
-        # ensure_connection must be called to return immidiately
+        # ensure_connection must be called to return immediately
         # and fail with transport exception
         conn._ensure_connection.assert_called_with(
             max_retries=1, reraise_as_library_errors=False
@@ -296,6 +296,23 @@ class test_Connection:
             cb = args[4]
             assert cb(KeyError(), intervals, 0) == 0
             errback.assert_called()
+
+    def test_ensure_connection_switches_host_even_if_errback_raises(self):
+        """Verify host is switched even when errback raises an exception."""
+        c = Connection('amqp://A;amqp://B')
+
+        with patch('kombu.connection.retry_over_time') as rot:
+            errback = Mock(side_effect=TimeoutError('stop'))
+            c.ensure_connection(errback=errback)
+            rot.assert_called()
+
+            args = rot.call_args[0]
+            cb = args[4]
+
+            with patch.object(c, 'maybe_switch_next') as switch_mock:
+                with pytest.raises(TimeoutError):
+                    cb(KeyError(), iter([1, 2]), 0)
+                switch_mock.assert_called_once()
 
     def test_supports_heartbeats(self):
         c = Connection(transport=Mock)
@@ -496,6 +513,39 @@ class test_Connection:
         ensured = self.conn.ensure(self.conn, publish)
         with pytest.raises(OperationalError):
             ensured()
+
+    def test_ensure_switches_host_on_conn_error(self):
+        """Verify ensure() calls maybe_switch_next on connection errors.
+
+        When a connection error occurs (e.g. PRECONDITION_FAILED for a
+        missing stream queue replica), ensure() should cycle to the next
+        host before retrying.
+        """
+        class _ConnectionError(Exception):
+            pass
+
+        tries = 0
+
+        def publish():
+            nonlocal tries
+            tries += 1
+            if tries <= 1:
+                raise _ConnectionError('PRECONDITION_FAILED')
+            return 'ok'
+
+        c = Connection('amqp://A;amqp://B', transport=Transport)
+        c.get_transport_cls().connection_errors = (_ConnectionError,)
+        c.get_transport_cls().channel_errors = ()
+
+        with patch.object(c, 'maybe_switch_next') as switch_mock, \
+                patch.object(c, '_ensure_connection'), \
+                patch.object(c, 'collect'):
+            c._default_channel = Mock()
+            obj = Mock()
+            ensured = c.ensure(obj, publish, max_retries=3)
+            ensured()
+
+            switch_mock.assert_called_once()
 
     def test_ensure_retry_errors_is_limited_by_max_retries(self):
         class _MessageNacked(Exception):
@@ -751,6 +801,77 @@ class test_Connection:
             with pytest.raises(OperationalError):
                 conn.default_channel
             assert conn._establish_connection.call_count == 2
+
+    def test_connection_timeout_with_errback(self):
+        errback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'errback': errback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        errback.assert_called()
+
+    def test_connection_timeout_with_callback(self):
+        callback = Mock()
+        with Connection(
+            ['server1', 'server2'],
+            transport=TimeoutingTransport,
+            connect_timeout=1,
+            transport_options={
+                'connect_retries_timeout': 2,
+                'interval_start': 0,
+                'interval_step': 0,
+                'callback': callback
+            },
+        ) as conn:
+            with pytest.raises(OperationalError):
+                conn.default_channel
+
+        callback.assert_called()
+
+
+class test_Connection_callable_password:
+
+    def test_connection_preserves_callable_password(self):
+        """Callable password is stored without coercion."""
+        password_func = Mock(return_value='secret')
+        conn = Connection(port=5672, transport=Transport,
+                          password=password_func)
+        assert conn.password is password_func
+
+    def test_clone_preserves_callable_password(self):
+        """Cloned connection preserves callable password."""
+        password_func = Mock(return_value='secret')
+        conn = Connection(port=5672, transport=Transport,
+                          password=password_func)
+        cloned = conn.clone()
+        assert cloned.password is password_func
+
+    def test_as_uri_with_callable_password(self):
+        """as_uri() resolves callable password without crashing."""
+        password_func = Mock(return_value='secret_token')
+        conn = Connection(
+            'amqp://user@localhost:5672//',
+            password=password_func,
+            transport=Transport,
+        )
+        # Without include_password, password is masked and callable NOT invoked
+        uri = conn.as_uri()
+        assert '**' in uri
+        password_func.assert_not_called()
+        # With include_password, the resolved password appears
+        uri_with_pass = conn.as_uri(include_password=True)
+        assert 'secret_token' in uri_with_pass
+        password_func.assert_called_once()
 
 
 class test_Connection_with_transport_options:
@@ -1008,6 +1129,43 @@ class test_ConnectionPool(ResourceCase):
         P = self.create_resource(10)
         with P.acquire_channel() as (conn, channel):
             assert channel is conn.default_channel
+
+    def test_exception_during_connection_use(self):
+        """Tests that connections retrieved from a pool are replaced.
+
+        In case of an exception during usage of an exception, it is required that the
+        connection is 'replaced' (effectively closing the connection) before releasing
+        it back into the pool. This ensures that reconnecting to the broker is required
+        before the next usage.
+        """
+        P = self.create_resource(1)
+
+        # Raising an exception during a network call should cause the cause the
+        # connection to be replaced.
+        with pytest.raises(IOError):
+            with P.acquire() as connection:
+                connection.connect()
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        # Acquiring the same connection from the pool yields a disconnected Connection
+        # object.
+        with P.acquire() as connection:
+            assert not connection.connected
+
+        # acquire_channel automatically reconnects
+        with pytest.raises(IOError):
+            with P.acquire_channel() as (connection, _):
+                # The Connection object should still be connected
+                assert connection.connected
+                connection.heartbeat_check = Mock()
+                connection.heartbeat_check.side_effect = IOError()
+                _ = connection.heartbeat_check()
+
+        with P.acquire() as connection:
+            # The connection should be closed
+            assert not connection.connected
 
 
 class test_ChannelPool(ResourceCase):

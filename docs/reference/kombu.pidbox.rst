@@ -70,6 +70,24 @@
         .. automethod:: get_reply_queue
         .. automethod:: get_queue
 
+    Mailbox Options
+    ~~~~~~~~~~~~~~~
+
+    .. versionadded:: 5.6.0
+
+    The `Mailbox` supports several configuration options that affect
+    the behavior of its queues.
+
+    - ``queue_durable``: If True, declares durable queues that survive broker restarts.
+      Defaults to False.
+    - ``queue_exclusive``: If True, declares exclusive queues (usable by only
+      one connection, auto-deleted on disconnect). Defaults to True.
+
+    .. versionchanged:: 5.7.0
+       ``queue_exclusive`` now defaults to ``True`` for RabbitMQ 4.3.0
+       compatibility. RabbitMQ 4.3.0 rejects transient non-exclusive queues
+       by default.
+
     Node
     ----
 
@@ -91,4 +109,3 @@
         .. automethod:: handle
         .. automethod:: handle_message
         .. automethod:: reply
-

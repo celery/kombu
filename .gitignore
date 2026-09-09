@@ -33,6 +33,12 @@ htmlcov/
 test.db
 coverage.xml
 venv/
+.venv
 env
 .eggs
 .python-version
+.coverage.*
+control/
+.env
+.hypothesis/*
+junit.xml

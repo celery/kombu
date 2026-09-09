@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import zlib
 
 from kombu.utils.encoding import ensure_bytes
@@ -104,18 +105,13 @@ else:
              'application/x-lzma', aliases=['lzma', 'xz'])
 
 try:
-    import zstandard as zstd
+    if sys.version_info >= (3, 14):
+        from compression import zstd
+    else:
+        from backports import zstd
 except ImportError:  # pragma: no cover
-    pass
+    pass  # no zstd support
 else:
-    def zstd_compress(body):
-        c = zstd.ZstdCompressor()
-        return c.compress(body)
-
-    def zstd_decompress(body):
-        d = zstd.ZstdDecompressor()
-        return d.decompress(body)
-
-    register(zstd_compress,
-             zstd_decompress,
+    register(zstd.compress,
+             zstd.decompress,
              'application/zstd', aliases=['zstd', 'zstandard'])

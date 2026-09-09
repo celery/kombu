@@ -249,7 +249,8 @@ class Exchange(MaybeChannelBound):
             headers (Dict): Message headers.
         """
         properties = {} if properties is None else properties
-        properties['delivery_mode'] = maybe_delivery_mode(self.delivery_mode)
+        properties['delivery_mode'] = maybe_delivery_mode(
+            delivery_mode or self.delivery_mode)
         if (isinstance(body, str) and
                 properties.get('content_encoding', None)) is None:
             kwargs['content_encoding'] = 'utf-8'
@@ -468,8 +469,8 @@ class Queue(MaybeChannelBound):
 
             See https://www.rabbitmq.com/ttl.html#queue-ttl
 
-            **RabbitMQ extension**: Only available when using RabbitMQ.
-
+            **RabbitMQ extension**: Available when using RabbitMQ.
+            **Redis extension**: Available when using Redis.
         message_ttl (float): Message time to live in seconds.
 
             This setting controls how long messages can stay in the queue
@@ -832,6 +833,12 @@ class Queue(MaybeChannelBound):
             expiring_queue = False
         return not expiring_queue and not self.auto_delete
 
+    #: Attributes handled explicitly by :meth:`from_dict`, every other
+    #: attribute in :attr:`attrs` is forwarded to :class:`Queue` as-is.
+    _from_dict_explicit_attrs = frozenset({
+        'name', 'exchange', 'routing_key', 'durable', 'auto_delete',
+    })
+
     @classmethod
     def from_dict(cls, queue, **options):
         binding_key = options.get('binding_key') or options.get('routing_key')
@@ -853,10 +860,6 @@ class Queue(MaybeChannelBound):
             q_auto_delete = options.get('auto_delete')
 
         e_arguments = options.get('exchange_arguments')
-        q_arguments = options.get('queue_arguments')
-        b_arguments = options.get('binding_arguments')
-        c_arguments = options.get('consumer_arguments')
-        bindings = options.get('bindings')
 
         exchange = Exchange(options.get('exchange'),
                             type=options.get('exchange_type'),
@@ -865,17 +868,21 @@ class Queue(MaybeChannelBound):
                             durable=e_durable,
                             auto_delete=e_auto_delete,
                             arguments=e_arguments)
+
+        # Forward every remaining Queue attribute (expires, message_ttl,
+        # max_length, max_priority, ...) so that the options declared in
+        # ``Queue.attrs`` survive an as_dict()/from_dict() round-trip.
+        kwargs = {
+            attr: options[attr]
+            for attr, _ in cls.attrs
+            if attr not in cls._from_dict_explicit_attrs and attr in options
+        }
         return Queue(queue,
                      exchange=exchange,
                      routing_key=binding_key,
                      durable=q_durable,
-                     exclusive=options.get('exclusive'),
                      auto_delete=q_auto_delete,
-                     no_ack=options.get('no_ack'),
-                     queue_arguments=q_arguments,
-                     binding_arguments=b_arguments,
-                     consumer_arguments=c_arguments,
-                     bindings=bindings)
+                     **kwargs)
 
     def as_dict(self, recurse=False):
         res = super().as_dict(recurse)

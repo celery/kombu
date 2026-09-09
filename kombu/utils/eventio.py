@@ -72,7 +72,7 @@ class _epoll:
     def unregister(self, fd):
         try:
             self._epoll.unregister(fd)
-        except (OSError, ValueError, KeyError, TypeError):
+        except (ValueError, KeyError, TypeError):
             pass
         except OSError as exc:
             if getattr(exc, 'errno', None) not in (errno.ENOENT, errno.EPERM):

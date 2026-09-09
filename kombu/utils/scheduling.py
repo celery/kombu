@@ -54,7 +54,7 @@ class FairCycle:
             try:
                 return self.fun(resource, callback, **kwargs)
             except self.predicate:
-                # reraise when retries exchausted.
+                # reraise when retries exhausted.
                 if tried >= len(self.resources) - 1:
                     raise
 

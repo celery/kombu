@@ -175,7 +175,14 @@ class Transport(base.Transport):
             warnings.warn(UserWarning(W_VERSION))
         else:
             if props.get('product') == 'RabbitMQ':
-                return version_string_as_tuple(props['version']) < (3, 3)
+                version_str = props.get('version')
+                if not version_str:
+                    return True
+                version = version_string_as_tuple(version_str)
+                # RabbitMQ < 3.3: per-channel QoS (return True)
+                # RabbitMQ 3.3–3.x: global QoS semantics (return False)
+                # RabbitMQ 4.0+: global QoS removed on classic queues (return True)
+                return version < (3, 3) or version >= (4, 0)
         return True
 
     @property

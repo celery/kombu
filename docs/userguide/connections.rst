@@ -64,6 +64,20 @@ resources:
     with Connection() as connection:
         # work with connection
 
+.. _debug-logs:
+
+Debug Logs
+==========
+
+Kombu exposes multiple environment variables that control debug logging for connection and channel logs.
+This is useful for situations where you want to debug Kombu or contribute to the project.
+
+If ``KOMBU_LOG_CONNECTION`` is set to 1, debug logs are enabled for connections.
+
+If ``KOMBU_LOG_CHANNEL`` is set to 1, debug logs are enabled for channels.
+
+If ``KOMBU_LOG_DEBUG`` is set to 1, debug logs are enabled for both connections and channels.
+
 .. _connection-urls:
 
 Celery with SQS
@@ -173,7 +187,8 @@ keyword arguments, these are:
 :transport: Default transport if not provided in the URL.
   Can be a string specifying the path to the class. (e.g.
   ``kombu.transport.pyamqp:Transport``), or one of the aliases:
-  ``pyamqp``, ``librabbitmq``, ``redis``, ``qpid``, ``memory``, and so on.
+  ``pyamqp``, ``librabbitmq``, ``redis``, ``qpid``, ``memory``,
+  ``pgmq``, and so on.
 
 :ssl: Use SSL to connect to the server. Default is ``False``.
   Only supported by the amqp and qpid transports.
@@ -216,6 +231,8 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+--------------+
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          |
 +---------------+----------+------------+------------+---------------+--------------+
+| *pgmq*        | Virtual  | Yes        | Yes        | Yes           | No           |
++---------------+----------+------------+------------+---------------+--------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           |
 +---------------+----------+------------+------------+---------------+--------------+
 | *zookeeper*   | Virtual  | Yes        | Yes [#f1]_ | No            | Yes          |
@@ -234,3 +251,12 @@ Transport Comparison
          ``supports_fanout`` transport option.
 
 .. [#f3] AMQP Message priority support depends on broker implementation.
+
+Transport Options
+=================
+
+py-amqp
+~~~~~~~
+
+:read_timeout: Timeout for reading data from RabbitMQ.
+:write_timeout: Timeout for writing data to RabbitMQ.

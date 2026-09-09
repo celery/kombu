@@ -109,6 +109,14 @@ class Channel(virtual.Channel):
         transport_options = conninfo.transport_options.copy()
         transport_options.pop('queue_tablename', None)
         transport_options.pop('message_tablename', None)
+        transport_options.pop('callback', None)
+        transport_options.pop('errback', None)
+        transport_options.pop('max_retries', None)
+        transport_options.pop('interval_start', None)
+        transport_options.pop('interval_step', None)
+        transport_options.pop('interval_max', None)
+        transport_options.pop('retry_errors', None)
+
         return create_engine(conninfo.hostname, **transport_options)
 
     def _open(self):
@@ -201,7 +209,13 @@ class Channel(virtual.Channel):
         return count
 
     def _size(self, queue):
-        return self._query_all(queue).count()
+        obj = self._get_or_create(queue)
+        return (
+            self.session.query(self.message_cls)
+            .filter(self.message_cls.queue_id == obj.id)
+            .filter(self.message_cls.visible == True)
+            .count()
+        )
 
     def _declarative_cls(self, name, base, ns):
         if name not in class_registry:

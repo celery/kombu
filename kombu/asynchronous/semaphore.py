@@ -3,20 +3,19 @@ from __future__ import annotations
 
 import sys
 from collections import deque
-from typing import TYPE_CHECKING, Callable, Deque
-
-if sys.version_info < (3, 10):
-    from typing_extensions import ParamSpec
-else:
-    from typing import ParamSpec
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from types import TracebackType
+    from typing import Callable, Deque
+    if sys.version_info < (3, 10):
+        from typing_extensions import ParamSpec
+    else:
+        from typing import ParamSpec
 
+    P = ParamSpec("P")
 
 __all__ = ('DummyLock', 'LaxBoundedSemaphore')
-
-P = ParamSpec("P")
 
 
 class LaxBoundedSemaphore:
