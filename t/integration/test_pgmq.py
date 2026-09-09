@@ -44,13 +44,12 @@ def connection(request):
 @pytest.fixture()
 def invalid_connection():
     return kombu.Connection(
-        'pgmq://postgres:postgres@127.0.0.1:1/postgres',
+        'pgmq://postgres:postgres@127.0.0.1:59999/postgres',
         transport_options={
             'max_retries': 1,
-            'init_extension': False,
             'pool_timeout': 1,
             'conn_string': (
-                'postgresql://postgres:postgres@127.0.0.1:1/postgres'
+                'postgresql://postgres:postgres@127.0.0.1:59999/postgres'
                 '?connect_timeout=1'
             ),
         },
@@ -74,11 +73,7 @@ class test_PGMQBasicFunctionality(BasicFunctionality):
             invalid_connection.channel()
 
     def test_failed_default_channel(self, invalid_connection):
-        invalid_connection.transport_options = {
-            'max_retries': 1,
-            'init_extension': False,
-            'pool_timeout': 1,
-        }
+        invalid_connection.transport_options['max_retries'] = 1
         with pytest.raises(_CONN_FAIL):
             invalid_connection.default_channel
 

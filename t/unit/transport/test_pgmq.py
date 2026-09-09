@@ -442,9 +442,10 @@ class test_PGMQ:
                 username="user",
                 password="secret",
                 vt=1800,
-                init_extension=True,
+                init_extension=False,
                 pool_size=10,
             )
+            PGMQueueMock.return_value._init_extensions.assert_called_once()
 
     def test_create_pgmq_client_honors_zero_visibility_timeout(self):
         with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
@@ -466,9 +467,10 @@ class test_PGMQ:
                 username="user",
                 password="secret",
                 vt=0,
-                init_extension=True,
+                init_extension=False,
                 pool_size=10,
             )
+            PGMQueueMock.return_value._init_extensions.assert_called_once()
 
     def test_close_connection_calls_client_close(self):
         client = Mock()
@@ -944,9 +946,10 @@ class test_PGMQ_additional:
             PGMQueueMock.assert_called_once_with(
                 conn_string="postgresql://custom/db",
                 vt=1800,
-                init_extension=True,
+                init_extension=False,
                 pool_size=10,
             )
+            PGMQueueMock.return_value._init_extensions.assert_called_once()
 
     def test_pool_timeout_is_applied(self):
         with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
@@ -959,7 +962,27 @@ class test_PGMQ_additional:
             }
             transport = Transport(conn)
             transport._get_pgmq_client()
+        PGMQueueMock.assert_called_once_with(
+            conn_string="postgresql://custom/db",
+            vt=1800,
+            init_extension=False,
+            pool_size=10,
+        )
         assert client.pool.timeout == 1.0
+        client._init_extensions.assert_called_once()
+
+    def test_init_extension_false_skips_extension_init(self):
+        with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
+            client = Mock()
+            PGMQueueMock.return_value = client
+            conn = Mock()
+            conn.transport_options = {
+                "conn_string": "postgresql://custom/db",
+                "init_extension": False,
+            }
+            transport = Transport(conn)
+            transport._get_pgmq_client()
+        client._init_extensions.assert_not_called()
 
     def test_basic_cancel_unknown_consumer_tag(self):
         self.channel.basic_cancel("unknown-tag")
@@ -997,9 +1020,10 @@ class test_PGMQ_additional:
                 username="user",
                 password="secret",
                 vt=1800,
-                init_extension=True,
+                init_extension=False,
                 pool_size=10,
             )
+            PGMQueueMock.return_value._init_extensions.assert_called_once()
 
     def test_url_connection_default_database(self):
         with patch("kombu.transport.pgmq.PGMQueue") as PGMQueueMock:
@@ -1019,9 +1043,10 @@ class test_PGMQ_additional:
                 username="postgres",
                 password="",
                 vt=1800,
-                init_extension=True,
+                init_extension=False,
                 pool_size=10,
             )
+            PGMQueueMock.return_value._init_extensions.assert_called_once()
 
     def test_establish_connection_failure(self):
         transport = Transport(self.kombu_connection)

@@ -782,14 +782,20 @@ class Transport(virtual.Transport):
             visibility_timeout = Channel.default_visibility_timeout
         visibility_timeout = int(float(visibility_timeout))
 
+        init_extension = transport_options.get(
+            'init_extension', Channel.default_init_extension)
+        pool_size = transport_options.get(
+            'pool_size', Channel.default_pool_size)
+
+        # Delay extension init until pool_timeout is set.  PGMQueue
+        # otherwise checks out a connection in __post_init__ and waits
+        # the pool default of 30s on a dead host.
         if conn_string := transport_options.get('conn_string'):
             client = PGMQueue(
                 conn_string=conn_string,
                 vt=visibility_timeout,
-                init_extension=transport_options.get(
-                    'init_extension', Channel.default_init_extension),
-                pool_size=transport_options.get(
-                    'pool_size', Channel.default_pool_size),
+                init_extension=False,
+                pool_size=pool_size,
             )
         else:
             database = conninfo.virtual_host
@@ -805,12 +811,14 @@ class Transport(virtual.Transport):
                 username=conninfo.userid or 'postgres',
                 password=conninfo.password or '',
                 vt=visibility_timeout,
-                init_extension=transport_options.get(
-                    'init_extension', Channel.default_init_extension),
-                pool_size=transport_options.get(
-                    'pool_size', Channel.default_pool_size),
+                init_extension=False,
+                pool_size=pool_size,
             )
         self._apply_pool_timeout(client, transport_options)
+        if init_extension:
+            init = getattr(client, '_init_extensions', None)
+            if init is not None:
+                init()
         return client
 
     def _apply_pool_timeout(self, client, transport_options) -> None:
