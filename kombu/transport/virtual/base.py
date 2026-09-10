@@ -161,10 +161,30 @@ class QoS:
     ---------
         channel (ChannelT): Connection channel.
         prefetch_count (int): Initial prefetch count (defaults to 0).
+        guard (Callable): Optional consumption guard (see :attr:`guard`).
     """
 
     #: current prefetch count value
     prefetch_count = 0
+
+    #: Optional consumption guard consulted by :meth:`can_consume`
+    #: in addition to the prefetch limit.
+    #:
+    #: When set, this must be a callable accepting the :class:`QoS`
+    #: instance and returning a boolean.  If it returns a falsy value,
+    #: :meth:`can_consume` returns :const:`False` (and
+    #: :meth:`can_consume_max_estimate` returns ``0``), so the transport
+    #: fetches no new messages from the broker until the guard allows it
+    #: again.  This lets applications apply their own back-pressure on
+    #: top of ``prefetch_count``, for example only fetching a message
+    #: when a worker process is free to handle it (Celery's
+    #: ``worker_disable_prefetch``).
+    #:
+    #: Disabled (:const:`None`) by default.  Can also be set with
+    #: ``transport_options['qos_guard']``.
+    #:
+    #: .. versionadded:: 5.7.0
+    guard = None
 
     #: :class:`~collections.OrderedDict` of active messages.
     #: *NOTE*: Can only be modified by the consuming thread.
@@ -179,9 +199,11 @@ class QoS:
     #: If disabled, unacked messages won't be restored at shutdown.
     restore_at_shutdown = True
 
-    def __init__(self, channel, prefetch_count=0):
+    def __init__(self, channel, prefetch_count=0, guard=None):
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
+        if guard is not None:
+            self.guard = guard
 
         # Standard Python dictionaries do not support setting attributes
         # on the object, hence the use of OrderedDict
@@ -194,12 +216,19 @@ class QoS:
             self, self.restore_unacked_once, exitpriority=1,
         )
 
+    def guard_allows(self):
+        """Return true if the :attr:`guard` allows consuming (or is unset)."""
+        guard = self.guard
+        return guard is None or bool(guard(self))
+
     def can_consume(self):
         """Return true if the channel can be consumed from.
 
         Used to ensure the client adhers to currently active
-        prefetch limits.
+        prefetch limits, and to the optional :attr:`guard`.
         """
+        if not self.guard_allows():
+            return False
         pcount = self.prefetch_count
         return not pcount or len(self._delivered) - len(self._dirty) < pcount
 
@@ -213,8 +242,12 @@ class QoS:
 
         Returns
         -------
-            int: greater than zero.
+            int: zero or greater, or :const:`None` if there's no
+            prefetch limit.  Always ``0`` while the :attr:`guard`
+            disallows consuming.
         """
+        if not self.guard_allows():
+            return 0
         pcount = self.prefetch_count
         if pcount:
             return max(pcount - (len(self._delivered) - len(self._dirty)), 0)
@@ -464,8 +497,16 @@ class Channel(AbstractChannel, base.StdChannel):
     #: Set by ``transport_options['deadletter_queue']``.
     deadletter_queue = None
 
+    #: Optional callable guarding consumption in addition to the
+    #: prefetch limit, installed as :attr:`QoS.guard` on this channel's
+    #: :attr:`qos` when it's first created.
+    #: Set by ``transport_options['qos_guard']``.
+    qos_guard = None
+
     # List of options to transfer from :attr:`transport_options`.
-    from_transport_options = ('body_encoding', 'deadletter_queue')
+    from_transport_options = (
+        'body_encoding', 'deadletter_queue', 'qos_guard',
+    )
 
     # Priority defaults
     default_priority = 0
@@ -843,6 +884,8 @@ class Channel(AbstractChannel, base.StdChannel):
         """:class:`QoS` manager for this channel."""
         if self._qos is None:
             self._qos = self.QoS(self)
+            if self.qos_guard is not None:
+                self._qos.guard = self.qos_guard
         return self._qos
 
     @property
