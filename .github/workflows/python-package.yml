@@ -87,7 +87,8 @@ jobs:
                   'py-redis',
                   'py-mongodb',
                   'py-kafka',
-                  'py-sqs'
+                  'py-sqs',
+                  'py-pgmq'
               ]
               experimental: [false]
               include:
@@ -116,6 +117,8 @@ jobs:
                   allow-prereleases: true
                   cache: 'pip'
                   cache-dependency-path: '**/setup.py'
+          -   name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
           -   name: Install tox
               run: python -m pip install --upgrade pip wheel tox tox-docker
           -   name: >
