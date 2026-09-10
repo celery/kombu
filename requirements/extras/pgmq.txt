@@ -1,1 +1,1 @@
-pgmq>=1.1.0
+pgmq>=1.1.0; platform_python_implementation == "CPython"
