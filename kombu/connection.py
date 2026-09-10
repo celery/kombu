@@ -211,9 +211,16 @@ class Connection:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
+                if '.' in params['transport']:
+                    raise ValueError(
+                        f"Invalid transport scheme: {params['transport']!r}")
                 self.uri_prefix = params['transport']
             elif '://' in hostname:
-                transport = transport or urlparse(hostname).scheme
+                if not transport:
+                    transport = urlparse(hostname).scheme
+                    if '.' in transport:
+                        raise ValueError(
+                            f'Invalid transport scheme: {transport!r}')
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
                     url_params = parse_url(hostname)
