@@ -1817,6 +1817,29 @@ class test_Channel:
             call(25, transport.cycle.maybe_check_subclient_health),
         ])
 
+    def test_cycle__on_connection_disconnect__poller_ValueError(self):
+        """MultiChannelPoller._on_connection_disconnect swallows ValueError.
+
+        redis-py >= 5.x disconnect() unconditionally sets
+        connection._sock to None before calling the disconnect handler.
+        MultiChannelPoller then calls poller.unregister(None), which
+        raises ValueError ("file descriptor is None").  This error must
+        be swallowed so that sentinel connection cleanup can proceed
+        (celery/kombu#1108).
+        """
+        from kombu.transport.redis import MultiChannelPoller
+
+        cycle = MultiChannelPoller()
+        cycle.poller = Mock()
+        cycle.poller.unregister.side_effect = ValueError(
+            'file descriptor is None')
+        connection = Mock(name='connection')
+        connection._sock = None
+
+        # Must not raise
+        cycle._on_connection_disconnect(connection)
+        cycle.poller.unregister.assert_called_once_with(None)
+
     def test_configurable_health_check(self):
         transport = self.connection.transport
         transport.cycle = Mock(name='cycle')

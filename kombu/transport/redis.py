@@ -565,7 +565,7 @@ class MultiChannelPoller:
     def _on_connection_disconnect(self, connection):
         try:
             self.poller.unregister(connection._sock)
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, ValueError):
             pass
 
     def _register(self, channel, client, type):
