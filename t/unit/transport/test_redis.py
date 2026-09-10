@@ -2042,8 +2042,35 @@ class test_Channel:
         # on_poll_start must still be registered
         assert len(loop.on_tick) == 1
 
+    def test_register_with_event_loop__on_disconnect__sock_none__poller_ValueError(self):
+        """Ensure _on_connection_disconnect swallows ValueError from poller.
+
+        When connection._sock is None (as set by redis-py disconnect()),
+        poller.unregister(None) calls eventio.fileno(None) which raises
+        ValueError.  This error must be swallowed so that sentinel
+        cleanup can proceed.
+        """
+        transport = self.connection.transport
+        self.connection._sock = None
+
+        from kombu.transport.redis import MultiChannelPoller
+        cycle = MultiChannelPoller()
+        cycle.poller = Mock()
+        cycle.poller.unregister.side_effect = ValueError(
+            'file descriptor is None')
+        transport.cycle = cycle
+
+        conn = Mock(name='conn')
+        conn.client = Mock(name='client', transport_options={})
+        loop = Mock(name='loop')
+        loop.on_tick = set()
+        redis.Transport.register_with_event_loop(transport, conn, loop)
+        # Must not raise — ValueError from poller.unregister(None) is swallowed
+        transport.cycle._on_connection_disconnect(self.connection)
+        assert len(loop.on_tick) == 1
+
     def test_register_with_event_loop__on_disconnect__sock_none_subclient(self):
-        """Ensure _on_disconnect also matches via subclient.connection.
+        """Ensure _on_disconnect also matches via subclient connection.
 
         _fd_to_chan stores tuples of (channel, type_string).
         """
