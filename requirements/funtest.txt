@@ -1,5 +1,5 @@
 # redis transport
-redis>=6.1.0,<9.0.0
+redis>=8.1.0,<9.0.0
 
 # MongoDB transport
 pymongo==4.18.0
