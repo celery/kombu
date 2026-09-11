@@ -224,14 +224,14 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         """Get next message from `queue`."""
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         folder = sorted(folder)
         while len(folder) > 0:
             filename = folder.pop(0)
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             if self.store_processed:
@@ -296,14 +296,14 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         """Remove all messages from `queue`."""
         count = 0
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
 
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
             try:
                 # only purge messages for the requested queue
-                if filename.find(queue_find) < 0:
+                if filename.partition('.')[2] != queue_find:
                     continue
 
                 filename = os.path.join(self.data_folder_in, filename)
@@ -322,13 +322,13 @@ class Channel(virtual.Channel):
         """Return the number of messages in `queue` as an :class:`int`."""
         count = 0
 
-        queue_find = f'.{queue}.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             count += 1
