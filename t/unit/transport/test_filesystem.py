@@ -195,6 +195,30 @@ class test_FilesystemTransport(WithJanitorMixin):
             self.q2(consumer_channel).purge()
             assert self.q2(consumer_channel).get() is None
 
+    def test_dotted_queue_name_not_matched_by_suffix(self):
+        producer_channel = self._add_channel(self.p.channel())
+        consumer_channel = self._add_channel(self.c.channel())
+        producer = Producer(producer_channel, self.e)
+        # 'b' is a dotted suffix of 'a.b', the two must not share messages
+        dotted = Queue('a.b', exchange=self.e, routing_key='a.b')
+        suffix = Queue('b', exchange=self.e, routing_key='b')
+        with (
+            managed_consumer(consumer_channel, dotted),
+            managed_consumer(consumer_channel, suffix),
+        ):
+            dotted(consumer_channel).declare()
+            suffix(consumer_channel).declare()
+
+            producer.publish({'foo': 1}, routing_key='a.b')
+
+            assert suffix(consumer_channel).queue_declare(
+                passive=True).message_count == 0
+            assert suffix(consumer_channel).get() is None
+
+            # purging 'b' must leave the message routed to 'a.b' in place
+            suffix(consumer_channel).purge()
+            assert dotted(consumer_channel).get()
+
 
 @t.skip.if_win32
 class test_FilesystemFanout(WithJanitorMixin):
