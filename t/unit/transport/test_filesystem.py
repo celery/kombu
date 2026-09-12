@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import shutil
 import tempfile
 from queue import Empty
@@ -11,6 +12,7 @@ import pytest
 
 import t.skip
 from kombu import Connection, Consumer, Exchange, Producer, Queue
+from kombu.exceptions import ChannelError
 from kombu.transport.virtual import Channel
 
 
@@ -360,3 +362,64 @@ class test_FilesystemLock(WithJanitorMixin):
             msg_file_obj = unlock_m.call_args_list[1][0][0]
             assert lock_m.call_args_list == [call(exchange_file_obj, LOCK_SH),
                                              call(msg_file_obj, LOCK_EX)]
+
+
+@t.skip.if_win32
+class test_FilesystemExchangeNameSanitization(WithJanitorMixin):
+    # An exchange name is used to build a filename under control_folder; a
+    # name containing path separators or ".." must not escape that folder.
+
+    def setup_method(self):
+        try:
+            self.data_folder_in = tempfile.mkdtemp()
+            self.data_folder_out = tempfile.mkdtemp()
+            self.control_folder = tempfile.mkdtemp()
+        except Exception:
+            pytest.skip("filesystem transport: cannot create tempfiles")
+        self.conn = Connection(
+            transport="filesystem",
+            transport_options={
+                "data_folder_in": self.data_folder_in,
+                "data_folder_out": self.data_folder_out,
+                "control_folder": self.control_folder,
+            },
+        )
+        self.channel = self.conn.default_channel
+
+    def teardown_method(self):
+        self._remove_temporary_folders()
+
+    def test_legitimate_dotted_exchange_name_allowed(self):
+        # ordinary exchange names contain dots but no separators
+        self.channel._queue_bind("reply.celery.pidbox", "rk", "", "q")
+        assert ("rk", "", "q") in self.channel.get_table("reply.celery.pidbox")
+
+    @pytest.mark.parametrize("exchange", [
+        "../../tmp/evil", "../escape", "/etc/passwd", "sub/child",
+        ".", "..", "./.", "./reply.celery.pidbox",
+    ])
+    def test_invalid_exchange_name_rejected_on_bind(self, exchange):
+        with pytest.raises(ChannelError):
+            self.channel._queue_bind(exchange, "rk", "", "q")
+
+    @pytest.mark.parametrize("exchange", [
+        "../../etc/passwd", "/etc/passwd", "./reply.celery.pidbox",
+    ])
+    def test_invalid_exchange_name_rejected_on_get_table(self, exchange):
+        with pytest.raises(ChannelError):
+            self.channel.get_table(exchange)
+
+    def test_no_file_created_outside_control_folder(self):
+        target = os.path.join(
+            os.path.dirname(self.control_folder), "escaped.exchange")
+        with pytest.raises(ChannelError):
+            self.channel._queue_bind("../escaped", "rk", "", "q")
+        assert not os.path.exists(target)
+
+    def test_relative_name_cannot_alias_another_exchange(self):
+        # a legit exchange and a "./"-prefixed variant must not normalise to
+        # the same file (which would let one poison the other's table)
+        self.channel._queue_bind("reply.celery.pidbox", "rk", "", "q")
+        with pytest.raises(ChannelError):
+            self.channel._queue_bind("./reply.celery.pidbox", "evil", "", "q")
+        assert self.channel.get_table("reply.celery.pidbox") == [("rk", "", "q")]

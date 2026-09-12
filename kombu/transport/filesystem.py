@@ -161,8 +161,14 @@ class Channel(virtual.Channel):
 
     supports_fanout = True
 
+    def _exchange_file(self, exchange):
+        if (exchange in {".", ".."} or os.sep in exchange
+                or (os.altsep and os.altsep in exchange)):
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
+        return self.control_folder / f"{exchange}.exchange"
+
     def get_table(self, exchange):
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         try:
             f_obj = file.open("r")
             try:
@@ -178,7 +184,7 @@ class Channel(virtual.Channel):
             raise ChannelError(f"Cannot open {file}")
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
@@ -265,7 +271,7 @@ class Channel(virtual.Channel):
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
 
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
         f_obj = None
