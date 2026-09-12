@@ -245,6 +245,12 @@ class BaseClient:
     def __init__(self, hub, **kwargs):
         self.hub = hub
         self._header_parser = header_parser()
+        # Without this, a client left with a pending request when the hub
+        # closes (e.g. during worker shutdown) keeps that request running
+        # in the background: it can complete and deliver its result well
+        # after the rest of the consumer has already torn down, with
+        # nothing left to act on it (see SQS long-polling in curl.py).
+        self.hub.on_close.add(self.close)
 
     def perform(self, request, **kwargs):
         for req in maybe_list(request) or []:
@@ -255,7 +261,7 @@ class BaseClient:
     def add_request(self, request):
         raise NotImplementedError('must implement add_request')
 
-    def close(self):
+    def close(self, *args):
         pass
 
     def on_header(self, headers, line):
