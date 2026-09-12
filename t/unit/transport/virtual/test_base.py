@@ -54,6 +54,82 @@ class test_QoS:
         qos = virtual.QoS(client().channel())
         qos.restore_visible()
 
+    def test_guard__default_is_unset(self):
+        assert self.q.guard is None
+        assert self.q.guard_allows()
+        assert self.q.can_consume()
+        assert self.q.can_consume_max_estimate() == 10
+
+    def test_guard__gates_can_consume(self):
+        allow = [True]
+        calls = []
+
+        def guard(qos):
+            calls.append(qos)
+            return allow[0]
+
+        self.q.guard = guard
+        assert self.q.guard_allows()
+        assert self.q.can_consume()
+        assert self.q.can_consume_max_estimate() == 10
+
+        allow[0] = False
+        assert not self.q.guard_allows()
+        assert not self.q.can_consume()
+        assert self.q.can_consume_max_estimate() == 0
+
+        allow[0] = True
+        assert self.q.can_consume()
+        # guard_allows, can_consume and can_consume_max_estimate each
+        # consult the guard exactly once per call.
+        assert calls == [self.q] * 7
+
+    def test_guard__prefetch_limit_still_applies(self):
+        self.q.guard = lambda qos: True
+        for i in range(self.q.prefetch_count):
+            assert self.q.can_consume()
+            self.q.append(i, uuid())
+        assert not self.q.can_consume()
+        assert self.q.can_consume_max_estimate() == 0
+
+    def test_guard__no_prefetch_limit(self):
+        qos = virtual.QoS(client().channel(), guard=lambda q: False)
+        try:
+            assert qos.guard is not None
+            assert not qos.can_consume()
+            assert qos.can_consume_max_estimate() == 0
+            qos.guard = None
+            assert qos.can_consume()
+            assert qos.can_consume_max_estimate() is None
+        finally:
+            qos._on_collect.cancel()
+
+    def test_guard__result_is_coerced_to_bool(self):
+        self.q.guard = lambda qos: 0
+        assert self.q.can_consume() is False
+        self.q.guard = lambda qos: 'yes'
+        assert self.q.can_consume() is True
+
+    def test_guard__from_transport_options(self):
+        guard = Mock(name='qos_guard', return_value=False)
+        channel = client(transport_options={'qos_guard': guard}).channel()
+        try:
+            assert channel.qos_guard is guard
+            assert channel.qos.guard is guard
+            assert not channel.qos.can_consume()
+            guard.assert_called_once_with(channel.qos)
+        finally:
+            channel.qos._on_collect.cancel()
+
+    def test_guard__channel_default(self):
+        channel = client().channel()
+        try:
+            assert channel.qos_guard is None
+            assert channel.qos.guard is None
+            assert channel.qos.can_consume()
+        finally:
+            channel.qos._on_collect.cancel()
+
     def test_can_consume(self, stdouts):
         stderr = io.StringIO()
         _restored = []

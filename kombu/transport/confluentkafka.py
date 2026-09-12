@@ -112,10 +112,14 @@ class QoS(virtual.QoS):
         :returns: True, if this QoS object can accept a message.
         :rtype: bool
         """
+        if not self.guard_allows():
+            return False
         return not self.prefetch_count or len(self._not_yet_acked) < self \
             .prefetch_count
 
     def can_consume_max_estimate(self):
+        if not self.guard_allows():
+            return 0
         if self.prefetch_count:
             return self.prefetch_count - len(self._not_yet_acked)
         else:

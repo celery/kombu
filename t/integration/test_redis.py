@@ -16,7 +16,7 @@ from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
 from kombu.utils.json import loads
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
-                     BasicFunctionality)
+                     BaseQoSGuard, BasicFunctionality)
 
 
 def get_connection(
@@ -450,6 +450,62 @@ class test_RedisPublishBatch:
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisMessage(BaseMessage):
     pass
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisQoSGuard(BaseQoSGuard):
+
+    def test_guard_defers_brpop_in_event_loop(self, connection, redis_client):
+        # The guard must also gate the asynchronous (hub) path, where the
+        # transport registers a BRPOP on every poll tick while it may
+        # consume.  While the guard says no, no BRPOP must be sent, so the
+        # message stays on the broker for other consumers.
+        name = f'qos-guard-{uuid4().hex}'
+        queue = kombu.Queue(name, routing_key=name)
+        key = connection.transport_options.get('global_keyprefix', '') + name
+        state = {'allow': False}
+        received = []
+
+        def on_message(body, message):
+            received.append(body)
+            message.ack()
+
+        def poll(hub, deadline):
+            while monotonic() < deadline:
+                for tick in hub.on_tick:
+                    tick()
+                for fd, _ in hub.poller.poll(0.1):
+                    callback, args = hub.readers[fd]
+                    callback(*args)
+
+        hub = Hub()
+        with connection:
+            with kombu.Consumer(
+                connection, queues=[queue], callbacks=[on_message]
+            ) as consumer:
+                channel = consumer.channel
+                channel.qos.guard = lambda qos: state['allow']
+                connection.register_with_event_loop(hub)
+                try:
+                    with connection.clone() as publisher:
+                        kombu.Producer(publisher).publish(
+                            'hello', routing_key=name, declare=[queue])
+
+                    poll(hub, monotonic() + 1)
+                    assert received == []
+                    assert not channel._in_poll
+                    # The message is still on the broker.
+                    assert redis_client.llen(key) == 1
+
+                    state['allow'] = True
+                    deadline = monotonic() + 5
+                    while not received and monotonic() < deadline:
+                        poll(hub, monotonic() + 0.2)
+                    assert received == ['hello']
+                    assert redis_client.llen(key) == 0
+                finally:
+                    queue(channel).delete()
 
 
 @pytest.mark.env('redis')

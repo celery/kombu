@@ -7,7 +7,7 @@ import pytest
 import kombu
 
 from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
-                     BasicFunctionality)
+                     BaseQoSGuard, BasicFunctionality)
 
 
 def get_connection(hostname, port, vhost):
@@ -182,4 +182,10 @@ class test_MongoDBPriority(BasePriority):
 @pytest.mark.env('mongodb')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_MongoDBMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('mongodb')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_MongoDBQoSGuard(BaseQoSGuard):
     pass
