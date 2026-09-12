@@ -9,7 +9,8 @@ import pytest
 import kombu
 import kombu.asynchronous
 
-from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
+from .common import (BaseExchangeTypes, BaseMessage, BaseQoSGuard,
+                     BasicFunctionality)
 
 
 def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: str = "") -> kombu.Connection:
@@ -109,4 +110,10 @@ class test_SQSBaseExchangeTypes(BaseExchangeTypes):
 @pytest.mark.env('sqs')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSQoSGuard(BaseQoSGuard):
     pass

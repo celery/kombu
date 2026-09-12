@@ -10,7 +10,8 @@ import pytest
 import kombu
 from kombu.exceptions import OperationalError
 
-from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
+from .common import (BaseExchangeTypes, BaseMessage, BaseQoSGuard,
+                     BasicFunctionality)
 
 psycopg = pytest.importorskip('psycopg')
 
@@ -88,6 +89,12 @@ class test_PGMQBaseExchangeTypes(BaseExchangeTypes):
 @pytest.mark.env('pgmq')
 @pytest.mark.flaky(reruns=3, reruns_delay=2)
 class test_PGMQBaseMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('pgmq')
+@pytest.mark.flaky(reruns=3, reruns_delay=2)
+class test_PGMQQoSGuard(BaseQoSGuard):
     pass
 
 

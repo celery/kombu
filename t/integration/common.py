@@ -543,3 +543,119 @@ class BaseFailover(BasicFunctionality):
         super().test_simple_buffer_publish_consume(
             failover_connection
         )
+
+
+class BaseQoSGuard:
+    """Tests for the virtual transport consumption guard (``QoS.guard``)."""
+
+    @staticmethod
+    def _publish(channel, queue, body):
+        kombu.Producer(channel).publish(
+            body,
+            retry=True,
+            exchange=queue.exchange,
+            routing_key=queue.routing_key,
+            declare=[queue],
+            serializer='pickle',
+        )
+
+    @staticmethod
+    def _consumer(channel, queue, callback):
+        consumer = kombu.Consumer(channel, [queue], accept=['pickle'])
+        consumer.register_callback(callback)
+        return consumer
+
+    def test_guard_blocks_fetch_until_allowed(self, connection):
+        name = 'test_qos_guard'
+        queue = kombu.Queue(name, routing_key=name)
+        state = {'allow': False}
+        received = []
+
+        def callback(body, message):
+            received.append(body)
+            message.ack()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                assert channel.qos.guard is None
+                channel.qos.guard = lambda qos: state['allow']
+                self._publish(channel, queue, {'hello': 'guard'})
+
+                with self._consumer(channel, queue, callback):
+                    # The message is waiting on the broker, but the guard
+                    # forbids consuming so nothing must be fetched.
+                    with pytest.raises(socket.timeout):
+                        conn.drain_events(timeout=1)
+                    assert received == []
+
+                    state['allow'] = True
+                    conn.drain_events(timeout=1)
+                    assert received == [{'hello': 'guard'}]
+
+    def test_guard_from_transport_options(self, connection):
+        name = 'test_qos_guard_option'
+        queue = kombu.Queue(name, routing_key=name)
+        state = {'allow': False}
+        seen = []
+        received = []
+
+        def guard(qos):
+            seen.append(qos)
+            return state['allow']
+
+        def callback(body, message):
+            received.append(body)
+            message.ack()
+
+        # Copy: the fixture may share its transport options between tests.
+        connection.transport_options = {
+            **connection.transport_options, 'qos_guard': guard,
+        }
+        with connection as conn:
+            with conn.channel() as channel:
+                assert channel.qos.guard is guard
+                self._publish(channel, queue, {'hello': 'option'})
+
+                with self._consumer(channel, queue, callback):
+                    with pytest.raises(socket.timeout):
+                        conn.drain_events(timeout=1)
+                    assert received == []
+                    assert seen and all(qos is channel.qos for qos in seen)
+
+                    state['allow'] = True
+                    conn.drain_events(timeout=1)
+                    assert received == [{'hello': 'option'}]
+
+    def test_guard_applies_back_pressure_from_unacked(self, connection):
+        # Mirrors Celery's ``worker_disable_prefetch``: only fetch a new
+        # message while nothing is being processed, regardless of the
+        # (unlimited) prefetch count.
+        name = 'test_qos_guard_back_pressure'
+        queue = kombu.Queue(name, routing_key=name)
+        in_progress = []
+
+        def callback(body, message):
+            in_progress.append(message)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                channel.qos.guard = lambda qos: not in_progress
+                assert channel.qos.prefetch_count == 0
+
+                with self._consumer(channel, queue, callback):
+                    self._publish(channel, queue, 1)
+                    conn.drain_events(timeout=1)
+                    assert [m.payload for m in in_progress] == [1]
+
+                    # A second message is not fetched while the first one
+                    # is still being handled...
+                    self._publish(channel, queue, 2)
+                    with pytest.raises(socket.timeout):
+                        conn.drain_events(timeout=1)
+                    assert [m.payload for m in in_progress] == [1]
+
+                    # ...but is as soon as the application has capacity.
+                    in_progress.pop().ack()
+                    conn.drain_events(timeout=1)
+                    assert [m.payload for m in in_progress] == [2]
+                    in_progress.pop().ack()
