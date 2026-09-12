@@ -4,11 +4,13 @@ import os
 import socket
 from time import monotonic, sleep
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 import redis
 
 import kombu
+from kombu.asynchronous.hub import Hub
 from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
                                    SentinelChannel, Transport)
 from kombu.utils.json import loads
@@ -59,6 +61,65 @@ def redis_client(connection):
 @pytest.fixture()
 def invalid_connection():
     return kombu.Connection('redis://localhost:12345')
+
+
+@pytest.mark.env('redis')
+@pytest.mark.parametrize('mode', ['BRPOP', 'LISTEN'])
+def test_event_loop_consumes_after_connection_reconnect(connection, mode):
+    name = f'reconnect-{uuid4().hex}'
+    exchange = kombu.Exchange(name, type='fanout' if mode == 'LISTEN' else 'direct')
+    queue = kombu.Queue(name, exchange=exchange, routing_key=name)
+    received = []
+
+    def on_message(body, message):
+        received.append(body)
+        message.ack()
+
+    hub = Hub()
+    try:
+        with connection:
+            with kombu.Consumer(connection, queues=[queue], callbacks=[on_message]) as consumer:
+                connection.register_with_event_loop(hub)
+                for tick in hub.on_tick:
+                    tick()
+                cycle = connection.transport.cycle
+                client = (consumer.channel.subclient if mode == 'LISTEN'
+                          else consumer.channel.client)
+                redis_connection = client.connection
+                try:
+                    for sequence in range(3):
+                        # Reconnect before the next poll tick, as redis-py can do
+                        # internally while retrying a command or health check.
+                        redis_connection.disconnect()
+                        redis_connection.connect()
+                        if mode == 'LISTEN':
+                            for tick in hub.on_tick:
+                                tick()
+                            # Wait for Redis to confirm resubscription before
+                            # publishing; fanout messages are not queued.
+                            response = client.get_message(timeout=5)
+                            assert response is not None
+                            assert response['type'] == 'psubscribe'
+                        with connection.clone() as publisher:
+                            kombu.Producer(publisher, exchange=exchange).publish(
+                                sequence, routing_key=queue.name)
+                        deadline = monotonic() + 5
+                        while len(received) <= sequence and monotonic() < deadline:
+                            for tick in hub.on_tick:
+                                tick()
+                            for fd, _ in hub.poller.poll(0.1):
+                                callback, args = hub.readers[fd]
+                                callback(*args)
+                        assert received == list(range(sequence + 1))
+                        if mode == 'BRPOP':
+                            assert 'subclient' not in consumer.channel.__dict__
+                finally:
+                    queue(consumer.channel).delete()
+        assert not cycle._chan_to_sock
+        assert not cycle.fds
+        assert not hub.readers
+    finally:
+        hub.close()
 
 
 @pytest.mark.env('redis')
