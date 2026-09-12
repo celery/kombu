@@ -134,6 +134,34 @@ class test_connection_utils:
         assert conn.as_uri(include_password=True) == self.pg_url
 
 
+class test_Connection_transport_scheme:
+    """A transport scheme derived from the URL must not be a dotted import
+    path (which resolve_transport() would import as an arbitrary module)."""
+
+    def test_dotted_url_scheme_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('some.evil.module://localhost')
+
+    def test_dotted_scheme_via_uri_prefix_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('some.evil.module+amqp://localhost')
+
+    def test_alias_scheme_not_rejected(self):
+        assert Connection('memory://').transport_cls == 'memory'
+
+    def test_uri_prefix_alias_not_rejected(self):
+        # documented `prefix+scheme://` form with a non-dotted prefix
+        assert Connection('sqla+mysql://localhost').uri_prefix == 'sqla'
+
+    def test_dotted_transport_keyword_not_rejected(self):
+        # the documented way to use a custom transport class is the
+        # `transport` keyword argument, which must keep working.
+        from kombu.transport.memory import Transport as MemoryTransport
+        conn = Connection(
+            'memory://', transport='kombu.transport.memory:Transport')
+        assert isinstance(conn.transport, MemoryTransport)
+
+
 class test_Connection:
 
     def setup_method(self):
