@@ -24,6 +24,12 @@ Unreleased
   although it subscribes with ``PSUBSCRIBE``, which left the pattern
   subscriptions active on the pub/sub connection after a consumer was
   cancelled.
+- Fix :class:`kombu.utils.limits.TokenBucket` over-admitting on the first
+  burst after an idle period. The bucket only advanced its timestamp while
+  it was below capacity, so the time it spent sitting full was later counted
+  as refill time and it topped itself straight back up right after being
+  drained. That granted one extra full refill, so a ``capacity=1`` bucket
+  admitted two consumes instead of one (#680).
 
 
 .. _version-5.6.2:
