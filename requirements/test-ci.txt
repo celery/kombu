@@ -17,4 +17,3 @@ urllib3>=2.7.0; sys_platform != 'win32'
 -r extras/sqlalchemy.txt
 -r extras/etcd.txt
 -r extras/gcpubsub.txt
--r extras/pgmq.txt

@@ -5,13 +5,14 @@ import socket
 from contextlib import closing
 from time import sleep, time
 
-import psycopg
 import pytest
 
 import kombu
 from kombu.exceptions import OperationalError
 
 from .common import BaseExchangeTypes, BaseMessage, BasicFunctionality
+
+psycopg = pytest.importorskip('psycopg')
 
 # connect() does not wrap the transport error as kombu OperationalError.
 _CONN_FAIL = (OperationalError, psycopg.OperationalError, psycopg.InterfaceError)
