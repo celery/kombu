@@ -92,6 +92,7 @@ Transport Options
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import uuid
@@ -155,17 +156,60 @@ else:
 exchange_queue_t = namedtuple("exchange_queue_t",
                               ["routing_key", "pattern", "queue"])
 
+#: Characters accepted in an exchange name.  The name is interpolated into a
+#: filename under ``control_folder``, so rather than blocklisting the
+#: constructs that can redirect that path, only characters that cannot are
+#: allowed.  This rejects path separators, ``..``, Windows drive-relative
+#: prefixes (``D:evil``) and UNC prefixes on every platform, rather than only
+#: on the one the tests happen to run on.
+EXCHANGE_NAME_RE = re.compile(r'\A[A-Za-z0-9._-]+\Z')
+
+#: Names that address a device rather than a file on Windows.  A suffix does
+#: not help: ``CON.exchange`` is still the console.  Windows resolves these
+#: case-insensitively and on the portion before the first dot, and counts the
+#: ISO/IEC 8859-1 superscript digits as digits in ``COM#``/``LPT#``.  Mirrors
+#: the list :mod:`pathlib` carries.  ``EXCHANGE_NAME_RE`` happens to reject
+#: the non-ASCII and ``$`` spellings before they reach this set, but the set
+#: is kept complete on its own so that widening the pattern later cannot
+#: quietly let them through.
+WIN_RESERVED_NAMES = frozenset(
+    ['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$']
+    + [f'COM{c}' for c in '123456789\xb9\xb2\xb3']
+    + [f'LPT{c}' for c in '123456789\xb9\xb2\xb3']
+)
+
 
 class Channel(virtual.Channel):
     """Filesystem Channel."""
 
     supports_fanout = True
 
+    @staticmethod
+    def _is_valid_exchange_name(exchange):
+        if not isinstance(exchange, str):
+            return False
+        if exchange == "":
+            # the AMQP default exchange.  It yields a plain ".exchange"
+            # file inside the control folder and cannot redirect the path,
+            # so it keeps working as it always has.
+            return True
+        if not EXCHANGE_NAME_RE.match(exchange):
+            return False
+        if not exchange.strip("."):
+            # "." and "..", and any all-dot name, name a directory
+            return False
+        # a suffix does not disarm a Windows device name
+        return exchange.partition(".")[0].upper() not in WIN_RESERVED_NAMES
+
     def _exchange_file(self, exchange):
-        if (exchange in {".", ".."} or os.sep in exchange
-                or (os.altsep and os.altsep in exchange)):
+        if not self._is_valid_exchange_name(exchange):
             raise ChannelError(f"Invalid exchange name: {exchange!r}")
-        return self.control_folder / f"{exchange}.exchange"
+        file = self.control_folder / f"{exchange}.exchange"
+        # defence in depth: whatever the platform makes of the name, the
+        # result has to be a direct child of the control folder.
+        if file.parent != self.control_folder:
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
+        return file
 
     def get_table(self, exchange):
         file = self._exchange_file(exchange)

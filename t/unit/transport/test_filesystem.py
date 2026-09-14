@@ -4,6 +4,7 @@ import contextlib
 import os
 import shutil
 import tempfile
+from pathlib import PurePosixPath, PureWindowsPath
 from queue import Empty
 from typing import Generator
 from unittest.mock import call, patch
@@ -13,6 +14,7 @@ import pytest
 import t.skip
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import ChannelError
+from kombu.transport.filesystem import Channel as FilesystemChannel
 from kombu.transport.virtual import Channel
 
 
@@ -397,6 +399,9 @@ class test_FilesystemExchangeNameSanitization(WithJanitorMixin):
     @pytest.mark.parametrize("exchange", [
         "../../tmp/evil", "../escape", "/etc/passwd", "sub/child",
         ".", "..", "./.", "./reply.celery.pidbox",
+        # Windows-shaped payloads.  The guard is not OS-conditional, so
+        # these are rejected here too rather than only on Windows.
+        "D:evil", "C:evil", "sub\\child", "..\\..\\evil", "CON", "NUL",
     ])
     def test_invalid_exchange_name_rejected_on_bind(self, exchange):
         with pytest.raises(ChannelError):
@@ -404,6 +409,7 @@ class test_FilesystemExchangeNameSanitization(WithJanitorMixin):
 
     @pytest.mark.parametrize("exchange", [
         "../../etc/passwd", "/etc/passwd", "./reply.celery.pidbox",
+        "D:evil", "C:evil", "CON",
     ])
     def test_invalid_exchange_name_rejected_on_get_table(self, exchange):
         with pytest.raises(ChannelError):
@@ -423,3 +429,103 @@ class test_FilesystemExchangeNameSanitization(WithJanitorMixin):
         with pytest.raises(ChannelError):
             self.channel._queue_bind("./reply.celery.pidbox", "evil", "", "q")
         assert self.channel.get_table("reply.celery.pidbox") == [("rk", "", "q")]
+
+
+class test_exchange_file_name_guard:
+    """Name validation alone, with no filesystem and no locking.
+
+    Deliberately *not* skipped on win32, and parametrized over both path
+    flavours, so the Windows behaviour of the guard is executed by the
+    suite on a POSIX runner instead of being reasoned about.
+    """
+
+    def _exchange_file(self, exchange, folder):
+        class _Channel(FilesystemChannel):
+            # the real guard, with control_folder pinned to the flavour
+            # under test and no connection or filesystem behind it
+            def __init__(self):
+                pass
+
+            @property
+            def control_folder(self):
+                return folder
+
+        return _Channel()._exchange_file(exchange)
+
+    @pytest.mark.parametrize("folder", [
+        PureWindowsPath(r"C:\app\control"), PurePosixPath("/app/control"),
+    ], ids=["windows", "posix"])
+    @pytest.mark.parametrize("exchange", [
+        # traversal and separators
+        "..", ".", "...", "./x", "../escape", "a/../b",
+        "/etc/passwd", "sub/child", "sub\\child", "..\\..\\evil",
+        # Windows drive-relative names: neither contains a separator, and
+        # pathlib drops the control folder for the non-anchor drive while
+        # the anchor drive silently aliases another exchange.
+        "D:evil", "C:evil", "d:evil",
+        # UNC prefix
+        "\\\\server\\share\\x",
+        # device names, which a suffix does not disarm
+        "CON", "NUL", "COM1", "LPT1", "con.foo",
+        # characters with no business in a filename
+        "a b", "a\x00b", "~/x",
+        # not a name at all
+        None, 42,
+    ])
+    def test_rejected(self, exchange, folder):
+        with pytest.raises(ChannelError):
+            self._exchange_file(exchange, folder)
+
+    @pytest.mark.parametrize("folder", [
+        PureWindowsPath(r"C:\app\control"), PurePosixPath("/app/control"),
+    ], ids=["windows", "posix"])
+    def test_default_exchange_name_still_allowed(self, folder):
+        # "" is the AMQP default exchange.  virtual.Channel.queue_bind()
+        # rewrites it to "amq.direct", but get_table() and
+        # exchange_delete() pass it through, so rejecting it here would
+        # break the default exchange rather than close a hole: it yields a
+        # plain ".exchange" file inside the control folder.
+        file = self._exchange_file("", folder)
+        assert file.name == ".exchange"
+        assert file.parent == folder
+
+    @pytest.mark.parametrize("folder", [
+        PureWindowsPath(r"C:\app\control"), PurePosixPath("/app/control"),
+    ], ids=["windows", "posix"])
+    @pytest.mark.parametrize("exchange", [
+        "good.name", "reply.celery.pidbox", "celeryev", "tasks",
+        "my-exchange", "my_exchange", "X2", "a.b.c.d",
+    ])
+    def test_accepted(self, exchange, folder):
+        file = self._exchange_file(exchange, folder)
+        assert file.name == f"{exchange}.exchange"
+        assert file.parent == folder
+
+    def test_drive_relative_name_cannot_alias_another_exchange(self):
+        # "C:evil" would resolve to the same file as "evil" on Windows
+        folder = PureWindowsPath(r"C:\app\control")
+        assert folder / "C:evil.exchange" == folder / "evil.exchange"
+        with pytest.raises(ChannelError):
+            self._exchange_file("C:evil", folder)
+
+    def test_drive_relative_name_escapes_when_drive_differs(self):
+        # the same name on a control folder hosted elsewhere leaves it
+        folder = PureWindowsPath(r"C:\app\control")
+        assert (folder / "D:evil.exchange").parent != folder
+        with pytest.raises(ChannelError):
+            self._exchange_file("D:evil", folder)
+
+    # every name Microsoft documents as reserved, including the superscript
+    # COM#/LPT# spellings and the two console devices, in the casings and
+    # suffixed forms Windows still resolves to the device
+    @pytest.mark.parametrize("name", (
+        ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"]
+        + [f"COM{c}" for c in "123456789\xb9\xb2\xb3"]
+        + [f"LPT{c}" for c in "123456789\xb9\xb2\xb3"]
+    ))
+    @pytest.mark.parametrize("shape", ["{}", "{}.exchange", "{}.", "{}.txt"])
+    def test_windows_device_names_rejected(self, name, shape):
+        folder = PureWindowsPath(r"C:\app\control")
+        for spelling in (name, name.lower(), name.capitalize()):
+            with pytest.raises(ChannelError):
+                self._exchange_file(shape.format(spelling), folder)
