@@ -33,9 +33,9 @@ Features
     * AMQP transport using the `py-amqp`_, or `qpid-python`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
-      transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_, `Pyro`_
-      and `NATS JetStream`_.
+      transports. There is already built-in support for `Redis`_, 
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_,
+      `PGMQ`_ , `Pyro`_ and `NATS JetStream`_.
 
     * In-memory transport for unit testing.
 
@@ -69,9 +69,13 @@ and the `Wikipedia article about AMQP`_.
 .. _`carrot`: https://pypi.org/project/carrot/
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
-.. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`SoftLayer MQ`: https://web.archive.org/web/20180313081320/http://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
+<<<<<<< HEAD
 .. _`NATS JetStream`: https://docs.nats.io/nats-concepts/jetstream
+=======
+.. _`PGMQ`: https://pgmq.github.io/pgmq/
+>>>>>>> celery/main
 .. _`AWS SNS`: https://aws.amazon.com/sns/
 
 .. _transport-comparison:
@@ -89,6 +93,8 @@ Transport Comparison
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *mongodb*     | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *pgmq*        | Virtual  | Yes        | Yes        | Yes           | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+

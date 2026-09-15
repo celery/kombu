@@ -84,6 +84,8 @@ class test_Topic(ExchangeCase):
         ('eFoo', 'stock.europe.OSE', None, {'rFoo'}),
         ('eFoo', 'stockxeuropexOSE', None, set()),
         ('eFoo', 'candy.schleckpulver.snap_crackle', None, set()),
+        # '*' is a single word: only 'stock.#' may match a longer key.
+        ('eFoo', 'stock.us.nasdaq.tech', None, {'rFoo'}),
     ])
     def test_lookup(self, exchange, routing_key, default, expected):
         assert self.e.lookup(

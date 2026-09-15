@@ -145,6 +145,7 @@ class Implements(dict):
 
 default_transport_capabilities = Implements(
     asynchronous=False,
+    batch_publish=False,
     exchange_type=frozenset(['direct', 'topic', 'fanout', 'headers']),
     heartbeats=False,
 )

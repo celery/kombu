@@ -86,7 +86,7 @@ class TopicExchange(ExchangeType):
     type = 'topic'
 
     #: map of wildcard to regex conversions
-    wildcards = {'*': r'.*?[^\.]',
+    wildcards = {'*': r'[^\.]+',
                  '#': r'.*?'}
 
     #: compiled regex cache

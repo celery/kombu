@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pickle
 import sys
+import threading
 from collections import defaultdict
 from unittest.mock import ANY, Mock, patch
 
@@ -12,6 +13,43 @@ from kombu.exceptions import MessageStateError, OperationalError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
+
+
+class RecordingPublishBatch:
+    def __init__(self, channel, max_size):
+        self.channel = channel
+        self.max_size = max_size
+        self.published = []
+        self.pending = 0
+        self.flush_count = 0
+        self.discard_count = 0
+        self.close_count = 0
+        self.flush_error = None
+        self.discard_error = None
+        self.close_error = None
+
+    def publish(self, message, **kwargs):
+        self.published.append((message, kwargs))
+        self.pending += 1
+        return 'buffered'
+
+    def flush(self):
+        if self.flush_error is not None:
+            raise self.flush_error
+        if self.pending:
+            self.flush_count += 1
+            self.pending = 0
+
+    def discard(self):
+        self.discard_count += 1
+        self.pending = 0
+        if self.discard_error is not None:
+            raise self.discard_error
+
+    def close(self):
+        self.close_count += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 class test_Producer:
@@ -277,6 +315,331 @@ class test_Producer:
         assert m['properties']['delivery_mode'] == 2
         assert exc == p.exchange.name
         assert rkey == 'process'
+
+    def test_batch_unsupported_transport_publishes_immediately(self):
+        channel = self.connection.channel()
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch() as batch:
+            result = producer.publish({'message': 1})
+            batch.flush()
+            assert 'basic_publish' in channel
+
+        assert result[0]['body'] == '{"message": 1}'
+        assert producer.supports_batch_publish is False
+
+    def test_unsupported_batch_tracks_a_revived_channel(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        producer = Producer(first_channel, serializer='json')
+
+        with producer.batch():
+            producer.publish({'channel': 'first'})
+            producer.revive(second_channel)
+            result = producer.publish({'channel': 'second'})
+
+        assert 'basic_publish' in first_channel
+        assert 'basic_publish' in second_channel
+        assert result[0]['body'] == '{"channel": "second"}'
+
+    def test_batch_successful_exit_flushes(self):
+        channel = self.connection.channel()
+        sessions = []
+
+        def create_publish_batch(max_size):
+            session = RecordingPublishBatch(channel, max_size)
+            sessions.append(session)
+            return session
+
+        channel.create_publish_batch = create_publish_batch
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch(max_size=7):
+            assert producer.publish({'message': 1}) == 'buffered'
+            assert producer.publish({'message': 2}) == 'buffered'
+            assert sessions[0].flush_count == 0
+
+        assert sessions[0].max_size == 7
+        assert sessions[0].flush_count == 1
+        assert sessions[0].close_count == 1
+        assert 'basic_publish' not in channel
+
+    def test_batch_explicit_flush_and_continue(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = lambda max_size: session
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch() as batch:
+            producer.publish({'message': 1})
+            batch.flush()
+            producer.publish({'message': 2})
+
+        assert session.flush_count == 2
+
+    def test_batch_flush_requires_active_context(self):
+        producer = Producer(self.connection.channel())
+        batch = producer.batch()
+
+        with pytest.raises(RuntimeError, match='not active'):
+            batch.flush()
+        with batch:
+            batch.flush()
+        with pytest.raises(RuntimeError, match='not active'):
+            batch.flush()
+
+    def test_batch_context_cannot_be_reentered(self):
+        producer = Producer(self.connection.channel())
+        batch = producer.batch()
+
+        with batch:
+            with pytest.raises(RuntimeError, match='cannot be re-entered'):
+                batch.__enter__()
+
+    def test_empty_batch_does_not_create_transport_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel)
+
+        with producer.batch() as batch:
+            batch.flush()
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_nested_batches_share_session_and_outer_exit_flushes(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 10)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch(max_size=10):
+            producer.publish({'message': 1})
+            with producer.batch(max_size=1):
+                producer.publish({'message': 2})
+            assert session.flush_count == 0
+
+        channel.create_publish_batch.assert_called_once_with(max_size=10)
+        assert session.flush_count == 1
+
+    def test_supported_batch_fails_closed_after_channel_revival(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        session = RecordingPublishBatch(first_channel, 1000)
+        first_channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(first_channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='channel changed'):
+            with producer.batch():
+                producer.publish({'channel': 'first'})
+                producer.revive(second_channel)
+                producer.publish({'channel': 'second'})
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+        assert 'basic_publish' not in second_channel
+
+    def test_batch_exception_discards_and_restores_producer(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='message construction failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+                raise ValueError('message construction failed')
+
+        assert session.discard_count == 1
+        assert session.flush_count == 0
+        assert session.close_count == 1
+
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_body_error_survives_discard_and_close_errors(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.discard_error = RuntimeError('discard failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='body failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+                raise ValueError('body failed')
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_message_serialization_failure_does_not_create_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel)
+
+        with pytest.raises(Exception):
+            with producer.batch():
+                producer.publish(object(), serializer='missing-serializer')
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_declaration_failure_does_not_create_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel, serializer='json')
+        producer.maybe_declare = Mock(
+            side_effect=RuntimeError('declaration failed'),
+        )
+
+        with pytest.raises(RuntimeError, match='declaration failed'):
+            with producer.batch():
+                producer.publish({'message': 1}, declare=[Mock()])
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_inner_exception_aborts_nested_batch(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch():
+            producer.publish({'message': 1})
+            with pytest.raises(ValueError):
+                with producer.batch():
+                    raise ValueError('stop nested batch')
+            with pytest.raises(RuntimeError, match='aborted batch'):
+                producer.publish({'message': 2})
+
+        assert session.discard_count == 1
+        assert session.flush_count == 0
+
+    def test_propagated_nested_exception_discards_once(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError):
+            with producer.batch():
+                producer.publish({'message': 1})
+                with producer.batch():
+                    raise ValueError('stop nested batch')
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+
+    def test_flush_failure_cleans_up_batch_state(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.flush_error = RuntimeError('broker response lost')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='broker response lost'):
+            with producer.batch():
+                producer.publish({'message': 1})
+
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_flush_error_survives_close_error(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.flush_error = ValueError('flush failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='flush failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_is_scoped_to_one_producer(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        batched = Producer(channel, serializer='json')
+        immediate = Producer(channel, serializer='json')
+
+        with batched.batch():
+            batched.publish({'producer': 'batched'})
+            result = immediate.publish({'producer': 'immediate'})
+
+        assert len(session.published) == 1
+        assert result[0]['body'] == '{"producer": "immediate"}'
+        assert 'basic_publish' in channel
+
+    def test_batch_is_scoped_to_one_channel(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        first_session = RecordingPublishBatch(first_channel, 1000)
+        second_session = RecordingPublishBatch(second_channel, 1000)
+        first_channel.create_publish_batch = Mock(return_value=first_session)
+        second_channel.create_publish_batch = Mock(return_value=second_session)
+        first = Producer(first_channel, serializer='json')
+        second = Producer(second_channel, serializer='json')
+
+        with first.batch():
+            first.publish({'channel': 'first'})
+            with second.batch():
+                second.publish({'channel': 'second'})
+
+        assert len(first_session.published) == 1
+        assert len(second_session.published) == 1
+        assert first_session.flush_count == second_session.flush_count == 1
+
+    def test_batch_is_scoped_to_one_thread(self):
+        channel = self.connection.channel()
+        sessions = []
+        sessions_lock = threading.Lock()
+        barrier = threading.Barrier(2)
+
+        def create_publish_batch(max_size):
+            session = RecordingPublishBatch(channel, max_size)
+            with sessions_lock:
+                sessions.append(session)
+            return session
+
+        channel.create_publish_batch = create_publish_batch
+        producer = Producer(channel, serializer='json')
+        errors = []
+
+        def publish(index):
+            try:
+                with producer.batch():
+                    producer.publish({'thread': index})
+                    barrier.wait()
+            except BaseException as exc:
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=publish, args=(index,))
+            for index in range(2)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert not errors
+        assert len(sessions) == 2
+        assert all(len(session.published) == 1 for session in sessions)
+        assert all(session.flush_count == 1 for session in sessions)
+
+    @pytest.mark.parametrize('max_size', [0, -1, 1.5, True, None])
+    def test_batch_rejects_invalid_max_size(self, max_size):
+        producer = Producer(self.connection.channel())
+
+        with pytest.raises(ValueError, match='positive integer'):
+            producer.batch(max_size=max_size)
 
     def test_no_exchange(self):
         chan = self.connection.channel()
@@ -714,6 +1077,83 @@ class test_Consumer:
         assert consumer.channel is channel2
         assert consumer.queues[0].channel is channel2
         assert consumer.queues[0].exchange.channel is channel2
+
+    def test_revive__resumes_consuming_if_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert consumer._active_tags
+        assert 'basic_consume' in channel2
+
+    def test_revive__does_not_consume_if_not_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert not consumer._active_tags
+        assert 'basic_consume' not in channel2
+
+    def test_revive__does_not_resume_never_active_queue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert 'qname1' in consumer._active_tags
+
+        # registered but deliberately not consumed from yet
+        consumer.add_queue(b2)
+        assert 'qname2' not in consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert 'qname1' in consumer._active_tags
+        assert 'qname2' not in consumer._active_tags
+
+    def test_revive__preserves_per_call_no_ack_override(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume(no_ack=True)
+
+        # a later consume() call with a different override only
+        # affects the queue that wasn't already consuming.
+        consumer.add_queue(b2)
+        consumer.consume(no_ack=False)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+    def test_active_tags_reflects_intent_not_broker_ack(self):
+        # tag is recorded before channel.basic_consume is called
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        def _boom(*args, **kwargs):
+            raise OperationalError('connection lost before broker ack')
+        channel.basic_consume = _boom
+
+        with pytest.raises(OperationalError):
+            consumer.consume()
+
+        assert consumer._active_tags
+        assert 'basic_consume' not in channel
 
     def test_revive__with_prefetch_count(self):
         channel = Mock(name='channel')

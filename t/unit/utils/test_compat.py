@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kombu.utils import compat
-from kombu.utils.compat import entrypoints, maybe_fileno
+from kombu.utils.compat import entrypoints, fileno, maybe_fileno
 
 
 def test_entrypoints():
@@ -34,6 +34,12 @@ def test_maybe_fileno():
     assert maybe_fileno(f) is f.fileno()
     f.fileno.side_effect = ValueError()
     assert maybe_fileno(f) is None
+
+
+def test_fileno_none():
+    with pytest.raises(ValueError, match='None'):
+        fileno(None)
+    assert maybe_fileno(None) is None
 
 
 class test_detect_environment:

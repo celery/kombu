@@ -359,6 +359,30 @@ class test_Channel:
         finally:
             self.channel.predefined_queues = set()
 
+    @pytest.mark.parametrize(
+        ('input_value', 'expected'),
+        [
+            (21600.0, '21600'),
+            (21600, '21600'),
+            ('21600', '21600'),
+            ('21600.0', '21600'),
+            (0, '0'),
+            (0.5, '0'),
+            ('0.5', '0'),
+        ],
+    )
+    def test_new_queue_visibility_timeout_is_integer(self, input_value, expected):
+        self.connection.transport_options['visibility_timeout'] = input_value
+        queue_name = 'new_visibility_timeout_queue'
+        channel = self.connection.channel()
+        try:
+            channel._new_queue(queue_name)
+            queue = self.sqs_conn_mock._queues[queue_name]
+            assert queue.creation_attributes['VisibilityTimeout'] == expected
+        finally:
+            channel._delete(queue_name)
+            self.connection.transport_options.pop('visibility_timeout', None)
+
     def test_new_queue_custom_creation_attributes(self):
         self.connection.transport_options['sqs-creation-attributes'] = {
             'KmsMasterKeyId': 'alias/aws/sqs',
