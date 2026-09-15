@@ -23,9 +23,9 @@ import nats.js.errors  # noqa: E402
 from kombu.exceptions import NotBoundError, OperationalError
 from kombu.transport.nats import DEFAULT_HOST  # noqa: E402
 from kombu.transport.nats import DEFAULT_METADATA_HEADER_NAMES  # noqa: E402
-from kombu.transport.nats import (DEFAULT_PORT, Channel, JetStreamChannel,  # noqa: E402
-                                  MAX_INBOX_SIZE, Message, QoS, Transport,
-                                  CoreNATSChannel, NATSError,
+from kombu.transport.nats import (DEFAULT_PORT, MAX_INBOX_SIZE,  # noqa: E402
+                                  Channel, CoreNATSChannel, JetStreamChannel,
+                                  Message, NATSError, QoS, Transport,
                                   decode_nats_header_value,
                                   encode_nats_header_value,
                                   message_to_nats_body_and_headers,
