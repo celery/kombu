@@ -20,7 +20,7 @@ nats = pytest.importorskip('nats')
 import nats.errors  # noqa: E402
 import nats.js.errors  # noqa: E402
 
-from kombu.exceptions import NotBoundError, OperationalError
+from kombu.exceptions import NotBoundError, OperationalError  # noqa: E402
 from kombu.transport.nats import DEFAULT_HOST  # noqa: E402
 from kombu.transport.nats import DEFAULT_METADATA_HEADER_NAMES  # noqa: E402
 from kombu.transport.nats import (DEFAULT_PORT, MAX_INBOX_SIZE,  # noqa: E402

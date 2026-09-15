@@ -85,6 +85,7 @@ class NATSError(OperationalError):
     failures distinctly.
     """
 
+
 try:
     import nats.aio.client
     import nats.aio.errors
@@ -94,7 +95,7 @@ try:
     from nats.js.api import (AckPolicy, ConsumerConfig, DeliverPolicy,
                              DiscardPolicy, RetentionPolicy, StorageType,
                              StreamConfig)
-    from nats.js.client import JetStreamContext
+    from nats.js.client import JetStreamContext  # noqa: F401
 
     NATS_CONNECTION_ERRORS = (
         nats.aio.errors.ErrConnectionClosed,
@@ -107,7 +108,7 @@ except ImportError:
     Client = None
     NATS_CONNECTION_ERRORS = NATS_CHANNEL_ERRORS = ()
 
-from kombu.log import get_logger
+from kombu.log import get_logger  # noqa: E402
 
 logger = get_logger(__name__)
 
