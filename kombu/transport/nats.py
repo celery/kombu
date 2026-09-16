@@ -88,7 +88,6 @@ class NATSError(OperationalError):
 
 try:
     import nats.aio.client
-    import nats.aio.errors
     import nats.errors
     import nats.js.errors
     from nats.aio.client import Client
@@ -98,9 +97,10 @@ try:
     from nats.js.client import JetStreamContext  # noqa: F401
 
     NATS_CONNECTION_ERRORS = (
-        nats.aio.errors.ErrConnectionClosed,
-        nats.aio.errors.ErrTimeout,
-        nats.aio.errors.ErrNoServers,
+        nats.errors.ConnectionClosedError,
+        nats.errors.NoServersError,
+        nats.errors.TimeoutError,
+        nats.errors.ConnectionReconnectingError,
     )
     NATS_CHANNEL_ERRORS = (nats.js.errors.NotFoundError,)
 
@@ -654,7 +654,7 @@ class JetStreamChannel(Channel):
             )
             self._streams.add(stream_name)
             return
-        except (nats.js.errors.NotFoundError, nats.errors.TimeoutError):
+        except (nats.js.errors.NotFoundError, TimeoutError):
             # Stream doesn't exist or timed out, we'll create it
             pass
 
@@ -669,11 +669,12 @@ class JetStreamChannel(Channel):
             max_bytes=-1,
             max_age=0,
             max_msg_size=-1,
-            storage=StorageType.MEMORY,
+            storage=StorageType.FILE,
             discard=DiscardPolicy.OLD,
             num_replicas=1,
             duplicate_window=120.0,  # 2 minutes in seconds
             allow_direct=True,  # for debugging with nats cli
+            allow_msg_ttl=True,  # required for Celery message TTL / expires=
         )
 
         # Update with user-provided config
@@ -687,7 +688,7 @@ class JetStreamChannel(Channel):
                 )
             )
             self._streams.add(stream_name)
-        except nats.errors.TimeoutError:
+        except TimeoutError:
             # If we timeout creating the stream, check if it was actually created
             try:
                 self._run(
@@ -697,7 +698,7 @@ class JetStreamChannel(Channel):
                     )
                 )
                 self._streams.add(stream_name)
-            except (nats.js.errors.NotFoundError, nats.errors.TimeoutError) as exc:
+            except (nats.js.errors.NotFoundError, TimeoutError) as exc:
                 raise NATSError(
                     f"Failed to create stream {stream_name}") from exc
 
@@ -730,7 +731,7 @@ class JetStreamChannel(Channel):
                 )
             )
             self._js_consumers.add(consumer_name)
-        except nats.errors.TimeoutError:
+        except TimeoutError:
             # If we timeout creating the consumer, check if it was actually created
             try:
                 self._run(
@@ -740,7 +741,7 @@ class JetStreamChannel(Channel):
                     )
                 )
                 self._js_consumers.add(consumer_name)
-            except (nats.js.errors.NotFoundError, nats.errors.TimeoutError) as exc:
+            except (nats.js.errors.NotFoundError, TimeoutError) as exc:
                 raise NATSError(
                     f"Failed to create consumer {consumer_name} for stream {name}"
                 ) from exc
@@ -792,12 +793,17 @@ class JetStreamChannel(Channel):
                 msg = self._run(_drain_one())
             except (asyncio.TimeoutError, TimeoutError):
                 raise Empty()
-            return nats_body_and_headers_to_message(
+            body = nats_body_and_headers_to_message(
                 msg.data,
                 msg.headers,
                 header_prefix=self.nats_metadata_header_prefix,
                 header_names=self.nats_metadata_header_names,
             )
+            body["subject"] = msg.subject
+            body["ack"] = lambda: None
+            body["nak"] = lambda: None
+            body["term"] = lambda: None
+            return body
 
         # Normal JetStream path.
         self._ensure_stream(queue)
@@ -1113,18 +1119,15 @@ class Transport(virtual.Transport):
         channels reuse the same TCP connection.
         """
         if self._nats_client is None:
-            self._nats_client = Client()
-            if self._nats_client is None:
-                raise RuntimeError("Failed to create NATS client")
-
             host = conninfo.hostname or DEFAULT_HOST
             port = conninfo.port or DEFAULT_PORT
             if connect_timeout is None:
                 connect_timeout = \
                     conninfo.transport_options.get(
                         "connection_wait_time_seconds", 5)
+            client = Client()
             self._run_on_loop(
-                self._nats_client.connect(
+                client.connect(
                     f"nats://{host}:{port}",
                     user=conninfo.userid,
                     password=conninfo.password,
@@ -1133,6 +1136,7 @@ class Transport(virtual.Transport):
                     reconnected_cb=self._on_reconnect,
                 )
             )
+            self._nats_client = client  # only assigned after successful connect
         return self._nats_client
 
     async def _on_reconnect(self) -> None:
@@ -1141,7 +1145,8 @@ class Transport(virtual.Transport):
         logger.info("NATS reconnected, clearing pull subscription caches")
         for channel in self.channels:
             try:
-                channel._subscriptions.clear()
+                if channel._js is not None:
+                    channel._subscriptions.clear()
             except AttributeError:
                 pass
 
@@ -1216,21 +1221,8 @@ class Transport(virtual.Transport):
         self._loop_thread = None
 
     def verify_connection(self, connection):
-        """Verify the connection works."""
-        port = connection.client.port or self.default_port
-        host = connection.client.hostname or DEFAULT_HOST
-
-        logger.debug("Verify NATS connection to nats://%s:%s", host, port)
-
-        client = Client()
-        loop = asyncio.new_event_loop()
+        """Verify the shared NATS client connection is still healthy."""
         try:
-            loop.run_until_complete(client.connect(f"nats://{host}:{port}"))
-            loop.run_until_complete(client.close())
-            return True
-        except ValueError:
-            pass
-        finally:
-            loop.close()
-
-        return False
+            return self._nats_client is not None and self._nats_client.is_connected
+        except Exception:
+            return False

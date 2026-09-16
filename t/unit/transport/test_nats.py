@@ -828,66 +828,22 @@ class test_Transport:
                 Transport(self.mock_client)
 
     def test_verify_connection_returns_true_on_success(self):
-        mock_nc = MagicMock()
-        mock_nc.connect = AsyncMock()
-        mock_nc.close = AsyncMock()
-
         transport = Transport(self.mock_client)
-        mock_conn = MagicMock()
-        mock_conn.client.port = DEFAULT_PORT
-        mock_conn.client.hostname = 'localhost'
-
-        with patch('kombu.transport.nats.Client', return_value=mock_nc):
-            result = transport.verify_connection(mock_conn)
+        transport._nats_client = MagicMock(is_connected=True)
+        result = transport.verify_connection(MagicMock())
         assert result is True
 
-    def test_verify_connection_returns_false_on_value_error(self):
-        mock_nc = MagicMock()
-        mock_nc.connect = AsyncMock(side_effect=ValueError('bad url'))
-
+    def test_verify_connection_returns_false_when_disconnected(self):
         transport = Transport(self.mock_client)
-        mock_conn = MagicMock()
-        mock_conn.client.port = DEFAULT_PORT
-        mock_conn.client.hostname = 'localhost'
-
-        with patch('kombu.transport.nats.Client', return_value=mock_nc):
-            result = transport.verify_connection(mock_conn)
+        transport._nats_client = MagicMock(is_connected=False)
+        result = transport.verify_connection(MagicMock())
         assert result is False
 
-    def test_verify_connection_uses_default_port_when_none(self):
-        mock_nc = MagicMock()
-        mock_nc.connect = AsyncMock()
-        mock_nc.close = AsyncMock()
-
+    def test_verify_connection_returns_false_when_no_client(self):
         transport = Transport(self.mock_client)
-        mock_conn = MagicMock()
-        mock_conn.client.port = None
-        mock_conn.client.hostname = 'myhost'
-
-        with patch('kombu.transport.nats.Client', return_value=mock_nc):
-            result = transport.verify_connection(mock_conn)
-        assert result is True
-        # The connect coroutine should be called with the default port.
-        mock_nc.connect.assert_awaited_once_with(
-            f'nats://myhost:{DEFAULT_PORT}'
-        )
-
-    def test_verify_connection_uses_default_host_when_none(self):
-        mock_nc = MagicMock()
-        mock_nc.connect = AsyncMock()
-        mock_nc.close = AsyncMock()
-
-        transport = Transport(self.mock_client)
-        mock_conn = MagicMock()
-        mock_conn.client.port = DEFAULT_PORT
-        mock_conn.client.hostname = None
-
-        with patch('kombu.transport.nats.Client', return_value=mock_nc):
-            result = transport.verify_connection(mock_conn)
-        assert result is True
-        mock_nc.connect.assert_awaited_once_with(
-            f'nats://{DEFAULT_HOST}:{DEFAULT_PORT}'
-        )
+        transport._nats_client = None
+        result = transport.verify_connection(MagicMock())
+        assert result is False
 
     # -- shared loop + client lifecycle -----------------------------------
 

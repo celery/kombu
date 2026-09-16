@@ -71,11 +71,8 @@ and the `Wikipedia article about AMQP`_.
 .. _`Pyro`: https://pyro4.readthedocs.io/
 .. _`SoftLayer MQ`: https://web.archive.org/web/20180313081320/http://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
-<<<<<<< HEAD
 .. _`NATS JetStream`: https://docs.nats.io/nats-concepts/jetstream
-=======
 .. _`PGMQ`: https://pgmq.github.io/pgmq/
->>>>>>> celery/main
 .. _`AWS SNS`: https://aws.amazon.com/sns/
 
 .. _transport-comparison:
@@ -106,7 +103,7 @@ Transport Comparison
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *Pyro*        | Virtual  | Yes        | Yes [#f1]_ | No            | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
-| *NATS*        | Virtual  | Yes        | Yes        | Yes           | No           | Yes                    |
+| *NATS*        | Virtual  | Yes        | Yes        | Yes           | No           | Yes                   |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 
 
