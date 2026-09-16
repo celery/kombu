@@ -88,7 +88,8 @@ jobs:
                   'py-mongodb',
                   'py-kafka',
                   'py-sqs',
-                  'py-pgmq'
+                  'py-pgmq',
+                  'py-nats'
               ]
               experimental: [false]
               include:

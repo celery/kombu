@@ -385,7 +385,13 @@ class QoS(virtual.QoS):
             self.channel.term_msg(message)
 
     def restore_unacked_once(self, stderr=None):
-        pass
+        """Nak all unacknowledged messages for immediate redelivery."""
+        for message in list(self._not_yet_acked.values()):
+            try:
+                message.nats_nak()
+            except Exception:
+                pass
+        self._not_yet_acked.clear()
 
 
 class Channel(virtual.Channel):
@@ -537,6 +543,13 @@ class JetStreamChannel(Channel):
     #: subscriber).  JetStream work-queue semantics are kept for regular queues.
     supports_fanout = True
 
+    #: Fanout subject prefix
+    #: When ``True`` (default) the class-level ``_fanout_keyprefix`` is used.
+    #: Set to a custom string to override, or to ``False``/``None`` for no
+    #: prefix.
+    fanout_prefix = True
+    _fanout_keyprefix = "celery"
+
     default_stream_name_prefix = "STREAM_"
     default_consumer_name_prefix = "CONSUMER_"
 
@@ -551,12 +564,19 @@ class JetStreamChannel(Channel):
         self._fanout_subscriptions: dict[str, object] = {}
         # fanout: queue_name -> exchange_name
         self._fanout_queue_to_exchange: dict[str, str] = {}
+
+        # Resolve fanout_prefix, matching Redis transport convention.
+        if self.fanout_prefix:
+            if isinstance(self.fanout_prefix, str):
+                self._fanout_keyprefix = self.fanout_prefix
+        else:
+            self._fanout_keyprefix = ""
         super().__init__(*args, **kwargs)
 
-    @staticmethod
-    def _fanout_subject(exchange: str) -> str:
+    def _fanout_subject(self, exchange: str) -> str:
         """Core NATS subject for fanout exchange — no queue group, all receive."""
-        return f"celery.fanout.{exchange}"
+        prefix = self._fanout_keyprefix
+        return f"{prefix}.fanout.{exchange}" if prefix else f"fanout.{exchange}"
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         """Register a fanout subscription on Core NATS for *exchange*/*queue*.

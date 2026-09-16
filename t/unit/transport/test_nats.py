@@ -327,11 +327,12 @@ class test_QoS:
         self.qos.reject('nonexistent', requeue=True)
         self.channel.nak_msg.assert_not_called()
 
-    def test_restore_unacked_once_is_noop(self):
-        self.qos._not_yet_acked['tag-1'] = MagicMock()
+    def test_restore_unacked_once_naks_pending_messages(self):
+        msg = MagicMock()
+        self.qos._not_yet_acked['tag-1'] = msg
         self.qos.restore_unacked_once()
-        # Message is still there – nothing was touched.
-        assert 'tag-1' in self.qos._not_yet_acked
+        msg.nats_nak.assert_called_once()
+        assert 'tag-1' not in self.qos._not_yet_acked
 
 
 # ---------------------------------------------------------------------------
@@ -1983,6 +1984,6 @@ class test_JetStreamChannel_fanout:
         fanout_channel._fanout_inboxes['worker.celery.pidbox'] = asyncio.Queue()
         # Tiny wait to keep test fast.
         fanout_channel._nats_client.transport_options = {}
-        fanout_channel.__class__.default_wait_time_seconds = 0.01
+        fanout_channel.default_wait_time_seconds = 0.01
         with pytest.raises(Empty):
             fanout_channel._get('worker.celery.pidbox')
