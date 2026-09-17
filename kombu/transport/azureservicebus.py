@@ -478,7 +478,7 @@ class Channel(virtual.Channel):
         return props.total_message_count
 
     def _purge(self, queue) -> int:
-        """Delete all current messages on ``queue``."""
+        """Delete all current messages in a queue."""
         # Azure has no broker-side purge API. Drain via an ephemeral
         # RECEIVE_AND_DELETE receiver scoped to this call so we do not
         # leak the receiver into _queue_cache.
