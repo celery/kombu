@@ -483,7 +483,7 @@ def test_basic_ack_when_qos_raises_keyerror(mock_queue: MockQueue):
 
 
 def test_basic_ack_reject_message_when_raises_exception(mock_queue: MockQueue):
-    mock_queue.producer.publish("test1234")
+    mock_queue.producer.publish("test message")
     message = mock_queue.channel._get(mock_queue.queue_name)
     mock_queue.channel.qos.get = MagicMock(
         return_value=mock_queue.channel.Message(message, mock_queue.channel)
