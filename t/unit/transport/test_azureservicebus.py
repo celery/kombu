@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import json
+import pickle
 import random
+import threading
 from collections import namedtuple
 from queue import Empty
 from unittest.mock import MagicMock, patch
@@ -481,7 +483,7 @@ def test_basic_ack_when_qos_raises_keyerror(mock_queue: MockQueue):
 
 
 def test_basic_ack_reject_message_when_raises_exception(mock_queue: MockQueue):
-    mock_queue.producer.publish("test message")
+    mock_queue.producer.publish("test1234")
     message = mock_queue.channel._get(mock_queue.queue_name)
     mock_queue.channel.qos.get = MagicMock(
         return_value=mock_queue.channel.Message(message, mock_queue.channel)
@@ -726,20 +728,39 @@ def test_register_for_renewal_creates_renewer_and_renewal_receiver(
     # Renewer created on first call.
     mock_renewer_cls.assert_called_once_with(
         max_lock_renewal_duration=channel.max_lock_renewal_duration,
-        on_lock_renew_failure=channel._on_lock_renew_failure,
     )
     renewer = mock_renewer_cls.return_value
     assert channel.connection._renewer is renewer
 
     # Renewal receiver was created (cached as queue_a::_renewal).
     renewal_receiver = channel.queue_service.get_queue_receiver.return_value
-    assert msg_a._kombu_renewal_receiver is renewal_receiver
-    renewer.register.assert_called_once_with(renewal_receiver, msg_a)
+    renewer.register.assert_called_once()
+    assert renewer.register.call_args.args == (renewal_receiver, msg_a)
+    callback = renewer.register.call_args.kwargs["on_lock_renew_failure"]
+    assert callback.func == channel._on_lock_renew_failure
+    assert callback.args == (renewal_receiver,)
 
     # Second call reuses the same renewer.
     channel._register_for_renewal("queue_a", msg_b)
     assert mock_renewer_cls.call_count == 1
     assert renewer.register.call_count == 2
+
+
+def test_register_for_renewal_keeps_message_pickleable(mock_queue: MockQueue):
+    channel = mock_queue.channel
+    channel.connection._renewer = MagicMock()
+    renewal_receiver = threading.Lock()
+    channel._get_renewal_receiver = MagicMock(
+        return_value=azureservicebus.SendReceive(receiver=renewal_receiver)
+    )
+    message = object.__new__(azure.servicebus.ServiceBusReceivedMessage)
+    message._receiver = threading.Lock()
+    message._uamqp_message = None
+
+    channel._register_for_renewal("queue_a", message)
+
+    assert not hasattr(message, "_kombu_renewal_receiver")
+    pickle.dumps(message)
 
 
 def test_get_renewal_receiver_caches_per_queue(mock_queue: MockQueue):
@@ -840,37 +861,17 @@ def test_on_lock_renew_failure_reregisters(mock_queue: MockQueue):
     msg._lock_expired = False
     msg._settled = False
     msg._kombu_renew_retries = 0
-    msg._kombu_renewal_receiver = renewal_receiver
 
-    channel._on_lock_renew_failure(msg, Exception("transient"))
+    channel._on_lock_renew_failure(
+        renewal_receiver, msg, Exception("transient")
+    )
 
     assert msg._kombu_renew_retries == 1
     assert msg.auto_renew_error is None
-    renewer.register.assert_called_once_with(renewal_receiver, msg)
-
-
-def test_on_lock_renew_failure_falls_back_to_original_receiver(
-    mock_queue: MockQueue,
-):
-    """Falls back to renewable._receiver if _kombu_renewal_receiver unset."""
-    channel = mock_queue.channel
-    renewer = MagicMock()
-    channel.connection._renewer = renewer
-
-    msg = MagicMock(
-        spec=[
-            "_lock_expired",
-            "_settled",
-            "_receiver",
-            "auto_renew_error",
-        ]
-    )
-    msg._lock_expired = False
-    msg._settled = False
-
-    channel._on_lock_renew_failure(msg, Exception("transient"))
-
-    renewer.register.assert_called_once_with(msg._receiver, msg)
+    assert renewer.register.call_args.args == (renewal_receiver, msg)
+    callback = renewer.register.call_args.kwargs["on_lock_renew_failure"]
+    assert callback.func == channel._on_lock_renew_failure
+    assert callback.args == (renewal_receiver,)
 
 
 def test_on_lock_renew_failure_gives_up_after_max_retries(mock_queue: MockQueue):
@@ -884,7 +885,9 @@ def test_on_lock_renew_failure_gives_up_after_max_retries(mock_queue: MockQueue)
     msg._settled = False
     msg._kombu_renew_retries = 3  # already retried 3 times
 
-    channel._on_lock_renew_failure(msg, Exception("persistent"))
+    channel._on_lock_renew_failure(
+        MagicMock(name="renewal_receiver"), msg, Exception("persistent")
+    )
 
     # retries=3, >= 3 → give up without re-registering
     renewer.register.assert_not_called()
@@ -901,7 +904,9 @@ def test_on_lock_renew_failure_skips_expired_lock(mock_queue: MockQueue):
     msg._lock_expired = True
     msg._settled = False
 
-    channel._on_lock_renew_failure(msg, Exception("expired"))
+    channel._on_lock_renew_failure(
+        MagicMock(name="renewal_receiver"), msg, Exception("expired")
+    )
 
     renewer.register.assert_not_called()
 

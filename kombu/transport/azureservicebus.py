@@ -64,6 +64,7 @@ Transport Options
 from __future__ import annotations
 
 import string
+from functools import partial
 from queue import Empty
 from typing import Any
 
@@ -308,10 +309,16 @@ class Channel(virtual.Channel):
     def _create_auto_lock_renewer(self) -> AutoLockRenewer:
         return AutoLockRenewer(
             max_lock_renewal_duration=self.max_lock_renewal_duration,
-            on_lock_renew_failure=self._on_lock_renew_failure,
         )
 
-    def _on_lock_renew_failure(self, renewable, error):
+    def _register_message_for_renewal(self, receiver, message):
+        self.connection._renewer.register(
+            receiver,
+            message,
+            on_lock_renew_failure=partial(self._on_lock_renew_failure, receiver),
+        )
+
+    def _on_lock_renew_failure(self, receiver, renewable, error):
         if renewable._lock_expired or renewable._settled:
             return
 
@@ -326,10 +333,7 @@ class Channel(virtual.Channel):
             "Lock renewal failed (retry %d/3), re-registering: %s", retries + 1, error
         )
         try:
-            receiver = getattr(
-                renewable, "_kombu_renewal_receiver", renewable._receiver
-            )
-            self.connection._renewer.register(receiver, renewable)
+            self._register_message_for_renewal(receiver, renewable)
         except Exception:
             logger.exception("Failed to re-register for lock renewal")
 
@@ -435,8 +439,7 @@ class Channel(virtual.Channel):
         if self.connection._renewer is None:
             self.connection._renewer = self._create_auto_lock_renewer()
         renewal_obj = self._get_renewal_receiver(queue)
-        message._kombu_renewal_receiver = renewal_obj.receiver
-        self.connection._renewer.register(renewal_obj.receiver, message)
+        self._register_message_for_renewal(renewal_obj.receiver, message)
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
         try:
@@ -475,7 +478,7 @@ class Channel(virtual.Channel):
         return props.total_message_count
 
     def _purge(self, queue) -> int:
-        """Delete all current messages in a queue."""
+        """Delete all current messages on ``queue``."""
         # Azure has no broker-side purge API. Drain via an ephemeral
         # RECEIVE_AND_DELETE receiver scoped to this call so we do not
         # leak the receiver into _queue_cache.
