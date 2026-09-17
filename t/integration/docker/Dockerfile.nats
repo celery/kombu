@@ -1,0 +1,2 @@
+FROM nats:2.11-alpine
+CMD ["nats-server", "--jetstream", "--http_port", "8222", "--debug"]
