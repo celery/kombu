@@ -26,6 +26,9 @@ class Resource:
     close_after_fork = False
 
     def __init__(self, limit=None, preload=None, close_after_fork=None):
+        # bool subclasses int; limit=True would silently become pool size 1
+        if isinstance(limit, bool):
+            raise TypeError("limit must be an int, not bool")
         self._limit = limit
         self.preload = preload or 0
         self._closed = False

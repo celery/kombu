@@ -132,6 +132,10 @@ def get_limit():
 
 def set_limit(limit, force=False, reset_after=False, ignore_errors=False):
     """Set new connection pool limit."""
+    # bool subclasses int; limit=True would silently become pool size 1
+    # (and limit=False would become 0 via `limit or 0` below).
+    if isinstance(limit, bool):
+        raise TypeError("limit must be an int, not bool")
     limit = limit or 0
     glimit = _limit[0] or 0
     if limit != glimit:
