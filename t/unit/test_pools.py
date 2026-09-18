@@ -262,6 +262,7 @@ class test_bool_limit:
     def test_set_limit_rejects_bool(self):
         """bool subclasses int; set_limit(True) must not silently become 1."""
         import pytest
+
         from kombu import pools
 
         prev = pools.get_limit()
@@ -277,6 +278,7 @@ class test_bool_limit:
     def test_resource_rejects_bool_limit(self):
         """bool subclasses int; Resource(limit=True) must not silently become 1."""
         import pytest
+
         from kombu.connection import Connection
 
         for value in (True, False):
