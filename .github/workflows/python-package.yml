@@ -117,8 +117,6 @@ jobs:
                   allow-prereleases: true
                   cache: 'pip'
                   cache-dependency-path: '**/setup.py'
-          -   name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@stable
           -   name: Install tox
               run: python -m pip install --upgrade pip wheel tox tox-docker
           -   name: >
