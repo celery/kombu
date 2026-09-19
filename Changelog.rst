@@ -8,6 +8,13 @@
 Unreleased
 ==========
 
+- Add a consumption guard to the virtual transport QoS
+  (:attr:`kombu.transport.virtual.QoS.guard`, also settable with the
+  ``qos_guard`` transport option). When set, the guard callable is consulted
+  by ``can_consume()`` in addition to the prefetch count, so applications
+  such as Celery can stop fetching from the broker while they have no
+  capacity to handle more messages, instead of monkeypatching the QoS
+  object (#2353).
 - Add PGMQ transport for PostgreSQL message queues (#2559)
 
 - Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport

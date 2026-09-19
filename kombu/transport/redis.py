@@ -76,6 +76,13 @@ Transport Options
   Defaults to ``False``.
 
   .. versionadded:: 5.7.0
+* ``qos_guard``: (callable) Optional consumption guard applied on top of
+  the prefetch count.  Called with the channel's
+  :class:`~kombu.transport.virtual.QoS` instance before fetching from the
+  broker; while it returns a falsy value no new messages are fetched.
+  See :attr:`kombu.transport.virtual.QoS.guard`.  Defaults to ``None``.
+
+  .. versionadded:: 5.7.0
 
 Queue Arguments
 ===============

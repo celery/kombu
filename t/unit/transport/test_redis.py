@@ -3196,6 +3196,16 @@ class test_MultiChannelPoller:
         qos.reject(1234, True)
         qos.restore_by_tag.assert_called_with(1234, leftmost=True)
 
+    def test_qos_guard(self):
+        p, channel = self.create_get()
+        allow = [False]
+        qos = redis.QoS(channel, guard=lambda q: allow[0])
+        assert not qos.can_consume()
+        assert qos.can_consume_max_estimate() == 0
+        allow[0] = True
+        assert qos.can_consume()
+        assert qos.can_consume_max_estimate() is None
+
     def test_get_brpop_qos_allow(self):
         p, channel = self.create_get(queues=['a_queue'])
         channel.qos.can_consume.return_value = True

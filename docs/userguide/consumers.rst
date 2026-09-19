@@ -227,6 +227,50 @@ this:
 Read more about consumer priorities here:
 https://www.rabbitmq.com/consumer-priority.html
 
+Virtual Transports
+------------------
+
+Consumption Guard
+~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 5.7.0
+
+Virtual transports (Redis, SQS, PGMQ, and so on) emulate ``prefetch_count``
+in :class:`kombu.transport.virtual.QoS`: the transport only fetches a new
+message from the broker while :meth:`~kombu.transport.virtual.QoS.can_consume`
+returns true, that is while the number of unacknowledged messages is below
+the prefetch count.
+
+Sometimes the prefetch count alone is not enough to express when an
+application can take on more work.  A worker may, for instance, want to
+fetch a message only when a process is free to handle it, so that a
+long-running message doesn't hold other, already fetched messages hostage,
+and so that messages are spread fairly across workers.  For that a
+*consumption guard* can be installed with the ``qos_guard`` transport option:
+
+.. code-block:: python
+
+    def has_free_slot(qos):
+        return len(active_jobs) < number_of_processes
+
+    connection = Connection(
+        'redis://localhost',
+        transport_options={'qos_guard': has_free_slot},
+    )
+
+The guard is a callable receiving the channel's
+:class:`~kombu.transport.virtual.QoS` instance.  As long as it returns a
+falsy value :meth:`~kombu.transport.virtual.QoS.can_consume` returns false and
+:meth:`~kombu.transport.virtual.QoS.can_consume_max_estimate` returns ``0``,
+so no new messages are fetched from the broker.  The prefetch count is still
+honored when the guard allows consumption.  The guard is called on every
+poll, so it should be cheap and must not block.
+
+The guard can also be set, or replaced at runtime, directly on an existing
+channel: ``channel.qos.guard = has_free_slot``.  It's disabled (:const:`None`)
+by default.  Native AMQP transports implement prefetching in the broker
+and ignore this option.
+
 
 Reference
 =========

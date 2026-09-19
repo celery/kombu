@@ -5,7 +5,7 @@ import pytest
 import kombu
 
 from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
-                     BasicFunctionality)
+                     BaseQoSGuard, BasicFunctionality)
 
 
 def get_connection(hostname, port):
@@ -66,4 +66,10 @@ class test_KafkaFailover(BaseFailover):
 @pytest.mark.env('kafka')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_KafkaMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('kafka')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_KafkaQoSGuard(BaseQoSGuard):
     pass
