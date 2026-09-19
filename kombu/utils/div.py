@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-
-from .encoding import default_encode
+from io import TextIOBase
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +24,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
               file=stderr)
     else:
         logger.error('EMERGENCY DUMP STATE TO FILE -> %s <-', persist, extra={"emergency_state_file": persist})
-    fh = open_file(persist, 'w')
+    fh = open_file(persist, 'wb')
     try:
         try:
             dump(state, fh, protocol=0)
@@ -37,7 +36,11 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
                 )
             else:
                 logger.exception("Cannot pickle state. Falling back to pformat.")
-            fh.write(default_encode(pformat(state)))
+            fh.seek(0)
+            fh.truncate()
+            formatted = pformat(state)
+            fh.write(formatted if isinstance(fh, TextIOBase)
+                     else formatted.encode('utf-8'))
     finally:
         fh.flush()
         fh.close()
