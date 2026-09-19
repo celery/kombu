@@ -68,6 +68,12 @@ for _module, items in all_by_module.items():
     for item in items:
         object_origins[item] = _module
 
+sub_modules = ("connection", "entity", "message", "messaging",
+               "pools", "utils", "common", "serialization")
+sub_modules_origins = {}
+for sub_module in sub_modules:
+    sub_modules_origins[sub_module] = "kombu." + sub_module
+
 
 class module(ModuleType):
     """Customized Python module."""
@@ -78,6 +84,9 @@ class module(ModuleType):
             for extra_name in all_by_module[module.__name__]:
                 setattr(self, extra_name, getattr(module, extra_name))
             return getattr(module, name)
+        if name in sub_modules_origins:
+            module = __import__(sub_modules_origins[name], None, None, [])
+            return module
         return ModuleType.__getattribute__(self, name)
 
     def __dir__(self) -> list[str]:
@@ -97,7 +106,7 @@ new_module.__dict__.update({
     '__file__': __file__,
     '__path__': __path__,
     '__doc__': __doc__,
-    '__all__': tuple(object_origins),
+    '__all__': tuple({**sub_modules_origins, **object_origins}),
     '__version__': __version__,
     '__author__': __author__,
     '__contact__': __contact__,
