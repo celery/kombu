@@ -5,25 +5,78 @@
 ================
 
 
-Unreleased
-==========
+.. _version-5.7.0a1:
 
-- Add PGMQ transport for PostgreSQL message queues (#2559)
+5.7.0a1
+=======
+:release-date: 20 September, 2026
+:release-by: Asif Saif Uddin
 
-- Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport
-  uses a non-transactional pipeline to publish multiple messages in fewer
-  network round trips while retaining normal serialization, routing,
-  priorities, queue expiry, and fanout behavior.
-- Add the ``sentinel_fanout_compat`` transport option to the Redis Sentinel
-  transport. When enabled, fanout messages are published to and consumed from
-  both the current ``/<db>.`` PUB/SUB topic and the legacy ``/{db}.`` topic
-  used by kombu < 5.4.0, so that mixed-version workers and control clients
-  keep exchanging broadcast messages such as Celery control commands during
-  a rolling upgrade (#2152).
-- Fix the Redis transport cancelling fanout consumers with ``UNSUBSCRIBE``
-  although it subscribes with ``PSUBSCRIBE``, which left the pattern
-  subscriptions active on the pub/sub connection after a consumer was
-  cancelled.
+What's Changed
+~~~~~~~~~~~~~~
+
+- Add missing reprkwargs export to utils module (#2436)
+- Add support for fair queue in SQS (#2342)
+- Support redis queue expiration (#2251)
+- Fix Logwrapped not supporting context manager protocol (#2461)
+- Cycle through host before calling errback (#2331)
+- Allow enable_exactly_once_delivery for gcpubsub (#2431)
+- Feat(gcpubsub): optimize topic existence check (#2462)
+- Fix active_queues to preserve queue ordering (#2464)
+- fix: allow OSError to propagate to errno-specific handler in unregister() (#2471)
+- Added support for SQS fanout via AWS SNS (#2372)
+- Use compression.zstd (PEP-784) (#2395)
+- Fix#2463 gevent concurrent error (#2478)
+- Fix for SQS transport deadlock (#2479)
+- ChannelPromise: ensure the AttributeError does not appear in the traceback when the contract raises an exception - #2486
+- Fix RabbitMQ 4.x crash: global QoS not supported on classic queues (#2481)
+- Fix: SQS polling_interval transport option ignored in async event loop #2439 (#2489)
+- Support callable passwords for credential refresh on reconnect (#2476)
+- Fix#10205 redis-timer-connection-error (#2498)
+- Fix(redis): prevent timer callbacks from crashing event loop on connection error
+- Fix: gcpubsub transport crash when using Pub/Sub emulator (#2493)
+- Fix(redis): do not remove on_poll_start from on_tick on disconnect (#2492)
+- Allow dots in Azure Service Bus queue names (#2221)
+- Pass through Redis credential_provider from connection_kwargs during client creation in redis transport (#2507)
+- Implement missing _delete() method of filesystem.Channel (#2470)
+- fix delivery tag collision in pubsub transport (#2487)
+- fix: RabbitMQ 4.3.0 compatibility (#2531)
+- feat(gcpubsub): update existing subscriptions on config changes (#2532)
+- fix(azureservicebus): scope queue cache and noack set to Connection (#2543)
+- Azure Service Bus: add AutoLockRenewer support via use_lock_renewal transport option (#2542)
+- Prefixed native delayed delivery (#2540)
+- Use logger instead of print when restoring unacked messages (#2551)
+- Defer _reset_cycle call until after updating _active_queue (#2553)
+- Use logging instead of printing in emergency_dump_state (#2557)
+- Fix azure service bus automatic lock renewal not working on gevent, move automatic lock renewal (#2545)
+- Fix KeyError(<fileno>) crash in Redis transport on_readable/handle_event (#2561)
+- Honor the delivery_mode argument in Exchange.Message
+- Redis: deliver rotating StreamingCredentialProvider tokens to long-lived BRPOP and pub/sub connections (#2563)
+- Fix(SQS): coerce visibility_timeout to a whole number of seconds (#2581)
+- Make the Redis ack-emulation restore cadence configurable (#2558)
+- Fix(serialization): support memoryview and bytearray in the YAML decoder
+- Add transport-aware batch publishing with Redis pipelines (#2572) 
+- Fix(redis): treat stale-fd KeyError as a connection error (#2592)
+- Strip existing delay prefix before adding a new one on retry (#2591)
+- Redis: drop half-open pub/sub connections the subclient health check can't see (#2590)
+- Fix: add missing retry to publisher.publish in gcpubsub _put (#2465)
+- fix: Queue.from_dict no longer drops queue options (#2580)
+- Stop the topic '*' wildcard from matching across dots (#2568)
+- Ensure consumer recovers from broker connection restart/issues (#2593)
+- Fix(utils): don't evict a key when overwriting an existing LRUCache entry (#2621)
+- Fix(utils): never sleep longer than interval_max in retry_over_time (#2588)
+- Raise ValueError when fileno() is given None. (#2623)
+- fix(redis): import from redis submodules (#2625)
+- fix(redis): add sentinel_fanout_compat transport option for mixed-version Sentinel clusters (#2626)
+- fix(redis): replace deprecated ZREVRANGEBYSCORE with ZRANGE BYSCORE REV (#2628)
+- transport/redis: close Sentinel node connections in _disconnect_pools (fixes#1108) (#2631)
+- Add PGMQ transport for PostgreSQL message queues (#2559) 
+- Fix Redis consumer registration cleanup after disconnect (#2630)
+- Fix(redis): catch ValueError in _on_connection_disconnect (#2640)
+- Fix(http): close the async HTTP client's pending requests when the hub closes (#2648)
+- Update amqp version to 5.4.0 (#2660)
+- Restore pypi long description with a bug fix (#2661)
+
 
 
 .. _version-5.6.2:
