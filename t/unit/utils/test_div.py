@@ -2,14 +2,10 @@ from __future__ import annotations
 
 import pickle
 from io import BytesIO, StringIO
+from pathlib import Path
+from pprint import pformat
 
 from kombu.utils.div import emergency_dump_state
-
-
-class MyStringIO(StringIO):
-
-    def close(self):
-        pass
 
 
 class MyBytesIO(BytesIO):
@@ -19,6 +15,27 @@ class MyBytesIO(BytesIO):
 
 
 class test_emergency_dump_state:
+
+    def test_dump_file(self):
+        state = {'task': 'rétry', 'payload': b'\x00\xff'}
+        path = Path(emergency_dump_state(state))
+        try:
+            assert pickle.loads(path.read_bytes()) == state
+        finally:
+            path.unlink()
+
+    def test_dump_file_fallback(self):
+        state = {'task': 'rétry'}
+
+        def raise_something(state, fh, **kwargs):
+            fh.write(b'partial pickle data')
+            raise TypeError('cannot pickle state')
+
+        path = Path(emergency_dump_state(state, dump=raise_something))
+        try:
+            assert path.read_text(encoding='utf-8') == pformat(state)
+        finally:
+            path.unlink()
 
     def test_dump(self, stdouts):
         fh = MyBytesIO()
@@ -30,7 +47,7 @@ class test_emergency_dump_state:
         assert not stdouts.stdout.getvalue()
 
     def test_dump_second_strategy(self, stdouts):
-        fh = MyStringIO()
+        fh = MyBytesIO()
         stderr = StringIO()
 
         def raise_something(*args, **kwargs):
@@ -42,8 +59,8 @@ class test_emergency_dump_state:
             dump=raise_something,
             stderr=stderr,
         )
-        assert 'foo' in fh.getvalue()
-        assert 'bar' in fh.getvalue()
+        assert b'foo' in fh.getvalue()
+        assert b'bar' in fh.getvalue()
         assert stderr.getvalue()
         assert not stdouts.stdout.getvalue()
 
@@ -55,7 +72,7 @@ class test_emergency_dump_state:
         assert "EMERGENCY DUMP STATE TO FILE" in caplog.text
 
     def test_dump_logging_exception(self, caplog):
-        fh = MyStringIO()
+        fh = MyBytesIO()
 
         def raise_something(*args, **kwargs):
             raise KeyError('foo')
@@ -66,6 +83,6 @@ class test_emergency_dump_state:
             dump=raise_something,
             stderr=None,
         )
-        assert 'foo' in fh.getvalue()
-        assert 'bar' in fh.getvalue()
+        assert b'foo' in fh.getvalue()
+        assert b'bar' in fh.getvalue()
         assert "Cannot pickle state. Falling back to pformat." in caplog.text
