@@ -76,7 +76,16 @@ What's Changed
 - Fix(http): close the async HTTP client's pending requests when the hub closes (#2648)
 - Update amqp version to 5.4.0 (#2660)
 - Restore pypi long description with a bug fix (#2661)
-
+- Validate exchange names in the filesystem transport, which interpolated
+  them into a path under ``control_folder`` without sanitisation (#2644).
+  Names are now restricted to letters, digits, ``.``, ``-`` and ``_``;
+  anything else raises :exc:`~kombu.exceptions.ChannelError`. This is one
+  character narrower than the AMQP 0-9-1 exchange name grammar, which also
+  permits ``:``. A colon is rejected because it makes the name
+  drive-relative on Windows: ``D:evil`` wrote outside the control folder,
+  and ``C:evil`` silently aliased the ``evil`` exchange. Names that brokers
+  accept outside that grammar, such as a ``/`` or non-ASCII characters, are
+  rejected by this transport as well.
 
 
 .. _version-5.6.2:
