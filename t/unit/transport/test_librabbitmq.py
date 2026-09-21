@@ -168,13 +168,13 @@ class test_Transport:
         conn.server_properties = {'product': 'RabbitMQ', 'version': '3.13.0'}
         assert self.T.qos_semantics_matches_spec(conn) is False
 
-        # RabbitMQ 4.0: global QoS removed on classic queues (True)
+        # RabbitMQ 4.0: still global QoS semantics (False)
         conn.server_properties = {'product': 'RabbitMQ', 'version': '4.0.0'}
-        assert self.T.qos_semantics_matches_spec(conn) is True
+        assert self.T.qos_semantics_matches_spec(conn) is False
 
-        # RabbitMQ 4.x future version: still True
+        # RabbitMQ 4.x: still False
         conn.server_properties = {'product': 'RabbitMQ', 'version': '4.2.1'}
-        assert self.T.qos_semantics_matches_spec(conn) is True
+        assert self.T.qos_semantics_matches_spec(conn) is False
 
         # AttributeError (no server_properties): returns True with warning
         conn_bad = Mock(name='conn_bad', spec=[])

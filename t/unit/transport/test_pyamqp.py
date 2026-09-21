@@ -251,13 +251,13 @@ class test_pyamqp:
         conn.server_properties = {'product': 'RabbitMQ', 'version': '3.13.0'}
         assert t.qos_semantics_matches_spec(conn) is False
 
-        # RabbitMQ 4.0: global QoS removed on classic queues (True)
+        # RabbitMQ 4.0: still global QoS semantics (False)
         conn.server_properties = {'product': 'RabbitMQ', 'version': '4.0.0'}
-        assert t.qos_semantics_matches_spec(conn) is True
+        assert t.qos_semantics_matches_spec(conn) is False
 
-        # RabbitMQ 4.x future version: still True
+        # RabbitMQ 4.x: still False
         conn.server_properties = {'product': 'RabbitMQ', 'version': '4.2.1'}
-        assert t.qos_semantics_matches_spec(conn) is True
+        assert t.qos_semantics_matches_spec(conn) is False
 
         # RabbitMQ with missing 'version' key: returns True (safe default)
         conn.server_properties = {'product': 'RabbitMQ'}

@@ -233,10 +233,11 @@ class Transport(base.Transport):
             if not version_str:
                 return True
             version = version_string_as_tuple(version_str)
-            # RabbitMQ < 3.3: per-channel QoS (return True)
-            # RabbitMQ 3.3–3.x: global QoS semantics (return False)
-            # RabbitMQ 4.0+: global QoS removed on classic queues (return True)
-            return version < (3, 3) or version >= (4, 0)
+            # RabbitMQ 3.3+ applies basic.qos per channel unless global=True is
+            # passed; 4.x keeps that for classic queues. Quorum queues reject a
+            # global prefetch regardless of version, so that is the caller's
+            # call, not a version question.
+            return version < (3, 3)
         return True
 
     @property
