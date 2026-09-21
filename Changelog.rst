@@ -9,7 +9,7 @@
 
 5.7.0a1
 =======
-:release-date: 20 September, 2026
+:release-date: 21 September, 2026
 :release-by: Asif Saif Uddin
 
 What's Changed
@@ -78,20 +78,16 @@ What's Changed
 - Restore pypi long description with a bug fix (#2661)
 - Validate exchange names in the filesystem transport, which interpolated
   them into a path under ``control_folder`` without sanitisation (#2644).
-  Names are now restricted to letters, digits, ``.``, ``-`` and ``_``;
-  anything else raises :exc:`~kombu.exceptions.ChannelError`. This is one
-  character narrower than the AMQP 0-9-1 exchange name grammar, which also
-  permits ``:``. A colon is rejected because it makes the name
-  drive-relative on Windows: ``D:evil`` wrote outside the control folder,
-  and ``C:evil`` silently aliased the ``evil`` exchange. Names that brokers
-  accept outside that grammar, such as a ``/`` or non-ASCII characters, are
-  rejected by this transport as well.
 - Fix :class:`kombu.utils.limits.TokenBucket` over-admitting on the first
   burst after an idle period. The bucket only advanced its timestamp while
   it was below capacity, so the time it spent sitting full was later counted
   as refill time and it topped itself straight back up right after being
   drained. That granted one extra full refill, so a ``capacity=1`` bucket
   admitted two consumes instead of one (#680).
+- Fix(filesystem): match queue name exactly, not as a substring (#2647)
+- Fix(azureservicebus): keep renewal receiver out of messages (#2655)
+- Added checks to reject URLs containing dotted schemes (#2642)
+
 
 
 .. _version-5.6.2:
