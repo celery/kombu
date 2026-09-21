@@ -134,6 +134,94 @@ class test_connection_utils:
         assert conn.as_uri(include_password=True) == self.pg_url
 
 
+class test_Connection_transport_scheme:
+    """A transport name derived from a URL must not be an import path.
+
+    resolve_transport() passes any name containing '.' or ':' straight to
+    symbol_by_name(), which imports it from sys.path.  No transport alias
+    contains either character, so both are rejected for URL-derived names.
+    """
+
+    def test_dotted_url_scheme_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('some.evil.module://localhost')
+
+    def test_dotted_scheme_via_uri_prefix_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('some.evil.module+amqp://localhost')
+
+    def test_colon_scheme_via_uri_prefix_rejected(self):
+        # the `prefix+scheme://` split is raw text, not a scheme parse, so
+        # a ':' survives it and symbol_by_name() would read it as
+        # `module:attribute`.
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('baitmod:x+amqp://localhost')
+
+    def test_dotted_alternate_rejected_at_construction(self):
+        # only alt[0] goes through the checks in __init__; the rest reach
+        # transport_cls through switch() on the first failover.
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('amqp://h1;a.b://h2')
+
+    def test_dotted_alternate_in_list_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection(['amqp://h1', 'a.b://h2'])
+
+    def test_dotted_alternate_in_alternates_rejected(self):
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            Connection('amqp://h1', alternates=['a.b://h2'])
+
+    def test_dotted_scheme_via_switch_rejected(self):
+        conn = Connection('amqp://h1')
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            conn.switch('a.b://h2')
+
+    def test_no_alias_is_rejected_by_the_check(self):
+        # the check can only be this strict because no legitimate scheme
+        # looks like an import path.
+        from kombu.connection import _check_url_transport
+        from kombu.transport import TRANSPORT_ALIASES
+        for alias in TRANSPORT_ALIASES:
+            assert _check_url_transport(alias) == alias
+
+    def test_check_rejects_dot_and_colon(self):
+        from kombu.connection import _check_url_transport
+        for name in ('a.b', 'a:b', 'a.b:c'):
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                _check_url_transport(name)
+
+    def test_alias_scheme_not_rejected(self):
+        assert Connection('memory://').transport_cls == 'memory'
+
+    def test_uri_prefix_alias_not_rejected(self):
+        # documented `prefix+scheme://` form with a non-dotted prefix
+        assert Connection('sqla+mysql://localhost').uri_prefix == 'sqla'
+
+    def test_alias_alternate_not_rejected(self):
+        conn = Connection('memory://h1;memory://h2')
+        assert conn.alt == ['memory://h1', 'memory://h2']
+
+    def test_hostname_alternate_not_rejected(self):
+        # an alternate without a scheme is a bare hostname, and dots in a
+        # hostname are not a transport name.
+        conn = Connection('amqp://h1;h2.example.com')
+        assert conn.alt == ['amqp://h1', 'h2.example.com']
+
+    def test_switch_to_alias_scheme_not_rejected(self):
+        conn = Connection('memory://h1')
+        conn.switch('redis://h2')
+        assert conn.transport_cls == 'redis'
+        assert conn.hostname == 'h2'
+
+    def test_dotted_transport_keyword_not_rejected(self):
+        # the documented way to use a custom transport class is the
+        # `transport` keyword argument, which must keep working.
+        from kombu.transport.memory import Transport as MemoryTransport
+        conn = Connection(
+            'memory://', transport='kombu.transport.memory:Transport')
+        assert isinstance(conn.transport, MemoryTransport)
+
+
 class test_Connection:
 
     def setup_method(self):
