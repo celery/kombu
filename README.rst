@@ -305,10 +305,10 @@ by doing the following,:
 Getting Help
 ============
 
-Mailing list
-------------
+Discussions Forum
+-----------------
 
-Join the `celery-users`_ mailing list.
+Join the `kombu forum`_.
 
 .. _`kombu forum`: https://github.com/celery/kombu/discussions
 
