@@ -60,6 +60,32 @@ _log_connection = os.environ.get('KOMBU_LOG_CONNECTION', False)
 _log_channel = os.environ.get('KOMBU_LOG_CHANNEL', False)
 
 
+def _check_url_transport(name: str) -> str:
+    """Validate a transport name that was derived from a URL.
+
+    :func:`~kombu.transport.resolve_transport` hands any name containing
+    ``.`` or ``:`` straight to
+    :func:`~kombu.utils.imports.symbol_by_name`, which imports it as a
+    module from ``sys.path``.  A transport name taken from an untrusted
+    URL must therefore never contain either character, or the URL alone
+    decides which module gets imported (Issue #2641).
+
+    No entry in :data:`~kombu.transport.TRANSPORT_ALIASES` contains ``.``
+    or ``:``, so this can never reject a legitimate scheme.  Dotted and
+    colon-separated import paths remain available through the explicit
+    ``transport`` keyword argument, which is not URL-derived.
+
+    Returns the name unchanged so it can be used inline.
+
+    Raises
+    ------
+        ValueError: if the name is an import path rather than a scheme.
+    """
+    if '.' in name or ':' in name:
+        raise ValueError(f'Invalid transport scheme: {name!r}')
+    return name
+
+
 class Connection:
     """A connection to the broker.
 
@@ -211,9 +237,14 @@ class Connection:
                 # e.g. sqla+mysql://root:masterkey@localhost/
                 params['transport'], params['hostname'] = \
                     hostname.split('+', 1)
+                # not a scheme parse: this is raw text off the URL, so it
+                # must be checked for ':' as well as '.'
+                _check_url_transport(params['transport'])
                 self.uri_prefix = params['transport']
             elif '://' in hostname:
-                transport = transport or urlparse(hostname).scheme
+                if not transport:
+                    transport = _check_url_transport(
+                        urlparse(hostname).scheme)
                 if not get_transport_cls(transport).can_parse_url:
                     # we must parse the URL
                     url_params = parse_url(hostname)
@@ -227,6 +258,12 @@ class Connection:
         self._init_params(**params)
 
         # fallback hosts
+        # Only alt[0] went through the checks above; every other alternate
+        # reaches .transport_cls through switch().  Validate them all here
+        # so a bad alternate fails at construction rather than mid-failover.
+        for alt_url in alt:
+            if isinstance(alt_url, str) and '://' in alt_url:
+                _check_url_transport(urlparse(alt_url).scheme)
         self.alt = alt
         # keep text representation for .info
         # only temporary solution as this won't work when
@@ -267,6 +304,10 @@ class Connection:
         conn_params = (
             parse_url(conn_str) if "://" in conn_str else {"hostname": conn_str}
         )
+        # parse_url() sets transport to the raw URL scheme, overriding any
+        # transport given at construction time.
+        if conn_params.get('transport'):
+            _check_url_transport(conn_params['transport'])
         self._init_params(**dict(self._initial_params, **conn_params))
 
     def maybe_switch_next(self):
