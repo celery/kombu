@@ -658,6 +658,28 @@ class test_Connection:
 
         assert ensured() == 'ACK'
 
+    def test_ensure_channel_errors_stop_at_max_retries(self):
+        class _ChannelError(Exception):
+            pass
+
+        class _Transport(Transport):
+            recoverable_channel_errors = (_ChannelError,)
+            recoverable_connection_errors = ()
+
+        tries = 0
+
+        def publish():
+            nonlocal tries
+            tries += 1
+            raise _ChannelError('closed')
+
+        conn = Connection(port=5672, transport=_Transport)
+        ensured = conn.ensure(conn, publish, max_retries=3)
+        with pytest.raises(OperationalError):
+            ensured()
+        # Same budget as connection errors: 1 try plus max_retries.
+        assert tries == 4
+
     def test_autoretry(self):
         myfun = Mock()
 
