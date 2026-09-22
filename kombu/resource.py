@@ -171,6 +171,10 @@ class Resource:
                 pass  # Issue #78
 
     def resize(self, limit, force=False, ignore_errors=False, reset=False):
+        # bool subclasses int; limit=True would silently become pool size 1.
+        # The limit setter calls resize(), so pool.limit = True is covered.
+        if isinstance(limit, bool):
+            raise TypeError("limit must be an int, not bool")
         prev_limit = self._limit
         if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
             if not force:

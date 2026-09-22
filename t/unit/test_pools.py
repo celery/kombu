@@ -286,3 +286,9 @@ class test_bool_limit:
                 Connection("memory://").Pool(limit=value)
         p = Connection("memory://").Pool(limit=3)
         assert p.limit == 3
+        for value in (True, False):
+            with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                p.resize(value)
+            with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                p.limit = value
+        assert p.limit == 3
