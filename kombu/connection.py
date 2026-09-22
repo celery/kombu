@@ -651,7 +651,7 @@ class Connection:
                             on_revive(channel)
                         got_connection += 1
                     except chan_errors as exc:
-                        if max_retries is not None and retries > max_retries:
+                        if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure channel error: %r',
                                     exc, exc_info=1)
