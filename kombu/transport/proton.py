@@ -74,6 +74,7 @@ _MANAGEMENT_PUT = "PUT"
 _MANAGEMENT_POST = "POST"
 _MANAGEMENT_DELETE = "DELETE"
 _MANAGEMENT_GET = "GET"
+_MANAGEMENT_LINK_NAME = "kombu-management-link"
 
 _DEFERRED = object()
 
@@ -260,7 +261,7 @@ class _ProtonHandler(MessagingHandler):
                 self.state.container.create_sender(
                     self.state.connection,
                     target=_MANAGEMENT_ADDRESS,
-                    name="kombu-management-sender",
+                    name=_MANAGEMENT_LINK_NAME,
                     options=_ManagementSenderOption(),
                 )
             )
@@ -271,7 +272,7 @@ class _ProtonHandler(MessagingHandler):
             self.state.management_receiver = (
                 self.state.container.create_receiver(
                     self.state.connection,
-                    name="kombu-management-receiver",
+                    name=_MANAGEMENT_LINK_NAME,
                     options=_ManagementReceiverOption(),
                 )
             )
