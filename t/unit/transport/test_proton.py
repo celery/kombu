@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from importlib.metadata import version
 from unittest.mock import MagicMock
 
 import pytest
