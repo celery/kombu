@@ -17,6 +17,9 @@ AMQP 1.0 does not define a universal queue/exchange administration protocol.
 Consequently, node provisioning is intentionally separated from the messaging
 transport. The transport operates on AMQP 1.0 node addresses and retains
 Kombu's declaration API for compatibility.
+
+The initial address mapping follows RabbitMQ's AMQP 1.0 address v2 model.
+Other AMQP 1.0 brokers may use different address semantics.
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ from collections import OrderedDict
 from dataclasses import dataclass, field
 from importlib.metadata import version
 from time import monotonic
+from urllib.parse import quote
 
 import amqp.protocol
 
@@ -42,8 +46,12 @@ try:
     from proton import Message as ProtonMessage
     from proton import SSLDomain
     from proton.handlers import MessagingHandler
-    from proton.reactor import (ApplicationEvent, AtLeastOnce, Container,
-                                EventInjector)
+    from proton.reactor import (
+        ApplicationEvent,
+        AtLeastOnce,
+        Container,
+        EventInjector,
+    )
 except ImportError:  # pragma: no cover
     proton = None
     ProtonMessage = None
@@ -322,6 +330,7 @@ class _ProtonHandler(MessagingHandler):
 
     def _consume(
         self,
+        source_address,
         queue_name,
         consumer_tag,
         prefetch,
@@ -333,7 +342,7 @@ class _ProtonHandler(MessagingHandler):
         if receiver is None:
             receiver = self.state.container.create_receiver(
                 self.state.connection,
-                source=queue_name,
+                source=source_address,
                 name=consumer_tag,
                 options=AtLeastOnce(),
             )
@@ -363,14 +372,18 @@ class _ProtonHandler(MessagingHandler):
             )
             receiver.close()
 
-    def _get(self, queue_name):
+    def _get(
+        self,
+        source_address,
+        queue_name,
+    ):
         """Implement Kombu basic_get using a temporary AMQP 1.0 receiver."""
 
         consumer_tag = f"kombu-get-{uuid.uuid4()}"
 
         receiver = self.state.container.create_receiver(
             self.state.connection,
-            source=queue_name,
+            source=source_address,
             name=consumer_tag,
             options=AtLeastOnce(),
         )
@@ -611,14 +624,52 @@ class Channel(base.StdChannel):
             **kwargs,
         )
 
-    def _address(
+    def _encode_address_part(self, value):
+        return quote(
+            value or "",
+            safe="",
+        )
+
+    def _queue_address(self, queue):
+        return (
+            "/queues/"
+            f"{self._encode_address_part(queue)}"
+        )
+
+    def _exchange_address(
+        self,
+        exchange,
+        routing_key="",
+    ):
+        exchange = self._encode_address_part(
+            exchange
+        )
+
+        if routing_key:
+            routing_key = self._encode_address_part(
+                routing_key
+            )
+
+            return (
+                f"/exchanges/{exchange}/"
+                f"{routing_key}"
+            )
+
+        return f"/exchanges/{exchange}"
+
+    def _publish_address(
         self,
         exchange,
         routing_key,
     ):
-        return self.transport.address_template.format(
-            exchange=exchange or "",
-            routing_key=routing_key or "",
+        if exchange:
+            return self._exchange_address(
+                exchange,
+                routing_key,
+            )
+
+        return self._queue_address(
+            routing_key
         )
 
     def prepare_message(
@@ -660,7 +711,7 @@ class Channel(base.StdChannel):
         routing_key,
         **kwargs,
     ):
-        address = self._address(
+        address = self._publish_address(
             exchange,
             routing_key,
         )
@@ -736,6 +787,7 @@ class Channel(base.StdChannel):
 
         self._command(
             "consume",
+            self._queue_address(queue),
             queue,
             consumer_tag,
             prefetch,
@@ -783,6 +835,7 @@ class Channel(base.StdChannel):
     ):
         received = self._command(
             "get",
+            self._queue_address(queue),
             queue,
         )
 
@@ -986,8 +1039,10 @@ class Connection:
     def __init__(
         self,
         state,
+        client,
     ):
         self.state = state
+        self.client = client
         self.channels = []
         self.connected = True
 
@@ -1074,13 +1129,9 @@ class Transport(base.Transport):
             DEFAULT_PREFETCH,
         )
 
-        # Default AMQP 1.0 address model:
-        # publishing is directed to the routing key.
-        #
-        # A broker-specific deployment may instead use:
-        #
-        #     "{exchange}/{routing_key}"
-        #
+        # Kept for compatibility with transport
+        # configuration, but address generation is
+        # handled explicitly by Channel methods.
         self.address_template = options.pop(
             "address_template",
             "{routing_key}",
@@ -1228,7 +1279,10 @@ class Transport(base.Transport):
 
         state.start()
 
-        return Connection(state)
+        return Connection(
+            state,
+            self.client,
+        )
 
     def create_channel(self, connection):
         return connection.channel()
@@ -1344,7 +1398,10 @@ class Transport(base.Transport):
                 received.delivery.accept()
                 received.delivery.settle()
 
-            callback(message)
+            callback(
+                message.body,
+                message,
+            )
 
             return message
 
