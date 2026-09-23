@@ -302,7 +302,4 @@ def test_transport_alias():
         "proton://localhost:5672"
     )
 
-    assert (
-        connection.transport_cls
-        is transport.Transport
-    )
+    assert connection.transport_cls == "proton"
