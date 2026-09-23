@@ -6,29 +6,20 @@ import queue
 import socket
 import threading
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
+import kombu.transport.proton as module
 from kombu import Connection
 from kombu.exceptions import OperationalError
-
-import kombu.transport.proton as module
-from kombu.transport.proton import (
-    AuthenticationFailure,
-    Channel,
-    Connection as ProtonConnection,
-    Message,
-    QoS,
-    Transport,
-    _Command,
-    _ManagementReceiverOption,
-    _ManagementSenderOption,
-    _ProtonHandler,
-    _ProtonState,
-    _RabbitMQManagement,
-    _Received,
-)
+from kombu.transport.proton import AuthenticationFailure, Channel
+from kombu.transport.proton import Connection as ProtonConnection
+from kombu.transport.proton import (Message, QoS, Transport, _Command,
+                                    _ManagementReceiverOption,
+                                    _ManagementSenderOption, _ProtonHandler,
+                                    _ProtonState, _RabbitMQManagement,
+                                    _Received)
 
 
 class FakeProtonMessage:
