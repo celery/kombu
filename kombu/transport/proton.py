@@ -13,13 +13,12 @@ synchronous. Commands are injected into the Proton reactor using Proton's
 EventInjector and incoming deliveries are forwarded to Kombu through a
 socketpair.
 
-AMQP 1.0 does not define a universal queue/exchange administration protocol.
-Consequently, node provisioning is intentionally separated from the messaging
-transport. The transport operates on AMQP 1.0 node addresses and retains
-Kombu's declaration API for compatibility.
+The messaging implementation uses AMQP 1.0. RabbitMQ-specific topology
+management is implemented through RabbitMQ's AMQP 1.0 management endpoint.
+The messaging/address layer remains separate from topology administration.
 
-The initial address mapping follows RabbitMQ's AMQP 1.0 address v2 model.
-Other AMQP 1.0 brokers may use different address semantics.
+The initial messaging address mapping follows RabbitMQ's AMQP 1.0 address
+v2 model. Other AMQP 1.0 brokers may use different address semantics.
 """
 
 from __future__ import annotations
@@ -51,6 +50,7 @@ try:
         AtLeastOnce,
         Container,
         EventInjector,
+        LinkOption,
     )
 except ImportError:  # pragma: no cover
     proton = None
@@ -61,6 +61,7 @@ except ImportError:  # pragma: no cover
     AtLeastOnce = None
     Container = None
     EventInjector = None
+    LinkOption = object
 
 
 logger = get_logger(__name__)
@@ -71,6 +72,15 @@ DEFAULT_SSL_PORT = 5671
 DEFAULT_PREFETCH = 1
 
 COMMAND_EVENT = "kombu_proton_command"
+
+_MANAGEMENT_ADDRESS = "/management"
+_MANAGEMENT_REPLY_TO = "$me"
+_MANAGEMENT_PUT = "PUT"
+_MANAGEMENT_POST = "POST"
+_MANAGEMENT_DELETE = "DELETE"
+_MANAGEMENT_GET = "GET"
+
+_DEFERRED = object()
 
 
 @dataclass
@@ -112,6 +122,7 @@ class QoS:
     def can_consume_max_estimate(self):
         if not self.prefetch_count:
             return 1
+
         return max(
             0,
             self.prefetch_count - len(self._not_yet_acked),
@@ -125,6 +136,7 @@ class QoS:
 
     def ack(self, delivery_tag):
         delivery = self._not_yet_acked.pop(delivery_tag)
+
         self.channel._command(
             "accept",
             delivery,
@@ -164,12 +176,50 @@ class Message(virtual.Message):
             content_encoding=message.content_encoding,
             properties=properties,
             headers=headers,
-            delivery_info=kwargs.pop("delivery_info", None),
+            delivery_info=kwargs.pop(
+                "delivery_info",
+                None,
+            ),
             **kwargs,
         )
 
         self.proton_message = message
         self.proton_delivery = delivery
+
+
+if proton is not None:
+
+    class _ManagementSenderOption(LinkOption):
+        """Configure the RabbitMQ management sender link."""
+
+        def apply(self, link):
+            link.source.address = _MANAGEMENT_ADDRESS
+            link.snd_settle_mode = proton.Link.SND_SETTLED
+            link.rcv_settle_mode = proton.Link.RCV_FIRST
+            link.properties = {
+                "paired": True,
+            }
+            link.source.dynamic = False
+
+    class _ManagementReceiverOption(LinkOption):
+        """Configure the RabbitMQ management receiver link."""
+
+        def apply(self, link):
+            link.target.address = _MANAGEMENT_ADDRESS
+            link.snd_settle_mode = proton.Link.SND_SETTLED
+            link.rcv_settle_mode = proton.Link.RCV_FIRST
+            link.properties = {
+                "paired": True,
+            }
+            link.source.dynamic = False
+
+else:  # pragma: no cover
+
+    class _ManagementSenderOption:
+        pass
+
+    class _ManagementReceiverOption:
+        pass
 
 
 class _ProtonHandler(MessagingHandler):
@@ -183,50 +233,213 @@ class _ProtonHandler(MessagingHandler):
         self.state.container = event.container
 
         self.state.injector = EventInjector()
-        event.container.selectable(self.state.injector)
+        event.container.selectable(
+            self.state.injector
+        )
 
         self._connect()
 
         self.state.start_event.set()
 
     def _connect(self):
-        kwargs = dict(self.state.connect_kwargs)
+        kwargs = dict(
+            self.state.connect_kwargs
+        )
 
         if self.state.ssl_domain is not None:
-            kwargs["ssl_domain"] = self.state.ssl_domain
+            kwargs["ssl_domain"] = (
+                self.state.ssl_domain
+            )
 
-        self.state.connection = self.state.container.connect(
-            self.state.url,
-            reconnect=False,
-            **kwargs,
+        self.state.connection = (
+            self.state.container.connect(
+                self.state.url,
+                reconnect=False,
+                **kwargs,
+            )
         )
 
     def on_connection_opened(self, event):
+        if (
+            self.state.management_sender is None
+        ):
+            self.state.management_sender = (
+                self.state.container.create_sender(
+                    self.state.connection,
+                    target=_MANAGEMENT_ADDRESS,
+                    name="kombu-management-sender",
+                    options=_ManagementSenderOption(),
+                )
+            )
+
+        if (
+            self.state.management_receiver is None
+        ):
+            self.state.management_receiver = (
+                self.state.container.create_receiver(
+                    self.state.connection,
+                    name="kombu-management-receiver",
+                    options=_ManagementReceiverOption(),
+                )
+            )
+
+            self.state.management_receiver.flow(1)
+
         self.state.connected_event.set()
 
     def on_connection_error(self, event):
-        self.state.set_error(
-            getattr(event.connection, "condition", None)
+        self._fail_management(
+            getattr(
+                event.connection,
+                "condition",
+                None,
+            )
         )
+
+        self.state.set_error(
+            getattr(
+                event.connection,
+                "condition",
+                None,
+            )
+        )
+
         self.state.connected_event.set()
         self.state.notify()
 
     def on_transport_error(self, event):
-        self.state.set_error(
-            getattr(event.transport, "condition", None)
+        self._fail_management(
+            getattr(
+                event.transport,
+                "condition",
+                None,
+            )
         )
+
+        self.state.set_error(
+            getattr(
+                event.transport,
+                "condition",
+                None,
+            )
+        )
+
         self.state.notify()
 
     def on_disconnected(self, event):
+        self._fail_management(
+            "Proton connection disconnected"
+        )
+
         self.state.disconnected_event.set()
         self.state.notify()
+
+    def _fail_management(self, error):
+        command = self.state.management_pending
+
+        if command is None:
+            return
+
+        self.state.management_pending = None
+
+        if isinstance(error, BaseException):
+            exc = error
+        else:
+            exc = OperationalError(
+                str(error)
+            )
+
+        try:
+            command.result.put_nowait(
+                (False, exc)
+            )
+        except queue.Full:
+            pass
 
     def on_message(self, event):
         receiver = event.receiver
 
-        consumer_tag = self.state.receiver_tags.get(
-            receiver,
-            getattr(receiver, "name", None),
+        if (
+            receiver is self.state.management_receiver
+        ):
+            command = self.state.management_pending
+
+            if command is None:
+                logger.debug(
+                    "Ignoring unexpected RabbitMQ "
+                    "management response"
+                )
+                return
+
+            self.state.management_pending = None
+
+            response = event.message
+            subject = response.subject
+
+            if subject is None:
+                error = OperationalError(
+                    "RabbitMQ management response "
+                    "has no status code"
+                )
+
+                command.result.put(
+                    (False, error)
+                )
+
+                self.state.notify()
+                return
+
+            try:
+                status = int(subject)
+            except (TypeError, ValueError) as exc:
+                command.result.put(
+                    (
+                        False,
+                        OperationalError(
+                            "Invalid RabbitMQ management "
+                            f"response status: {subject!r}"
+                        ),
+                    )
+                )
+
+                self.state.notify()
+                return
+
+            expected_codes = command.kwargs.get(
+                "expected_codes",
+                (),
+            )
+
+            if status not in expected_codes:
+                body = response.body
+
+                error = OperationalError(
+                    "RabbitMQ management request "
+                    f"failed with HTTP {status}: "
+                    f"{body!r}"
+                )
+
+                command.result.put(
+                    (False, error)
+                )
+            else:
+                command.result.put(
+                    (True, response)
+                )
+
+            self.state.management_receiver.flow(1)
+            self.state.notify()
+            return
+
+        consumer_tag = (
+            self.state.receiver_tags.get(
+                receiver,
+                getattr(
+                    receiver,
+                    "name",
+                    None,
+                ),
+            )
         )
 
         if consumer_tag is None:
@@ -245,35 +458,54 @@ class _ProtonHandler(MessagingHandler):
         self.state.incoming.put(received)
         self.state.notify()
 
-    # ApplicationEvent("kombu_proton_command") is dispatched here.
     def on_kombu_proton_command(self, event):
-        try:
-            while True:
-                command = self.state.commands.get_nowait()
+        while True:
+            try:
+                command = (
+                    self.state.commands.get_nowait()
+                )
+            except queue.Empty:
+                return
 
-                try:
-                    value = self._dispatch(
-                        command.name,
-                        *command.args,
-                        **command.kwargs,
+            try:
+                value = self._dispatch(
+                    command.name,
+                    *command.args,
+                    **command.kwargs,
+                )
+            except BaseException as exc:
+                command.result.put(
+                    (False, exc)
+                )
+            else:
+                if value is not _DEFERRED:
+                    command.result.put(
+                        (True, value)
                     )
-                except BaseException as exc:
-                    command.result.put((False, exc))
-                else:
-                    command.result.put((True, value))
 
-        except queue.Empty:
-            return
-
-    def _dispatch(self, name, *args, **kwargs):
+    def _dispatch(
+        self,
+        name,
+        *args,
+        **kwargs,
+    ):
         if name == "send":
-            return self._send(*args, **kwargs)
+            return self._send(
+                *args,
+                **kwargs,
+            )
 
         if name == "consume":
-            return self._consume(*args, **kwargs)
+            return self._consume(
+                *args,
+                **kwargs,
+            )
 
         if name == "cancel":
-            return self._cancel(*args, **kwargs)
+            return self._cancel(
+                *args,
+                **kwargs,
+            )
 
         if name == "accept":
             delivery = args[0]
@@ -294,7 +526,16 @@ class _ProtonHandler(MessagingHandler):
             return None
 
         if name == "get":
-            return self._get(*args, **kwargs)
+            return self._get(
+                *args,
+                **kwargs,
+            )
+
+        if name == "management":
+            return self._management(
+                *args,
+                **kwargs,
+            )
 
         if name == "close":
             if self.state.connection is not None:
@@ -308,15 +549,22 @@ class _ProtonHandler(MessagingHandler):
         )
 
     def _sender(self, address):
-        sender = self.state.senders.get(address)
+        sender = self.state.senders.get(
+            address
+        )
 
         if sender is None:
-            sender = self.state.container.create_sender(
-                self.state.connection,
-                target=address,
-                options=AtLeastOnce(),
+            sender = (
+                self.state.container.create_sender(
+                    self.state.connection,
+                    target=address,
+                    options=AtLeastOnce(),
+                )
             )
-            self.state.senders[address] = sender
+
+            self.state.senders[address] = (
+                sender
+            )
 
         return sender
 
@@ -324,7 +572,9 @@ class _ProtonHandler(MessagingHandler):
         sender = self._sender(address)
 
         if sender.credit <= 0:
-            self.state.container.do_work(0.05)
+            self.state.container.do_work(
+                0.05
+            )
 
         return sender.send(message)
 
@@ -340,25 +590,39 @@ class _ProtonHandler(MessagingHandler):
         )
 
         if receiver is None:
-            receiver = self.state.container.create_receiver(
-                self.state.connection,
-                source=source_address,
-                name=consumer_tag,
-                options=AtLeastOnce(),
+            receiver = (
+                self.state.container.create_receiver(
+                    self.state.connection,
+                    source=source_address,
+                    name=consumer_tag,
+                    options=AtLeastOnce(),
+                )
             )
 
-            self.state.receivers[consumer_tag] = receiver
-            self.state.receiver_queues[receiver] = queue_name
-            self.state.receiver_tags[receiver] = consumer_tag
+            self.state.receivers[
+                consumer_tag
+            ] = receiver
 
-        receiver.flow(prefetch or 1)
+            self.state.receiver_queues[
+                receiver
+            ] = queue_name
+
+            self.state.receiver_tags[
+                receiver
+            ] = consumer_tag
+
+        receiver.flow(
+            prefetch or 1
+        )
 
         return receiver
 
     def _cancel(self, consumer_tag):
-        receiver = self.state.receivers.pop(
-            consumer_tag,
-            None,
+        receiver = (
+            self.state.receivers.pop(
+                consumer_tag,
+                None,
+            )
         )
 
         if receiver is not None:
@@ -366,10 +630,12 @@ class _ProtonHandler(MessagingHandler):
                 receiver,
                 None,
             )
+
             self.state.receiver_tags.pop(
                 receiver,
                 None,
             )
+
             receiver.close()
 
     def _get(
@@ -377,39 +643,59 @@ class _ProtonHandler(MessagingHandler):
         source_address,
         queue_name,
     ):
-        """Implement Kombu basic_get using a temporary AMQP 1.0 receiver."""
+        """Implement Kombu basic_get."""
 
-        consumer_tag = f"kombu-get-{uuid.uuid4()}"
-
-        receiver = self.state.container.create_receiver(
-            self.state.connection,
-            source=source_address,
-            name=consumer_tag,
-            options=AtLeastOnce(),
+        consumer_tag = (
+            f"kombu-get-{uuid.uuid4()}"
         )
 
-        self.state.receiver_queues[receiver] = queue_name
-        self.state.receiver_tags[receiver] = consumer_tag
+        receiver = (
+            self.state.container.create_receiver(
+                self.state.connection,
+                source=source_address,
+                name=consumer_tag,
+                options=AtLeastOnce(),
+            )
+        )
+
+        self.state.receiver_queues[
+            receiver
+        ] = queue_name
+
+        self.state.receiver_tags[
+            receiver
+        ] = consumer_tag
 
         receiver.flow(1)
 
-        deadline = monotonic() + self.state.get_timeout
+        deadline = (
+            monotonic()
+            + self.state.get_timeout
+        )
 
         while monotonic() < deadline:
-            self.state.container.do_work(0.05)
+            self.state.container.do_work(
+                0.05
+            )
 
             try:
-                received = self.state.incoming.get_nowait()
+                received = (
+                    self.state.incoming.get_nowait()
+                )
             except queue.Empty:
                 continue
 
-            if received.consumer_tag == consumer_tag:
+            if (
+                received.consumer_tag
+                == consumer_tag
+            ):
                 receiver.close()
 
                 self.state.receiver_queues.pop(
                     receiver,
                     None,
                 )
+
                 self.state.receiver_tags.pop(
                     receiver,
                     None,
@@ -417,7 +703,9 @@ class _ProtonHandler(MessagingHandler):
 
                 return received
 
-            self.state.incoming.put(received)
+            self.state.incoming.put(
+                received
+            )
 
         receiver.close()
 
@@ -425,12 +713,67 @@ class _ProtonHandler(MessagingHandler):
             receiver,
             None,
         )
+
         self.state.receiver_tags.pop(
             receiver,
             None,
         )
 
         return None
+
+    def _management(
+        self,
+        body,
+        path,
+        method,
+        expected_codes,
+    ):
+        if (
+            self.state.management_sender is None
+            or self.state.management_receiver is None
+        ):
+            raise OperationalError(
+                "RabbitMQ management links "
+                "are not available"
+            )
+
+        if self.state.management_pending is not None:
+            raise OperationalError(
+                "A RabbitMQ management request "
+                "is already pending"
+            )
+
+        command = self.state.current_command
+
+        if command is None:
+            raise OperationalError(
+                "RabbitMQ management request has "
+                "no command context"
+            )
+
+        message = ProtonMessage(
+            id=str(uuid.uuid4()),
+            body=body,
+            inferred=False,
+            reply_to=_MANAGEMENT_REPLY_TO,
+            address=path,
+            subject=method,
+            durable=False,
+        )
+
+        command.kwargs[
+            "expected_codes"
+        ] = tuple(expected_codes)
+
+        self.state.management_pending = (
+            command
+        )
+
+        self.state.management_sender.send(
+            message
+        )
+
+        return _DEFERRED
 
 
 class _ProtonState:
@@ -446,7 +789,9 @@ class _ProtonState:
         self.url = url
         self.connect_kwargs = connect_kwargs
         self.ssl_domain = ssl_domain
-        self.command_timeout = command_timeout
+        self.command_timeout = (
+            command_timeout
+        )
         self.get_timeout = command_timeout
 
         self.commands = queue.Queue()
@@ -465,9 +810,16 @@ class _ProtonState:
         self.receiver_queues = {}
         self.receiver_tags = {}
 
+        self.management_sender = None
+        self.management_receiver = None
+        self.management_pending = None
+        self.current_command = None
+
         self.error = None
 
-        self.read_sock, self.write_sock = socket.socketpair()
+        self.read_sock, self.write_sock = (
+            socket.socketpair()
+        )
 
         self.read_sock.setblocking(False)
         self.write_sock.setblocking(False)
@@ -502,9 +854,13 @@ class _ProtonState:
 
     def _run(self):
         try:
-            handler = _ProtonHandler(self)
+            handler = _ProtonHandler(
+                self
+            )
 
-            self.container = Container(handler)
+            self.container = Container(
+                handler
+            )
 
             self.container.run()
 
@@ -513,7 +869,12 @@ class _ProtonState:
             self.connected_event.set()
             self.notify()
 
-    def command(self, name, *args, **kwargs):
+    def command(
+        self,
+        name,
+        *args,
+        **kwargs,
+    ):
         command = _Command(
             name=name,
             args=args,
@@ -533,9 +894,17 @@ class _ProtonState:
             )
         )
 
-        ok, value = command.result.get(
-            timeout=self.command_timeout
-        )
+        ok = False
+        value = None
+
+        try:
+            self.current_command = command
+
+            ok, value = command.result.get(
+                timeout=self.command_timeout
+            )
+        finally:
+            self.current_command = None
 
         if not ok:
             raise value
@@ -544,15 +913,25 @@ class _ProtonState:
 
     def notify(self):
         try:
-            self.write_sock.send(b"1")
-        except (BlockingIOError, OSError):
+            self.write_sock.send(
+                b"1"
+            )
+        except (
+            BlockingIOError,
+            OSError,
+        ):
             pass
 
     def drain_notifications(self):
         try:
-            while self.read_sock.recv(4096):
+            while self.read_sock.recv(
+                4096
+            ):
                 pass
-        except (BlockingIOError, OSError):
+        except (
+            BlockingIOError,
+            OSError,
+        ):
             pass
 
     def set_error(self, error):
@@ -564,7 +943,9 @@ class _ProtonState:
     def close(self):
         try:
             if self.injector is not None:
-                self.command("close")
+                self.command(
+                    "close"
+                )
         except Exception:
             logger.debug(
                 "Error closing Proton reactor",
@@ -586,6 +967,160 @@ class _ProtonState:
                 pass
 
 
+class _RabbitMQManagement:
+    """RabbitMQ topology management over AMQP 1.0."""
+
+    def __init__(self, channel):
+        self.channel = channel
+
+    def request(
+        self,
+        body,
+        path,
+        method,
+        expected_codes,
+    ):
+        return self.channel._command(
+            "management",
+            body,
+            path,
+            method,
+            tuple(expected_codes),
+        )
+
+    def declare_queue(
+        self,
+        queue,
+        durable=False,
+        exclusive=False,
+        auto_delete=False,
+        arguments=None,
+        passive=False,
+    ):
+        path = self.channel._queue_address(
+            queue
+        )
+
+        if passive:
+            return self.request(
+                None,
+                path,
+                _MANAGEMENT_GET,
+                (200,),
+            )
+
+        body = {
+            "durable": durable,
+            "exclusive": exclusive,
+            "auto_delete": auto_delete,
+            "arguments": arguments or {},
+        }
+
+        return self.request(
+            body,
+            path,
+            _MANAGEMENT_PUT,
+            (200, 201, 204),
+        )
+
+    def delete_queue(self, queue):
+        return self.request(
+            None,
+            self.channel._queue_address(queue),
+            _MANAGEMENT_DELETE,
+            (200,),
+        )
+
+    def declare_exchange(
+        self,
+        exchange,
+        exchange_type="direct",
+        durable=False,
+        auto_delete=False,
+        internal=False,
+        arguments=None,
+    ):
+        body = {
+            "durable": durable,
+            "type": exchange_type,
+            "auto_delete": auto_delete,
+            "internal": internal,
+            "arguments": arguments or {},
+        }
+
+        return self.request(
+            body,
+            self.channel._exchange_address(
+                exchange
+            ),
+            _MANAGEMENT_PUT,
+            (201, 204),
+        )
+
+    def delete_exchange(self, exchange):
+        return self.request(
+            None,
+            self.channel._exchange_address(
+                exchange
+            ),
+            _MANAGEMENT_DELETE,
+            (204,),
+        )
+
+    def bind(
+        self,
+        queue,
+        exchange,
+        routing_key,
+        arguments=None,
+    ):
+        body = {
+            "source": exchange,
+            "destination_queue": queue,
+            "binding_key": (
+                routing_key
+                if routing_key is not None
+                else ""
+            ),
+            "arguments": arguments or {},
+        }
+
+        return self.request(
+            body,
+            "/bindings",
+            _MANAGEMENT_POST,
+            (204,),
+        )
+
+    def unbind(
+        self,
+        queue,
+        exchange,
+        routing_key,
+        arguments=None,
+    ):
+        key = (
+            routing_key
+            if routing_key is not None
+            else ""
+        )
+
+        binding_path = (
+            "/bindings/"
+            f"src={self.channel._encode_address_part(exchange)};"
+            f"dstq={self.channel._encode_address_part(queue)};"
+            f"key={self.channel._encode_address_part(key)};"
+            "args="
+        )
+
+        return self.request(
+            None,
+            binding_path,
+            _MANAGEMENT_DELETE,
+            (204,),
+        )
+
+
 class Channel(base.StdChannel):
     """Kombu native channel backed by Proton."""
 
@@ -593,11 +1128,16 @@ class Channel(base.StdChannel):
     Message = Message
 
     body_encoding = "base64"
+
     codecs = {
         "base64": Base64(),
     }
 
-    def __init__(self, connection, transport):
+    def __init__(
+        self,
+        connection,
+        transport,
+    ):
         self.connection = connection
         self.transport = transport
         self.state = connection.state
@@ -617,20 +1157,35 @@ class Channel(base.StdChannel):
         self._exchanges = set()
         self._bindings = set()
 
-    def _command(self, name, *args, **kwargs):
+        self._management = (
+            _RabbitMQManagement(self)
+        )
+
+    def _command(
+        self,
+        name,
+        *args,
+        **kwargs,
+    ):
         return self.state.command(
             name,
             *args,
             **kwargs,
         )
 
-    def _encode_address_part(self, value):
+    def _encode_address_part(
+        self,
+        value,
+    ):
         return quote(
             value or "",
             safe="",
         )
 
-    def _queue_address(self, queue):
+    def _queue_address(
+        self,
+        queue,
+    ):
         return (
             "/queues/"
             f"{self._encode_address_part(queue)}"
@@ -641,13 +1196,17 @@ class Channel(base.StdChannel):
         exchange,
         routing_key="",
     ):
-        exchange = self._encode_address_part(
-            exchange
+        exchange = (
+            self._encode_address_part(
+                exchange
+            )
         )
 
         if routing_key:
-            routing_key = self._encode_address_part(
-                routing_key
+            routing_key = (
+                self._encode_address_part(
+                    routing_key
+                )
             )
 
             return (
@@ -655,7 +1214,9 @@ class Channel(base.StdChannel):
                 f"{routing_key}"
             )
 
-        return f"/exchanges/{exchange}"
+        return (
+            f"/exchanges/{exchange}"
+        )
 
     def _publish_address(
         self,
@@ -681,7 +1242,9 @@ class Channel(base.StdChannel):
         headers=None,
         properties=None,
     ):
-        properties = dict(properties or {})
+        properties = dict(
+            properties or {}
+        )
 
         properties["headers"] = dict(
             headers or {}
@@ -698,7 +1261,10 @@ class Channel(base.StdChannel):
             priority=priority,
         )
 
-    def message_to_python(self, raw_message):
+    def message_to_python(
+        self,
+        raw_message,
+    ):
         return self.Message(
             raw_message,
             channel=self,
@@ -729,32 +1295,34 @@ class Channel(base.StdChannel):
         ):
             proton_message = message
         else:
-            proton_message = self.prepare_message(
-                getattr(
-                    message,
-                    "body",
-                    None,
-                ),
-                content_type=getattr(
-                    message,
-                    "content_type",
-                    None,
-                ),
-                content_encoding=getattr(
-                    message,
-                    "content_encoding",
-                    None,
-                ),
-                headers=getattr(
-                    message,
-                    "headers",
-                    None,
-                ),
-                properties=getattr(
-                    message,
-                    "properties",
-                    None,
-                ),
+            proton_message = (
+                self.prepare_message(
+                    getattr(
+                        message,
+                        "body",
+                        None,
+                    ),
+                    content_type=getattr(
+                        message,
+                        "content_type",
+                        None,
+                    ),
+                    content_encoding=getattr(
+                        message,
+                        "content_encoding",
+                        None,
+                    ),
+                    headers=getattr(
+                        message,
+                        "headers",
+                        None,
+                    ),
+                    properties=getattr(
+                        message,
+                        "properties",
+                        None,
+                    ),
+                )
             )
 
         self._command(
@@ -779,7 +1347,9 @@ class Channel(base.StdChannel):
 
         self._queues.add(queue)
 
-        self._consumers[consumer_tag] = (
+        self._consumers[
+            consumer_tag
+        ] = (
             queue,
             no_ack,
             callback,
@@ -793,7 +1363,10 @@ class Channel(base.StdChannel):
             prefetch,
         )
 
-    def basic_cancel(self, consumer_tag):
+    def basic_cancel(
+        self,
+        consumer_tag,
+    ):
         self._consumers.pop(
             consumer_tag,
             None,
@@ -815,7 +1388,9 @@ class Channel(base.StdChannel):
                 "not supported"
             )
 
-        self.qos.ack(delivery_tag)
+        self.qos.ack(
+            delivery_tag
+        )
 
     def basic_reject(
         self,
@@ -883,6 +1458,24 @@ class Channel(base.StdChannel):
         nowait=False,
         arguments=None,
     ):
+        arguments = dict(
+            arguments or {}
+        )
+
+        if passive:
+            self._management.declare_queue(
+                queue,
+                passive=True,
+            )
+        else:
+            self._management.declare_queue(
+                queue,
+                durable=durable,
+                exclusive=exclusive,
+                auto_delete=auto_delete,
+                arguments=arguments,
+            )
+
         self._queues.add(queue)
 
         return amqp.protocol.queue_declare_ok_t(
@@ -898,36 +1491,62 @@ class Channel(base.StdChannel):
         if_empty=False,
         **kwargs,
     ):
-        self._queues.discard(queue)
+        try:
+            self._management.delete_queue(
+                queue
+            )
+        finally:
+            self._queues.discard(queue)
 
-        self._bindings = {
-            binding
-            for binding in self._bindings
-            if binding[0] != queue
-        }
+            self._bindings = {
+                binding
+                for binding in self._bindings
+                if binding[0] != queue
+            }
 
     def exchange_declare(
         self,
         exchange="",
         type="direct",
         durable=False,
+        auto_delete=False,
+        internal=False,
+        arguments=None,
         **kwargs,
     ):
-        if exchange:
-            self._exchanges.add(exchange)
+        if not exchange:
+            return
+
+        self._management.declare_exchange(
+            exchange,
+            exchange_type=type,
+            durable=durable,
+            auto_delete=auto_delete,
+            internal=internal,
+            arguments=arguments,
+        )
+
+        self._exchanges.add(exchange)
 
     def exchange_delete(
         self,
         exchange,
         **kwargs,
     ):
-        self._exchanges.discard(exchange)
+        try:
+            self._management.delete_exchange(
+                exchange
+            )
+        finally:
+            self._exchanges.discard(
+                exchange
+            )
 
-        self._bindings = {
-            binding
-            for binding in self._bindings
-            if binding[1] != exchange
-        }
+            self._bindings = {
+                binding
+                for binding in self._bindings
+                if binding[1] != exchange
+            }
 
     def queue_bind(
         self,
@@ -937,6 +1556,13 @@ class Channel(base.StdChannel):
         arguments=None,
         **kwargs,
     ):
+        self._management.bind(
+            queue,
+            exchange,
+            routing_key,
+            arguments=arguments,
+        )
+
         self._queues.add(queue)
         self._exchanges.add(exchange)
 
@@ -956,6 +1582,13 @@ class Channel(base.StdChannel):
         arguments=None,
         **kwargs,
     ):
+        self._management.unbind(
+            queue,
+            exchange,
+            routing_key,
+            arguments=arguments,
+        )
+
         self._bindings.discard(
             (
                 queue,
@@ -970,8 +1603,9 @@ class Channel(base.StdChannel):
         **kwargs,
     ):
         raise OperationalError(
-            "AMQP 1.0 does not define a "
-            "portable queue purge operation"
+            "AMQP 1.0 queue purge is not "
+            "portable; RabbitMQ management "
+            "purge is not implemented yet"
         )
 
     def close(self):
@@ -1017,8 +1651,11 @@ class Channel(base.StdChannel):
         encoding=None,
     ):
         if encoding:
-            return self.codecs[encoding].decode(
-                body
+            return (
+                self.codecs[encoding].decode(
+                    body
+                ),
+                encoding,
             )
 
         return body, encoding
@@ -1129,9 +1766,6 @@ class Transport(base.Transport):
             DEFAULT_PREFETCH,
         )
 
-        # Kept for compatibility with transport
-        # configuration, but address generation is
-        # handled explicitly by Channel methods.
         self.address_template = options.pop(
             "address_template",
             "{routing_key}",
@@ -1140,7 +1774,9 @@ class Transport(base.Transport):
         self.transport_options = options
 
     def driver_version(self):
-        return version("python-qpid-proton")
+        return version(
+            "python-qpid-proton"
+        )
 
     @property
     def default_connection_params(self):
@@ -1272,7 +1908,9 @@ class Transport(base.Transport):
             url=self._url(),
             connect_kwargs=options,
             ssl_domain=self._ssl_domain(),
-            command_timeout=self.command_timeout,
+            command_timeout=(
+                self.command_timeout
+            ),
         )
 
         state.transport = self
@@ -1284,10 +1922,16 @@ class Transport(base.Transport):
             self.client,
         )
 
-    def create_channel(self, connection):
+    def create_channel(
+        self,
+        connection,
+    ):
         return connection.channel()
 
-    def close_connection(self, connection):
+    def close_connection(
+        self,
+        connection,
+    ):
         connection.close()
 
     def drain_events(
@@ -1428,10 +2072,16 @@ class Transport(base.Transport):
         except Exception:
             pass
 
-    def _on_readable(self, connection):
+    def _on_readable(
+        self,
+        connection,
+    ):
         connection.state.drain_notifications()
 
-    def verify_connection(self, connection):
+    def verify_connection(
+        self,
+        connection,
+    ):
         return (
             connection.connected
             and connection.state.error is None
