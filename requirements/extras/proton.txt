@@ -1,1 +1,1 @@
-python-qpid-proton>=0.40.0
+python-qpid-proton>=0.40.0; sys_platform != "win32" and platform_python_implementation == "CPython"

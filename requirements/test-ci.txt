@@ -17,4 +17,4 @@ urllib3>=1.26.16; sys_platform != 'win32'
 -r extras/sqlalchemy.txt
 -r extras/etcd.txt
 -r extras/gcpubsub.txt
--r extras/proton.txt; sys_platform != 'win32' and platform_python_implementation=="CPython"
+-r extras/proton.txt
