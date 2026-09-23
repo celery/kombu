@@ -92,6 +92,8 @@ jobs:
               ]
               experimental: [false]
               include:
+                - python-version: '3.13'
+                  toxenv: 'proton'
                 - python-version: pypy3.11
                   toxenv: 'py-amqp'
                   experimental: true
