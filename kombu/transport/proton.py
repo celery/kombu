@@ -188,19 +188,17 @@ if proton is not None:
         """Configure the RabbitMQ management sender link."""
 
         def apply(self, link):
-            link.source.address = _MANAGEMENT_ADDRESS
             link.snd_settle_mode = proton.Link.SND_SETTLED
             link.rcv_settle_mode = proton.Link.RCV_FIRST
             link.properties = {
                 "paired": True,
             }
-            link.source.dynamic = False
 
     class _ManagementReceiverOption(LinkOption):
         """Configure the RabbitMQ management receiver link."""
 
         def apply(self, link):
-            link.target.address = _MANAGEMENT_ADDRESS
+            link.source.address = _MANAGEMENT_ADDRESS
             link.snd_settle_mode = proton.Link.SND_SETTLED
             link.rcv_settle_mode = proton.Link.RCV_FIRST
             link.properties = {
