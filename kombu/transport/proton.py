@@ -27,8 +27,8 @@ import threading
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from time import monotonic
 from importlib.metadata import version
+from time import monotonic
 
 import amqp.protocol
 
