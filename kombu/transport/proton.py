@@ -45,13 +45,8 @@ try:
     from proton import Message as ProtonMessage
     from proton import SSLDomain
     from proton.handlers import MessagingHandler
-    from proton.reactor import (
-        ApplicationEvent,
-        AtLeastOnce,
-        Container,
-        EventInjector,
-        LinkOption,
-    )
+    from proton.reactor import (ApplicationEvent, AtLeastOnce, Container,
+                                EventInjector, LinkOption)
 except ImportError:  # pragma: no cover
     proton = None
     ProtonMessage = None
