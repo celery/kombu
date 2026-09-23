@@ -636,6 +636,9 @@ class Channel(base.StdChannel):
             headers or {}
         )
 
+        if priority is None:
+            priority = 4
+
         return ProtonMessage(
             body=body,
             properties=properties,
