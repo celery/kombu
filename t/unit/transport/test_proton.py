@@ -1,5 +1,7 @@
 """Unit tests for the Proton AMQP 1.0 transport."""
 
+from __future__ import annotations
+
 from unittest.mock import MagicMock
 
 import pytest
