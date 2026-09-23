@@ -84,7 +84,7 @@ class test_Transport:
 
         assert (
             transport_.driver_version()
-            == proton.__version__
+            == version("python-qpid-proton")
         )
 
     def test_default_connection_params(self):

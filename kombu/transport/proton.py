@@ -28,6 +28,7 @@ import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from time import monotonic
+from importlib.metadata import version
 
 import amqp.protocol
 
@@ -1085,7 +1086,7 @@ class Transport(base.Transport):
         self.transport_options = options
 
     def driver_version(self):
-        return proton.__version__
+        return version("python-qpid-proton")
 
     @property
     def default_connection_params(self):
