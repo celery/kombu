@@ -23,8 +23,10 @@ except ImportError:  # pragma: no cover
 
 
 def concurrency_errors():
-    """Generate the concurrency errors/exceptions that can occur,
-    based on the concurrency engines in use at runtime.
+    """Generator for ignorable concurrency errors/exceptions.
+    
+    Results here are determined by the concurrency engines available at
+    runtime.
     """
     if 'gevent' in sys.modules:
         try:
