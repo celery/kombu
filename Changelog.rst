@@ -5,6 +5,17 @@
 ================
 
 
+Unreleased
+==========
+
+- Fix emergency state dumps to write protocol-0 pickle data when serialization
+  succeeds. On Python 3, the default file previously always contained the
+  ``pformat`` fallback; consumers reading these files as text must account for
+  the corrected format. Custom ``open_file`` callbacks returning text streams,
+  including codec wrappers, retain the text fallback. Failed serialization
+  discards partial output before writing the fallback, so custom streams must
+  support ``seek`` and ``truncate``.
+
 .. _version-5.7.0a1:
 
 5.7.0a1
