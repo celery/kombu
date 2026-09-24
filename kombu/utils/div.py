@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from io import TextIOBase
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +38,11 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
             fh.seek(0)
             fh.truncate()
             formatted = pformat(state)
-            fh.write(formatted if isinstance(fh, TextIOBase)
-                     else formatted.encode('utf-8'))
+            try:
+                fh.write(formatted.encode('utf-8'))
+            except TypeError:
+                # Text streams need not inherit from TextIOBase (e.g. codecs.open).
+                fh.write(formatted)
     finally:
         fh.flush()
         fh.close()

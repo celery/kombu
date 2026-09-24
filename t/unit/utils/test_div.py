@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import pickle
 from io import BytesIO, StringIO
 from pathlib import Path
@@ -25,11 +26,13 @@ class MyStringIO(StringIO):
 class test_emergency_dump_state:
 
     @pytest.mark.parametrize('partial_write', [False, True])
-    def test_dump_text_file(self, partial_write):
+    @pytest.mark.parametrize('open_text_file', [open, codecs.open],
+                             ids=['text-io', 'codecs'])
+    def test_dump_text_file(self, partial_write, open_text_file):
         state = {'task': 'rétry', 'payload': b'\x00\xff'}
 
         def open_text(name, mode):
-            return open(name, 'w', encoding='utf-8')
+            return open_text_file(name, 'w', encoding='utf-8')
 
         def partial_dump(state, fh, **kwargs):
             fh.write('partial dump that must not remain in the file' * 10)
