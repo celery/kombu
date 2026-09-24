@@ -65,7 +65,7 @@ def test_ignore_errors_catches_concurrent_object_use_error_when_gevent_available
     connection.channel_errors = ()
     connection.connection_errors = ()
 
-    with patch('kombu.common.concurrency_errors', return_value=iter([_ConcurrentObjectUseError])):
+    with patch('kombu.common.concurrency_errors', side_effect=lambda: iter([_ConcurrentObjectUseError])):
         # context-manager form
         with ignore_errors(connection):
             raise _ConcurrentObjectUseError()
