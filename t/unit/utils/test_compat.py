@@ -109,9 +109,9 @@ class test_concurrency_errors:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': mock_exc_mod,
         }):
-            result = compat.concurrency_errors()
+            results = list(compat.concurrency_errors())
 
-        assert mock_exc in list(result)
+        assert mock_exc in results
 
     def test_returns_none_when_gevent_not_in_sys_modules(self):
         """Returns None when gevent has not been imported yet.
