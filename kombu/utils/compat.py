@@ -23,13 +23,10 @@ except ImportError:  # pragma: no cover
 
 
 def concurrency_errors():
-    """Generator for ignorable concurrency errors/exceptions.
+    """Returns a tuple of ignorable concurrency errors/exceptions.
 
     Results here are determined by the concurrency engines available at
     runtime.
-
-    Note: returns a tuple, because the return-value is used in the context
-    of a multi-valued Python 'except' clause.
     """
     if 'gevent' in sys.modules:
         try:
