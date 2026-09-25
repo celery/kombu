@@ -23,10 +23,11 @@ except ImportError:  # pragma: no cover
 
 
 def concurrency_errors():
-    """Returns a tuple of ignorable concurrency errors/exceptions.
+    """Returns a tuple of concurrency errors/exceptions.
 
-    Results here are determined by the concurrency engines available at
-    runtime.
+    Evaluated at call time (not import time) so that it correctly handles
+    the common startup ordering where kombu is imported before gevent's
+    monkey-patching takes place.
     """
     if 'gevent' in sys.modules:
         try:
