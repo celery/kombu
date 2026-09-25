@@ -91,15 +91,15 @@ class test_detect_environment:
         compat._detect_environment()
 
 
-class test_get_gevent_concurrent_error:
-    """Tests for get_gevent_concurrent_error() lazy function.
+class test_concurrency_errors:
+    """Tests for concurrency_errors() function.
 
     The function must be evaluated at call time, not at import time, so
     that it correctly handles the common startup ordering where kombu is
     imported before gevent.monkey.patch_all() is called.
     """
 
-    def test_returns_class_when_gevent_loaded_and_class_exists(self):
+    def test_includes_gevent_error_when_loaded(self):
         """Returns ConcurrentObjectUseError when gevent is in sys.modules."""
         mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
         mock_exc_mod = types.ModuleType('gevent.exceptions')
@@ -109,11 +109,12 @@ class test_get_gevent_concurrent_error:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': mock_exc_mod,
         }):
-            result = compat.get_gevent_concurrent_error()
+            errors = compat.concurrency_errors()
 
-        assert result is mock_exc
+        assert any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
+        assert mock_exc in errors
 
-    def test_returns_none_when_gevent_not_in_sys_modules(self):
+    def test_omits_gevent_error_when_not_loaded(self):
         """Returns None when gevent has not been imported yet.
 
         This covers the common startup ordering: kombu imported first,
@@ -121,21 +122,21 @@ class test_get_gevent_concurrent_error:
         """
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
-            result = compat.get_gevent_concurrent_error()
+            errors = compat.concurrency_errors()
         finally:
             sys.modules.update(saved)
 
-        assert result is None
+        assert not any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
 
-    def test_returns_none_when_gevent_loaded_but_class_missing(self):
+    def test_omits_gevent_error_when_loaded_but_class_missing(self):
         """Returns None when gevent is present but the class is unavailable."""
         with patch.dict(sys.modules, {
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': types.ModuleType('gevent.exceptions'),
         }):
-            result = compat.get_gevent_concurrent_error()
+            errors = compat.concurrency_errors()
 
-        assert result is None
+        assert not any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
 
     def test_runtime_evaluation_reflects_later_gevent_import(self):
         """Calling the function after gevent is imported returns the class.
@@ -151,14 +152,14 @@ class test_get_gevent_concurrent_error:
         # Simulate: kombu imported first → gevent not yet in sys.modules
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
-            assert compat.get_gevent_concurrent_error() is None  # before gevent
+            assert mock_exc not in compat.concurrency_errors()  # before gevent
 
             # Simulate: gevent.monkey.patch_all() called later
             sys.modules.update({
                 'gevent': types.ModuleType('gevent'),
                 'gevent.exceptions': mock_exc_mod,
             })
-            assert compat.get_gevent_concurrent_error() is mock_exc  # after gevent
+            assert mock_exc in compat.concurrency_errors()  # after gevent
         finally:
             for k in ('gevent', 'gevent.exceptions'):
                 sys.modules.pop(k, None)

@@ -22,8 +22,8 @@ except ImportError:  # pragma: no cover
         register_after_fork = None
 
 
-def get_gevent_concurrent_error():
-    """Lazily return gevent's ConcurrentObjectUseError, or None.
+def concurrency_errors():
+    """Returns a tuple of concurrency errors/exceptions.
 
     Evaluated at call time (not import time) so that it correctly handles
     the common startup ordering where kombu is imported before gevent's
@@ -32,10 +32,10 @@ def get_gevent_concurrent_error():
     if 'gevent' in sys.modules:
         try:
             from gevent.exceptions import ConcurrentObjectUseError
-            return ConcurrentObjectUseError
+            return (ConcurrentObjectUseError,)
         except ImportError:
             pass
-    return None
+    return ()
 
 
 _environment = None
