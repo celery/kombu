@@ -289,7 +289,7 @@ def _ensure_errback(exc, interval):
 def _ignore_errors(conn):
     try:
         yield
-    except conn.connection_errors + conn.channel_errors + tuple(concurrency_errors()):
+    except conn.connection_errors + conn.channel_errors + concurrency_errors():
         pass
 
 
