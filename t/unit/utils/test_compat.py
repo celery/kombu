@@ -130,10 +130,6 @@ class test_concurrency_errors:
 
     def test_omits_gevent_error_when_loaded_but_class_missing(self):
         """Returns None when gevent is present but the class is unavailable."""
-        mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
-        mock_exc_mod = types.ModuleType('gevent.exceptions')
-        mock_exc_mod.ConcurrentObjectUseError = mock_exc
-
         with patch.dict(sys.modules, {
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': types.ModuleType('gevent.exceptions'),
