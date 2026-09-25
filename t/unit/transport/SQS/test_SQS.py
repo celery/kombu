@@ -163,10 +163,6 @@ class test_Channel:
 
     def setup_method(self):
         """Mock the back-end SQS classes"""
-        # Sanity check... if SQS is None, then it did not import and we
-        # cannot execute our tests.
-        SQS.Channel._queue_cache.clear()
-
         # Common variables used in the unit tests
         self.queue_name = 'unittest'
 
@@ -962,7 +958,7 @@ class test_Channel:
         mock_async_sqs.return_value = mock_async_instance
 
         self.channel.predefined_queues = example_predefined_queues
-        self.channel._predefined_queue_async_clients = {}
+        self.channel._predefined_queue_async_clients.clear()
 
         # Act
         result = self.channel.asynsqs(queue=queue_name)
@@ -1854,7 +1850,8 @@ class test_Channel:
         mock_generate_sts_session_token = Mock()
         mock_new_sqs_client = Mock()
         channel.new_sqs_client = mock_new_sqs_client
-        channel._predefined_queue_clients = {queue_name: 'mock_client'}
+        channel._predefined_queue_clients.clear()
+        channel._predefined_queue_clients[queue_name] = 'mock_client'
         mock_generate_sts_session_token.side_effect = [
             {
                 'Expiration': 123,
@@ -2237,7 +2234,8 @@ class test_Channel:
         queue_2_client = Mock(name="My new SQS client")
         queue_1_client = Mock(name="A different SQS client")
         channel_fixture._sqs = None
-        channel_fixture._predefined_queue_clients = {"queue-1": queue_1_client}
+        channel_fixture._predefined_queue_clients.clear()
+        channel_fixture._predefined_queue_clients["queue-1"] = queue_1_client
         mock_new_sqs_client.return_value = queue_2_client
 
         # Act
@@ -2397,3 +2395,43 @@ class test_Channel:
                             '0rKwT38xVqr7ZD0u0iPPkUL64lIZbqBAz+scqKmlzm8FDrypNC9Yjc8fPOLn9FX9KSYvKTr4rvx3iSI'
                             'lTJabIQwj2ICCR/oLxBA==',
         }
+
+
+class test_SQS_per_connection_state:
+    """Queue URLs, the no-ack set and predefined-queue clients are per
+    Connection: channels of one Connection share them, separate
+    Connections (other region/account/credentials) must not."""
+
+    def setup_method(self):
+        self._sqs_patch = patch.object(
+            SQS.Channel, 'sqs', lambda self, queue=None: SQSClientMock()
+        )
+        self._sqs_patch.start()
+
+    def teardown_method(self):
+        self._sqs_patch.stop()
+
+    def test_state_not_shared_across_connections(self):
+        chan_a = Connection(transport=SQS.Transport).channel()
+        chan_b = Connection(transport=SQS.Transport).channel()
+
+        chan_a._queue_cache['orders'] = 'https://sqs.us-east-1/111/orders'
+        chan_a._noack_queues.add('orders')
+        chan_a._predefined_queue_clients['orders'] = 'client-for-account-a'
+        chan_a._predefined_queue_async_clients['orders'] = 'async-for-account-a'
+
+        assert 'orders' not in chan_b._queue_cache
+        assert 'orders' not in chan_b._noack_queues
+        assert 'orders' not in chan_b._predefined_queue_clients
+        assert 'orders' not in chan_b._predefined_queue_async_clients
+
+    def test_state_shared_between_channels_of_one_connection(self):
+        conn = Connection(transport=SQS.Transport)
+        chan_1 = conn.channel()
+        chan_2 = conn.channel()
+
+        chan_1._queue_cache['orders'] = 'https://sqs.us-east-1/111/orders'
+        chan_1._noack_queues.add('orders')
+
+        assert chan_2._queue_cache['orders'] == 'https://sqs.us-east-1/111/orders'
+        assert 'orders' in chan_2._noack_queues

@@ -327,12 +327,8 @@ class Channel(virtual.Channel):
     default_wait_time_seconds = 10  # up to 20 seconds max
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
-    _predefined_queue_async_clients = {}  # A client for each predefined queue
     _sqs = None
     _fanout = None
-    _predefined_queue_clients = {}  # A client for each predefined queue
-    _queue_cache = {}  # SQS queue name => SQS queue URL
-    _noack_queues = set()
 
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
@@ -1094,6 +1090,22 @@ class Channel(virtual.Channel):
     def transport_options(self):
         return self.connection.client.transport_options
 
+    @property
+    def _queue_cache(self):
+        return self.connection._queue_cache
+
+    @property
+    def _noack_queues(self):
+        return self.connection._noack_queues
+
+    @property
+    def _predefined_queue_clients(self):
+        return self.connection._predefined_queue_clients
+
+    @property
+    def _predefined_queue_async_clients(self):
+        return self.connection._predefined_queue_async_clients
+
     @cached_property
     def visibility_timeout(self):
         # sqs only accepts whole seconds, and 0 is a valid value, so the
@@ -1479,6 +1491,15 @@ class Transport(virtual.Transport):
         asynchronous=True,
         exchange_type=frozenset(['direct']),
     )
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        # Scoped to this Connection: its channels share them, but another
+        # Connection (different region, account or credentials) must not.
+        self._queue_cache = {}  # SQS queue name => SQS queue URL
+        self._noack_queues = set()
+        self._predefined_queue_clients = {}  # A client for each predefined queue
+        self._predefined_queue_async_clients = {}
 
     @property
     def default_connection_params(self):
