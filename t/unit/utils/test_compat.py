@@ -99,7 +99,7 @@ class test_concurrency_errors:
     imported before gevent.monkey.patch_all() is called.
     """
 
-    def test_returns_class_when_gevent_loaded_and_class_exists(self):
+    def test_includes_gevent_error_when_loaded(self):
         """Returns ConcurrentObjectUseError when gevent is in sys.modules."""
         mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
         mock_exc_mod = types.ModuleType('gevent.exceptions')
@@ -111,27 +111,24 @@ class test_concurrency_errors:
         }):
             errors = compat.concurrency_errors()
 
+        assert any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
         assert mock_exc in errors
 
-    def test_returns_none_when_gevent_not_in_sys_modules(self):
+    def test_omits_gevent_error_when_not_loaded(self):
         """Returns None when gevent has not been imported yet.
 
         This covers the common startup ordering: kombu imported first,
         gevent.monkey.patch_all() called later.
         """
-        mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
-        mock_exc_mod = types.ModuleType('gevent.exceptions')
-        mock_exc_mod.ConcurrentObjectUseError = mock_exc
-
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
             errors = compat.concurrency_errors()
         finally:
             sys.modules.update(saved)
 
-        assert mock_exc not in errors
+        assert not any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
 
-    def test_returns_none_when_gevent_loaded_but_class_missing(self):
+    def test_omits_gevent_error_when_loaded_but_class_missing(self):
         """Returns None when gevent is present but the class is unavailable."""
         mock_exc = type('ConcurrentObjectUseError', (AssertionError,), {})
         mock_exc_mod = types.ModuleType('gevent.exceptions')
@@ -143,7 +140,7 @@ class test_concurrency_errors:
         }):
             errors = compat.concurrency_errors()
 
-        assert mock_exc not in errors
+        assert not any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
 
     def test_runtime_evaluation_reflects_later_gevent_import(self):
         """Calling the function after gevent is imported returns the class.
