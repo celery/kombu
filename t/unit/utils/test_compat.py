@@ -92,7 +92,7 @@ class test_detect_environment:
 
 
 class test_concurrency_errors:
-    """Tests for concurrency_errors() generator function.
+    """Tests for concurrency_errors() function.
 
     The function must be evaluated at call time, not at import time, so
     that it correctly handles the common startup ordering where kombu is
