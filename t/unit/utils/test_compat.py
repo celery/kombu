@@ -109,9 +109,9 @@ class test_concurrency_errors:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': mock_exc_mod,
         }):
-            results = compat.concurrency_errors()
+            ignored_errors = compat.concurrency_errors()
 
-        assert mock_exc in results
+        assert mock_exc in ignored_errors
 
     def test_returns_none_when_gevent_not_in_sys_modules(self):
         """Returns None when gevent has not been imported yet.
@@ -125,11 +125,11 @@ class test_concurrency_errors:
 
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
-            results = compat.concurrency_errors()
+            ignored_errors = compat.concurrency_errors()
         finally:
             sys.modules.update(saved)
 
-        assert mock_exc not in results
+        assert mock_exc not in ignored_errors
 
     def test_returns_none_when_gevent_loaded_but_class_missing(self):
         """Returns None when gevent is present but the class is unavailable."""
@@ -141,9 +141,9 @@ class test_concurrency_errors:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': types.ModuleType('gevent.exceptions'),
         }):
-            results = compat.concurrency_errors()
+            ignored_errors = compat.concurrency_errors()
 
-        assert mock_exc not in results
+        assert mock_exc not in ignored_errors
 
     def test_runtime_evaluation_reflects_later_gevent_import(self):
         """Calling the function after gevent is imported returns the class.
