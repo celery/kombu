@@ -73,6 +73,29 @@ def connection(hub, test_queue_prefix):
     return conn
 
 
+@pytest.fixture()
+def backoff_queue(connection, test_queue_prefix):
+    queue_name = test_queue_prefix + 'ack_backoff'
+    with connection as setup:
+        client = setup.default_channel.sqs()
+        queue_url = client.create_queue(QueueName=queue_name)['QueueUrl']
+        try:
+            with setup.clone(transport_options={
+                **setup.transport_options,
+                'queue_name_prefix': '',
+                'predefined_queues': {
+                    queue_name: {
+                        'url': queue_url,
+                        'backoff_tasks': ['tasks.example'],
+                        'backoff_policy': {1: 10},
+                    },
+                },
+            }) as conn:
+                yield conn, kombu.Queue(queue_name, routing_key=queue_name)
+        finally:
+            client.delete_queue(QueueUrl=queue_url)
+
+
 @pytest.fixture(autouse=True)
 def mock_set_policy():
     """Mock the _set_policy_on_sqs_queue method as this is not supported by GoAws."""
@@ -110,3 +133,59 @@ class test_SQSBaseExchangeTypes(BaseExchangeTypes):
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSMessage(BaseMessage):
     pass
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.parametrize('error_code', [
+    'InvalidParameterValue', 'ReceiptHandleIsInvalid',
+])
+def test_ack_invalid_receipt_with_backoff(backoff_queue, error_code):
+    connection, queue = backoff_queue
+    messages = []
+
+    def on_message(body, message):
+        messages.append(message)
+
+    with connection.channel() as channel, kombu.Consumer(
+        channel, [queue], callbacks=[on_message],
+        accept=['json'], prefetch_count=1,
+    ):
+        producer = kombu.Producer(channel)
+        producer.publish(
+            'first', routing_key=queue.name, serializer='json',
+            headers={'task': 'tasks.example'},
+        )
+        connection.drain_events(timeout=2)
+        message = messages.pop()
+        assert message.payload == 'first'
+
+        client = channel.sqs(queue.name)
+        queue_url = message.delivery_info['sqs_queue']
+        client.delete_message(
+            QueueUrl=queue_url,
+            ReceiptHandle=message.delivery_info['sqs_message']['ReceiptHandle'],
+        )
+        delete_responses = []
+
+        def invalid_receipt_response(http_response, parsed, **kwargs):
+            # GoAws does not return AWS's invalid-receipt error codes.
+            delete_responses.append(http_response.status_code)
+            parsed['Error']['Code'] = error_code
+
+        event = 'after-call.sqs.DeleteMessage'
+        client.meta.events.register(event, invalid_receipt_response)
+        try:
+            message.ack()
+        finally:
+            client.meta.events.unregister(event, invalid_receipt_response)
+        assert delete_responses == [404]
+        assert message.acknowledged
+
+        producer.publish(
+            'second', routing_key=queue.name, serializer='json',
+            headers={'task': 'tasks.example'},
+        )
+        connection.drain_events(timeout=2)
+        next_message = messages.pop()
+        assert next_message.payload == 'second'
+        next_message.ack()

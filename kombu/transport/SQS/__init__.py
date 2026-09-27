@@ -805,11 +805,17 @@ class Channel(virtual.Channel):
                     ReceiptHandle=sqs_message['ReceiptHandle']
                 )
             except ClientError as exception:
-                if exception.response['Error']['Code'] == 'AccessDenied':
+                error_code = exception.response['Error']['Code']
+                if error_code == 'AccessDenied':
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
                     )
-                super().basic_reject(delivery_tag)
+                if error_code in ('InvalidParameterValue',
+                                  'ReceiptHandleIsInvalid'):
+                    # Forget the delivery without applying backoff to a stale handle.
+                    super().basic_ack(delivery_tag)
+                else:
+                    super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
 

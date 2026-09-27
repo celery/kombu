@@ -1274,8 +1274,74 @@ class test_Channel:
             QueueUrl=message['sqs_queue'],
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
-        basic_reject_mock.assert_called_with(2)
-        assert not basic_ack_mock.called
+        basic_ack_mock.assert_called_once_with(2)
+        basic_reject_mock.assert_not_called()
+
+    @pytest.mark.parametrize('queue_name', ['queue-1', 'queue-3.fifo'])
+    @pytest.mark.parametrize('error_code', [
+        'InvalidParameterValue', 'ReceiptHandleIsInvalid', 'InternalError',
+    ])
+    def test_basic_ack_delete_error_with_backoff(
+        self, queue_name, error_code,
+    ):
+        task_name = 'svc.tasks.tasks.task1'
+        queue_config = {
+            **example_predefined_queues[queue_name],
+            'backoff_tasks': [task_name],
+            'backoff_policy': {1: 10},
+        }
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': {queue_name: queue_config},
+        })
+        channel = connection.channel()
+        channel.basic_qos(0, 1, False)
+        delivery_tag = 'EXPIRED_RECEIPT_HANDLE'
+        message = channel.Message({
+            'body': 'COPY_PROBE_123',
+            'headers': {'task': task_name},
+            'properties': {
+                'delivery_tag': delivery_tag,
+                'delivery_info': {
+                    'routing_key': queue_name,
+                    'sqs_queue': queue_config['url'],
+                    'sqs_message': {
+                        'ReceiptHandle': delivery_tag,
+                        'Attributes': {'ApproximateReceiveCount': '1'},
+                    },
+                },
+            },
+        }, channel=channel)
+        channel.qos.append(message, delivery_tag)
+        assert not channel.qos.can_consume()
+
+        error_response = {'Error': {
+            'Code': error_code,
+            'Message': 'The receipt handle has expired.',
+        }}
+        client = Mock()
+        client.delete_message.side_effect = ClientError(
+            error_response, 'DeleteMessage',
+        )
+        if error_code != 'InternalError':
+            client.change_message_visibility.side_effect = ClientError(
+                error_response, 'ChangeMessageVisibility',
+            )
+        channel.sqs = Mock(return_value=client)
+
+        message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        if error_code == 'InternalError':
+            client.change_message_visibility.assert_called_once_with(
+                QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+                VisibilityTimeout=10,
+            )
+        else:
+            client.change_message_visibility.assert_not_called()
+        assert message.acknowledged
+        assert channel.qos.can_consume()
 
     @patch('kombu.transport.virtual.base.Channel.basic_ack')
     @patch('kombu.transport.virtual.base.Channel.basic_reject')
