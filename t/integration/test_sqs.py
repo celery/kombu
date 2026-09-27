@@ -4,6 +4,7 @@ import os
 import uuid
 from unittest.mock import patch
 
+import boto3
 import pytest
 
 import kombu
@@ -133,6 +134,50 @@ class test_SQSBaseExchangeTypes(BaseExchangeTypes):
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSMessage(BaseMessage):
     pass
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSPerConnectionState:
+    """Queue URLs are cached per Connection, not process-wide."""
+
+    def test_same_queue_name_routes_to_each_connections_own_queue(self, hub, test_queue_prefix):
+        # Two Connections whose predefined_queues map `orders` to different
+        # SQS queues: opening a channel on the second must not repoint the
+        # first one's `orders` at the second one's queue.
+        host = os.environ.get('SQS_HOST', 'localhost')
+        port = os.environ.get('SQS_PORT', '4100')
+        admin = boto3.client(
+            'sqs',
+            region_name='us-east-1',
+            endpoint_url=f'http://{host}:{port}',
+            aws_access_key_id='TestUsername',
+            aws_secret_access_key='TestPassword',
+        )
+        url_a = admin.create_queue(QueueName=f'{test_queue_prefix}orders_a')['QueueUrl']
+        url_b = admin.create_queue(QueueName=f'{test_queue_prefix}orders_b')['QueueUrl']
+
+        def connection_for(url):
+            conn = get_connection(hostname=host, port=port)
+            conn.transport_options['predefined_queues'] = {
+                'orders': {
+                    'url': url,
+                    'access_key_id': 'TestUsername',
+                    'secret_access_key': 'TestPassword',
+                },
+            }
+            conn.transport_options['hub'] = hub
+            return conn
+
+        with connection_for(url_a) as conn_a, connection_for(url_b) as conn_b:
+            channel_a = conn_a.channel()
+            conn_b.channel()
+            kombu.Producer(channel_a).publish({'sent_by': 'a'}, routing_key='orders')
+
+        received_a = admin.receive_message(QueueUrl=url_a, WaitTimeSeconds=1).get('Messages', [])
+        received_b = admin.receive_message(QueueUrl=url_b, WaitTimeSeconds=1).get('Messages', [])
+        assert len(received_a) == 1
+        assert received_b == []
 
 
 @pytest.mark.env('sqs')
