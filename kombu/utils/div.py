@@ -35,8 +35,11 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
                 )
             else:
                 logger.exception("Cannot pickle state. Falling back to pformat.")
-            fh.seek(0)
-            fh.truncate()
+            try:
+                fh.seek(0)
+                fh.truncate()
+            except (OSError, ValueError):
+                pass  # Non-seekable streams may retain partial pickle data.
             formatted = pformat(state)
             try:
                 fh.write(formatted.encode('utf-8'))

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import codecs
 import pickle
-from io import BytesIO, StringIO
+from io import BytesIO, StringIO, UnsupportedOperation
 from pathlib import Path
 from pprint import pformat
 
@@ -74,6 +74,34 @@ class test_emergency_dump_state:
         path = Path(emergency_dump_state(state, dump=raise_something))
         try:
             assert path.read_text(encoding='utf-8') == pformat(state)
+        finally:
+            path.unlink()
+
+    @pytest.mark.parametrize('stream_type', [MyBytesIO, MyStringIO])
+    @pytest.mark.parametrize('partial_write', [False, True])
+    def test_dump_non_seekable_stream(self, stream_type, partial_write):
+        class NonSeekableStream(stream_type):
+            def seek(self, *args):
+                raise UnsupportedOperation('stream is not seekable')
+
+        state = {'task': 'rétry'}
+        fh = NonSeekableStream()
+        prefix = 'partial pickle data'
+        expected = (prefix if partial_write else '') + pformat(state)
+        if stream_type is MyBytesIO:
+            prefix = prefix.encode('utf-8')
+            expected = expected.encode('utf-8')
+
+        def failed_dump(state, fh, **kwargs):
+            if partial_write:
+                fh.write(prefix)
+            raise TypeError('cannot pickle state')
+
+        path = Path(emergency_dump_state(
+            state, open_file=lambda n, m: fh, dump=failed_dump,
+        ))
+        try:
+            assert fh.getvalue() == expected
         finally:
             path.unlink()
 

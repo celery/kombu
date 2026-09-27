@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+import pickle
 import socket
 import sys
 import warnings
@@ -11,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from kombu import Connection
+from kombu import Connection, Queue
 from kombu.compression import compress
 from kombu.exceptions import ChannelError, ResourceError
 from kombu.transport import virtual
@@ -106,6 +107,47 @@ class test_QoS:
     def test_get(self):
         self.q._delivered['foo'] = 1
         assert self.q.get('foo') == 1
+
+    @pytest.mark.parametrize('compression', [None, 'gzip'])
+    def test_restore_unacked_once_dumps_message_body(self, tmp_path, monkeypatch, compression):
+        monkeypatch.setattr('tempfile.tempdir', str(tmp_path))
+        body = {'task': 'recover me', 'args': [1, 2]}
+        headers = {'custom': 'header'}
+        received = []
+
+        with Connection('memory://') as connection:
+            queue = Queue(uuid())
+            with connection.Consumer(
+                queues=[queue],
+                callbacks=[lambda body, message: received.append(message)],
+            ) as consumer:
+                connection.Producer(serializer='json').publish(
+                    body, routing_key=queue.name, headers=headers.copy(),
+                    correlation_id='recover-id', compression=compression,
+                )
+                connection.drain_events(timeout=1)
+                message, = received
+                channel = consumer.channel
+                channel.do_restore = True
+                restore = Mock(side_effect=RuntimeError('restore failed'))
+                monkeypatch.setattr(channel, '_restore', restore)
+
+                channel.qos.restore_unacked_once()
+
+                restore.assert_called_once_with(message)
+                dump_file, = tmp_path.iterdir()
+                with dump_file.open('rb') as fh:
+                    state = pickle.load(fh)
+                assert len(state) == 1
+                recovered = channel.message_to_python(state[0])
+                assert recovered.payload == body
+                assert recovered.headers == headers
+                assert recovered.properties == message.properties
+                assert recovered.content_type == 'application/json'
+                assert recovered.content_encoding == 'utf-8'
+                assert not recovered.errors
+                assert not channel.qos._delivered
+                assert channel.qos._delivered.restored
 
 
 class test_Message:
@@ -447,7 +489,8 @@ class test_Channel:
             raise KeyError()
         except KeyError as exc_:
             exc = exc_
-        ru.return_value = [(exc, 1)]
+        message = Mock()
+        ru.return_value = [(exc, message)]
 
         self.channel.do_restore = True
         with caplog.at_level(logging.INFO, logger="kombu.transport.virtual.base"):
@@ -460,7 +503,7 @@ class test_Channel:
             assert caplog.messages[0].endswith("unacknowledged message(s)")
             print_.assert_not_called()
 
-        emergency_dump_state.assert_called()
+        emergency_dump_state.assert_called_once_with([message.serializable()], stderr=stderr)
 
     def test_basic_recover(self):
         with pytest.raises(NotImplementedError):
