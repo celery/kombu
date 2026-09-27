@@ -553,3 +553,41 @@ class test_exchange_file_name_guard:
         for spelling in (name, name.lower(), name.capitalize()):
             with pytest.raises(ChannelError):
                 self._exchange_file(shape.format(spelling), folder)
+
+
+@t.skip.if_win32
+class test_FilesystemOpenErrors(WithJanitorMixin):
+    # A failure to open the message or exchange file must surface as that
+    # error, not as an UnboundLocalError from the cleanup in ``finally``.
+
+    def setup_method(self):
+        try:
+            self.data_folder_in = tempfile.mkdtemp()
+            self.data_folder_out = tempfile.mkdtemp()
+            self.control_folder = tempfile.mkdtemp()
+        except Exception:
+            pytest.skip("filesystem transport: cannot create tempfiles")
+        self.conn = Connection(
+            transport="filesystem",
+            transport_options={
+                "data_folder_in": self.data_folder_in,
+                "data_folder_out": self.data_folder_out,
+                "control_folder": self.control_folder,
+            },
+        )
+        self.channel = self.conn.default_channel
+
+    def teardown_method(self):
+        self.conn.close()
+        self._remove_temporary_folders()
+
+    def test_put_raises_channel_error_when_file_cannot_be_opened(self):
+        shutil.rmtree(self.data_folder_out)
+        with pytest.raises(ChannelError):
+            self.channel._put("q", {"body": "x"})
+
+    def test_queue_bind_propagates_open_error(self):
+        # A directory where the exchange file should be makes open() fail.
+        self.channel._exchange_file("ex").mkdir()
+        with pytest.raises(OSError):
+            self.channel._queue_bind("ex", "rk", "", "q")

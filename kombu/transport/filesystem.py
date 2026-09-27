@@ -232,6 +232,7 @@ class Channel(virtual.Channel):
         self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
+        f_obj = None
         try:
             if file.exists():
                 f_obj = file.open("rb+", buffering=0)
@@ -248,8 +249,9 @@ class Channel(virtual.Channel):
                 queues = [queue_val]
                 f_obj.write(str_to_bytes(dumps(queues)))
         finally:
-            unlock(f_obj)
-            f_obj.close()
+            if f_obj is not None:
+                unlock(f_obj)
+                f_obj.close()
 
     def _put_fanout(self, exchange, payload, routing_key, **kwargs):
         for q in self.get_table(exchange):
@@ -261,6 +263,7 @@ class Channel(virtual.Channel):
                                          uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
+        f = None
         try:
             f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
@@ -269,8 +272,9 @@ class Channel(virtual.Channel):
             raise ChannelError(
                 f'Cannot add file {filename!r} to directory')
         finally:
-            unlock(f)
-            f.close()
+            if f is not None:
+                unlock(f)
+                f.close()
 
     def _get(self, queue):
         """Get next message from `queue`."""
