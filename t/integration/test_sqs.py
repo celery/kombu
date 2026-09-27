@@ -234,4 +234,3 @@ def test_ack_invalid_receipt_with_backoff(backoff_queue, error_code):
         next_message = messages.pop()
         assert next_message.payload == 'second'
         next_message.ack()
-  
