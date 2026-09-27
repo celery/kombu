@@ -63,7 +63,7 @@ class CurlClient(BaseClient):
         self._multi.add_handle(dummy_curl_handle)
         self._multi.remove_handle(dummy_curl_handle)
 
-    def close(self):
+    def close(self, *args):
         self._timeout_check_tref.cancel()
         for _curl in self._curls:
             _curl.close()

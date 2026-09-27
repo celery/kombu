@@ -53,6 +53,25 @@ class test_CurlClient:
                 _curl.close.assert_called_with()
             x._multi.close.assert_called_with()
 
+    def test_registers_close_with_hub_on_close(self, hub):
+        # A pending request left on the client when the hub closes (e.g.
+        # during worker shutdown) otherwise keeps running in the
+        # background and can deliver its result after the rest of the
+        # consumer has already torn down.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            assert x.close in hub.on_close
+
+    def test_hub_close_closes_client(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            hub.close()
+            x._timeout_check_tref.cancel.assert_called_with()
+            for _curl in x._curls:
+                _curl.close.assert_called_with()
+            x._multi.close.assert_called_with()
+
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client()
