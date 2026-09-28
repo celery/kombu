@@ -699,6 +699,18 @@ class Connection:
 
             def __call__(self, *args, **kwargs):
                 if channels[0] is None:
+                    # Apply the operation's retry policy before default_channel
+                    # can retry using only the connection's transport options.
+                    conn_opts = self.connection._extract_failover_opts()
+                    conn_opts.update({
+                        key: ensure_options[key]
+                        for key in (
+                            'errback', 'max_retries',
+                            'interval_start', 'interval_step', 'interval_max',
+                        )
+                        if key in ensure_options
+                    })
+                    self.connection._ensure_connection(**conn_opts)
                     self.revive(self.connection.default_channel)
                 return fun(*args, channel=channels[0], **kwargs), channels[0]
 
