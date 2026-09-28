@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import socket
+import sys
 from contextlib import closing
 from time import sleep
+from urllib.parse import urlparse
 
 import pytest
 
@@ -528,6 +530,14 @@ class BaseMessage:
                 message2.ack()
 
 
+#: Scheme of an alternate URL that must never be resolved as a transport.
+#: ``resolve_transport()`` hands any name containing ``.`` or ``:`` straight
+#: to ``symbol_by_name()``, which imports it from ``sys.path``, so the name
+#: below is deliberately importable-looking and deliberately absent from
+#: ``sys.modules`` (Issue #2641).
+BAIT_TRANSPORT = 'tbait2641.evil'
+
+
 class BaseFailover(BasicFunctionality):
 
     def test_connect(self, failover_connection):
@@ -543,3 +553,84 @@ class BaseFailover(BasicFunctionality):
         super().test_simple_buffer_publish_consume(
             failover_connection
         )
+
+    def test_failover_switches_to_alternate_url(self, failover_connection):
+        """Connecting past a dead first URL must land on the alternate.
+
+        The alternate does not go through ``Connection.__init__``: it is
+        re-parsed by ``switch()``, which takes ``transport_cls`` straight
+        from the URL scheme.  This is the only integration path where a
+        URL-derived transport name is resolved after construction, so it
+        needs to keep working now that the name is validated there.
+        """
+        conn = failover_connection
+        assert len(conn.alt) > 1, 'fixture must supply an alternate URL'
+        dead, live = urlparse(conn.alt[0]), urlparse(conn.alt[-1])
+        assert dead.port != live.port, 'first URL must be the dead one'
+        assert conn.port == dead.port
+
+        assert conn.connect()
+        assert conn.connected
+        # failover happened: the dead URL was abandoned for the alternate
+        assert conn.port == live.port
+        # ...and the alternate's scheme survived the URL-derived check
+        assert conn.transport_cls == live.scheme
+        conn.close()
+
+    def test_failover_rejects_dotted_alternate(self, failover_connection):
+        """An alternate that names an import path must never reach switch().
+
+        Only ``alt[0]`` is checked by the branches in ``__init__``; every
+        other alternate is handed to ``switch()`` on the first failover.
+        Such a URL has to be rejected up front, so that a broker outage --
+        and not the URL author -- can never decide which module is
+        imported.
+        """
+        live_url = failover_connection.alt[-1]
+        alternates = [
+            f'{BAIT_TRANSPORT}://localhost',
+            f'{BAIT_TRANSPORT}+amqp://localhost',
+        ]
+        for alternate in alternates:
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection(f'{live_url};{alternate}')
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection([live_url, alternate])
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection(live_url, alternates=[alternate])
+        assert BAIT_TRANSPORT.split('.')[0] not in sys.modules
+
+    def test_failover_to_dotted_alternate_keeps_transport(
+            self, failover_connection):
+        """A rejected failover must not leave the transport half-switched.
+
+        ``switch()`` closes the connection before it validates, so the
+        live parameters have to survive the rejection and the connection
+        has to be able to come back on them.
+        """
+        conn = failover_connection
+        assert conn.connect()
+        live = (conn.transport_cls, conn.hostname, conn.port)
+
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            conn.switch(f'{BAIT_TRANSPORT}://localhost')
+
+        assert (conn.transport_cls, conn.hostname, conn.port) == live
+        assert BAIT_TRANSPORT.split('.')[0] not in sys.modules
+        assert conn.connect()
+        assert conn.connected
+        conn.close()
+
+    def test_failover_to_alias_alternate_is_allowed(self, failover_connection):
+        """The check must not get in the way of an ordinary failover URL."""
+        conn = failover_connection
+        live_url = conn.alt[-1]
+        live = urlparse(live_url)
+
+        conn.switch(live_url)
+
+        assert conn.transport_cls == live.scheme
+        assert conn.port == live.port
+        assert conn.connect()
+        assert conn.connected
+        conn.close()

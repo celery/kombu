@@ -26,6 +26,9 @@ class Resource:
     close_after_fork = False
 
     def __init__(self, limit=None, preload=None, close_after_fork=None):
+        # bool subclasses int; limit=True would silently become pool size 1
+        if isinstance(limit, bool):
+            raise TypeError("limit must be an int, not bool")
         self._limit = limit
         self.preload = preload or 0
         self._closed = False
@@ -168,6 +171,10 @@ class Resource:
                 pass  # Issue #78
 
     def resize(self, limit, force=False, ignore_errors=False, reset=False):
+        # bool subclasses int; limit=True would silently become pool size 1.
+        # The limit setter calls resize(), so pool.limit = True is covered.
+        if isinstance(limit, bool):
+            raise TypeError("limit must be an int, not bool")
         prev_limit = self._limit
         if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
             if not force:

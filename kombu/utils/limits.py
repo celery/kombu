@@ -31,7 +31,7 @@ class TokenBucket:
     #: Maximum number of tokens in the bucket.
     capacity = 1
 
-    #: Timestamp of the last time a token was taken out of the bucket.
+    #: Timestamp of the last time the bucket level was calculated.
     timestamp = None
 
     def __init__(self, fill_rate, capacity=1):
@@ -79,9 +79,13 @@ class TokenBucket:
         return (tokens - _tokens) / self.fill_rate
 
     def _get_tokens(self):
+        # The timestamp must advance even when the bucket is already full,
+        # otherwise the time spent sitting idle at capacity is later counted
+        # as refill time and the bucket tops itself straight back up the
+        # moment after it was drained.
+        now = monotonic()
         if self._tokens < self.capacity:
-            now = monotonic()
             delta = self.fill_rate * (now - self.timestamp)
             self._tokens = min(self.capacity, self._tokens + delta)
-            self.timestamp = now
+        self.timestamp = now
         return self._tokens

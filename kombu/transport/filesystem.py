@@ -92,6 +92,7 @@ Transport Options
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import uuid
@@ -155,14 +156,63 @@ else:
 exchange_queue_t = namedtuple("exchange_queue_t",
                               ["routing_key", "pattern", "queue"])
 
+#: Characters accepted in an exchange name.  The name is interpolated into a
+#: filename under ``control_folder``, so rather than blocklisting the
+#: constructs that can redirect that path, only characters that cannot are
+#: allowed.  This rejects path separators, ``..``, Windows drive-relative
+#: prefixes (``D:evil``) and UNC prefixes on every platform, rather than only
+#: on the one the tests happen to run on.
+EXCHANGE_NAME_RE = re.compile(r'\A[A-Za-z0-9._-]+\Z')
+
+#: Names that address a device rather than a file on Windows.  A suffix does
+#: not help: ``CON.exchange`` is still the console.  Windows resolves these
+#: case-insensitively and on the portion before the first dot, and counts the
+#: ISO/IEC 8859-1 superscript digits as digits in ``COM#``/``LPT#``.  Mirrors
+#: the list :mod:`pathlib` carries.  ``EXCHANGE_NAME_RE`` happens to reject
+#: the non-ASCII and ``$`` spellings before they reach this set, but the set
+#: is kept complete on its own so that widening the pattern later cannot
+#: quietly let them through.
+WIN_RESERVED_NAMES = frozenset(
+    ['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$']
+    + [f'COM{c}' for c in '123456789\xb9\xb2\xb3']
+    + [f'LPT{c}' for c in '123456789\xb9\xb2\xb3']
+)
+
 
 class Channel(virtual.Channel):
     """Filesystem Channel."""
 
     supports_fanout = True
 
-    def get_table(self, exchange):
+    @staticmethod
+    def _is_valid_exchange_name(exchange):
+        if not isinstance(exchange, str):
+            return False
+        if exchange == "":
+            # the AMQP default exchange.  It yields a plain ".exchange"
+            # file inside the control folder and cannot redirect the path,
+            # so it keeps working as it always has.
+            return True
+        if not EXCHANGE_NAME_RE.match(exchange):
+            return False
+        if not exchange.strip("."):
+            # "." and "..", and any all-dot name, name a directory
+            return False
+        # a suffix does not disarm a Windows device name
+        return exchange.partition(".")[0].upper() not in WIN_RESERVED_NAMES
+
+    def _exchange_file(self, exchange):
+        if not self._is_valid_exchange_name(exchange):
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
         file = self.control_folder / f"{exchange}.exchange"
+        # defence in depth: whatever the platform makes of the name, the
+        # result has to be a direct child of the control folder.
+        if file.parent != self.control_folder:
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
+        return file
+
+    def get_table(self, exchange):
+        file = self._exchange_file(exchange)
         try:
             f_obj = file.open("r")
             try:
@@ -178,7 +228,7 @@ class Channel(virtual.Channel):
             raise ChannelError(f"Cannot open {file}")
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
@@ -224,14 +274,14 @@ class Channel(virtual.Channel):
 
     def _get(self, queue):
         """Get next message from `queue`."""
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         folder = sorted(folder)
         while len(folder) > 0:
             filename = folder.pop(0)
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             if self.store_processed:
@@ -265,7 +315,7 @@ class Channel(virtual.Channel):
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
 
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
         f_obj = None
@@ -296,14 +346,14 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         """Remove all messages from `queue`."""
         count = 0
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
 
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
             try:
                 # only purge messages for the requested queue
-                if filename.find(queue_find) < 0:
+                if filename.partition('.')[2] != queue_find:
                     continue
 
                 filename = os.path.join(self.data_folder_in, filename)
@@ -322,13 +372,13 @@ class Channel(virtual.Channel):
         """Return the number of messages in `queue` as an :class:`int`."""
         count = 0
 
-        queue_find = f'.{queue}.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             count += 1
