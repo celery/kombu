@@ -670,6 +670,7 @@ class Connection:
 
         If a ``channel`` is not provided, then one will be automatically
         acquired (remember to close it afterwards).
+        The retry options also apply to establishing the initial connection.
 
         See Also
         --------
@@ -711,6 +712,7 @@ class Connection:
                         if key in ensure_options
                     })
                     self.connection._ensure_connection(**conn_opts)
+                    # default_channel reuses the connection established above.
                     self.revive(self.connection.default_channel)
                 return fun(*args, channel=channels[0], **kwargs), channels[0]
 
