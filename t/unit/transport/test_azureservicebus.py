@@ -17,6 +17,13 @@ pytest.importorskip("azure.servicebus")
 import azure.core.exceptions  # noqa
 import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
+from azure.servicebus._pyamqp.error import (AMQPConnectionError,  # noqa
+                                            AMQPLinkError,
+                                            AMQPSessionError)
+from azure.servicebus.exceptions import (OperationTimeoutError,  # noqa
+                                         ServiceBusCommunicationError,
+                                         ServiceBusConnectionError,
+                                         ServiceBusServerBusyError)
 
 try:
     from azure.identity import (DefaultAzureCredential,
@@ -1098,7 +1105,7 @@ def test_transient_errors_do_not_affect_transport_connection_errors():
     assert azureservicebus.Transport.channel_errors == VirtualTransport.channel_errors
 
 
-def test_put_reconnects_sender_on_transient_error(mock_queue: MockQueue):
+def test_put_reconnects_sender_on_connection_lost(mock_queue: MockQueue):
     """A force-closed connection must not poison the cached sender.
 
     The broker closes idle connections with amqp:connection:forced. Sending
@@ -1130,7 +1137,7 @@ def test_put_reconnects_sender_on_transient_error(mock_queue: MockQueue):
 
 
 def test_put_reconnects_sender_on_raw_amqp_error(mock_queue: MockQueue):
-    """The private SDK's force-close error is transient too."""
+    """The private SDK's force-close error is treated the same way."""
     from azure.servicebus._pyamqp.error import AMQPConnectionError
 
     channel = mock_queue.channel
@@ -1149,6 +1156,148 @@ def test_put_reconnects_sender_on_raw_amqp_error(mock_queue: MockQueue):
 
     dead_sender.close.assert_called_once()
     assert channel._queue_cache[queue_name].sender is not dead_sender
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(ServiceBusConnectionError(message="Connection was already closed."),
+                     id="servicebus-connection"),
+        pytest.param(AMQPConnectionError(condition=b"amqp:connection:forced",
+                                         description=b"Connection was already closed."),
+                     id="amqp-connection"),
+        pytest.param(AMQPSessionError(condition=b"amqp:session:forced",
+                                      description=b"Session was closed by the broker."),
+                     id="amqp-session"),
+        pytest.param(AMQPLinkError(condition=b"amqp:link:forced",
+                                   description=b"Link was detached by the broker."),
+                     id="amqp-link"),
+    ],
+)
+def test_put_resends_once_on_connection_lost(mock_queue: MockQueue, error):
+    """Every connection-lost error is republished exactly once.
+
+    The send failed before the broker took the message, so a second attempt
+    over a fresh sender cannot duplicate it.
+    """
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    senders = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = error
+    senders.append(dead_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.send_messages.assert_called_once()
+    dead_sender.close.assert_called_once()
+    assert len(senders) == 2
+    assert len(asb_queue.send_calls) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(OperationTimeoutError(message="Send operation timed out"),
+                     id="timeout"),
+        pytest.param(ServiceBusCommunicationError(message="Connection lost while sending"),
+                     id="communication"),
+        pytest.param(ServiceBusServerBusyError(message="The namespace is throttling"),
+                     id="server-busy"),
+    ],
+)
+def test_put_resets_sender_without_resending_on_ambiguous_error(
+    mock_queue: MockQueue, error
+):
+    """A send that may have reached the broker is never repeated here.
+
+    The broker may have accepted the message and only the acknowledgement got
+    lost, so resending would queue a duplicate task. The sender is still
+    dropped, so the next publish gets a healthy one, and the error goes back
+    to the caller, which owns at-least-once delivery and the backoff.
+    """
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    senders = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    slow_sender = MagicMock(name="slow_sender")
+    slow_sender.send_messages.side_effect = error
+    senders.append(slow_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=slow_sender
+    )
+
+    with pytest.raises(type(error)):
+        channel._put(mock_queue.queue_name, "first message")
+
+    slow_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not slow_sender
+    # one send attempt, no replacement sender, nothing published
+    slow_sender.send_messages.assert_called_once()
+    assert len(senders) == 1
+    assert asb_queue.send_calls == []
+
+
+def test_put_reconnects_only_once_per_publish(mock_queue: MockQueue):
+    """A connection loss on the resend propagates instead of looping."""
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    error = ServiceBusConnectionError(message="Connection was already closed.")
+    senders = []
+
+    def get_sender():
+        sender = MagicMock(name=f"dead_sender_{len(senders)}")
+        sender.send_messages.side_effect = error
+        senders.append(sender)
+        return sender
+
+    asb_queue.get_sender = get_sender
+
+    with pytest.raises(ServiceBusConnectionError):
+        channel._put(mock_queue.queue_name, "first message")
+
+    assert len(senders) == 2
+    assert asb_queue.send_calls == []
+
+
+def test_transient_error_split_is_complete():
+    """Every ambiguous error stays out of the resend group, and vice versa."""
+    ambiguous = {ServiceBusCommunicationError, OperationTimeoutError,
+                 ServiceBusServerBusyError}
+    resend = {AMQPConnectionError, AMQPSessionError, AMQPLinkError,
+              ServiceBusConnectionError}
+
+    assert set(azureservicebus._TRANSIENT_ERRORS) == ambiguous | resend
+    assert set(azureservicebus._CONNECTION_LOST_ERRORS) == resend
+    assert not set(azureservicebus._CONNECTION_LOST_ERRORS) & ambiguous
 
 
 def test_put_reraises_non_transient_error(mock_queue: MockQueue):
@@ -1193,6 +1342,15 @@ def test_put_survives_sender_close_failure(mock_queue: MockQueue):
     assert channel._queue_cache[queue_name].sender is not dead_sender
 
 
+def test_reset_cached_sender_without_cached_sender(mock_queue: MockQueue):
+    """Resetting an unknown queue is a no-op, not an error."""
+    channel = mock_queue.channel
+
+    channel._reset_cached_sender("never-cached-queue")
+
+    assert "never-cached-queue" not in channel._queue_cache
+
+
 def test_put_reuses_healthy_sender(mock_queue: MockQueue):
     """The common path must not churn senders on every publish."""
     channel = mock_queue.channel
@@ -1209,12 +1367,11 @@ def test_put_reuses_healthy_sender(mock_queue: MockQueue):
 
     asb_queue.get_sender = get_sender
 
-    first = channel._get_asb_sender(queue_name)
-    second = channel._get_asb_sender(queue_name)
+    channel._put(mock_queue.queue_name, "first message")
+    channel._put(mock_queue.queue_name, "second message")
 
-    assert first is second
-    assert first.sender is second.sender
     assert len(created) == 1
+    assert len(asb_queue.send_calls) == 2
 
 
 def test_publish_survives_force_closed_connection(mock_queue: MockQueue):

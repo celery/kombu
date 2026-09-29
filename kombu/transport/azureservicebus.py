@@ -103,17 +103,29 @@ from . import virtual
 
 logger = get_logger(__name__)
 
-_TRANSIENT_ERRORS = tuple(
+# The connection, session or link is gone. Nothing the sender was holding can
+# still be used, and a send over it fails before the message reaches the
+# broker, so resending is safe.
+_CONNECTION_LOST_ERRORS = tuple(
     filter(
         None,
         (
             ServiceBusConnectionError,
-            ServiceBusCommunicationError,
-            OperationTimeoutError,
-            ServiceBusServerBusyError,
             AMQPConnectionError,
             AMQPSessionError,
             AMQPLinkError,
+        ),
+    )
+)
+
+_TRANSIENT_ERRORS = tuple(
+    filter(
+        None,
+        (
+            *_CONNECTION_LOST_ERRORS,
+            ServiceBusCommunicationError,
+            OperationTimeoutError,
+            ServiceBusServerBusyError,
         ),
     )
 )
@@ -400,18 +412,35 @@ class Channel(virtual.Channel):
         try:
             queue_obj = self._get_asb_sender(queue)
             queue_obj.sender.send_messages(msg)
-        except _TRANSIENT_ERRORS:
+        except _CONNECTION_LOST_ERRORS:
             # The broker force-closes idle connections
             # (amqp:connection:forced). The sender we hold is bound to the
             # connection that just went away, so publishing through it again
             # can only fail; drop it and publish over a fresh connection.
+            # The send failed before the message was handed to the broker, so
+            # this resend cannot duplicate it. Exactly one attempt: a second
+            # failure means the namespace itself is unhealthy, and the next
+            # _put() starts over from a clean sender.
             logger.warning(
-                "Transient error sending to %r, reconnecting sender",
+                "Connection lost sending to %r, reconnecting sender",
                 queue,
                 exc_info=True,
             )
             self._reset_cached_sender(queue)
             self._get_asb_sender(queue).sender.send_messages(msg)
+        except _TRANSIENT_ERRORS:
+            # A timeout, a communication error or throttling leaves it unknown
+            # whether the broker accepted the message, and resending would
+            # publish a second copy of it. Drop the sender so the next publish
+            # gets a healthy one, then re-raise: at-least-once delivery and
+            # the backoff belong to the caller.
+            logger.warning(
+                "Transient error sending to %r, resetting sender",
+                queue,
+                exc_info=True,
+            )
+            self._reset_cached_sender(queue)
+            raise
 
     def _get(self, queue: str, timeout: float | int | None = None) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
