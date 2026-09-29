@@ -13,6 +13,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
     from pprint import pformat
     from tempfile import mkstemp
 
+    mode = 'wb' if dump is None else 'w'
     if dump is None:
         import pickle
         dump = pickle.dump
@@ -23,7 +24,7 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
               file=stderr)
     else:
         logger.error('EMERGENCY DUMP STATE TO FILE -> %s <-', persist, extra={"emergency_state_file": persist})
-    fh = open_file(persist, 'wb')
+    fh = open_file(persist, mode)
     try:
         try:
             dump(state, fh, protocol=0)
@@ -39,7 +40,10 @@ def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
                 fh.seek(0)
                 fh.truncate()
             except (OSError, ValueError):
-                pass  # Non-seekable streams may retain partial pickle data.
+                try:
+                    fh.seek(0, os.SEEK_END)
+                except (OSError, ValueError):
+                    pass  # Non-seekable streams may retain partial pickle data.
             formatted = pformat(state)
             try:
                 fh.write(formatted.encode('utf-8'))

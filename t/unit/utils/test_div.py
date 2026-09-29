@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import codecs
+import json
 import pickle
 from io import BytesIO, StringIO, UnsupportedOperation
 from pathlib import Path
@@ -64,6 +65,44 @@ class test_emergency_dump_state:
         finally:
             path.unlink()
 
+    def test_dump_custom_text_format(self):
+        state = {'task': 'retry'}
+
+        def text_dump(state, fh, **kwargs):
+            json.dump(state, fh)
+
+        path = Path(emergency_dump_state(state, dump=text_dump))
+        try:
+            assert path.read_text(encoding='utf-8') == json.dumps(state)
+        finally:
+            path.unlink()
+
+    @pytest.mark.parametrize('stream_type', [MyBytesIO, MyStringIO])
+    def test_dump_non_truncatable_stream(self, stream_type):
+        class NonTruncatableStream(stream_type):
+            def truncate(self, *args):
+                raise UnsupportedOperation('stream cannot be truncated')
+
+        state = {'task': 'retry'}
+        fh = NonTruncatableStream()
+        prefix = 'X' * 200
+        expected = prefix + pformat(state)
+        if stream_type is MyBytesIO:
+            prefix = prefix.encode('utf-8')
+            expected = expected.encode('utf-8')
+
+        def failed_dump(state, fh, **kwargs):
+            fh.write(prefix)
+            raise TypeError('cannot pickle state')
+
+        path = Path(emergency_dump_state(
+            state, open_file=lambda n, m: fh, dump=failed_dump,
+        ))
+        try:
+            assert fh.getvalue() == expected
+        finally:
+            path.unlink()
+
     def test_dump_file_fallback(self):
         state = {'task': 'rétry'}
 
@@ -71,7 +110,10 @@ class test_emergency_dump_state:
             fh.write(b'partial pickle data')
             raise TypeError('cannot pickle state')
 
-        path = Path(emergency_dump_state(state, dump=raise_something))
+        path = Path(emergency_dump_state(
+            state, open_file=lambda name, mode: open(name, 'wb'),
+            dump=raise_something,
+        ))
         try:
             assert path.read_text(encoding='utf-8') == pformat(state)
         finally:
