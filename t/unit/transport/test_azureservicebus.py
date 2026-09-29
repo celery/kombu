@@ -17,11 +17,10 @@ pytest.importorskip("azure.servicebus")
 import azure.core.exceptions  # noqa
 import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
-from azure.servicebus._pyamqp.error import (AMQPConnectionError,  # noqa
-                                            AMQPLinkError,
-                                            AMQPSessionError)
-from azure.servicebus.exceptions import (OperationTimeoutError,  # noqa
-                                         ServiceBusCommunicationError,
+from azure.servicebus._pyamqp.error import AMQPConnectionError  # noqa
+from azure.servicebus._pyamqp.error import AMQPLinkError, AMQPSessionError
+from azure.servicebus.exceptions import OperationTimeoutError  # noqa
+from azure.servicebus.exceptions import (ServiceBusCommunicationError,
                                          ServiceBusConnectionError,
                                          ServiceBusServerBusyError)
 
