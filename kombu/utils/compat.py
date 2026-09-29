@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
         register_after_fork = None
 
 
-def concurrency_errors():
+def _concurrency_errors():
     """Returns a tuple of concurrency errors/exceptions.
 
     Evaluated at call time (not import time) so that it correctly handles

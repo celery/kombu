@@ -91,8 +91,8 @@ class test_detect_environment:
         compat._detect_environment()
 
 
-class test_concurrency_errors:
-    """Tests for concurrency_errors() function.
+class test__concurrency_errors:
+    """Tests for _concurrency_errors() function.
 
     The function must be evaluated at call time, not at import time, so
     that it correctly handles the common startup ordering where kombu is
@@ -109,7 +109,7 @@ class test_concurrency_errors:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': mock_exc_mod,
         }):
-            errors = compat.concurrency_errors()
+            errors = compat._concurrency_errors()
 
         assert any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
         assert mock_exc in errors
@@ -122,7 +122,7 @@ class test_concurrency_errors:
         """
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
-            errors = compat.concurrency_errors()
+            errors = compat._concurrency_errors()
         finally:
             sys.modules.update(saved)
 
@@ -134,7 +134,7 @@ class test_concurrency_errors:
             'gevent': types.ModuleType('gevent'),
             'gevent.exceptions': types.ModuleType('gevent.exceptions'),
         }):
-            errors = compat.concurrency_errors()
+            errors = compat._concurrency_errors()
 
         assert not any(exc.__name__ == 'ConcurrentObjectUseError' for exc in errors)
 
@@ -152,14 +152,14 @@ class test_concurrency_errors:
         # Simulate: kombu imported first → gevent not yet in sys.modules
         saved = {k: sys.modules.pop(k) for k in list(sys.modules) if 'gevent' in k}
         try:
-            assert mock_exc not in compat.concurrency_errors()  # before gevent
+            assert mock_exc not in compat._concurrency_errors()  # before gevent
 
             # Simulate: gevent.monkey.patch_all() called later
             sys.modules.update({
                 'gevent': types.ModuleType('gevent'),
                 'gevent.exceptions': mock_exc_mod,
             })
-            assert mock_exc in compat.concurrency_errors()  # after gevent
+            assert mock_exc in compat._concurrency_errors()  # after gevent
         finally:
             for k in ('gevent', 'gevent.exceptions'):
                 sys.modules.pop(k, None)
