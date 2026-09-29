@@ -17,13 +17,6 @@ pytest.importorskip("azure.servicebus")
 import azure.core.exceptions  # noqa
 import azure.servicebus.exceptions  # noqa
 from azure.servicebus import ServiceBusMessage, ServiceBusReceiveMode  # noqa
-from azure.servicebus._pyamqp.error import (AMQPConnectionError,  # noqa
-                                            AMQPLinkError,
-                                            AMQPSessionError)
-from azure.servicebus.exceptions import (OperationTimeoutError,  # noqa
-                                         ServiceBusCommunicationError,
-                                         ServiceBusConnectionError,
-                                         ServiceBusServerBusyError)
 
 try:
     from azure.identity import (DefaultAzureCredential,
@@ -1161,17 +1154,17 @@ def test_put_reconnects_sender_on_raw_amqp_error(mock_queue: MockQueue):
 @pytest.mark.parametrize(
     "error",
     [
-        pytest.param(ServiceBusConnectionError(message="Connection was already closed."),
-                     id="servicebus-connection"),
-        pytest.param(AMQPConnectionError(condition=b"amqp:connection:forced",
-                                         description=b"Connection was already closed."),
-                     id="amqp-connection"),
-        pytest.param(AMQPSessionError(condition=b"amqp:session:forced",
-                                      description=b"Session was closed by the broker."),
-                     id="amqp-session"),
-        pytest.param(AMQPLinkError(condition=b"amqp:link:forced",
-                                   description=b"Link was detached by the broker."),
-                     id="amqp-link"),
+        pytest.param(azureservicebus.ServiceBusConnectionError(
+            message="Connection was already closed."), id="servicebus-connection"),
+        pytest.param(azureservicebus.AMQPConnectionError(
+            condition=b"amqp:connection:forced",
+            description=b"Connection was already closed."), id="amqp-connection"),
+        pytest.param(azureservicebus.AMQPSessionError(
+            condition=b"amqp:session:forced",
+            description=b"Session was closed by the broker."), id="amqp-session"),
+        pytest.param(azureservicebus.AMQPLinkError(
+            condition=b"amqp:link:forced",
+            description=b"Link was detached by the broker."), id="amqp-link"),
     ],
 )
 def test_put_resends_once_on_connection_lost(mock_queue: MockQueue, error):
@@ -1212,12 +1205,12 @@ def test_put_resends_once_on_connection_lost(mock_queue: MockQueue, error):
 @pytest.mark.parametrize(
     "error",
     [
-        pytest.param(OperationTimeoutError(message="Send operation timed out"),
-                     id="timeout"),
-        pytest.param(ServiceBusCommunicationError(message="Connection lost while sending"),
-                     id="communication"),
-        pytest.param(ServiceBusServerBusyError(message="The namespace is throttling"),
-                     id="server-busy"),
+        pytest.param(azureservicebus.OperationTimeoutError(
+            message="Send operation timed out"), id="timeout"),
+        pytest.param(azureservicebus.ServiceBusCommunicationError(
+            message="Connection lost while sending"), id="communication"),
+        pytest.param(azureservicebus.ServiceBusServerBusyError(
+            message="The namespace is throttling"), id="server-busy"),
     ],
 )
 def test_put_resets_sender_without_resending_on_ambiguous_error(
@@ -1264,13 +1257,12 @@ def test_put_resets_sender_without_resending_on_ambiguous_error(
 
 def test_put_reconnects_only_once_per_publish(mock_queue: MockQueue):
     """A connection loss on the resend propagates instead of looping."""
-    from azure.servicebus.exceptions import ServiceBusConnectionError
-
     channel = mock_queue.channel
     queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
     asb_queue = mock_queue.asb.queues[queue_name]
 
-    error = ServiceBusConnectionError(message="Connection was already closed.")
+    error = azureservicebus.ServiceBusConnectionError(
+        message="Connection was already closed.")
     senders = []
 
     def get_sender():
@@ -1281,7 +1273,7 @@ def test_put_reconnects_only_once_per_publish(mock_queue: MockQueue):
 
     asb_queue.get_sender = get_sender
 
-    with pytest.raises(ServiceBusConnectionError):
+    with pytest.raises(azureservicebus.ServiceBusConnectionError):
         channel._put(mock_queue.queue_name, "first message")
 
     assert len(senders) == 2
@@ -1290,10 +1282,17 @@ def test_put_reconnects_only_once_per_publish(mock_queue: MockQueue):
 
 def test_transient_error_split_is_complete():
     """Every ambiguous error stays out of the resend group, and vice versa."""
-    ambiguous = {ServiceBusCommunicationError, OperationTimeoutError,
-                 ServiceBusServerBusyError}
-    resend = {AMQPConnectionError, AMQPSessionError, AMQPLinkError,
-              ServiceBusConnectionError}
+    ambiguous = {
+        azureservicebus.ServiceBusCommunicationError,
+        azureservicebus.OperationTimeoutError,
+        azureservicebus.ServiceBusServerBusyError,
+    }
+    resend = {
+        azureservicebus.ServiceBusConnectionError,
+        azureservicebus.AMQPConnectionError,
+        azureservicebus.AMQPSessionError,
+        azureservicebus.AMQPLinkError,
+    }
 
     assert set(azureservicebus._TRANSIENT_ERRORS) == ambiguous | resend
     assert set(azureservicebus._CONNECTION_LOST_ERRORS) == resend
