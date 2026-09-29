@@ -1096,3 +1096,156 @@ def test_transient_errors_do_not_affect_transport_connection_errors():
         == VirtualTransport.connection_errors
     )
     assert azureservicebus.Transport.channel_errors == VirtualTransport.channel_errors
+
+
+def test_put_reconnects_sender_on_transient_error(mock_queue: MockQueue):
+    """A force-closed connection must not poison the cached sender.
+
+    The broker closes idle connections with amqp:connection:forced. Sending
+    through the sender bound to that connection keeps failing forever unless
+    it is dropped, which is what leaves workers unable to recover.
+    """
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed. Error condition: "
+        "amqp:connection:forced."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+    # the message reached the broker through the replacement sender
+    assert len(asb_queue.send_calls) == 1
+
+
+def test_put_reconnects_sender_on_raw_amqp_error(mock_queue: MockQueue):
+    """The private SDK's force-close error is transient too."""
+    from azure.servicebus._pyamqp.error import AMQPConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = AMQPConnectionError(
+        condition=b"amqp:connection:forced", description=b"Connection was already closed."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+
+
+def test_put_reraises_non_transient_error(mock_queue: MockQueue):
+    """Only transient errors are retried; a broken serializer still raises."""
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    failing_sender = MagicMock(name="failing_sender")
+    failing_sender.send_messages.side_effect = ValueError("bad message")
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=failing_sender
+    )
+
+    with pytest.raises(ValueError):
+        channel._put(mock_queue.queue_name, "first message")
+
+    assert channel._queue_cache[queue_name].sender is failing_sender
+
+
+def test_put_survives_sender_close_failure(mock_queue: MockQueue):
+    """A sender that errors while closing must not mask the reconnect."""
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+    dead_sender.close.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+
+
+def test_put_reuses_healthy_sender(mock_queue: MockQueue):
+    """The common path must not churn senders on every publish."""
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    created = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        created.append(sender)
+        return sender
+
+    asb_queue.get_sender = get_sender
+
+    first = channel._get_asb_sender(queue_name)
+    second = channel._get_asb_sender(queue_name)
+
+    assert first is second
+    assert first.sender is second.sender
+    assert len(created) == 1
+
+
+def test_publish_survives_force_closed_connection(mock_queue: MockQueue):
+    """End-to-end through the producer: publish must succeed, not raise."""
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    asb_queue = mock_queue.asb.queues[queue_name]
+    original_get_sender = asb_queue.get_sender
+    senders = []
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+    senders.append(dead_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    mock_queue.producer.publish("payload after forced close")
+
+    assert len(senders) == 2
+    assert len(asb_queue.send_calls) == 1
+    assert channel._get(mock_queue.queue_name) is not None

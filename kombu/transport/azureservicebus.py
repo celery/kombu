@@ -232,6 +232,23 @@ class Channel(virtual.Channel):
             queue_obj = self._add_queue_to_cache(queue, sender=sender)
         return queue_obj
 
+    def _reset_cached_sender(self, queue: str) -> None:
+        """Close and drop a cached sender so the next call creates a fresh one.
+
+        A sender outlives the AMQP connection it was built on, and the broker
+        closes connections on its own schedule. Once the connection is gone
+        the sender can only ever fail, so it must be discarded rather than
+        reused.
+        """
+        obj = self._queue_cache.get(queue, None)
+        if obj is None or obj.sender is None:
+            return
+        try:
+            obj.sender.close()
+        except Exception:
+            pass
+        obj.sender = None
+
     @staticmethod
     def _receiver_cache_key(
         queue: str,
@@ -380,8 +397,21 @@ class Channel(virtual.Channel):
         queue = self.entity_name(self.queue_name_prefix + queue)
         msg = ServiceBusMessage(dumps(message))
 
-        queue_obj = self._get_asb_sender(queue)
-        queue_obj.sender.send_messages(msg)
+        try:
+            queue_obj = self._get_asb_sender(queue)
+            queue_obj.sender.send_messages(msg)
+        except _TRANSIENT_ERRORS:
+            # The broker force-closes idle connections
+            # (amqp:connection:forced). The sender we hold is bound to the
+            # connection that just went away, so publishing through it again
+            # can only fail; drop it and publish over a fresh connection.
+            logger.warning(
+                "Transient error sending to %r, reconnecting sender",
+                queue,
+                exc_info=True,
+            )
+            self._reset_cached_sender(queue)
+            self._get_asb_sender(queue).sender.send_messages(msg)
 
     def _get(self, queue: str, timeout: float | int | None = None) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
