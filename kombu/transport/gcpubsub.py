@@ -288,9 +288,9 @@ class Channel(virtual.Channel):
             logger.debug('creating topic: %s', topic_path)
             request = {'name': topic_path}
             if message_retention_duration:
-                request[
-                    'message_retention_duration'
-                ] = f'{message_retention_duration}s'
+                request['message_retention_duration'] = datetime.timedelta(
+                    seconds=message_retention_duration
+                )
             self.publisher.create_topic(request=request)
         except AlreadyExists:
             pass
@@ -320,12 +320,18 @@ class Channel(virtual.Channel):
             project_id, topic_id
         )
         msg_retention = msg_retention or self.expiration_seconds
+        # protobuf Duration fields require timedelta (string "Ns" fails on
+        # protobuf 5+, which gcpubsub extras pin).
         subscription_config = {
             "name": subscription_path,
             "topic": topic_path,
             "ack_deadline_seconds": self.ack_deadline_seconds,
-            "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
-            "message_retention_duration": f"{msg_retention}s",
+            "expiration_policy": {
+                "ttl": datetime.timedelta(seconds=self.expiration_seconds)
+            },
+            "message_retention_duration": datetime.timedelta(
+                seconds=msg_retention
+            ),
             "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
             **(filter_args or {}),
         }

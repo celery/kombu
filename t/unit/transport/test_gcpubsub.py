@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from _socket import timeout as socket_timeout
 from concurrent.futures import Future
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Empty
 from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
@@ -235,7 +235,7 @@ class test_Channel:
             dict(
                 request={
                     'name': 'topic_path',
-                    'message_retention_duration': '10s',
+                    'message_retention_duration': timedelta(seconds=10),
                 }
             )
             in channel.publisher.create_topic.call_args
@@ -292,11 +292,17 @@ class test_Channel:
             'name': 'projects/my_project/subscriptions/kombu-1111-2222',
             'topic': 'projects/jether-fox/topics/reply.celery.pidbox',
             'ack_deadline_seconds': 240,
-            'expiration_policy': {'ttl': '86400s'},
-            'message_retention_duration': '86400s',
+            'expiration_policy': {
+                'ttl': timedelta(seconds=86400)
+            },
+            'message_retention_duration': timedelta(seconds=86400),
             'filter': 'attributes.routing_key="1111-2222"',
         }
-        Subscription(request)
+        subscription = Subscription(request)
+        assert subscription.expiration_policy.ttl.total_seconds() == 86400
+        assert (
+            subscription.message_retention_duration.total_seconds() == 86400
+        )
 
     def test_create_subscription_updates_when_exists(self, channel):
         """Subscription settings are updated when the subscription exists."""
