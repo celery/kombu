@@ -722,6 +722,76 @@ class test_RedisRestoreVisible:
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisRestoreAtShutdown:
+    """A message a consumer holds unacked is requeued when its connection closes.
+
+    A worker that has prefetched a message it is not going to run yet (a task
+    with a far away ETA, for example) is holding it unacked. On a clean
+    shutdown nothing may stay stuck in the unacked keys, and the next
+    consumer has to get the message right away, not after
+    ``visibility_timeout``.
+    """
+
+    def test_unacked_message_requeued_on_connection_close(
+            self, connection, redis_client):
+        # Far longer than the test, so only the shutdown path can restore it.
+        visibility_timeout = 3600
+        unacked_key = 'restore_at_shutdown_test_unacked'
+        unacked_index_key = 'restore_at_shutdown_test_unacked_index'
+        unacked_mutex_key = 'restore_at_shutdown_test_unacked_mutex'
+        connection = connection.clone(transport_options={
+            **connection.transport_options,
+            'visibility_timeout': visibility_timeout,
+            'unacked_key': unacked_key,
+            'unacked_index_key': unacked_index_key,
+            'unacked_mutex_key': unacked_mutex_key,
+        })
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        unacked_key = f'{keyprefix}{unacked_key}'
+        unacked_index_key = f'{keyprefix}{unacked_index_key}'
+        unacked_mutex_key = f'{keyprefix}{unacked_mutex_key}'
+        redis_client.delete(unacked_key, unacked_index_key, unacked_mutex_key)
+
+        test_queue = kombu.Queue(
+            'restore_at_shutdown_test', routing_key='restore_at_shutdown_test'
+        )
+        payload = {'msg': 'held while the consumer shuts down'}
+
+        with connection.clone() as conn:
+            with conn.channel() as channel:
+                bound_queue = test_queue(channel)
+                bound_queue.declare()
+                bound_queue.purge()
+
+                kombu.Producer(channel).publish(
+                    payload,
+                    exchange=test_queue.exchange,
+                    routing_key=test_queue.routing_key,
+                    serializer='json',
+                )
+
+                message = bound_queue.get(no_ack=False)
+                assert message.payload == payload
+                tag = message.delivery_tag
+                assert redis_client.hexists(unacked_key, tag)
+                assert redis_client.zscore(unacked_index_key, tag) is not None
+
+        assert not redis_client.hexists(unacked_key, tag)
+        assert redis_client.zscore(unacked_index_key, tag) is None
+
+        with connection.clone() as conn:
+            with conn.channel() as channel:
+                bound_queue = test_queue(channel)
+                restored = bound_queue.get(no_ack=True)
+                assert restored is not None
+                assert restored.payload == payload
+                assert restored.headers['redelivered'] is True
+                # requeued exactly once
+                assert bound_queue.get(no_ack=True) is None
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisSubclientHealthCheck:
     """Integration tests for dropping half-open fanout (pub/sub) connections.
 
