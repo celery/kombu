@@ -64,6 +64,20 @@ class BasicFunctionality:
         assert chan
         assert connection.connection
 
+    def test_autoretry_default_channel(self, connection):
+        calls = []
+
+        def operation(value, channel):
+            calls.append(channel)
+            return value
+
+        with connection as conn:
+            result, channel = conn.autoretry(operation, max_retries=0)('result')
+            assert result == 'result'
+            assert channel is conn.default_channel
+            assert calls == [channel]
+            assert conn.connected
+
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')
 
