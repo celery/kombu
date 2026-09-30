@@ -15,8 +15,8 @@ from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
                                    SentinelChannel, Transport)
 from kombu.utils.json import loads
 
-from .common import (BaseExchangeTypes, BaseMessage, BasePriority,
-                     BasicFunctionality)
+from .common import (BaseEventLoop, BaseExchangeTypes, BaseMessage,
+                     BasePriority, BasicFunctionality)
 
 
 def get_connection(
@@ -449,6 +449,12 @@ class test_RedisPublishBatch:
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisEventLoop(BaseEventLoop):
     pass
 
 

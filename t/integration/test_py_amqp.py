@@ -10,8 +10,9 @@ from amqp.exceptions import NotFound
 import kombu
 from kombu.connection import ConnectionPool
 
-from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
-                     BasePriority, BaseTimeToLive, BasicFunctionality)
+from .common import (BaseEventLoop, BaseExchangeTypes, BaseFailover,
+                     BaseMessage, BasePriority, BaseTimeToLive,
+                     BasicFunctionality)
 
 
 def get_connection(hostname, port, vhost):
@@ -98,6 +99,12 @@ class test_PyAMQPFailover(BaseFailover):
 @pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_PyAMQPMessage(BaseMessage):
+    pass
+
+
+@pytest.mark.env('py-amqp')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_PyAMQPEventLoop(BaseEventLoop):
     pass
 
 
