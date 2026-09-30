@@ -88,7 +88,6 @@ class Channel(virtual.Channel):
 
     domain_format: str = 'kombu%(vhost)s'
     _queue_service: QueueServiceClient | None = None
-    _queue_name_cache: dict[Any, Any] = {}
     no_ack: bool = True
     _noack_queues: set[Any] = set()
 
@@ -190,6 +189,10 @@ class Channel(virtual.Channel):
     def transport_options(self):
         return self.connection.client.transport_options
 
+    @property
+    def _queue_name_cache(self) -> dict[Any, Any]:
+        return self.connection._queue_name_cache
+
     @cached_property
     def queue_name_prefix(self) -> str:
         return self.transport_options.get('queue_name_prefix', '')
@@ -203,6 +206,12 @@ class Transport(virtual.Transport):
     polling_interval: int = 1
     default_port: int | None = None
     can_parse_url: bool = True
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        # Scoped to this Connection: its channels share it, but a Connection
+        # to another storage account must not see this account's queues.
+        self._queue_name_cache: dict[Any, Any] = {}
 
     @staticmethod
     def parse_uri(uri: str) -> tuple[str | dict, str]:

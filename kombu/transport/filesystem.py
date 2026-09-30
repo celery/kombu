@@ -224,14 +224,15 @@ class Channel(virtual.Channel):
                 f_obj.close()
         except FileNotFoundError:
             return []
-        except OSError:
-            raise ChannelError(f"Cannot open {file}")
+        except OSError as exc:
+            raise ChannelError(f"Cannot open {file}") from exc
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         file = self._exchange_file(exchange)
         self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
+        f_obj = None
         try:
             if file.exists():
                 f_obj = file.open("rb+", buffering=0)
@@ -247,9 +248,12 @@ class Channel(virtual.Channel):
                 lock(f_obj, LOCK_EX)
                 queues = [queue_val]
                 f_obj.write(str_to_bytes(dumps(queues)))
+        except OSError as exc:
+            raise ChannelError(f"Cannot open {file}") from exc
         finally:
-            unlock(f_obj)
-            f_obj.close()
+            if f_obj is not None:
+                unlock(f_obj)
+                f_obj.close()
 
     def _put_fanout(self, exchange, payload, routing_key, **kwargs):
         for q in self.get_table(exchange):
@@ -261,16 +265,18 @@ class Channel(virtual.Channel):
                                          uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
+        f = None
         try:
             f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
-        except OSError:
+        except OSError as exc:
             raise ChannelError(
-                f'Cannot add file {filename!r} to directory')
+                f'Cannot add file {filename!r} to directory') from exc
         finally:
-            unlock(f)
-            f.close()
+            if f is not None:
+                unlock(f)
+                f.close()
 
     def _get(self, queue):
         """Get next message from `queue`."""
@@ -299,14 +305,13 @@ class Channel(virtual.Channel):
 
             filename = os.path.join(processed_folder, filename)
             try:
-                f = open(filename, 'rb')
-                payload = f.read()
-                f.close()
+                with open(filename, 'rb') as f:
+                    payload = f.read()
                 if not self.store_processed:
                     os.remove(filename)
-            except OSError:
+            except OSError as exc:
                 raise ChannelError(
-                    f'Cannot read file {filename!r} from queue.')
+                    f'Cannot read file {filename!r} from queue.') from exc
 
             return loads(bytes_to_str(payload))
 

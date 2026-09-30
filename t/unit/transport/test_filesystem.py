@@ -7,7 +7,7 @@ import tempfile
 from pathlib import PurePosixPath, PureWindowsPath
 from queue import Empty
 from typing import Generator
-from unittest.mock import call, patch
+from unittest.mock import call, mock_open, patch
 
 import pytest
 
@@ -16,6 +16,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import ChannelError
 from kombu.transport.filesystem import Channel as FilesystemChannel
 from kombu.transport.virtual import Channel
+from kombu.utils.json import dumps
 
 
 class WithJanitorMixin:
@@ -553,3 +554,55 @@ class test_exchange_file_name_guard:
         for spelling in (name, name.lower(), name.capitalize()):
             with pytest.raises(ChannelError):
                 self._exchange_file(shape.format(spelling), folder)
+
+
+@t.skip.if_win32
+class test_FilesystemOpenErrors(WithJanitorMixin):
+    # A failure to open the message or exchange file must surface as that
+    # error, not as an UnboundLocalError from the cleanup in ``finally``.
+
+    def setup_method(self):
+        try:
+            self.data_folder_in = tempfile.mkdtemp()
+            self.data_folder_out = tempfile.mkdtemp()
+            self.control_folder = tempfile.mkdtemp()
+        except Exception:
+            pytest.skip("filesystem transport: cannot create tempfiles")
+        self.conn = Connection(
+            transport="filesystem",
+            transport_options={
+                "data_folder_in": self.data_folder_in,
+                "data_folder_out": self.data_folder_out,
+                "control_folder": self.control_folder,
+            },
+        )
+        self.channel = self.conn.default_channel
+
+    def teardown_method(self):
+        self.conn.close()
+        self._remove_temporary_folders()
+
+    def test_put_raises_channel_error_when_file_cannot_be_opened(self):
+        shutil.rmtree(self.data_folder_out)
+        with pytest.raises(ChannelError) as excinfo:
+            self.channel._put("q", {"body": "x"})
+        assert isinstance(excinfo.value.__cause__, FileNotFoundError)
+
+    def test_queue_bind_raises_channel_error_when_file_cannot_be_opened(self):
+        # A directory where the exchange file should be makes open() fail.
+        self.channel._exchange_file("ex").mkdir()
+        with pytest.raises(ChannelError) as excinfo:
+            self.channel._queue_bind("ex", "rk", "", "q")
+        assert isinstance(excinfo.value.__cause__, IsADirectoryError)
+
+    def test_get_closes_file_when_read_fails(self):
+        path = os.path.join(self.data_folder_in, "1_x.q.msg")
+        with open(path, "w") as f:
+            f.write(dumps({"body": "x"}))
+        broken = mock_open()
+        broken.return_value.read.side_effect = OSError("read failed")
+        with patch("builtins.open", broken):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel._get("q")
+        assert isinstance(excinfo.value.__cause__, OSError)
+        broken.return_value.__exit__.assert_called_once()
