@@ -9,6 +9,7 @@ from amqp.exceptions import NotFound
 
 import kombu
 from kombu.connection import ConnectionPool
+from kombu.exceptions import OperationalError
 
 from .common import (BaseEventLoop, BaseExchangeTypes, BaseFailover,
                      BaseMessage, BasePriority, BaseTimeToLive,
@@ -101,6 +102,40 @@ class test_PyAMQPFailover(BaseFailover):
 class test_PyAMQPMessage(BaseMessage):
     pass
 
+
+@pytest.mark.env('py-amqp')
+class test_PyAMQPAutoRetry:
+    @pytest.mark.parametrize('max_retries', [0, 2])
+    def test_initial_connection_retry_policy(self, max_retries):
+        errors = []
+        calls = []
+
+        def operation(channel):
+            calls.append(channel)
+
+        # Reserve an unavailable port without a race with another listener.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as unavailable:
+            unavailable.bind(('127.0.0.1', 0))
+            port = unavailable.getsockname()[1]
+            with kombu.Connection(
+                f'pyamqp://127.0.0.1:{port}', connect_timeout=1,
+                # Bound each attempt, without a total timeout masking retries.
+                transport_options={
+                    'max_retries': 0, 'connect_retries_timeout': None,
+                },
+            ) as conn:
+                with pytest.raises(OperationalError):
+                    conn.autoretry(
+                        operation, max_retries=max_retries,
+                        interval_start=0, interval_step=0, interval_max=0,
+                        errback=lambda exc, interval: errors.append((exc, interval)),
+                    )()
+
+        assert len(errors) == max_retries
+        assert all(isinstance(exc, OSError) and interval == 0
+                   for exc, interval in errors)
+        assert not calls
+        
 
 @pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
