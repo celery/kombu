@@ -11,8 +11,9 @@ import kombu
 from kombu.connection import ConnectionPool
 from kombu.exceptions import OperationalError
 
-from .common import (BaseExchangeTypes, BaseFailover, BaseMessage,
-                     BasePriority, BaseTimeToLive, BasicFunctionality)
+from .common import (BaseEventLoop, BaseExchangeTypes, BaseFailover,
+                     BaseMessage, BasePriority, BaseTimeToLive,
+                     BasicFunctionality)
 
 
 def get_connection(hostname, port, vhost):
@@ -134,6 +135,11 @@ class test_PyAMQPAutoRetry:
         assert all(isinstance(exc, OSError) and interval == 0
                    for exc, interval in errors)
         assert not calls
+        
+
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_PyAMQPEventLoop(BaseEventLoop):
+    pass
 
 
 @pytest.mark.env("py-amqp")
