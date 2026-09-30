@@ -9,7 +9,12 @@ logger = logging.getLogger(__name__)
 
 
 def emergency_dump_state(state, open_file=open, dump=None, stderr=None):
-    """Dump message state to stdout or file."""
+    """Dump message state to a file.
+
+    The default serializer writes binary pickle data. Supplying ``dump``
+    preserves text mode, even for ``dump=pickle.dump``; binary serializers
+    must also provide an ``open_file`` callback that opens a binary stream.
+    """
     from pprint import pformat
     from tempfile import mkstemp
 
