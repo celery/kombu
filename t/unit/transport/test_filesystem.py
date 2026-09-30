@@ -7,7 +7,7 @@ import tempfile
 from pathlib import PurePosixPath, PureWindowsPath
 from queue import Empty
 from typing import Generator
-from unittest.mock import call, patch
+from unittest.mock import call, mock_open, patch
 
 import pytest
 
@@ -16,6 +16,7 @@ from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import ChannelError
 from kombu.transport.filesystem import Channel as FilesystemChannel
 from kombu.transport.virtual import Channel
+from kombu.utils.json import dumps
 
 
 class WithJanitorMixin:
@@ -583,11 +584,25 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
 
     def test_put_raises_channel_error_when_file_cannot_be_opened(self):
         shutil.rmtree(self.data_folder_out)
-        with pytest.raises(ChannelError):
+        with pytest.raises(ChannelError) as excinfo:
             self.channel._put("q", {"body": "x"})
+        assert isinstance(excinfo.value.__cause__, FileNotFoundError)
 
-    def test_queue_bind_propagates_open_error(self):
+    def test_queue_bind_raises_channel_error_when_file_cannot_be_opened(self):
         # A directory where the exchange file should be makes open() fail.
         self.channel._exchange_file("ex").mkdir()
-        with pytest.raises(OSError):
+        with pytest.raises(ChannelError) as excinfo:
             self.channel._queue_bind("ex", "rk", "", "q")
+        assert isinstance(excinfo.value.__cause__, IsADirectoryError)
+
+    def test_get_closes_file_when_read_fails(self):
+        path = os.path.join(self.data_folder_in, "1_x.q.msg")
+        with open(path, "w") as f:
+            f.write(dumps({"body": "x"}))
+        broken = mock_open()
+        broken.return_value.read.side_effect = OSError("read failed")
+        with patch("builtins.open", broken):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel._get("q")
+        assert isinstance(excinfo.value.__cause__, OSError)
+        broken.return_value.__exit__.assert_called_once()
