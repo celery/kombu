@@ -137,6 +137,7 @@ class test_PyAMQPAutoRetry:
         assert not calls
         
 
+@pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_PyAMQPEventLoop(BaseEventLoop):
     pass
