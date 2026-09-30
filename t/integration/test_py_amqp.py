@@ -135,7 +135,7 @@ class test_PyAMQPAutoRetry:
         assert all(isinstance(exc, OSError) and interval == 0
                    for exc, interval in errors)
         assert not calls
-        
+
 
 @pytest.mark.env('py-amqp')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
