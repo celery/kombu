@@ -287,7 +287,19 @@ class test_Channel:
         assert result == subscription_path
         channel.subscriber.create_subscription.assert_called_once()
 
+    def test_expiration_seconds_accepts_string(self, channel):
+        """Env-style transport options may pass seconds as a string."""
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock,
+            return_value={'expiration_seconds': '3600'},
+        ):
+            # cached_property: clear if already evaluated
+            channel.__dict__.pop('expiration_seconds', None)
+            assert channel.expiration_seconds == 3600.0
+
     def test_create_subscription_protobuf_compat(self):
+
         request = {
             'name': 'projects/my_project/subscriptions/kombu-1111-2222',
             'topic': 'projects/jether-fox/topics/reply.celery.pidbox',

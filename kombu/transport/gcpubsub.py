@@ -289,7 +289,7 @@ class Channel(virtual.Channel):
             request = {'name': topic_path}
             if message_retention_duration:
                 request['message_retention_duration'] = datetime.timedelta(
-                    seconds=message_retention_duration
+                    seconds=float(message_retention_duration)
                 )
             self.publisher.create_topic(request=request)
         except AlreadyExists:
@@ -321,7 +321,9 @@ class Channel(virtual.Channel):
         )
         msg_retention = msg_retention or self.expiration_seconds
         # protobuf Duration fields require timedelta (string "Ns" fails on
-        # protobuf 5+, which gcpubsub extras pin).
+        # protobuf 5+, which gcpubsub extras pin). Coerce seconds so string
+        # transport options from env-style config still work.
+        msg_retention = float(msg_retention)
         subscription_config = {
             "name": subscription_path,
             "topic": topic_path,
@@ -720,9 +722,15 @@ class Channel(virtual.Channel):
 
     @cached_property
     def expiration_seconds(self):
-        return self.transport_options.get(
+        value = self.transport_options.get(
             'expiration_seconds', self.default_expiration_seconds
         )
+        # Transport options often arrive as strings from env-style config;
+        # Duration fields need a numeric timedelta constructor argument.
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(self.default_expiration_seconds)
 
     @cached_property
     def bulk_max_messages(self):
