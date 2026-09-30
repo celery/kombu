@@ -949,6 +949,173 @@ class test_Connection:
         callback.assert_called()
 
 
+class test_Connection_autoretry:
+
+    @pytest.fixture
+    def conn(self):
+        with Connection('memory://', transport_options={
+            'interval_start': 0, 'interval_step': 0, 'interval_max': 0,
+        }) as conn:
+            yield conn
+
+    @pytest.fixture
+    def fail_connections(self, conn, monkeypatch):
+        def fail(count):
+            attempts = []
+            establish = conn._establish_connection
+            error = conn.recoverable_connection_errors[0]('unavailable')
+
+            def connect():
+                attempts.append(None)
+                if len(attempts) <= count:
+                    raise error
+                return establish()
+
+            monkeypatch.setattr(conn, '_establish_connection', connect)
+            return attempts, error
+        return fail
+
+    @pytest.mark.parametrize('max_retries', [0, 2])
+    def test_initial_connection_retry_limit(self, conn, fail_connections,
+                                            max_retries):
+        attempts, error = fail_connections(3)
+        calls = []
+
+        def operation(channel):
+            calls.append(channel)
+
+        retry = conn.autoretry(operation, max_retries=max_retries)
+        with pytest.raises(OperationalError) as exc_info:
+            retry()
+        assert exc_info.value.__cause__ is error
+        assert len(attempts) == max_retries + 1
+        assert calls == []
+
+    def test_initial_connection_errback_intervals(self, conn, fail_connections,
+                                                  monkeypatch):
+        attempts, error = fail_connections(3)
+        errors = []
+        monkeypatch.setattr('kombu.utils.functional.sleep', lambda _: None)
+
+        retry = conn.autoretry(
+            lambda channel: 'done', max_retries=3,
+            errback=lambda exc, interval: errors.append((exc, interval)),
+            interval_start=1, interval_step=2, interval_max=4,
+        )
+        result, channel = retry()
+        assert result == 'done'
+        assert channel is conn.default_channel
+        assert len(attempts) == 4
+        assert errors == [(error, 1), (error, 3), (error, 4)]
+
+    def test_initial_connection_inherits_transport_options(self, conn,
+                                                           fail_connections):
+        attempts, error = fail_connections(2)
+        errors, callbacks = [], []
+        conn.transport_options.update(
+            max_retries=1,
+            errback=lambda exc, interval: errors.append((exc, interval)),
+            callback=lambda: callbacks.append('tick'),
+        )
+        original_options = conn.transport_options.copy()
+        with pytest.raises(OperationalError):
+            conn.autoretry(lambda channel: 'done')()
+        assert len(attempts) == 2
+        assert errors == [(error, 0)]
+        assert callbacks == ['tick']
+        assert conn.transport_options == original_options
+
+    def test_initial_connection_overrides_transport_options(self, conn,
+                                                            fail_connections):
+        attempts, error = fail_connections(2)
+        errors, transport_errors = [], []
+        conn.transport_options.update(
+            max_retries=0, interval_start=10, interval_step=10,
+            interval_max=10,
+            errback=lambda *args: transport_errors.append(args),
+        )
+        original_options = conn.transport_options.copy()
+        result, channel = conn.autoretry(
+            lambda channel: 'done', max_retries=None,
+            interval_start=0, interval_step=0, interval_max=0,
+            errback=lambda exc, interval: errors.append((exc, interval)),
+        )()
+        assert result == 'done'
+        assert channel is conn.default_channel
+        assert len(attempts) == 3
+        assert errors == [(error, 0), (error, 0)]
+        assert transport_errors == []
+        assert conn.transport_options == original_options
+
+    def test_initial_connection_explicit_no_errback(self, conn,
+                                                    fail_connections):
+        attempts, _ = fail_connections(1)
+        errors = []
+        conn.transport_options['errback'] = lambda *args: errors.append(args)
+        result, _ = conn.autoretry(lambda channel: 'done', errback=None)()
+        assert result == 'done'
+        assert len(attempts) == 2
+        assert errors == []
+
+    @pytest.mark.parametrize('total_timeout, expected_attempts', [(None, 1), (5, 3)])
+    def test_initial_connection_preserves_timeout(self, conn, fail_connections,
+                                                  monkeypatch, total_timeout,
+                                                  expected_attempts):
+        clock = [0]
+        conn.connect_timeout = 1
+        if total_timeout is not None:
+            conn.transport_options['connect_retries_timeout'] = total_timeout
+        attempts, _ = fail_connections(4)
+        establish = conn._establish_connection
+
+        def connect():
+            clock[0] += 2
+            return establish()
+
+        monkeypatch.setattr(conn, '_establish_connection', connect)
+        monkeypatch.setattr('kombu.utils.functional.time', lambda: clock[0])
+        with pytest.raises(OperationalError):
+            conn.autoretry(lambda channel: 'done', max_retries=10)()
+        assert len(attempts) == expected_attempts
+
+    @pytest.mark.parametrize('existing_default', [False, True])
+    def test_existing_channel(self, conn, fail_connections, existing_default):
+        if existing_default:
+            expected = conn.default_channel
+            options = {}
+        else:
+            expected = object()
+            options = {'channel': expected}
+        attempts, _ = fail_connections(1)
+        result, channel = conn.autoretry(
+            lambda channel: channel, max_retries=0, **options,
+        )()
+        assert result is expected
+        assert channel is expected
+        assert attempts == []
+
+    def test_operation_recovery(self, conn):
+        channels, revived, errors = [], [], []
+        error = conn.recoverable_connection_errors[0]('connection lost')
+
+        def operation(channel):
+            channels.append(channel)
+            if len(channels) == 1:
+                raise error
+            return 'done'
+
+        result, channel = conn.autoretry(
+            operation, max_retries=1, on_revive=revived.append,
+            errback=lambda exc, interval: errors.append((exc, interval)),
+        )()
+        assert result == 'done'
+        assert len(channels) == 2
+        assert channels[0] is not channels[1]
+        assert channel is channels[1]
+        assert revived == [channel]
+        assert errors == [(error, 0)]
+
+
 class test_Connection_callable_password:
 
     def test_connection_preserves_callable_password(self):
