@@ -43,10 +43,12 @@ def make_publisher(connection_fixture, mock_sqs):
     ('10', 10),
     (900, 900),
     (100000, 900),
-    (0, None),
+    (0, 0),            # SQS accepts an explicit zero
     (-5, None),
     (None, None),
     ('soon', None),
+    (float('inf'), None),   # int(float('inf')) raises OverflowError
+    (2.5, 2),          # a float truncates toward zero
 ])
 def test_delay_seconds_is_forwarded(make_publisher, delay, expected):
     """A delay is sent on as ``DelaySeconds`` when it can be honoured."""
@@ -62,14 +64,45 @@ def test_aws_spelling_still_works(make_publisher):
     assert make_publisher()(DelaySeconds=10)['DelaySeconds'] == 10
 
 
+def test_aws_spelling_out_of_range_is_clamped(make_publisher):
+    """Clamping applies to the AWS spelling too, not just the snake_case one."""
+    assert make_publisher()(DelaySeconds=100000)['DelaySeconds'] == 900
+
+
 def test_no_delay_by_default(make_publisher):
     """A message published without a delay carries no delay."""
     assert 'DelaySeconds' not in make_publisher()()
 
 
-def test_fifo_queue_is_not_delayed(make_publisher):
+def test_none_falls_through_to_the_other_spelling(make_publisher):
+    """``None`` means "not supplied here", not "no delay at all"."""
+    sent = make_publisher()(delay_seconds=None, DelaySeconds=30)
+    assert sent['DelaySeconds'] == 30
+
+
+@pytest.mark.parametrize('delay, fragment', [
+    ('soon', 'not a number'),
+    (-5, 'negative'),
+    (100000, 'exceeds the maximum'),
+])
+def test_unusable_delay_warns(make_publisher, caplog, delay, fragment):
+    """Whatever the caller got wrong, the reason is logged."""
+    make_publisher()(delay_seconds=delay)
+    assert fragment in caplog.text
+
+
+def test_fifo_queue_is_not_delayed(make_publisher, caplog):
     """FIFO queues take no per-message delay, and SQS would reject one."""
-    assert 'DelaySeconds' not in make_publisher('queue-3.fifo')(delay_seconds=10)
+    sent = make_publisher('queue-3.fifo')(delay_seconds=10)
+    assert 'DelaySeconds' not in sent
+    assert 'FIFO queues take no per-message delay' in caplog.text
+
+
+def test_fifo_queue_warns_for_an_explicit_zero(make_publisher, caplog):
+    """An explicit zero is a delay request on a FIFO queue, not the absence."""
+    sent = make_publisher('queue-3.fifo')(delay_seconds=0)
+    assert 'DelaySeconds' not in sent
+    assert 'FIFO queues take no per-message delay' in caplog.text
 
 
 @pytest.mark.parametrize('properties, expected', [
@@ -78,9 +111,13 @@ def test_fifo_queue_is_not_delayed(make_publisher):
     ({'delay_seconds': '30'}, 30),
     ({'delay_seconds': 900}, 900),
     ({'delay_seconds': 901}, 900),
-    ({'delay_seconds': 0}, None),
+    ({'delay_seconds': 0}, 0),
     ({'delay_seconds': None}, None),
+    ({'delay_seconds': None, 'DelaySeconds': 30}, 30),
     ({'delay_seconds': 'abc'}, None),
+    ({'delay_seconds': float('inf')}, None),
+    ({'delay_seconds': 2.5}, 2),
+    ({'delay_seconds': -1}, None),
     ({'delay_seconds': 60, 'DelaySeconds': 90}, 60),
     ({}, None),
 ])

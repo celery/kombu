@@ -257,6 +257,9 @@ CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 #: SQS bulk get supports a maximum of 10 messages at a time.
 SQS_MAX_MESSAGES = 10
 
+#: SQS accepts at most 900 seconds of per-message delay.
+MAX_DELAY_SECONDS = 900
+
 _SUPPORTED_BOTO_SERVICES = Literal["sqs", "sns"]
 
 
@@ -536,17 +539,16 @@ class Channel(virtual.Channel):
 
         self._queue_cache.pop(queue, None)
 
-    #: Maximum delay SQS accepts for a single message, in seconds.
-    max_delay_seconds = 900
-
     def _resolve_delay_seconds(self, properties):
         """Return the per-message delay to apply, or ``None`` for no delay.
 
         Accepts the delay either as ``delay_seconds`` or as ``DelaySeconds``,
         so callers can use the snake_case spelling that matches Kombu's own
-        ``Producer.publish`` style.  Values are coerced to int and clamped to
-        the range SQS accepts, since anything out of that range is rejected by
-        AWS at publish time.
+        ``Producer.publish`` style.  A value of ``None`` under one spelling
+        means it was not supplied there, so the other spelling is consulted.
+        Values are coerced to ``int`` (a float truncates toward zero) and
+        clamped to the range SQS accepts, since anything above the maximum
+        is rejected by AWS at publish time.
 
         Arguments:
         ---------
@@ -554,29 +556,38 @@ class Channel(virtual.Channel):
 
         Returns
         -------
-            int: The delay in seconds, or ``None`` when no delay was requested
-                or the requested value cannot be honoured.
+            int: The delay in seconds -- including ``0``, which SQS accepts
+                and treats as no delay -- or ``None`` when no delay was
+                requested or the requested value cannot be honoured.
         """
         for key in ('delay_seconds', 'DelaySeconds'):
             if key not in properties:
                 continue
+            value = properties[key]
+            if value is None:
+                # Not supplied under this spelling; the other one may carry it.
+                continue
             try:
-                delay = int(properties[key])
-            except (TypeError, ValueError):
+                delay = int(value)
+            except (TypeError, ValueError, OverflowError):
                 logger.warning(
                     'SQS delay %r is not a number, publishing without a delay',
-                    properties[key],
+                    value,
                 )
                 return None
-            if delay <= 0:
+            if delay < 0:
+                logger.warning(
+                    'SQS delay of %s is negative, publishing without a delay',
+                    delay,
+                )
                 return None
-            if delay > self.max_delay_seconds:
+            if delay > MAX_DELAY_SECONDS:
                 logger.warning(
                     'SQS delay of %s exceeds the maximum of %s seconds, '
                     'clamping to the maximum',
-                    delay, self.max_delay_seconds,
+                    delay, MAX_DELAY_SECONDS,
                 )
-                delay = self.max_delay_seconds
+                delay = MAX_DELAY_SECONDS
             return delay
         return None
 
@@ -593,6 +604,9 @@ class Channel(virtual.Channel):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
                     message['properties']['MessageGroupId']
+            delay_seconds = self._resolve_delay_seconds(
+                message['properties'])
+
             # Support FIFO queues.
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' not in kwargs:
@@ -602,11 +616,16 @@ class Channel(virtual.Channel):
                         message['properties']['MessageDeduplicationId']
                 else:
                     kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-            else:
-                delay_seconds = self._resolve_delay_seconds(
-                    message['properties'])
                 if delay_seconds is not None:
-                    kwargs['DelaySeconds'] = delay_seconds
+                    # SQS rejects DelaySeconds on a FIFO queue outright, so it
+                    # is dropped here -- loudly, rather than silently.
+                    logger.warning(
+                        'SQS FIFO queues take no per-message delay, ignoring '
+                        'delay of %s seconds',
+                        delay_seconds,
+                    )
+            elif delay_seconds is not None:
+                kwargs['DelaySeconds'] = delay_seconds
 
         if self.sqs_base64_encoding:
             body = AsyncMessage().encode(dumps(message))

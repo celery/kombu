@@ -93,13 +93,24 @@ The delay is passed as a keyword argument to the `publish` method, either as
     )
 
 The value is the number of seconds to hold the message, and SQS accepts at
-most 900 (15 minutes). A larger value is clamped to that maximum and zero or
-negative values are ignored, so a message is never rejected by SQS because of
-the delay it was given.
+most 900 (15 minutes). A larger value is clamped to that maximum, ``0`` is a
+valid delay, and a negative value is ignored, so a message is never rejected
+by SQS because of the delay it was given. A value that is not a number at all
+is ignored too, and logged as a warning -- the message still goes out, just
+without the delay.
 
-Note that a delay is applied per message and does not block the ones behind
-it, but a queue with a per-message delay still delivers messages in order once
-each one becomes visible.
+Only one of the two spellings is used: the first one given wins, so passing
+``delay_seconds=None`` falls through to ``DelaySeconds``. A float is
+truncated toward zero, so ``2.5`` becomes ``2``.
+
+A delay is applied per message and does not block the messages behind it.
+Standard SQS queues make no ordering promise, so delaying one message can
+change the order in which the queue delivers them.
+
+FIFO queues take no per-message delay -- SQS rejects ``DelaySeconds`` on them
+outright -- so a delay requested for a FIFO queue is dropped and logged as a
+warning. If you need a delay on a FIFO queue, have the consumer hold the
+message itself rather than asking the broker for one.
 
 Fair Queue Support (only available from version 5.7.0+)
 ------------------------
