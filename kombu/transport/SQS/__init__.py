@@ -552,7 +552,7 @@ class Channel(virtual.Channel):
         ---------
             properties (dict): The message properties to read the delay from.
 
-        Returns:
+        Returns
         -------
             int: The delay in seconds, or ``None`` when no delay was requested
                 or the requested value cannot be honoured.
