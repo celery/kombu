@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import json
 import os
 import time
 import uuid
@@ -29,6 +31,29 @@ def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: 
             "wait_time_seconds": 0,  # Set to 0 to ensure requeue testing works
         },
     )
+
+
+def _sent_params(params):
+    """Return the SendMessage parameters from a ``before-call`` hook.
+
+    The hook receives the prepared *request*, so the delay only appears in the
+    serialised body. botocore's ``json`` protocol puts a JSON object there,
+    while the ``query`` protocol puts a Python-repr dict literal; this accepts
+    both so the test does not depend on the wire protocol.
+    """
+    body = params.get('body')
+    if not body:
+        return None
+    if isinstance(body, bytes):
+        body = body.decode()
+    try:
+        return json.loads(body)
+    except ValueError:
+        pass
+    try:
+        return ast.literal_eval(body)
+    except (ValueError, SyntaxError):
+        return None
 
 
 @pytest.fixture()
@@ -249,10 +274,9 @@ class test_SQSDelaySeconds:
         assertions read the request the transport built rather than the
         properties the caller passed in.
 
-        The recorded entry is the parameter dict handed to botocore, not its
-        serialised body: under the ``json`` protocol the body is JSON, but
-        under ``query`` it is a Python-repr dict, so parsing the body would
-        make the test depend on the wire protocol.
+        The recorded entry is read back off the serialised body via
+        ``_sent_params``, so the assertions are about what actually went on
+        the wire rather than about the properties the caller passed in.
         """
         # The connection applies ``queue_name_prefix`` to whatever routing key
         # it is given, so the queue is created under the prefixed name while
@@ -262,7 +286,9 @@ class test_SQSDelaySeconds:
         recorded = []
 
         def record(params, model, **kwargs):
-            recorded.append(dict(params))
+            sent = _sent_params(params)
+            if sent is not None:
+                recorded.append(sent)
 
         with connection as conn:
             channel = conn.default_channel
@@ -337,7 +363,9 @@ class test_SQSDelaySeconds:
             recorded = []
 
             def record(params, model, **kwargs):
-                recorded.append(dict(params))
+                sent = _sent_params(params)
+                if sent is not None:
+                    recorded.append(sent)
 
             event = 'before-call.sqs.SendMessage'
             client.meta.events.register(event, record)
