@@ -76,6 +76,8 @@ to `basic_publish` method.
 Per-message Delay
 ------------------------
 
+.. versionadded:: 5.7.0
+
 SQS can hold an individual message back before delivering it, by passing a
 delay in seconds when publishing. This is a broker-side delay: unlike a
 ``countdown``, no worker waits for the message, it simply does not become
