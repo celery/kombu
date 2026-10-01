@@ -651,7 +651,7 @@ class Connection:
                             on_revive(channel)
                         got_connection += 1
                     except chan_errors as exc:
-                        if max_retries is not None and retries > max_retries:
+                        if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure channel error: %r',
                                     exc, exc_info=1)
@@ -670,6 +670,7 @@ class Connection:
 
         If a ``channel`` is not provided, then one will be automatically
         acquired (remember to close it afterwards).
+        The retry options also apply to establishing the initial connection.
 
         See Also
         --------
@@ -699,6 +700,19 @@ class Connection:
 
             def __call__(self, *args, **kwargs):
                 if channels[0] is None:
+                    # Apply the operation's retry policy before default_channel
+                    # can retry using only the connection's transport options.
+                    conn_opts = self.connection._extract_failover_opts()
+                    conn_opts.update({
+                        key: ensure_options[key]
+                        for key in (
+                            'errback', 'max_retries',
+                            'interval_start', 'interval_step', 'interval_max',
+                        )
+                        if key in ensure_options
+                    })
+                    self.connection._ensure_connection(**conn_opts)
+                    # default_channel reuses the connection established above.
                     self.revive(self.connection.default_channel)
                 return fun(*args, channel=channels[0], **kwargs), channels[0]
 

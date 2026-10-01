@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import socket
 import sys
+import threading
 from contextlib import closing
-from time import sleep
+from time import monotonic, sleep
 from urllib.parse import urlparse
+from uuid import uuid4
 
 import pytest
 
 import kombu
+from kombu.asynchronous.hub import Hub
 
 
 class BasicFunctionality:
@@ -60,6 +63,20 @@ class BasicFunctionality:
         chan = connection.default_channel
         assert chan
         assert connection.connection
+
+    def test_autoretry_default_channel(self, connection):
+        calls = []
+
+        def operation(value, channel):
+            calls.append(channel)
+            return value
+
+        with connection as conn:
+            result, channel = conn.autoretry(operation, max_retries=0)('result')
+            assert result == 'result'
+            assert channel is conn.default_channel
+            assert calls == [channel]
+            assert conn.connected
 
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')
@@ -528,6 +545,46 @@ class BaseMessage:
                 message2 = queue.get_nowait()
                 assert message.body == message2.body
                 message2.ack()
+
+
+class BaseEventLoop:
+
+    def test_ack_from_another_thread(self, connection):
+        name = f'test_ack_from_another_thread_{uuid4().hex}'
+        test_queue = kombu.Queue(name, routing_key=name)
+        acked = []
+        hub = Hub()
+
+        def ack(message):
+            message.ack()
+            acked.append(message.payload)
+
+        def callback(body, message):
+            threading.Timer(0.1, hub.call_soon, (ack, message)).start()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for body in range(2):
+                    producer.publish(
+                        body,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                    )
+            consumer = kombu.Consumer(
+                conn, [test_queue], callbacks=[callback], prefetch_count=1
+            )
+            with consumer:
+                try:
+                    conn.register_with_event_loop(hub)
+                    deadline = monotonic() + 1
+                    while len(acked) < 2 and monotonic() < deadline:
+                        hub.run_once()
+                    assert acked == [0, 1]
+                finally:
+                    hub.close()
+                    test_queue(consumer.channel).delete()
 
 
 #: Scheme of an alternate URL that must never be resolved as a transport.
