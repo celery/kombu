@@ -11,7 +11,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from kombu import Exchange, messaging, Queue
+from kombu import Exchange, Queue, messaging
 
 
 @pytest.fixture
