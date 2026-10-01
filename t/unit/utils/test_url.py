@@ -11,7 +11,7 @@ import pytest
 
 import kombu.utils.url
 from kombu.utils.url import (as_url, maybe_sanitize_url, parse_ssl_cert_reqs,
-                             parse_url)
+                             parse_url, sanitize_url)
 
 
 def test_parse_url():
@@ -46,6 +46,11 @@ def test_maybe_sanitize_url(url, expected):
     assert maybe_sanitize_url(url) == expected
     assert (maybe_sanitize_url('http://u:p@e.com//foo') ==
             'http://u:**@e.com//foo')
+
+
+def test_sanitize_url_keeps_query():
+    assert (sanitize_url('http://u:p@e.com/foo?a=1') ==
+            'http://u:**@e.com/foo?a=1')
 
 
 def test_ssl_parameters():
