@@ -156,12 +156,17 @@ else:
 exchange_queue_t = namedtuple("exchange_queue_t",
                               ["routing_key", "pattern", "queue"])
 
-#: Characters accepted in an exchange name.  The name is interpolated into a
-#: filename under ``control_folder``, so rather than blocklisting the
-#: constructs that can redirect that path, only characters that cannot are
-#: allowed.  This rejects path separators, ``..``, Windows drive-relative
+#: Characters accepted in an exchange name.
+#:
+#: The name is interpolated into a filename within ``control_folder``, so most
+#: of the accepted characters (with the exception of ``.``) are alphanumeric.
+#:
+#: The regex rejects inputs containing both Windows and Unix path separators,
 #: prefixes (``D:evil``) and UNC prefixes on every platform, rather than only
 #: on the one the tests happen to run on.
+#:
+#: Although the strings ``..`` and ``.`` are accepted by this, separate
+#: validation exists in ``_is_valid_exchange_name`` to reject them.
 EXCHANGE_NAME_RE = re.compile(r'\A[A-Za-z0-9._-]+\Z')
 
 #: Names that address a device rather than a file on Windows.  A suffix does
