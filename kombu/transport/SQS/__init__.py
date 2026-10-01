@@ -536,6 +536,50 @@ class Channel(virtual.Channel):
 
         self._queue_cache.pop(queue, None)
 
+    #: Maximum delay SQS accepts for a single message, in seconds.
+    max_delay_seconds = 900
+
+    def _resolve_delay_seconds(self, properties):
+        """Return the per-message delay to apply, or ``None`` for no delay.
+
+        Accepts the delay either as ``delay_seconds`` or as ``DelaySeconds``,
+        so callers can use the snake_case spelling that matches Kombu's own
+        ``Producer.publish`` style.  Values are coerced to int and clamped to
+        the range SQS accepts, since anything out of that range is rejected by
+        AWS at publish time.
+
+        Arguments:
+        ---------
+            properties (dict): The message properties to read the delay from.
+
+        Returns:
+        -------
+            int: The delay in seconds, or ``None`` when no delay was requested
+                or the requested value cannot be honoured.
+        """
+        for key in ('delay_seconds', 'DelaySeconds'):
+            if key not in properties:
+                continue
+            try:
+                delay = int(properties[key])
+            except (TypeError, ValueError):
+                logger.warning(
+                    'SQS delay %r is not a number, publishing without a delay',
+                    properties[key],
+                )
+                return None
+            if delay <= 0:
+                return None
+            if delay > self.max_delay_seconds:
+                logger.warning(
+                    'SQS delay of %s exceeds the maximum of %s seconds, '
+                    'clamping to the maximum',
+                    delay, self.max_delay_seconds,
+                )
+                delay = self.max_delay_seconds
+            return delay
+        return None
+
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
@@ -559,9 +603,10 @@ class Channel(virtual.Channel):
                 else:
                     kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
             else:
-                if "DelaySeconds" in message['properties']:
-                    kwargs['DelaySeconds'] = \
-                        message['properties']['DelaySeconds']
+                delay_seconds = self._resolve_delay_seconds(
+                    message['properties'])
+                if delay_seconds is not None:
+                    kwargs['DelaySeconds'] = delay_seconds
 
         if self.sqs_base64_encoding:
             body = AsyncMessage().encode(dumps(message))

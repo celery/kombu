@@ -73,6 +73,32 @@ SQS supports sending message attributes along with the message body.
 To use this feature, you can pass a 'message_attributes' as keyword argument
 to `basic_publish` method.
 
+Per-message Delay
+------------------------
+
+SQS can hold an individual message back before delivering it, by passing a
+delay in seconds when publishing. This is a broker-side delay: unlike a
+``countdown``, no worker waits for the message, it simply does not become
+visible until the delay has passed.
+
+The delay is passed as a keyword argument to the `publish` method, either as
+``delay_seconds`` or as ``DelaySeconds``::
+
+    producer.publish(
+        message,
+        routing_key='my-queue',
+        delay_seconds=30,
+    )
+
+The value is the number of seconds to hold the message, and SQS accepts at
+most 900 (15 minutes). A larger value is clamped to that maximum and zero or
+negative values are ignored, so a message is never rejected by SQS because of
+the delay it was given.
+
+Note that a delay is applied per message and does not block the ones behind
+it, but a queue with a per-message delay still delivers messages in order once
+each one becomes visible.
+
 Fair Queue Support (only available from version 5.7.0+)
 ------------------------
 
