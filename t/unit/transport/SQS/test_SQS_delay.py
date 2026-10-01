@@ -6,12 +6,13 @@ the range SQS actually accepts, since anything outside that range is rejected
 by AWS at publish time.
 """
 
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import pytest
 
-from kombu import Exchange, messaging, Queue
-
+from kombu import Exchange, Queue, messaging
 from t.unit.transport.SQS.conftest import example_predefined_queues
 
 
