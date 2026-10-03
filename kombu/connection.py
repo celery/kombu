@@ -566,8 +566,21 @@ class Connection:
 
         Arguments:
         ---------
-            obj: The object to ensure an action on.
-            fun (Callable): Method to apply.
+            obj: Object whose channel-dependent state must be restored
+                for the operation being retried.  It must implement
+                ``revive(channel)``.  On a connection error, after the
+                connection is re-established, ``revive`` is called with
+                the new channel and updates that state in place (it does
+                not return a replacement) so the next call to ``fun`` can
+                use it.  A :class:`~kombu.Producer` is a common example,
+                but any object that implements this contract is accepted.
+                ``revive`` is not called on every retry: channel errors
+                and errors in ``retry_errors`` are retried without this
+                reconnection sequence, and an exhausted retry limit may
+                raise before revival.
+            fun (Callable): Operation to retry.  Typically a method on
+                ``obj``, but any callable is accepted; it does not have
+                to be a bound method.
 
             errback (Callable): Optional callback called each time the
                 connection can't be established.  Arguments provided are
