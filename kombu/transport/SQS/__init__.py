@@ -276,12 +276,13 @@ class QoS(virtual.QoS):
 
     def reject(self, delivery_tag, requeue=False):
         super().reject(delivery_tag, requeue=requeue)
-        routing_key, message, backoff_tasks, backoff_policy = \
-            self._extract_backoff_policy_configuration_and_message(
-                delivery_tag)
-        if routing_key and message and backoff_tasks and backoff_policy:
-            self.apply_backoff_policy(
-                routing_key, delivery_tag, backoff_policy, backoff_tasks)
+        if requeue:
+            routing_key, message, backoff_tasks, backoff_policy = \
+                self._extract_backoff_policy_configuration_and_message(
+                    delivery_tag)
+            if routing_key and message and backoff_tasks and backoff_policy:
+                self.apply_backoff_policy(
+                    routing_key, delivery_tag, backoff_policy, backoff_tasks)
 
     def _extract_backoff_policy_configuration_and_message(self, delivery_tag):
         try:
@@ -878,6 +879,27 @@ class Channel(virtual.Channel):
                     super().basic_reject(delivery_tag)
             else:
                 super().basic_ack(delivery_tag)
+
+    def basic_reject(self, delivery_tag, requeue=False):
+        try:
+            message = self.qos.get(delivery_tag).delivery_info
+        except KeyError:
+            super().basic_reject(delivery_tag, requeue=requeue)
+            return
+
+        queue_name = None
+        if 'routing_key' in message:
+            queue_name = self.canonical_queue_name(message['routing_key'])
+
+        if not requeue:
+            sqs_message = message.get('sqs_message') or {}
+            if message.get('sqs_queue') and sqs_message.get('ReceiptHandle'):
+                self.sqs(queue=queue_name).delete_message(
+                    QueueUrl=message['sqs_queue'],
+                    ReceiptHandle=sqs_message['ReceiptHandle'],
+                )
+
+        self.qos.reject(delivery_tag, requeue=requeue)
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
