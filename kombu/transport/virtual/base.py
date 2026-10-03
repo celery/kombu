@@ -306,7 +306,10 @@ class QoS:
                     else:
                         logger.error(RESTORE_PANIC_FMT.format(len(errors), errors))
 
-                    emergency_dump_state(messages, stderr=stderr)
+                    emergency_dump_state(
+                        [message.serializable() for message in messages],
+                        stderr=stderr,
+                    )
         finally:
             state.restored = True
 
