@@ -50,6 +50,24 @@ class test_MemoryTransport:
 
         assert len(_received) == 10
 
+    def test_topic_hash_matches_zero_words(self):
+        topic = Exchange('test_transport_memory_topic', type='topic')
+        queue = Queue('test_transport_memory_topic',
+                      exchange=topic, routing_key='orders.#')
+        channel = self.c.channel()
+        queue(channel).declare()
+        producer = Producer(channel, topic)
+        for routing_key in ('orders', 'orders.created'):
+            producer.publish({'rk': routing_key}, routing_key=routing_key)
+
+        received = []
+        while True:
+            message = queue(channel).get(no_ack=True)
+            if message is None:
+                break
+            received.append(message.payload['rk'])
+        assert received == ['orders', 'orders.created']
+
     def test_produce_consume_fanout(self):
         producer = self.c.Producer()
         consumer = self.c.Consumer([self.q3, self.q4])
