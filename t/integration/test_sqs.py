@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import ast
+import json
 import os
+import time
 import uuid
 from unittest.mock import patch
 
@@ -28,6 +31,29 @@ def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: 
             "wait_time_seconds": 0,  # Set to 0 to ensure requeue testing works
         },
     )
+
+
+def _sent_params(params):
+    """Return the SendMessage parameters from a ``before-call`` hook.
+
+    The hook receives the prepared *request*, so the delay only appears in the
+    serialised body. botocore's ``json`` protocol puts a JSON object there,
+    while the ``query`` protocol puts a Python-repr dict literal; this accepts
+    both so the test does not depend on the wire protocol.
+    """
+    body = params.get('body')
+    if not body:
+        return None
+    if isinstance(body, bytes):
+        body = body.decode()
+    try:
+        return json.loads(body)
+    except ValueError:
+        pass
+    try:
+        return ast.literal_eval(body)
+    except (ValueError, SyntaxError):
+        return None
 
 
 @pytest.fixture()
@@ -234,3 +260,156 @@ def test_ack_invalid_receipt_with_backoff(backoff_queue, error_code):
         next_message = messages.pop()
         assert next_message.payload == 'second'
         next_message.ack()
+
+
+@pytest.mark.env('sqs')
+class test_SQSDelaySeconds:
+    """Per-message delay reaches SQS from both spellings, coerced and clamped."""
+
+    @pytest.fixture
+    def delay_setup(self, connection, test_queue_prefix):
+        """One connection for the whole class, plus the params put on the wire.
+
+        The delay is only observable where it is actually consumed, so these
+        assertions read the request the transport built rather than the
+        properties the caller passed in.
+
+        The recorded entry is read back off the serialised body via
+        ``_sent_params``, so the assertions are about what actually went on
+        the wire rather than about the properties the caller passed in.
+        """
+        # The connection applies ``queue_name_prefix`` to whatever routing key
+        # it is given, so the queue is created under the prefixed name while
+        # publishes address it by the bare name.
+        routing_key = 'delayq'
+        queue_name = f'{test_queue_prefix}{routing_key}'
+        recorded = []
+
+        def record(params, model, **kwargs):
+            sent = _sent_params(params)
+            if sent is not None:
+                recorded.append(sent)
+
+        with connection as conn:
+            channel = conn.default_channel
+            client = channel.sqs()
+            queue_url = client.create_queue(QueueName=queue_name)['QueueUrl']
+            event = 'before-call.sqs.SendMessage'
+            client.meta.events.register(event, record)
+            try:
+                yield routing_key, queue_url, channel, client, recorded
+            finally:
+                client.meta.events.unregister(event, record)
+                client.delete_queue(QueueUrl=queue_url)
+
+    @pytest.mark.parametrize('spelling', ['delay_seconds', 'DelaySeconds'])
+    def test_both_spellings_reach_sqs(self, delay_setup, spelling):
+        """``delay_seconds`` and ``DelaySeconds`` mean the same thing."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            **{spelling: 30},
+        )
+        assert recorded[-1].get('DelaySeconds') == 30
+
+    def test_numeric_string_is_coerced(self, delay_setup):
+        """A quoted number is still a delay, not a publish-time type error."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds='30',
+        )
+        assert recorded[-1].get('DelaySeconds') == 30
+
+    def test_explicit_zero_is_sent(self, delay_setup):
+        """SQS accepts a zero delay, so the transport forwards it."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds=0,
+        )
+        assert recorded[-1].get('DelaySeconds') == 0
+
+    @pytest.mark.parametrize('spelling', ['delay_seconds', 'DelaySeconds'])
+    def test_out_of_range_is_clamped(self, delay_setup, spelling):
+        """An out-of-range delay must not fail the publish with an SQS error."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            **{spelling: 100000},
+        )
+        assert recorded[-1].get('DelaySeconds') == 900
+
+    @pytest.mark.parametrize('value', ['soon', None, -5])
+    def test_unusable_values_publish_without_a_delay(self, delay_setup, value):
+        """A typo'd delay costs the delay, not the message."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'immediate', routing_key=routing_key, serializer='json',
+            delay_seconds=value,
+        )
+        assert 'DelaySeconds' not in recorded[-1]
+
+    def test_fifo_queue_sends_no_delay(self, connection, test_queue_prefix):
+        """SQS rejects DelaySeconds on a FIFO queue, so none is sent."""
+        queue_name = f'{test_queue_prefix}delay.fifo'
+        with connection as conn:
+            channel = conn.default_channel
+            client = channel.sqs()
+            queue_url = client.create_queue(
+                QueueName=queue_name,
+                Attributes={'FifoQueue': 'true'},
+            )['QueueUrl']
+            recorded = []
+
+            def record(params, model, **kwargs):
+                sent = _sent_params(params)
+                if sent is not None:
+                    recorded.append(sent)
+
+            event = 'before-call.sqs.SendMessage'
+            client.meta.events.register(event, record)
+            try:
+                kombu.Producer(channel).publish(
+                    'delayed', routing_key='delay.fifo', serializer='json',
+                    delay_seconds=10,
+                )
+                assert 'DelaySeconds' not in recorded[-1]
+            finally:
+                client.meta.events.unregister(event, record)
+                client.delete_queue(QueueUrl=queue_url)
+
+    def test_no_delay_by_default(self, delay_setup):
+        """A publish that asks for nothing must not send a delay."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'immediate', routing_key=routing_key, serializer='json',
+        )
+        assert 'DelaySeconds' not in recorded[-1]
+
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
+    def test_delayed_message_is_withheld_until_the_delay_elapses(self, delay_setup):
+        """The delay is honoured by the broker, not just sent on the wire."""
+        routing_key, queue_url, channel, client, _recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds=2,
+        )
+
+        def receive():
+            return client.receive_message(
+                QueueUrl=queue_url, MaxNumberOfMessages=10,
+                VisibilityTimeout=1, WaitTimeSeconds=0,
+            ).get('Messages', [])
+
+        withheld = [m for m in receive() if m['Body']]
+        assert not withheld, 'message became visible before its delay elapsed'
+
+        # Poll rather than sleep a fixed amount: the delay is broker-side, so
+        # how long it takes is the broker's business, not this test's.
+        deadline = time.monotonic() + 30
+        delivered = withheld
+        while not delivered and time.monotonic() < deadline:
+            time.sleep(0.5)
+            delivered = [m for m in receive() if m['Body']]
+        assert delivered, 'delayed message never became visible'
