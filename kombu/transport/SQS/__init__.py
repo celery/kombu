@@ -812,6 +812,16 @@ class Channel(virtual.Channel):
                     super().basic_ack(delivery_tag)
                 else:
                     super().basic_reject(delivery_tag)
+            except Exception:
+                # DeleteMessage never reached SQS (connect/read timeout, reset
+                # socket, DNS failure). The message stays in the queue and is
+                # redelivered after the visibility timeout, but the delivery
+                # must still be released here: otherwise its prefetch slot is
+                # held for the life of the channel, and once every slot is held
+                # ``can_consume()`` stays False and the consumer stops polling.
+                # Re-raise so the caller still sees and logs the failure.
+                super().basic_ack(delivery_tag)
+                raise
             else:
                 super().basic_ack(delivery_tag)
 
