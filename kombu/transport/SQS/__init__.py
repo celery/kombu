@@ -876,7 +876,7 @@ class Channel(virtual.Channel):
                     super().basic_ack(delivery_tag)
                 else:
                     super().basic_reject(delivery_tag)
-            except Exception:
+            except BaseException:
                 # DeleteMessage never reached SQS (connect/read timeout, reset
                 # socket, DNS failure). The message stays in the queue and is
                 # redelivered after the visibility timeout, but the delivery
