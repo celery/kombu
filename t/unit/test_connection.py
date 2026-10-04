@@ -1209,6 +1209,66 @@ class ResourceCase:
         P = self.create_resource(None)
         P.acquire().release()
 
+    @pytest.mark.parametrize('limit', [None, 0])
+    def test_resize_from_unlimited(self, limit):
+        P = self.create_resource(limit)
+        try:
+            P.resize(2)
+            assert P.limit == 2
+            self.assert_state(P, 2, 0)
+            with P.acquire(), P.acquire():
+                with pytest.raises(P.LimitExceeded):
+                    P.acquire()
+        finally:
+            P.force_close_all()
+
+    @pytest.mark.parametrize('limit', [None, 0])
+    def test_resize_to_unlimited(self, limit):
+        P = self.create_resource(2)
+        try:
+            P.resize(limit)
+            assert P.limit is limit
+            self.assert_state(P, 0, 0)
+            with P.acquire(), P.acquire(), P.acquire():
+                self.assert_state(P, 0, 0)
+        finally:
+            P.force_close_all()
+
+    @pytest.mark.parametrize('previous, limit', [
+        (None, None), (None, 0), (0, None), (0, 0),
+    ])
+    def test_resize_between_unlimited_limits(self, previous, limit):
+        P = self.create_resource(previous)
+        try:
+            P.resize(limit)
+            assert P.limit is limit
+            self.assert_state(P, 0, 0)
+            P.acquire().release()
+        finally:
+            P.force_close_all()
+
+    def test_limit_setter_from_unlimited(self):
+        P = self.create_resource(None)
+        try:
+            P.limit = 2
+            self.assert_state(P, 2, 0)
+            P.limit = None
+            assert P.limit is None
+            self.assert_state(P, 0, 0)
+        finally:
+            P.force_close_all()
+
+    @pytest.mark.parametrize('limit', [None, 0])
+    def test_resize_to_unlimited_in_use(self, limit):
+        P = self.create_resource(2)
+        try:
+            with P.acquire():
+                P.resize(limit)
+                assert P.limit is limit
+                assert P._resource.qsize() == 0
+        finally:
+            P.force_close_all()
+
     def test_acquire_resize_in_use(self):
         P = self.create_resource(5)
         self.assert_state(P, 5, 0)
