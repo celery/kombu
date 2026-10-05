@@ -257,6 +257,9 @@ CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 #: SQS bulk get supports a maximum of 10 messages at a time.
 SQS_MAX_MESSAGES = 10
 
+#: SQS accepts at most 900 seconds of per-message delay.
+MAX_DELAY_SECONDS = 900
+
 _SUPPORTED_BOTO_SERVICES = Literal["sqs", "sns"]
 
 
@@ -536,6 +539,58 @@ class Channel(virtual.Channel):
 
         self._queue_cache.pop(queue, None)
 
+    def _resolve_delay_seconds(self, properties):
+        """Return the per-message delay to apply, or ``None`` for no delay.
+
+        Accepts the delay either as ``delay_seconds`` or as ``DelaySeconds``,
+        so callers can use the snake_case spelling that matches Kombu's own
+        ``Producer.publish`` style.  A value of ``None`` under one spelling
+        means it was not supplied there, so the other spelling is consulted.
+        Values are coerced to ``int`` (a float truncates toward zero) and
+        clamped to the range SQS accepts, since anything above the maximum
+        is rejected by AWS at publish time.
+
+        Arguments:
+        ---------
+            properties (dict): The message properties to read the delay from.
+
+        Returns
+        -------
+            int: The delay in seconds -- including ``0``, which SQS accepts
+                and treats as no delay -- or ``None`` when no delay was
+                requested or the requested value cannot be honoured.
+        """
+        for key in ('delay_seconds', 'DelaySeconds'):
+            if key not in properties:
+                continue
+            value = properties[key]
+            if value is None:
+                # Not supplied under this spelling; the other one may carry it.
+                continue
+            try:
+                delay = int(value)
+            except (TypeError, ValueError, OverflowError):
+                logger.warning(
+                    'SQS delay %r is not a number, publishing without a delay',
+                    value,
+                )
+                return None
+            if delay < 0:
+                logger.warning(
+                    'SQS delay of %s is negative, publishing without a delay',
+                    delay,
+                )
+                return None
+            if delay > MAX_DELAY_SECONDS:
+                logger.warning(
+                    'SQS delay of %s exceeds the maximum of %s seconds, '
+                    'clamping to the maximum',
+                    delay, MAX_DELAY_SECONDS,
+                )
+                delay = MAX_DELAY_SECONDS
+            return delay
+        return None
+
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
@@ -549,6 +604,9 @@ class Channel(virtual.Channel):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
                     message['properties']['MessageGroupId']
+            delay_seconds = self._resolve_delay_seconds(
+                message['properties'])
+
             # Support FIFO queues.
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' not in kwargs:
@@ -558,10 +616,16 @@ class Channel(virtual.Channel):
                         message['properties']['MessageDeduplicationId']
                 else:
                     kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-            else:
-                if "DelaySeconds" in message['properties']:
-                    kwargs['DelaySeconds'] = \
-                        message['properties']['DelaySeconds']
+                if delay_seconds is not None:
+                    # SQS rejects DelaySeconds on a FIFO queue outright, so it
+                    # is dropped here -- loudly, rather than silently.
+                    logger.warning(
+                        'SQS FIFO queues take no per-message delay, ignoring '
+                        'delay of %s seconds',
+                        delay_seconds,
+                    )
+            elif delay_seconds is not None:
+                kwargs['DelaySeconds'] = delay_seconds
 
         if self.sqs_base64_encoding:
             body = AsyncMessage().encode(dumps(message))
@@ -803,6 +867,10 @@ class Channel(virtual.Channel):
             except ClientError as exception:
                 error_code = exception.response['Error']['Code']
                 if error_code == 'AccessDenied':
+                    # Raised so the misconfiguration is not silently retried,
+                    # but the delivery is released first, as for any other
+                    # failed ack, so its prefetch slot is not held forever.
+                    super().basic_ack(delivery_tag)
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
                     )
@@ -812,6 +880,17 @@ class Channel(virtual.Channel):
                     super().basic_ack(delivery_tag)
                 else:
                     super().basic_reject(delivery_tag)
+            except BaseException:
+                # DeleteMessage did not complete (it may or may not have
+                # reached SQS: a read timeout can lose only the response). If
+                # the message was not deleted, SQS redelivers it after the
+                # visibility timeout. Either way the delivery must be released
+                # here: otherwise its prefetch slot is held for the life of the
+                # channel, and once every slot is held ``can_consume()`` stays
+                # False and the consumer stops polling. Re-raise so the caller
+                # still sees and logs the failure.
+                super().basic_ack(delivery_tag)
+                raise
             else:
                 super().basic_ack(delivery_tag)
 
