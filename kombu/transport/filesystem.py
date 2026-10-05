@@ -161,7 +161,7 @@ exchange_queue_t = namedtuple("exchange_queue_t",
 #: The name is interpolated into a filename within ``control_folder``, so most
 #: of the accepted characters (with the exception of ``.``) are alphanumeric.
 #:
-#: The regex rejects inputs containing both Windows and Unix path separators,
+#: The regex rejects inputs that contain either a Windows or a Unix path separator,
 #: prefixes (``D:evil``) and UNC prefixes on every platform, rather than only
 #: on the one the tests happen to run on.
 #:
