@@ -54,6 +54,8 @@ class LRUCache(UserDict):
     """
 
     def __init__(self, limit=None):
+        if limit is not None and limit < 0:
+            raise ValueError(f"limit must be non-negative or None, got {limit}")
         self.limit = limit
         self.mutex = threading.RLock()
         self.data = OrderedDict()
