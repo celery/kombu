@@ -1376,9 +1376,11 @@ class test_Channel:
         EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
         ReadTimeoutError(endpoint_url='https://sqs.example.com/'),
         OSError('Connection reset by peer'),
+        # BaseException, e.g. an interrupt or a gevent Timeout mid-request.
+        KeyboardInterrupt(),
     ])
     def test_basic_ack_network_error_releases_delivery(self, error):
-        """A delete that never reaches SQS still frees the prefetch slot."""
+        """A delete that fails to complete still frees the prefetch slot."""
         task_name = 'svc.tasks.tasks.task1'
         delivery_tag = 'RECEIPT_HANDLE'
         _, channel, message, queue_config = self._prefetched_message(
@@ -1398,6 +1400,30 @@ class test_Channel:
         client.change_message_visibility.assert_not_called()
         # The message was not deleted, so it is not acknowledged; SQS
         # redelivers it after the visibility timeout.
+        assert not message.acknowledged
+        assert channel.qos.can_consume()
+
+    def test_basic_ack_access_denied_releases_delivery(self):
+        """AccessDenied still raises, but no longer holds the prefetch slot."""
+        task_name = 'svc.tasks.tasks.task1'
+        delivery_tag = 'RECEIPT_HANDLE'
+        _, channel, message, queue_config = self._prefetched_message(
+            'queue-1', task_name, delivery_tag,
+        )
+        client = Mock()
+        client.delete_message.side_effect = ClientError({'Error': {
+            'Code': 'AccessDenied',
+            'Message': 'Access to the resource is denied.',
+        }}, 'DeleteMessage')
+        channel.sqs = Mock(return_value=client)
+
+        with pytest.raises(SQS.AccessDeniedQueueException):
+            message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        client.change_message_visibility.assert_not_called()
         assert not message.acknowledged
         assert channel.qos.can_consume()
 
@@ -1463,7 +1489,7 @@ class test_Channel:
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
         assert not basic_reject_mock.called
-        assert not basic_ack_mock.called
+        basic_ack_mock.assert_called_once_with(2)
 
     def test_reject_when_no_predefined_queues(self):
         connection = Connection(transport=SQS.Transport, transport_options={})
