@@ -193,6 +193,38 @@ to publish, but you can also specify a different serializer:
 See :ref:`guide-serialization` for more information.
 
 
+Detecting publish failures on AMQP
+===================================
+
+``basic.publish`` is asynchronous: the broker can reject the message after
+the call has returned (for example a message larger than the broker's
+``max_message_size`` raises ``precondition_failed`` and closes the channel),
+which means a rejected message is lost without any exception on the
+publishing side.
+
+For the ``pyamqp`` transport, publisher confirms can be enabled per
+connection. When enabled, every publish waits for the broker's
+acknowledgement, and a broker-side rejection is raised as an exception
+carrying the broker's reply code and text:
+
+.. code-block:: pycon
+
+    >>> conn = Connection('amqp://', transport_options={
+    ...     'confirm_publish': True,
+    ... })
+    >>> producer = conn.Producer()
+    >>> producer.publish({'hello': 'world'}, routing_key='tasks')
+    Traceback (most recent call last):
+      ...
+    amqp.exceptions.PreconditionFailed: Basic.publish: (406) \
+PRECONDITION_FAILED - message size 21 is larger than configured max size 20
+
+Note that each confirmed publish costs a round-trip to the broker; measure
+the throughput impact before enabling it for high-volume producers.
+The full transport options reference lives in the
+:mod:`kombu.transport.pyamqp` module documentation.
+
+
 Reference
 =========
 

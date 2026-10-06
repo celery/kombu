@@ -867,6 +867,10 @@ class Channel(virtual.Channel):
             except ClientError as exception:
                 error_code = exception.response['Error']['Code']
                 if error_code == 'AccessDenied':
+                    # Raised so the misconfiguration is not silently retried,
+                    # but the delivery is released first, as for any other
+                    # failed ack, so its prefetch slot is not held forever.
+                    super().basic_ack(delivery_tag)
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
                     )
@@ -876,6 +880,17 @@ class Channel(virtual.Channel):
                     super().basic_ack(delivery_tag)
                 else:
                     super().basic_reject(delivery_tag)
+            except BaseException:
+                # DeleteMessage did not complete (it may or may not have
+                # reached SQS: a read timeout can lose only the response). If
+                # the message was not deleted, SQS redelivers it after the
+                # visibility timeout. Either way the delivery must be released
+                # here: otherwise its prefetch slot is held for the life of the
+                # channel, and once every slot is held ``can_consume()`` stays
+                # False and the consumer stops polling. Re-raise so the caller
+                # still sees and logs the failure.
+                super().basic_ack(delivery_tag)
+                raise
             else:
                 super().basic_ack(delivery_tag)
 
