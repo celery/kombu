@@ -5,6 +5,41 @@
 ================
 
 
+.. _version-5.7.0b1:
+
+5.7.0b1
+=======
+:release-date: 6 October, 2026
+:release-by: Asif Saif Uddin
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update confluent-kafka version to 2.15.1 (#2666)
+- Update kazoo version to 2.11.0 (#2667)
+- Update grpcio version to 1.84.0 (#2668)
+- Update pgmq version to 1.1.4 (#2670)
+- Upgrade grpcio and protobuf dependencies (#2669)
+- Stop channel retries at the same max_retries bound as connections. (#2671)
+- Reject bool for pool limit (#2657)
+- Update sqlalchemy requirement from <2.1,>=1.4.48 to >=1.4.54,<2.1 (#2521)
+- Avoid SQS backoff when acknowledging an invalid receipt handle (#2678)
+- Fix(sqs): scope queue cache, noack set and predefined clients to Connection (#2676)
+- Update Redis version requirement minimum to 6.4.0 (#2682)
+- Fix(hub): wake the event loop when call_soon() is called from another thread (#2694)
+- Fix: recover from broker-closed AMQP connections when publishing to Azure Service Bus (#2693)
+- Honor autoretry options when opening the initial connection (#2690)
+- Scope the zookeeper queue cache to the channel (#2681)
+- Fix(azurestoragequeues): scope queue name cache to Connection (#2679)
+- Track unacked Kafka messages per QoS instance (#2680)
+- Don't mask open errors in the filesystem transport (#2683)
+- Fix(gcpubsub): pass Duration fields as timedelta (#2692)
+- SQS: accept delay_seconds and clamp per-message delays to the range SQS allows (#2705)
+- Fix(sqs): release the prefetch slot when DeleteMessage fails on the network (#2710)
+- Update amqp version constraint.
+
+
+
 .. _version-5.7.0a1:
 
 5.7.0a1
