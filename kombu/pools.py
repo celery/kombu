@@ -50,7 +50,8 @@ class ProducerPool(Resource):
 
     def setup(self):
         if self.limit:
-            for _ in range(self.limit):
+            q = self._resource.queue
+            while len(q) < self.limit - len(self._dirty):
                 self._resource.put_nowait(self.new())
 
     def close_resource(self, resource):
