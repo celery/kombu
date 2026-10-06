@@ -216,6 +216,7 @@ class test_PoolGroup:
                 pools.set_limit(limit - 1)
             pools.set_limit(limit - 1, force=True)
             assert pools.get_limit() == limit - 1
+            assert pool.limit == limit - 1
 
         pools.set_limit(pools.get_limit())
 
@@ -225,6 +226,88 @@ class test_PoolGroup:
         pool.limit = 10
         with pool.acquire():
             pool.limit = 0
+
+
+class test_set_limit:
+
+    @pytest.fixture
+    def pool(self, monkeypatch):
+        group = pools.Connections(limit=pools.use_global_limit,
+                                  close_after_fork=False)
+        monkeypatch.setattr(pools, '_limit', [3])
+        monkeypatch.setattr(pools, '_groups', [group])
+        pool = group[Connection('memory://')]
+        try:
+            yield pool
+        finally:
+            for resource_pool in group.values():
+                resource_pool.force_close_all()
+
+    def test_failed_shrink_preserves_global_limit(self, pool):
+        with pool.acquire():
+            with pytest.raises(RuntimeError, match="Can't shrink pool when in use"):
+                pools.set_limit(2)
+            assert pools.get_limit() == 3
+            assert pool.limit == 3
+
+    def test_retry_shrink_after_release(self, pool):
+        with pool.acquire():
+            with pytest.raises(RuntimeError):
+                pools.set_limit(2)
+
+        assert pools.set_limit(2) == 2
+        assert pools.get_limit() == 2
+        assert pool.limit == 2
+        assert pool._resource.qsize() == 2
+
+    def test_force_shrink(self, pool):
+        with pool.acquire() as connection:
+            connection.connect()
+            assert connection.connected
+
+            assert pools.set_limit(2, force=True) == 2
+            assert pools.get_limit() == pool.limit == 2
+            assert not connection.connected
+            assert not pool._dirty
+
+    def test_retry_after_partial_resize(self, pool):
+        group = pools._groups[0]
+        busy_pool = group[Connection('memory://localhost:123')]
+        with busy_pool.acquire():
+            with pytest.raises(RuntimeError):
+                pools.set_limit(2)
+            assert pool.limit == 2
+            assert busy_pool.limit == pools.get_limit() == 3
+            new_pool = group[Connection('memory://localhost:124')]
+            assert new_pool.limit == 3
+
+        assert pools.set_limit(2) == 2
+        assert pool.limit == busy_pool.limit == new_pool.limit == 2
+        assert pools.get_limit() == 2
+        assert group[Connection('memory://localhost:125')].limit == 2
+
+    def test_ignore_errors_shrink(self, pool):
+        with pool.acquire() as connection:
+            connection.connect()
+
+            assert pools.set_limit(2, ignore_errors=True) == 2
+            assert pools.get_limit() == pool.limit == 2
+            assert connection.connected
+            assert connection in pool._dirty
+            assert pool._resource.qsize() + len(pool._dirty) == 2
+
+    def test_grow(self, pool):
+        with pool.acquire():
+            assert pools.set_limit(4) == 4
+            assert pools.get_limit() == pool.limit == 4
+            assert pool._resource.qsize() + len(pool._dirty) == 4
+
+    def test_unchanged_limit_does_not_resize(self, pool, monkeypatch):
+        resize = Mock(wraps=pool.resize)
+        monkeypatch.setattr(pool, 'resize', resize)
+
+        assert pools.set_limit(3, force=True) == 3
+        resize.assert_not_called()
 
 
 class test_fun_PoolGroup:
