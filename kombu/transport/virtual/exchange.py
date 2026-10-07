@@ -80,7 +80,7 @@ class TopicExchange(ExchangeType):
 
     The `topic` exchange routes messages based on words separated by
     dots, using wildcard characters ``*`` (any single word), and ``#``
-    (one or more words).
+    (zero or more words).
     """
 
     type = 'topic'
@@ -111,10 +111,24 @@ class TopicExchange(ExchangeType):
 
     def key_to_pattern(self, rkey):
         """Get the corresponding regex for any routing key."""
-        return '^%s$' % (r'\.'.join(
-            self.wildcards.get(word, word)
-            for word in escape_regex(rkey, '.#*').split('.')
-        ))
+        words = []
+        for word in escape_regex(rkey, '.#*').split('.'):
+            # '#.#' is the same as '#'.
+            if not (word == '#' and words and words[-1] == '#'):
+                words.append(word)
+        if words == ['#']:
+            return '^%s$' % self.wildcards['#']
+        parts = []
+        for i, word in enumerate(words):
+            if word == '#':
+                # '#' matches zero or more words, so the dot that joins it
+                # to its neighbour is optional along with it.
+                parts.append(r'(?:.*?\.)?' if i == 0 else r'(?:\..*?)?')
+            else:
+                if i and not (i == 1 and words[0] == '#'):
+                    parts.append(r'\.')
+                parts.append(self.wildcards.get(word, word))
+        return '^%s$' % ''.join(parts)
 
     def _match(self, pattern, string):
         """Match regular expression (cached).
