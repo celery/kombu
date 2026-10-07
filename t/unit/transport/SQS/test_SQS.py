@@ -24,7 +24,8 @@ from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
 
-from botocore.exceptions import ClientError  # noqa
+from botocore.exceptions import (ClientError, ConnectTimeoutError,  # noqa
+                                 EndpointConnectionError, ReadTimeoutError)
 
 from kombu.transport import SQS  # noqa
 
@@ -1339,6 +1340,117 @@ class test_Channel:
         assert message.acknowledged
         assert channel.qos.can_consume()
 
+    def _prefetched_message(self, queue_name, task_name, delivery_tag):
+        """Return a channel holding one delivery in its only prefetch slot."""
+        queue_config = {
+            **example_predefined_queues[queue_name],
+            'backoff_tasks': [task_name],
+            'backoff_policy': {1: 10},
+        }
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': {queue_name: queue_config},
+        })
+        channel = connection.channel()
+        channel.basic_qos(0, 1, False)
+        message = channel.Message({
+            'body': 'COPY_PROBE_123',
+            'headers': {'task': task_name},
+            'properties': {
+                'delivery_tag': delivery_tag,
+                'delivery_info': {
+                    'routing_key': queue_name,
+                    'sqs_queue': queue_config['url'],
+                    'sqs_message': {
+                        'ReceiptHandle': delivery_tag,
+                        'Attributes': {'ApproximateReceiveCount': '1'},
+                    },
+                },
+            },
+        }, channel=channel)
+        channel.qos.append(message, delivery_tag)
+        assert not channel.qos.can_consume()
+        return connection, channel, message, queue_config
+
+    @pytest.mark.parametrize('error', [
+        ConnectTimeoutError(endpoint_url='https://sqs.example.com/'),
+        EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
+        ReadTimeoutError(endpoint_url='https://sqs.example.com/'),
+        OSError('Connection reset by peer'),
+        # BaseException, e.g. an interrupt or a gevent Timeout mid-request.
+        KeyboardInterrupt(),
+    ])
+    def test_basic_ack_network_error_releases_delivery(self, error):
+        """A delete that fails to complete still frees the prefetch slot."""
+        task_name = 'svc.tasks.tasks.task1'
+        delivery_tag = 'RECEIPT_HANDLE'
+        _, channel, message, queue_config = self._prefetched_message(
+            'queue-1', task_name, delivery_tag,
+        )
+        client = Mock()
+        client.delete_message.side_effect = error
+        channel.sqs = Mock(return_value=client)
+
+        with pytest.raises(type(error)):
+            message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        # No backoff: changing the visibility would fail the same way.
+        client.change_message_visibility.assert_not_called()
+        # The message was not deleted, so it is not acknowledged; SQS
+        # redelivers it after the visibility timeout.
+        assert not message.acknowledged
+        assert channel.qos.can_consume()
+
+    def test_basic_ack_access_denied_releases_delivery(self):
+        """AccessDenied still raises, but no longer holds the prefetch slot."""
+        task_name = 'svc.tasks.tasks.task1'
+        delivery_tag = 'RECEIPT_HANDLE'
+        _, channel, message, queue_config = self._prefetched_message(
+            'queue-1', task_name, delivery_tag,
+        )
+        client = Mock()
+        client.delete_message.side_effect = ClientError({'Error': {
+            'Code': 'AccessDenied',
+            'Message': 'Access to the resource is denied.',
+        }}, 'DeleteMessage')
+        channel.sqs = Mock(return_value=client)
+
+        with pytest.raises(SQS.AccessDeniedQueueException):
+            message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        client.change_message_visibility.assert_not_called()
+        assert not message.acknowledged
+        assert channel.qos.can_consume()
+
+    def test_basic_ack_network_error_logged_by_ack_log_error(self):
+        """The failure is logged and the consumer can fetch the next message.
+
+        ``Message.ack_log_error`` (used by Celery) swallows the transport's
+        connection errors, so without the slot being freed a consumer with a
+        prefetch count of one would never poll SQS again.
+        """
+        task_name = 'svc.tasks.tasks.task1'
+        connection, channel, message, _ = self._prefetched_message(
+            'queue-1', task_name, 'RECEIPT_HANDLE',
+        )
+        client = Mock()
+        client.delete_message.side_effect = ConnectTimeoutError(
+            endpoint_url='https://sqs.example.com/',
+        )
+        channel.sqs = Mock(return_value=client)
+        logger = Mock()
+
+        message.ack_log_error(logger, connection.connection_errors)
+
+        logger.critical.assert_called_once()
+        assert channel.qos.can_consume()
+        assert channel.qos.can_consume_max_estimate() == 1
+
     @patch('kombu.transport.virtual.base.Channel.basic_ack')
     @patch('kombu.transport.virtual.base.Channel.basic_reject')
     def test_basic_ack_access_denied(self, basic_reject_mock, basic_ack_mock):
@@ -1377,7 +1489,7 @@ class test_Channel:
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
         assert not basic_reject_mock.called
-        assert not basic_ack_mock.called
+        basic_ack_mock.assert_called_once_with(2)
 
     def test_reject_when_no_predefined_queues(self):
         connection = Connection(transport=SQS.Transport, transport_options={})
