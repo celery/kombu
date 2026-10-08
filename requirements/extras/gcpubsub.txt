@@ -1,4 +1,4 @@
-google-cloud-pubsub==2.41.0
+google-cloud-pubsub==2.42.0
 google-cloud-monitoring==2.32.0
 grpcio==1.84.0
 protobuf==7.36.2
