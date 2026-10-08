@@ -651,6 +651,95 @@ class test_RedisQueueExpiration:
             ttl = redis_client.pttl(key)
             assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
 
+    @staticmethod
+    def _binding_key(connection, exchange):
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        return f'{keyprefix}_kombu.binding.{exchange}'
+
+    def test_binding_table_expires_after_consumer_stops(
+            self, connection, redis_client):
+        name = f'binding_expire_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.Consumer(queue, callbacks=[]):
+                assert 0 < redis_client.pttl(key) <= 4000
+
+        sleep(5)
+        assert redis_client.exists(key) == 0
+
+    def test_binding_table_kept_while_consumer_is_paused(
+            self, connection, redis_client):
+        name = f'binding_paused_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+        held = []
+
+        with connection as conn:
+            hub = Hub()
+            conn.register_with_event_loop(hub)
+            consumer = conn.Consumer(
+                queue, callbacks=[lambda body, message: held.append(message)])
+            consumer.qos(prefetch_count=1)
+            consumer.consume()
+            conn.Producer().publish({}, exchange=name, routing_key=name)
+            deadline = monotonic() + 6
+            while monotonic() < deadline:
+                hub.run_once()
+                sleep(0.05)
+            hub.close()
+
+            assert len(held) == 1
+            assert redis_client.pttl(key) > 0
+
+    def test_binding_table_shared_with_queue_without_expires_never_expires(
+            self, connection, redis_client):
+        name = f'binding_shared_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        expiring = kombu.Queue(
+            f'{name}_short', exchange, routing_key='short', expires=2)
+        lasting = kombu.Queue(f'{name}_long', exchange, routing_key='long')
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                expiring(channel).declare()
+                assert redis_client.pttl(key) > 0
+                lasting(channel).declare()
+                expiring(channel).declare()
+
+        assert redis_client.pttl(key) == -1
+
+    def test_expire_binding_table_script(self, connection, redis_client):
+        name = f'binding_script_{uuid4()}'
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            channel = conn.default_channel
+            with channel.conn_or_acquire() as client:
+                def expire(ttl, member):
+                    channel._expire_binding_table(
+                        keys=[f'_kombu.binding.{name}'], args=[ttl, member],
+                        client=client)
+
+                expire(5000, 'a')
+                assert 0 < redis_client.pttl(key) <= 5000
+                expire(1000, 'b')
+                assert redis_client.pttl(key) > 1000
+                expire(9000, 'c')
+                assert redis_client.pttl(key) > 5000
+                redis_client.persist(key)
+                expire(5000, 'd')
+                assert redis_client.pttl(key) == -1
+                redis_client.delete(key)
+                expire(5000, 'e')
+                assert 0 < redis_client.pttl(key) <= 5000
+
+        assert redis_client.smembers(key) == {'e'}
+
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
