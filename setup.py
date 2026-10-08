@@ -120,6 +120,7 @@ setup(
         'consul': extras('consul.txt'),
         'confluentkafka': extras('confluentkafka.txt'),
         'pgmq': extras('pgmq.txt'),
+        'nats': extras('nats.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
