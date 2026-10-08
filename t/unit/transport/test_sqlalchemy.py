@@ -63,3 +63,26 @@ class test_SqlAlchemy:
                 clone.release()
         finally:
             x.release()
+
+    @pytest.mark.parametrize('dialect_name, expected', [
+        ('mssql', 'BIGINT'),
+        ('postgresql', 'INTEGER'),
+        ('mysql', 'INTEGER'),
+        ('sqlite', 'INTEGER'),
+    ])
+    def test_id_column_types(self, dialect_name, expected):
+        from sqlalchemy.dialects import registry
+
+        conn = Connection('sqlalchemy+sqlite:///:memory:')
+        try:
+            channel = conn.channel()
+            dialect = registry.load(dialect_name)()
+            columns = [
+                channel.queue_cls.__table__.c.id,
+                channel.message_cls.__table__.c.id,
+                channel.message_cls.__table__.c.queue_id,
+            ]
+            for column in columns:
+                assert column.type.compile(dialect=dialect) == expected
+        finally:
+            conn.release()
