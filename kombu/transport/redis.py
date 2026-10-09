@@ -97,7 +97,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import time
+from time import monotonic, time
 
 from packaging.version import Version
 from vine import promise
@@ -149,6 +149,21 @@ SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
 #: tokens onto the long-lived BRPOP and pub/sub connections.  See
 #: :meth:`Channel.maybe_reauth` for why this is needed.
 DEFAULT_REAUTH_CHECK_INTERVAL = 10
+
+#: A binding table outlives its queue's x-expires by this factor, so a
+#: consumer whose event loop stalls briefly does not lose its bindings.
+BINDING_EXPIRES_FACTOR = 2
+
+#: Adds member ARGV[2] to binding table KEYS[1] and extends its expiry to
+#: ARGV[1] ms. A table without an expiry is left without one.
+EXPIRE_BINDING_TABLE = """
+local ttl = redis.call('PTTL', KEYS[1])
+redis.call('SADD', KEYS[1], ARGV[2])
+if ttl == -2 then ttl = 0 end
+if ttl >= 0 and ttl < tonumber(ARGV[1]) then
+    redis.call('PEXPIRE', KEYS[1], ARGV[1])
+end
+"""
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -267,6 +282,7 @@ class GlobalKeyPrefixMixin:
         "ZRANGE",
         "ZREM",
         "PEXPIRE",
+        "PERSIST",
     ]
 
     PREFIXED_COMPLEX_COMMANDS = {
@@ -641,6 +657,14 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_refresh_binding_expiry(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_refresh_binding_expiry()
+            except channel.connection_errors:
+                logger.debug('maybe_refresh_binding_expiry: connection '
+                             'error, will retry', exc_info=True)
+
     def maybe_check_subclient_health(self):
         for channel in self._channels:
             # only if subclient property is cached
@@ -990,6 +1014,7 @@ class Channel(virtual.Channel):
         self._sentinel_manager = None
         self._async_sentinel_manager = None
         self._expires = {}
+        self._binding_expiry_refreshed_at = 0.0
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -1269,6 +1294,8 @@ class Channel(virtual.Channel):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
+        # Without an event loop there is no timer, so refresh here.
+        self.maybe_refresh_binding_expiry()
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
@@ -1541,11 +1568,51 @@ class Channel(virtual.Channel):
             self._fanout_queues[queue] = (
                 exchange, routing_key.replace('#', '*'),
             )
+        key = self.keyprefix_queue % (exchange,)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire() as client:
-            client.sadd(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            if queue in self._expires:
+                self._expire_binding_table(
+                    keys=[key], args=[self._binding_ttl(queue), member],
+                    client=client)
+            else:
+                with client.pipeline() as pipe:
+                    pipe.sadd(key, member)
+                    # A queue without x-expires keeps the whole table alive.
+                    pipe.persist(key)
+                    pipe.execute()
+
+    @cached_property
+    def _expire_binding_table(self):
+        return self._create_client().register_script(EXPIRE_BINDING_TABLE)
+
+    def _binding_ttl(self, queue):
+        return self._expires[queue] * BINDING_EXPIRES_FACTOR
+
+    def maybe_refresh_binding_expiry(self):
+        """Keep the binding tables of consumed, expiring queues alive."""
+        queues = [q for q in self._active_queues if q in self._expires]
+        if not queues:
+            return
+        now = monotonic()
+        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
+        if now - self._binding_expiry_refreshed_at < refresh_every:
+            return
+        with self.conn_or_acquire() as client:
+            with client.pipeline() as pipe:
+                for queue in queues:
+                    for exchange, routing_key, args in \
+                            self.state.queue_bindings(queue):
+                        # Passing the member re-creates an expired table.
+                        _, pattern, _ = self.typeof(exchange).prepare_bind(
+                            queue, exchange, routing_key, args)
+                        self._expire_binding_table(
+                            keys=[self.keyprefix_queue % (exchange,)],
+                            args=[self._binding_ttl(queue), self.sep.join(
+                                [routing_key or '', pattern or '', queue])],
+                            client=pipe)
+                pipe.execute()
+        self._binding_expiry_refreshed_at = now
 
     def _maybe_update_queues_expire(self, client, queue):
         """Update expiration on queue keys.
@@ -1935,7 +2002,7 @@ class Transport(virtual.Transport):
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
         for attr in ('_restore_messages_tref', '_subclient_health_tref',
-                     '_reauth_tref'):
+                     '_reauth_tref', '_binding_expiry_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
@@ -1963,6 +2030,9 @@ class Transport(virtual.Transport):
         cycle._reauth_tref = loop.call_repeatedly(
             reauth_check_interval,
             cycle.maybe_reauth
+        )
+        cycle._binding_expiry_tref = loop.call_repeatedly(
+            1, cycle.maybe_refresh_binding_expiry
         )
 
     def on_readable(self, fileno):

@@ -131,6 +131,9 @@ class Client:
             (score1, member1) = args
             self.sets[key].add(member1)
 
+    def persist(self, key):
+        pass
+
     def smembers(self, key):
         return self.sets.get(key, set())
 
@@ -1879,16 +1882,18 @@ class test_Channel:
         conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
-        tref1, tref2, tref3 = (Mock(name='tref_restore'),
-                               Mock(name='tref_health'),
-                               Mock(name='tref_reauth'))
-        loop.call_repeatedly.side_effect = [tref1, tref2, tref3]
+        tref1, tref2, tref3, tref4 = (Mock(name='tref_restore'),
+                                      Mock(name='tref_health'),
+                                      Mock(name='tref_reauth'),
+                                      Mock(name='tref_binding_expiry'))
+        loop.call_repeatedly.side_effect = [tref1, tref2, tref3, tref4]
 
         redis.Transport.register_with_event_loop(transport, conn, loop)
 
         assert transport.cycle._restore_messages_tref is tref1
         assert transport.cycle._subclient_health_tref is tref2
         assert transport.cycle._reauth_tref is tref3
+        assert transport.cycle._binding_expiry_tref is tref4
 
     def test_register_with_event_loop_cancels_stale_trefs_on_reconnect(self):
         """Stale timer entries from a previous connection must be cancelled.
@@ -2052,7 +2057,7 @@ class test_Channel:
                 dumps(body)
             )
 
-    @patch("redis.StrictRedis.execute_command")
+    @patch("redis.client.Pipeline.execute_command")
     def test_global_keyprefix_queue_bind(self, mock_execute_command):
         from kombu.transport.redis import PrefixedStrictRedis
 
@@ -2064,11 +2069,11 @@ class test_Channel:
             channel._create_client.return_value = client
 
             channel._queue_bind('default', '', None, 'queue')
-            mock_execute_command.assert_called_with(
-                'SADD',
-                'foo__kombu.binding.default',
-                '\x06\x16\x06\x16queue'
-            )
+            assert [c.args for c in mock_execute_command.mock_calls] == [
+                ('SADD', 'foo__kombu.binding.default',
+                 '\x06\x16\x06\x16queue'),
+                ('PERSIST', 'foo__kombu.binding.default'),
+            ]
 
     @patch("redis.client.PubSub.execute_command")
     def test_global_keyprefix_pubsub(self, mock_execute_command):
@@ -2216,6 +2221,87 @@ class test_Channel:
             actual_calls = pipeline_mock.method_calls
             for expected_call in expected_calls:
                 assert expected_call in actual_calls
+
+    def test_queue_bind_expires_table_of_expiring_queue(self):
+        channel = self.channel
+        channel._expires = {'q': 5000}
+        client, _ = self._recording_batch_client(channel)
+        channel._expire_binding_table = Mock()
+
+        channel._queue_bind('ex', 'rk', None, 'q')
+
+        channel._expire_binding_table.assert_called_once_with(
+            keys=['_kombu.binding.ex'],
+            args=[10000, channel.sep.join(['rk', '', 'q'])],
+            client=client)
+
+    def test_queue_bind_persists_table_of_queue_without_expires(self):
+        channel = self.channel
+        _, pipeline = self._recording_batch_client(channel)
+        channel._expire_binding_table = Mock()
+
+        channel._queue_bind('ex', 'rk', None, 'q')
+
+        pipeline.sadd.assert_called_once_with(
+            '_kombu.binding.ex', channel.sep.join(['rk', '', 'q']))
+        pipeline.persist.assert_called_once_with('_kombu.binding.ex')
+        pipeline.execute.assert_called_once_with()
+        channel._expire_binding_table.assert_not_called()
+
+    def _consume_expiring(self, channel, expires=3000):
+        channel.exchange_declare('ex', type='direct')
+        channel._expires = {'q': expires}
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+
+    def test_refresh_binding_expiry_of_consumed_queue(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        _, pipeline = self._recording_batch_client(channel)
+        channel._expire_binding_table = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        channel._expire_binding_table.assert_called_once_with(
+            keys=['_kombu.binding.ex'],
+            args=[6000, channel.sep.join(['rk', '', 'q'])],
+            client=pipeline)
+        pipeline.execute.assert_called_once_with()
+
+    def test_refresh_binding_expiry_retries_after_failure(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        _, pipeline = self._recording_batch_client(channel)
+        channel._expire_binding_table = Mock()
+        pipeline.execute.side_effect = [KeyError('down'), None]
+
+        with pytest.raises(KeyError):
+            channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        assert pipeline.execute.call_count == 2
+
+    def test_refresh_binding_expiry_skips_queues_without_expires(self):
+        channel = self.channel
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel._expire_binding_table = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+
+        channel._expire_binding_table.assert_not_called()
+
+    def test_brpop_start_refreshes_binding_expiry(self):
+        channel = self.channel
+        channel._active_queues = ['q']
+        channel._queue_cycle.update(['q'])
+        channel.maybe_refresh_binding_expiry = Mock()
+        channel.client.connection = Mock()
+
+        channel._brpop_start()
+
+        channel.maybe_refresh_binding_expiry.assert_called_once_with()
 
 
 class test_Channel_streaming_reauth:
@@ -2767,6 +2853,17 @@ class test_MultiChannelPoller:
 
     def setup_method(self):
         self.Poller = redis.MultiChannelPoller
+
+    def test_maybe_refresh_binding_expiry(self):
+        p = self.Poller()
+        chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
+        chan1.connection_errors = chan2.connection_errors = (KeyError,)
+        chan1.maybe_refresh_binding_expiry.side_effect = KeyError('down')
+        p._channels = [chan1, chan2]
+
+        p.maybe_refresh_binding_expiry()
+
+        chan2.maybe_refresh_binding_expiry.assert_called_once_with()
 
     def test_on_poll_start(self):
         p = self.Poller()
