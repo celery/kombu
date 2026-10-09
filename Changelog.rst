@@ -5,6 +5,25 @@
 ================
 
 
+Unreleased
+===
+
+- Fix emergency state dumps to write protocol-0 pickle data when serialization
+  succeeds. Failed virtual-transport message restoration now dumps serializable
+  message dictionaries, including bodies, properties, and headers, instead of
+  ``Message`` objects whose text representation omitted the body. Read a
+  successful dump using ``pickle.load``; only unpickle files you trust.
+  Message bodies use the transport's encoding (base64 by default for virtual
+  transports); use ``channel.message_to_python(entry)`` to reconstruct a message.
+  On Python 3, the helper's default file previously always contained the
+  ``pformat`` fallback, so consumers reading dumps as text must account for
+  the format change. Custom ``dump`` callables still receive files opened in
+  text mode. Custom ``open_file`` callbacks returning text streams,
+  including codec wrappers, retain the text fallback. Failed serialization
+  discards partial output where ``seek`` and ``truncate`` are supported;
+  otherwise it tries to append the fallback after any partial output on a
+  best-effort basis. (#2659)
+=======
 .. _version-5.7.0b1:
 
 5.7.0b1
