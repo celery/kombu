@@ -586,6 +586,7 @@ class Channel(AbstractChannel, base.StdChannel):
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
         # Remove queue binding:
+        exchange = exchange or 'amq.direct'
         self.state.binding_delete(queue, exchange, routing_key)
         try:
             table = self.get_table(exchange)
