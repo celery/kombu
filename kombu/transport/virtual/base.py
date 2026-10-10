@@ -553,6 +553,9 @@ class Channel(AbstractChannel, base.StdChannel):
                 queue, exchange, routing_key, args,
             )
             self._delete(queue, exchange, *meta, **kwargs)
+            table = self.state.exchanges.get(exchange, {}).get('table')
+            if table:
+                table[:] = [m for m in table if m != meta]
         self.state.queue_bindings_delete(queue)
 
     def after_reply_message_received(self, queue):

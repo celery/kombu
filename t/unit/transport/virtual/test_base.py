@@ -285,6 +285,19 @@ class test_Channel:
         assert not c.state.has_binding(n, n, n)
         assert n in c.purged
 
+    def test_queue_delete__removes_routing_table_entries(self):
+        c = self.channel
+        c._delete = Mock(name='_delete')
+        c.exchange_declare('e', 'direct')
+        c.queue_declare('q1')
+        c.queue_declare('q2')
+        c.queue_bind('q1', 'e', 'k')
+        c.queue_bind('q2', 'e', 'k')
+
+        c.queue_delete('q1')
+
+        assert c.get_table('e') == [('k', None, 'q2')]
+
     def test_queue_purge(self, n='test_queue_purge'):
 
         class PurgeChannel(virtual.Channel):
