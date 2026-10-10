@@ -103,6 +103,15 @@ class test_Topic(ExchangeCase):
             (('b', message), {}),
         ]
 
+    def test_deliver_deadletter(self):
+        self.e.channel = Mock()
+        self.e.channel.deadletter_queue = 'dlq'
+        self.e.channel._lookup.return_value = ['dlq']
+        message = Mock()
+        self.e.deliver(message, 'exchange', 'rkey')
+
+        self.e.channel._put.assert_called_once_with('dlq', message)
+
 
 class test_TopicMultibind(ExchangeCase):
     # Testing message delivery in case of multiple overlapping
