@@ -112,6 +112,19 @@ class test_Topic(ExchangeCase):
 
         self.e.channel._put.assert_called_once_with('dlq', message)
 
+    def test_deliver_unroutable_to_deadletter(self):
+        channel = Connection(
+            'memory://', transport_options={'deadletter_queue': 'dlq'},
+        ).channel()
+        channel.exchange_declare('eFoo', type='topic')
+        channel.queue_declare('qFoo')
+        channel.queue_bind('qFoo', 'eFoo', 'stock.#')
+        channel.basic_publish(
+            channel.prepare_message('msg'), 'eFoo', 'candy.snap')
+
+        assert channel._size('dlq') == 1
+        assert channel._size('qFoo') == 0
+
 
 class test_TopicMultibind(ExchangeCase):
     # Testing message delivery in case of multiple overlapping
