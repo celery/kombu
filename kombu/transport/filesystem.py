@@ -265,18 +265,16 @@ class Channel(virtual.Channel):
                                          uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
-        f = None
         try:
-            f = open(filename, 'wb', buffering=0)
-            lock(f, LOCK_EX)
-            f.write(str_to_bytes(dumps(payload)))
+            # Publish by rename so consumers cannot see an incomplete message.
+            with tempfile.TemporaryDirectory(dir=self.data_folder_out) as folder:
+                temporary = os.path.join(folder, os.path.basename(filename))
+                with open(temporary, 'wb', buffering=0) as f:
+                    f.write(str_to_bytes(dumps(payload)))
+                os.replace(temporary, filename)
         except OSError as exc:
             raise ChannelError(
                 f'Cannot add file {filename!r} to directory') from exc
-        finally:
-            if f is not None:
-                unlock(f)
-                f.close()
 
     def _get(self, queue):
         """Get next message from `queue`."""
