@@ -335,6 +335,25 @@ class test_FilesystemFanout(WithJanitorMixin):
         assert q1(self.consume_channel).get() is None
         assert q2(self.consume_channel).get()
 
+    @pytest.mark.parametrize("type,key", [("direct", "k"), ("topic", "a.*")])
+    def test_queue_unbind_direct_and_topic(self, type, key):
+        exchange = Exchange(f"unbind_exchange_{type}", type=type)
+        q = Queue(f"unbind_queue_{type}", exchange=exchange, routing_key=key)
+        q(self.consume_channel).declare()
+        assert len(self.producer_channel.get_table(exchange.name)) == 1
+        q(self.consume_channel).unbind_from(exchange, routing_key=key)
+        assert self.producer_channel.get_table(exchange.name) == []
+        # unbinding again is a no-op
+        q(self.consume_channel).unbind_from(exchange, routing_key=key)
+        assert self.producer_channel.get_table(exchange.name) == []
+
+    def test_queue_unbind_default_exchange(self):
+        self.consume_channel.exchange_declare("amq.direct", "direct")
+        self.consume_channel.queue_bind("unbind_default_q", routing_key="k")
+        self.consume_channel.queue_unbind("unbind_default_q", routing_key="k")
+        assert not [q for q in self.producer_channel.get_table("amq.direct")
+                    if q.queue == "unbind_default_q"]
+
 
 @t.skip.if_win32
 class test_FilesystemLock(WithJanitorMixin):
