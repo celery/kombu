@@ -201,7 +201,12 @@ class Channel(virtual.Channel):
             .filter(self.message_cls.queue_id == obj.id)
 
     def _purge(self, queue):
-        count = self._query_all(queue).delete(synchronize_session=False)
+        query = self._query_all(queue)
+        # Delivered messages are kept with visible=False, so only count
+        # the pending ones, but still delete everything.
+        count = query.filter(self.message_cls.visible == True) \
+            .delete(synchronize_session=False)
+        query.delete(synchronize_session=False)
         try:
             self.session.commit()
         except OperationalError:
