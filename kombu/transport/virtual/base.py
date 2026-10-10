@@ -527,7 +527,7 @@ class Channel(AbstractChannel, base.StdChannel):
 
     def exchange_delete(self, exchange, if_unused=False, nowait=False):
         """Delete `exchange` and all its bindings."""
-        for rkey, _, queue in self.get_table(exchange):
+        for rkey, _, queue in list(self.get_table(exchange)):
             self.queue_delete(queue, if_unused=True, if_empty=True)
         self.state.exchanges.pop(exchange, None)
 
