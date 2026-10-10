@@ -208,6 +208,17 @@ class test_Channel:
     def test_queue_unbind_interface(self):
         self.channel.queue_unbind('dest', 'ex', 'key')
 
+    @pytest.mark.parametrize('exchange', [None, ''])
+    def test_queue_unbind_default_exchange(self, exchange):
+        c = self.channel
+        c.exchange_declare('amq.direct', 'direct')
+        c.queue_declare('q')
+        c.queue_bind('q', routing_key='r')
+        assert c.get_table('amq.direct')
+        c.queue_unbind('q', exchange, routing_key='r')
+        assert not c.get_table('amq.direct')
+        assert not c.state.bindings
+
     def test_management(self):
         m = self.channel.connection.client.get_manager()
         assert m
