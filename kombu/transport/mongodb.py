@@ -548,7 +548,10 @@ class Transport(virtual.Transport):
             return uri
 
         if ',' not in uri:
-            return maybe_sanitize_url(uri)
+            return maybe_sanitize_url(uri, mask)
 
+        # Only the first host can carry credentials. It has no path of its
+        # own, so drop the trailing slash added when sanitizing it.
         uri1, remainder = uri.split(',', 1)
-        return ','.join([maybe_sanitize_url(uri1), remainder])
+        uri1 = maybe_sanitize_url(uri1, mask).rstrip('/')
+        return ','.join([uri1, remainder])

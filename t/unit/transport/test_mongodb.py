@@ -675,3 +675,21 @@ class test_mongodb_transport(BaseMongoDBChannelCase):
     def test_driver_version(self):
         version = self.connection.transport.driver_version()
         assert version == pymongo.__version__
+
+    @pytest.mark.parametrize('url, expected', [
+        ('mongodb://user:pass@localhost/dbname',
+         'mongodb://user:**@localhost/dbname'),
+        ('mongodb://user:pass@mongodb1.example.com:27317,'
+         'mongodb2.example.com:27017/dbname?replicaSet=test_rs',
+         'mongodb://user:**@mongodb1.example.com:27317,'
+         'mongodb2.example.com:27017/dbname?replicaSet=test_rs'),
+        ('mongodb://mongodb1.example.com,mongodb2.example.com',
+         'mongodb://mongodb1.example.com,mongodb2.example.com'),
+    ])
+    def test_as_uri(self, url, expected):
+        assert _create_mock_connection(url).as_uri() == expected
+
+    def test_as_uri_custom_mask(self):
+        url = 'mongodb://user:pass@mongodb1.example.com,mongodb2.example.com'
+        assert _create_mock_connection(url).as_uri(mask='xxx') == (
+            'mongodb://user:xxx@mongodb1.example.com,mongodb2.example.com')
