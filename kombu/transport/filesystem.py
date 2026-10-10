@@ -317,9 +317,20 @@ class Channel(virtual.Channel):
 
         raise Empty()
 
+    def queue_unbind(self, queue, exchange=None, routing_key='',
+                     arguments=None, **kwargs):
+        super().queue_unbind(queue, exchange, routing_key, arguments,
+                             **kwargs)
+        meta = self.typeof(exchange).prepare_bind(
+            queue, exchange, routing_key, arguments,
+        )
+        self._remove_binding(exchange, *meta)
+
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
+        self._remove_binding(exchange, routing_key, pattern, queue)
 
+    def _remove_binding(self, exchange, routing_key, pattern, queue):
         file = self._exchange_file(exchange)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")

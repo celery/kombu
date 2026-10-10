@@ -319,6 +319,22 @@ class test_FilesystemFanout(WithJanitorMixin):
         self.q2(self.consume_channel).purge()
         assert self.q2(self.consume_channel).get() is None
 
+    def test_queue_unbind_updates_exchange_file(self):
+        # broker state is shared between channels, so use unique names
+        exchange = Exchange("unbind_exchange_fanout", type="fanout")
+        q1 = Queue("unbind_queue1", exchange=exchange)
+        q2 = Queue("unbind_queue2", exchange=exchange)
+        q1(self.consume_channel).declare()
+        q2(self.consume_channel).declare()
+        q1(self.consume_channel).unbind_from(exchange)
+
+        assert [q.queue for q in
+                self.producer_channel.get_table(exchange.name)
+                ] == ["unbind_queue2"]
+        Producer(self.producer_channel, exchange).publish({"foo": 1})
+        assert q1(self.consume_channel).get() is None
+        assert q2(self.consume_channel).get()
+
 
 @t.skip.if_win32
 class test_FilesystemLock(WithJanitorMixin):
