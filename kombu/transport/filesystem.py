@@ -292,6 +292,7 @@ class Channel(virtual.Channel):
 
             if self.store_processed:
                 processed_folder = self.processed_folder
+                os.makedirs(processed_folder, exist_ok=True)
             else:
                 processed_folder = tempfile.gettempdir()
 
