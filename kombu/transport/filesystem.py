@@ -85,7 +85,8 @@ Transport Options
   queue.
 * ``store_processed`` - if set to True, all processed messages are backed up to
   ``processed_folder``.
-* ``processed_folder`` - directory where are backed up processed files.
+* ``processed_folder`` - directory where are backed up processed files, it is
+  created if missing.
 * ``control_folder`` - directory where are exchange-queue table stored.
 """
 
@@ -292,7 +293,12 @@ class Channel(virtual.Channel):
 
             if self.store_processed:
                 processed_folder = self.processed_folder
-                os.makedirs(processed_folder, exist_ok=True)
+                try:
+                    os.makedirs(processed_folder, exist_ok=True)
+                except OSError as exc:
+                    raise ChannelError(
+                        f"Cannot create processed folder {processed_folder!r}"
+                    ) from exc
             else:
                 processed_folder = tempfile.gettempdir()
 
