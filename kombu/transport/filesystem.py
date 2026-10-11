@@ -320,21 +320,17 @@ class Channel(virtual.Channel):
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
         exchange = exchange or 'amq.direct'
-        super().queue_unbind(queue, exchange, routing_key, arguments,
-                             **kwargs)
-        meta = self.typeof(exchange).prepare_bind(
-            queue, exchange, routing_key, arguments,
-        )
-        self._remove_binding(exchange, *meta)
+        self.state.binding_delete(queue, exchange, routing_key)
+        self._remove_binding(exchange, routing_key, queue)
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
-        self._remove_binding(exchange, routing_key, pattern, queue)
+        self._remove_binding(exchange, routing_key, queue)
 
-    def _remove_binding(self, exchange, routing_key, pattern, queue):
+    def _remove_binding(self, exchange, routing_key, queue):
         file = self._exchange_file(exchange)
-        queue_val = exchange_queue_t(routing_key or "", pattern or "",
-                                     queue or "")
+        routing_key = routing_key or ""
+        queue = queue or ""
         f_obj = None
         try:
             try:
@@ -344,22 +340,20 @@ class Channel(virtual.Channel):
                 return
             lock(f_obj, LOCK_EX)
             content = bytes_to_str(f_obj.read())
-            if not content:
+            if not content.strip():
                 # Exchange file is being created concurrently.
                 return
             queues = [exchange_queue_t(*q) for q in loads(content)]
-            original_len = len(queues)
-            try:
-                queues.remove(queue_val)
-            except ValueError:
-                # queue_val was not present; nothing to remove
-                pass
-            if len(queues) != original_len:
+            # The pattern depends on the exchange type, which this process
+            # may not know, so match on routing key and queue only.
+            remaining = [q for q in queues
+                         if (q.routing_key, q.queue) != (routing_key, queue)]
+            if len(remaining) != len(queues):
                 f_obj.seek(0)
-                f_obj.write(str_to_bytes(dumps(queues)))
+                f_obj.write(str_to_bytes(dumps(remaining)))
                 f_obj.truncate()
         except OSError as exc:
-            raise ChannelError(f"Cannot open {file}") from exc
+            raise ChannelError(f"Cannot update {file}") from exc
         finally:
             if f_obj is not None:
                 unlock(f_obj)

@@ -358,6 +358,25 @@ class test_FilesystemFanout(WithJanitorMixin):
         assert not [q for q in self.producer_channel.get_table("amq.direct")
                     if q.queue == "unbind_default_q"]
 
+    def test_queue_unbind_topic_unknown_to_this_process(self):
+        exchange = Exchange("unbind_exchange_topic_x", type="topic")
+        q = Queue("unbind_queue_topic_x", exchange=exchange,
+                  routing_key="a.*")
+        q(self.consume_channel).declare()
+        self.consume_channel.state.exchanges.pop(exchange.name)
+        self.consume_channel.queue_unbind(
+            q.name, exchange.name, routing_key="a.*")
+        assert self.producer_channel.get_table(exchange.name) == []
+
+    def test_queue_unbind_without_exchange_file(self):
+        self.consume_channel.queue_unbind("q", "unbind_never_bound", "rk")
+
+    def test_queue_unbind_empty_exchange_file(self):
+        path = self.consume_channel._exchange_file("unbind_empty_ex")
+        path.write_bytes(b"")
+        self.consume_channel.queue_unbind("q", "unbind_empty_ex", "rk")
+        assert path.read_bytes() == b""
+
 
 @t.skip.if_win32
 class test_FilesystemLock(WithJanitorMixin):
@@ -633,6 +652,14 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
         with pytest.raises(ChannelError) as excinfo:
             self.channel._queue_bind("ex", "rk", "", "q")
         assert isinstance(excinfo.value.__cause__, IsADirectoryError)
+
+    def test_queue_unbind_raises_channel_error_when_file_cannot_be_opened(
+            self):
+        self.channel._exchange_file("ex").write_bytes(b"[]")
+        with patch("pathlib.Path.open", side_effect=PermissionError):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel.queue_unbind("q", "ex", "rk")
+        assert isinstance(excinfo.value.__cause__, PermissionError)
 
     def test_get_closes_file_when_read_fails(self):
         path = os.path.join(self.data_folder_in, "1_x.q.msg")
