@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.7.0a1
+:Version: 5.7.0b1
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -305,10 +305,10 @@ by doing the following,:
 Getting Help
 ============
 
-Mailing list
-------------
+Discussions Forum
+-----------------
 
-Join the `celery-users`_ mailing list.
+Join the `kombu forum`_.
 
 .. _`kombu forum`: https://github.com/celery/kombu/discussions
 
