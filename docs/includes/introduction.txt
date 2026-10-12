@@ -23,7 +23,7 @@ Features
 * Allows application authors to support several message server
   solutions by using pluggable transports.
 
-    * AMQP transport using the `py-amqp`_, `redis`_, or `SQS`_ libraries.
+    * AMQP transport using the `py-amqp`_, `redis`_, or `Amazon SQS`_ libraries.
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
