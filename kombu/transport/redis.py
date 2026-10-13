@@ -523,6 +523,20 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
+def _socket_readable(sock):
+    """Return whether ``sock`` has data to read, without consuming it.
+
+    ``Connection.can_read()`` would pull the pending reply into the parser
+    buffer, where the event loop no longer sees the socket as readable.
+    """
+    poller = poll()
+    try:
+        poller.register(sock, READ)
+        return bool(poller.poll(0))
+    finally:
+        poller.close()
+
+
 class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
@@ -688,11 +702,9 @@ class MultiChannelPoller:
             waited = now - channel._brpop_sent_at
             if waited < channel.brpop_timeout + channel.health_check_interval:
                 continue
-            try:
-                if connection.can_read(timeout=0):
-                    continue
-            except channel.connection_errors:
-                pass
+            sock = getattr(connection, '_sock', None)
+            if sock is None or _socket_readable(sock):
+                continue
             warning(
                 'Redis BRPOP got no reply for %.0f seconds; '
                 'dropping stale connection', waited)

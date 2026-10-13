@@ -1353,14 +1353,15 @@ class test_Channel:
         connection = self.channel.client.connection
         with patch('kombu.transport.redis.monotonic', return_value=0.0):
             self.channel._brpop_start()
-        connection.can_read = Mock(return_value=False)
         connection.disconnect = Mock(
             side_effect=lambda: self.channel._on_connection_disconnect(
                 connection))
         poller = redis.MultiChannelPoller()
         poller._channels = [self.channel]
 
-        with patch('kombu.transport.redis.monotonic', return_value=1000.0):
+        with patch('kombu.transport.redis.monotonic', return_value=1000.0), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=False):
             poller.maybe_check_brpop_health()
 
         connection.disconnect.assert_called_once_with()
@@ -3036,18 +3037,20 @@ class test_MultiChannelPoller:
                        health_check_interval=25):
         channel = Mock(name='channel')
         channel._in_poll = Mock(name='connection')
-        channel._in_poll.can_read.return_value = False
         channel._brpop_sent_at = sent_at
         channel.brpop_timeout = brpop_timeout
         channel.health_check_interval = health_check_interval
         channel.connection_errors = (ConnectionError,)
         return channel
 
-    def _check_brpop_health(self, *channels, now):
+    def _check_brpop_health(self, *channels, now, readable=False):
         p = self.Poller()
         p._channels = list(channels)
-        with patch('kombu.transport.redis.monotonic', return_value=now):
+        with patch('kombu.transport.redis.monotonic', return_value=now), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=readable) as socket_readable:
             p.maybe_check_brpop_health()
+        return socket_readable
 
     def test_maybe_check_brpop_health_drops_overdue_reply(self):
         """BRPOP always gets a reply within ``brpop_timeout``.
@@ -3073,19 +3076,35 @@ class test_MultiChannelPoller:
     def test_maybe_check_brpop_health_keeps_unread_reply(self):
         """A reply that arrived while the event loop was busy is not lost."""
         channel = self._brpop_channel(sent_at=100.0)
-        channel._in_poll.can_read.return_value = True
+
+        socket_readable = self._check_brpop_health(
+            channel, now=500.0, readable=True)
+
+        socket_readable.assert_called_once_with(channel._in_poll._sock)
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_maybe_check_brpop_health_skips_disconnected_socket(self):
+        channel = self._brpop_channel(sent_at=100.0)
+        channel._in_poll._sock = None
 
         self._check_brpop_health(channel, now=500.0)
 
         channel._in_poll.disconnect.assert_not_called()
 
-    def test_maybe_check_brpop_health_drops_on_read_error(self):
-        channel = self._brpop_channel(sent_at=100.0)
-        channel._in_poll.can_read.side_effect = ConnectionError('gone')
-
-        self._check_brpop_health(channel, now=500.0)
-
-        channel._in_poll.disconnect.assert_called_once_with()
+    def test_socket_readable_does_not_consume_data(self):
+        """The check must leave the reply for the event loop to read."""
+        a, b = socket.socketpair()
+        # this module replaces eventio.poll with a fake; use a real poller
+        with patch('kombu.transport.redis.poll', eventio._select):
+            try:
+                assert not redis._socket_readable(a)
+                b.sendall(b'$-1\r\n')
+                assert redis._socket_readable(a)
+                assert redis._socket_readable(a)
+                assert a.recv(16) == b'$-1\r\n'
+            finally:
+                a.close()
+                b.close()
 
     @pytest.mark.parametrize('in_poll', [False, None])
     def test_maybe_check_brpop_health_skips_idle_channel(self, in_poll):

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import select
 import socket
+import threading
 from time import monotonic, sleep
 from unittest.mock import patch
 from uuid import uuid4
@@ -879,6 +881,176 @@ class test_RedisSubclientHealthCheck:
             producer.publish(
                 {'msg': 'recovered'}, exchange=exchange, serializer='json')
             conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'recovered'}]
+
+
+class _FreezableProxy:
+    """TCP proxy whose open connections can be silently black-holed.
+
+    ``freeze()`` keeps every established connection open but discards the
+    bytes flowing through it in both directions, like a broker failover or
+    an expired NAT entry: no FIN, no RST, the socket simply never becomes
+    readable again.  Connections accepted afterwards are forwarded normally,
+    so a client that drops the dead connection can reconnect.
+    """
+
+    def __init__(self, upstream):
+        self.upstream = upstream
+        self.listener = socket.create_server(('127.0.0.1', 0))
+        self.port = self.listener.getsockname()[1]
+        self._pairs = []
+        self._closed = threading.Event()
+        threading.Thread(target=self._accept, daemon=True).start()
+
+    def _accept(self):
+        while not self._closed.is_set():
+            try:
+                client, _ = self.listener.accept()
+            except OSError:
+                return
+            server = socket.create_connection(self.upstream)
+            frozen = threading.Event()
+            self._pairs.append((client, server, frozen))
+            threading.Thread(
+                target=self._pump, args=(client, server, frozen),
+                daemon=True).start()
+
+    def _pump(self, client, server, frozen):
+        peers = {client: server, server: client}
+        while not self._closed.is_set():
+            readable, _, _ = select.select(list(peers), [], [], 0.1)
+            for sock in readable:
+                try:
+                    data = sock.recv(65536)
+                except OSError:
+                    return
+                if not data:
+                    return
+                if not frozen.is_set():
+                    peers[sock].sendall(data)
+
+    def freeze(self):
+        for _, _, frozen in self._pairs:
+            frozen.set()
+
+    def close(self):
+        self._closed.set()
+        self.listener.close()
+        for client, server, _ in self._pairs:
+            client.close()
+            server.close()
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisBrpopHealthCheck:
+    """Integration tests for dropping half-open BRPOP connections.
+
+    BRPOP is sent with a server-side timeout, so a live server always
+    replies within ``brpop_timeout``.  On a half-open socket no reply ever
+    arrives and no socket timeout applies to the poller, so kombu drops the
+    connection once the reply is overdue by ``health_check_interval``.
+    The sockets below are really live or really half-open; only the clock
+    seen by the health check is moved past that deadline.
+    """
+
+    @pytest.fixture()
+    def proxy(self):
+        proxy = _FreezableProxy((
+            os.environ.get('REDIS_HOST', 'localhost'),
+            int(os.environ.get('REDIS_6379_TCP', '6379')),
+        ))
+        yield proxy
+        proxy.close()
+
+    def _consumer(self, connection, port, name, received):
+        """Return a connection whose BRPOP is in flight through the proxy."""
+        conn = get_connection(
+            hostname='127.0.0.1', port=port, vhost=None,
+            transport_options=connection.transport_options,
+        )
+        queue = kombu.Queue(name, kombu.Exchange(name), routing_key=name)
+        channel = conn.channel()
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        # registers the BRPOP connection with the poller and sends BRPOP
+        with pytest.raises(socket.timeout):
+            conn.drain_events(timeout=0.1)
+        assert channel._in_poll
+        return conn, channel, queue
+
+    def _publish(self, connection, queue, body):
+        with connection as conn:
+            kombu.Producer(conn).publish(
+                body, exchange=queue.exchange, routing_key=queue.routing_key,
+                declare=[queue], serializer='json')
+
+    def _check_past_deadline(self, conn, channel):
+        deadline = channel.brpop_timeout + channel.health_check_interval
+        with patch('kombu.transport.redis.monotonic',
+                   return_value=channel._brpop_sent_at + deadline + 1):
+            conn.transport.cycle.maybe_check_brpop_health()
+
+    def test_live_connection_with_unread_reply_not_dropped(
+            self, connection, proxy):
+        """A reply that arrived while the loop was busy keeps the socket."""
+        name = f'brpop_live_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            # the server answers the BRPOP, but nobody has read it yet
+            sleep(channel.brpop_timeout + 0.5)
+
+            self._check_past_deadline(conn, channel)
+
+            assert channel.client.connection._sock is not None
+            self._publish(connection, queue, {'msg': 'alive'})
+            for _ in range(5):
+                try:
+                    conn.drain_events(timeout=1)
+                except socket.timeout:
+                    pass
+                if received:
+                    break
+
+        assert received == [{'msg': 'alive'}]
+
+    def test_half_open_connection_dropped_and_consumption_resumes(
+            self, connection, proxy):
+        """An overdue BRPOP reply drops the connection; the next poll
+        reconnects, resends BRPOP and consumes again."""
+        name = f'brpop_drop_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            proxy.freeze()
+            # let the server answer the in-flight BRPOP into the void, so
+            # the message published next stays in the queue
+            sleep(channel.brpop_timeout + 0.5)
+            self._publish(connection, queue, {'msg': 'recovered'})
+
+            # the message is waiting but the half-open socket never delivers
+            with pytest.raises(socket.timeout):
+                conn.drain_events(timeout=1)
+            assert received == []
+
+            self._check_past_deadline(conn, channel)
+
+            assert channel.client.connection._sock is None
+            assert not channel._in_poll
+            for _ in range(5):
+                try:
+                    conn.drain_events(timeout=1)
+                except socket.timeout:
+                    pass
+                if received:
+                    break
 
         assert received == [{'msg': 'recovered'}]
 
