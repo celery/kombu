@@ -97,7 +97,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import time
+from time import monotonic, time
 
 from packaging.version import Version
 from vine import promise
@@ -673,6 +673,31 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_check_brpop_health(self):
+        now = monotonic()
+        for channel in self._channels:
+            connection = channel._in_poll
+            if not connection or channel._brpop_sent_at is None \
+                    or not channel.brpop_timeout \
+                    or not channel.health_check_interval:
+                continue
+            # BRPOP is sent with a server-side timeout, so a live server
+            # always replies within ``brpop_timeout``.  A half-open socket
+            # never becomes readable and no socket timeout applies to the
+            # event loop, so drop the connection once the reply is overdue.
+            waited = now - channel._brpop_sent_at
+            if waited < channel.brpop_timeout + channel.health_check_interval:
+                continue
+            try:
+                if connection.can_read(timeout=0):
+                    continue
+            except channel.connection_errors:
+                pass
+            warning(
+                'Redis BRPOP got no reply for %.0f seconds; '
+                'dropping stale connection', waited)
+            connection.disconnect()
+
     def maybe_reauth(self):
         for channel in self._channels:
             try:
@@ -862,6 +887,7 @@ class Channel(virtual.Channel):
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
+    _brpop_sent_at = None
     _in_listen = False
     _fanout_queues = {}
     ack_emulation = True
@@ -1272,6 +1298,7 @@ class Channel(virtual.Channel):
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
@@ -1935,7 +1962,7 @@ class Transport(virtual.Transport):
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
         for attr in ('_restore_messages_tref', '_subclient_health_tref',
-                     '_reauth_tref'):
+                     '_brpop_health_tref', '_reauth_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
@@ -1955,6 +1982,10 @@ class Transport(virtual.Transport):
         cycle._subclient_health_tref = loop.call_repeatedly(
             health_check_interval,
             cycle.maybe_check_subclient_health
+        )
+        cycle._brpop_health_tref = loop.call_repeatedly(
+            health_check_interval,
+            cycle.maybe_check_brpop_health
         )
         reauth_check_interval = connection.client.transport_options.get(
             'reauth_check_interval',
