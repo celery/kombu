@@ -411,3 +411,17 @@ class test_accepts_arg:
     def test_raise_exception(self):
         with pytest.raises(Exception):
             accepts_argument(None, 'foo')
+
+
+class test_LRUCache_negative_limit:
+
+    def test_negative_limit_raises_clear_error(self):
+        # a negative limit made every insert try to evict from an empty
+        # cache, surfacing as a bare StopIteration from next(iter(...))
+        with pytest.raises(ValueError, match="non-negative"):
+            LRUCache(-1)
+
+    def test_none_and_zero_limits_still_accepted(self):
+        assert LRUCache(None).limit is None
+        assert LRUCache(0).limit == 0
+        assert LRUCache(3).limit == 3
