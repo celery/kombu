@@ -83,10 +83,13 @@ class module(ModuleType):
 
     def __dir__(self) -> list[str]:
         result = list(new_module.__all__)
-        result.extend(('__file__', '__path__', '__doc__', '__all__',
-                       '__docformat__', '__name__', '__path__', 'VERSION',
+        result.extend(('__doc__', '__all__',
+                       '__docformat__', '__name__', 'VERSION',
                        '__package__', '__version__', '__author__',
                        '__contact__', '__homepage__', '__docformat__'))
+        for optional in ('__file__', '__path__'):
+            if optional in self.__dict__:
+                result.append(optional)
         return result
 
 
@@ -94,9 +97,11 @@ class module(ModuleType):
 old_module = sys.modules[__name__]
 
 new_module = sys.modules[__name__] = module(__name__)
-# __file__ and __path__ are optional. Frozen importers such as PyOxidizer
-# do not set them, and reading the names here raised NameError while
-# installing the lazy module (Issue #1121).
+# __file__ is optional. Frozen importers such as PyOxidizer set __path__
+# and omit __file__. Reading __file__ here raised NameError while
+# installing the lazy module (Issue #1121). __path__ stays required:
+# without it this module is not a package, and the first attribute load
+# fails later with ModuleNotFoundError.
 _copied = {
     '__doc__': __doc__,
     '__all__': tuple(object_origins),
@@ -112,8 +117,7 @@ _copied = {
 }
 if '__file__' in globals():
     _copied['__file__'] = globals()['__file__']
-if '__path__' in globals():
-    _copied['__path__'] = globals()['__path__']
+_copied['__path__'] = __path__
 new_module.__dict__.update(_copied)
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
