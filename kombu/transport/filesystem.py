@@ -319,8 +319,23 @@ class Channel(virtual.Channel):
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
+        """Remove a binding from this process and the exchange file.
+
+        Bindings are matched on ``(routing_key, queue)``.  ``BrokerState``
+        is per process, so unbinding from another process does not update
+        this process's state: a process that still holds the binding in
+        memory will skip re-binding it (same limitation as ``queue_delete``).
+        """
         exchange = exchange or 'amq.direct'
         self.state.binding_delete(queue, exchange, routing_key)
+        try:
+            # get_table() reads the file here; trim the in-memory table.
+            table = self.state.exchanges[exchange]['table']
+        except KeyError:
+            pass
+        else:
+            table[:] = [m for m in table
+                        if (m[0], m[2]) != (routing_key or '', queue)]
         self._remove_binding(exchange, routing_key, queue)
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
@@ -328,6 +343,8 @@ class Channel(virtual.Channel):
         self._remove_binding(exchange, routing_key, queue)
 
     def _remove_binding(self, exchange, routing_key, queue):
+        # OSError while locking/reading/writing the exchange file is raised
+        # as ChannelError (this also applies to queue_delete).
         file = self._exchange_file(exchange)
         routing_key = routing_key or ""
         queue = queue or ""

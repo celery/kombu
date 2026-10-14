@@ -368,6 +368,15 @@ class test_FilesystemFanout(WithJanitorMixin):
             q.name, exchange.name, routing_key="a.*")
         assert self.producer_channel.get_table(exchange.name) == []
 
+    def test_queue_unbind_trims_in_memory_table(self):
+        exchange = Exchange("unbind_table_ex", type="direct")
+        q = Queue("unbind_table_q", exchange=exchange, routing_key="k")
+        q(self.consume_channel).declare()
+        table = self.consume_channel.state.exchanges[exchange.name]['table']
+        assert any(m[2] == q.name for m in table)
+        self.consume_channel.queue_unbind(q.name, exchange.name, "k")
+        assert not any(m[2] == q.name for m in table)
+
     def test_queue_unbind_without_exchange_file(self):
         self.consume_channel.queue_unbind("q", "unbind_never_bound", "rk")
 
@@ -660,6 +669,14 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
             with pytest.raises(ChannelError) as excinfo:
                 self.channel.queue_unbind("q", "ex", "rk")
         assert isinstance(excinfo.value.__cause__, PermissionError)
+
+    def test_queue_unbind_raises_channel_error_when_read_fails(self):
+        self.channel._exchange_file("ex").write_bytes(b"[]")
+        with patch("kombu.transport.filesystem.bytes_to_str",
+                   side_effect=OSError("read failed")):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel.queue_unbind("q", "ex", "rk")
+        assert isinstance(excinfo.value.__cause__, OSError)
 
     def test_get_closes_file_when_read_fails(self):
         path = os.path.join(self.data_folder_in, "1_x.q.msg")
