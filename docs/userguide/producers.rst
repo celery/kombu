@@ -216,8 +216,7 @@ carrying the broker's reply code and text:
     >>> producer.publish({'hello': 'world'}, routing_key='tasks')
     Traceback (most recent call last):
       ...
-    amqp.exceptions.PreconditionFailed: Basic.publish: (406) \
-PRECONDITION_FAILED - message size 21 is larger than configured max size 20
+    amqp.exceptions.PreconditionFailed: Basic.publish: (406) PRECONDITION_FAILED - message size 21 is larger than configured max size 20
 
 Note that each confirmed publish costs a round-trip to the broker; measure
 the throughput impact before enabling it for high-volume producers.
