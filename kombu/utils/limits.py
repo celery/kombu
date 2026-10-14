@@ -1,5 +1,7 @@
 """Token bucket implementation for rate limiting."""
 
+from __future__ import annotations
+
 from collections import deque
 from time import monotonic
 
@@ -9,13 +11,15 @@ __all__ = ('TokenBucket',)
 class TokenBucket:
     """Token Bucket Algorithm.
 
-    See Also:
+    See Also
+    --------
         https://en.wikipedia.org/wiki/Token_Bucket
 
         Most of this code was stolen from an entry in the ASPN Python Cookbook:
         https://code.activestate.com/recipes/511490/
 
     Warning:
+    -------
         Thread Safety: This implementation is not thread safe.
         Access to a `TokenBucket` instance should occur within the critical
         section of any multithreaded code.
@@ -27,7 +31,7 @@ class TokenBucket:
     #: Maximum number of tokens in the bucket.
     capacity = 1
 
-    #: Timestamp of the last time a token was taken out of the bucket.
+    #: Timestamp of the last time the bucket level was calculated.
     timestamp = None
 
     def __init__(self, fill_rate, capacity=1):
@@ -49,7 +53,8 @@ class TokenBucket:
     def can_consume(self, tokens=1):
         """Check if one or more tokens can be consumed.
 
-        Returns:
+        Returns
+        -------
             bool: true if the number of tokens can be consumed
                 from the bucket.  If they can be consumed, a call will also
                 consume the requested number of tokens from the bucket.
@@ -65,7 +70,8 @@ class TokenBucket:
     def expected_time(self, tokens=1):
         """Return estimated time of token availability.
 
-        Returns:
+        Returns
+        -------
             float: the time in seconds.
         """
         _tokens = self._get_tokens()
@@ -73,9 +79,13 @@ class TokenBucket:
         return (tokens - _tokens) / self.fill_rate
 
     def _get_tokens(self):
+        # The timestamp must advance even when the bucket is already full,
+        # otherwise the time spent sitting idle at capacity is later counted
+        # as refill time and the bucket tops itself straight back up the
+        # moment after it was drained.
+        now = monotonic()
         if self._tokens < self.capacity:
-            now = monotonic()
             delta = self.fill_rate * (now - self.timestamp)
             self._tokens = min(self.capacity, self._tokens + delta)
-            self.timestamp = now
+        self.timestamp = now
         return self._tokens

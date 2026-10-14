@@ -1,17 +1,19 @@
+from __future__ import annotations
+
 from kombu.asynchronous import get_event_loop
+from kombu.asynchronous.http.base import BaseClient, Headers, Request, Response
+from kombu.asynchronous.hub import Hub
 
-from .base import Headers, Request, Response
-
-__all__ = ('Client', 'Headers', 'Response', 'Request')
+__all__ = ('Client', 'Headers', 'Response', 'Request', 'BaseClient', 'get_client')
 
 
-def Client(hub=None, **kwargs):
+def Client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
     """Create new HTTP client."""
     from .curl import CurlClient
     return CurlClient(hub, **kwargs)
 
 
-def get_client(hub=None, **kwargs):
+def get_client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
     """Get or create HTTP client bound to the current event loop."""
     hub = hub or get_event_loop()
     try:

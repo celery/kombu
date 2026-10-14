@@ -1,10 +1,44 @@
-from itertools import count
-from unittest.mock import Mock
+from __future__ import annotations
 
-from case import ContextMock
+import time
+from itertools import count
+from typing import TYPE_CHECKING
+from unittest.mock import Mock
 
 from kombu.transport import base
 from kombu.utils import json
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+
+class _ContextMock(Mock):
+    """Dummy class implementing __enter__ and __exit__
+    as the :keyword:`with` statement requires these to be implemented
+    in the class, not just the instance."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
+        pass
+
+
+def ContextMock(*args, **kwargs):
+    """Mock that mocks :keyword:`with` statement contexts."""
+    obj = _ContextMock(*args, **kwargs)
+    obj.attach_mock(_ContextMock(), '__enter__')
+    obj.attach_mock(_ContextMock(), '__exit__')
+    obj.__enter__.return_value = obj
+    # if __exit__ return a value the exception is ignored,
+    # so it must return None here.
+    obj.__exit__.return_value = None
+    return obj
 
 
 def PromiseMock(*args, **kwargs):
@@ -169,3 +203,15 @@ class Transport(base.Transport):
 
     def close_connection(self, connection):
         connection.connected = False
+
+
+class TimeoutingTransport(Transport):
+    recoverable_connection_errors = (TimeoutError,)
+
+    def __init__(self, connect_timeout=1, **kwargs):
+        self.connect_timeout = connect_timeout
+        super().__init__(**kwargs)
+
+    def establish_connection(self):
+        time.sleep(self.connect_timeout)
+        raise TimeoutError('timed out')

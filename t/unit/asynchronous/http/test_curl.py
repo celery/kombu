@@ -1,4 +1,7 @@
-from unittest.mock import Mock, call, patch
+from __future__ import annotations
+
+from io import BytesIO
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 
@@ -45,6 +48,25 @@ class test_CurlClient:
             x = self.Client()
             x._timeout_check_tref = Mock(name='timeout_check_tref')
             x.close()
+            x._timeout_check_tref.cancel.assert_called_with()
+            for _curl in x._curls:
+                _curl.close.assert_called_with()
+            x._multi.close.assert_called_with()
+
+    def test_registers_close_with_hub_on_close(self, hub):
+        # A pending request left on the client when the hub closes (e.g.
+        # during worker shutdown) otherwise keeps running in the
+        # background and can deliver its result after the rest of the
+        # consumer has already torn down.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            assert x.close in hub.on_close
+
+    def test_hub_close_closes_client(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            hub.close()
             x._timeout_check_tref.cancel.assert_called_with()
             for _curl in x._curls:
                 _curl.close.assert_called_with()
@@ -131,3 +153,24 @@ class test_CurlClient:
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_IN)
             x.on_writable(fd, _pycurl=_pycurl)
             x._on_event.assert_called_with(fd, _pycurl.CSELECT_OUT)
+
+    def test_setup_request_sets_proxy_when_specified(self):
+        with patch('kombu.asynchronous.http.curl.pycurl') as _pycurl:
+            x = self.Client()
+            proxy_host = 'http://www.example.com'
+            request = Mock(
+                name='request', headers={}, auth_mode=None, proxy_host=None
+            )
+            proxied_request = Mock(
+                name='request', headers={}, auth_mode=None,
+                proxy_host=proxy_host, proxy_port=123
+            )
+            x._setup_request(
+                x.Curl, request, BytesIO(), x.Headers(), _pycurl=_pycurl
+            )
+            with pytest.raises(AssertionError):
+                x.Curl.setopt.assert_any_call(_pycurl.PROXY, ANY)
+            x._setup_request(
+                x.Curl, proxied_request, BytesIO(), x.Headers(), _pycurl
+            )
+            x.Curl.setopt.assert_any_call(_pycurl.PROXY, proxy_host)

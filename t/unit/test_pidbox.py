@@ -1,5 +1,9 @@
+from __future__ import annotations
+
+import multiprocessing
 import socket
 import warnings
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from unittest.mock import Mock, patch
 
 import pytest
@@ -24,7 +28,7 @@ class test_Mailbox:
         def _collect(self, *args, **kwargs):
             return 'COLLECTED'
 
-    def setup(self):
+    def setup_method(self):
         self.mailbox = self.Mailbox('test_pidbox')
         self.connection = Connection(transport='memory')
         self.state = {'var': 1}
@@ -163,6 +167,34 @@ class test_Mailbox:
         consumer2 = self.node.Consumer(channel=chan2, no_ack=False)
         assert consumer2.channel is chan2
         assert not consumer2.no_ack
+
+    def test_Node_consumer_resource_locked_raises_inconsistency(self):
+        base_channel_error = self.connection.channel_errors[0]
+
+        class ResourceLockedChannelError(base_channel_error):
+            code = 405
+
+            def __str__(self):
+                return (
+                    "RESOURCE_LOCKED - cannot obtain exclusive access to "
+                    "locked queue 'pidbox': already using this queue"
+                )
+
+        with patch('kombu.pidbox.Consumer') as MockConsumer:
+            MockConsumer.side_effect = ResourceLockedChannelError()
+            with pytest.raises(InconsistencyError, match='already using'):
+                self.node.Consumer()
+
+    def test_Node_consumer_other_channel_error_propagates(self):
+        base_channel_error = self.connection.channel_errors[0]
+
+        class AccessRefusedError(base_channel_error):
+            code = 403
+
+        with patch('kombu.pidbox.Consumer') as MockConsumer:
+            MockConsumer.side_effect = AccessRefusedError()
+            with pytest.raises(AccessRefusedError):
+                self.node.Consumer()
 
     def test_Node_consumer_multiple_listeners(self):
         warnings.resetwarnings()
@@ -338,3 +370,79 @@ class test_Mailbox:
         m = consumer.queues[0].get()
         if m:
             return m.payload
+
+    def test_mailbox_defaults_to_exclusive(self):
+        mbox = pidbox.Mailbox('flagbox_default')(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.exclusive is True
+            assert q.durable is False
+            assert q.auto_delete is True
+
+    def test_mailbox_queue_exclusive(self):
+        mbox = pidbox.Mailbox(
+            'flagbox_ex',
+            queue_exclusive=True,
+            queue_durable=False,
+        )(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.exclusive is True
+            assert q.durable is False
+            assert q.auto_delete is True
+
+    def test_mailbox_queue_durable(self):
+        mbox = pidbox.Mailbox(
+            'flagbox_dur',
+            queue_exclusive=False,
+            queue_durable=True,
+        )(self.connection)
+
+        for q in (mbox.get_queue('worker1'), mbox.get_reply_queue()):
+            assert q.durable is True
+            assert q.exclusive is False
+            assert q.auto_delete is False
+
+    def test_mailbox_invalid_flag_combo(self):
+        with pytest.raises(ValueError):
+            pidbox.Mailbox(
+                'flagbox_bad',
+                queue_exclusive=True,
+                queue_durable=True,
+            )(self.connection)
+
+
+GLOBAL_PIDBOX = pidbox.Mailbox('global_unittest_mailbox')
+
+
+def getoid():
+    return GLOBAL_PIDBOX.oid
+
+
+class test_PidboxOid:
+    """Unittests checking oid consistency of Pidbox"""
+
+    def test_oid_consistency(self):
+        """Tests that oid is consistent in single process"""
+        m1 = pidbox.Mailbox('mailbox1')
+        m2 = pidbox.Mailbox('mailbox2')
+        assert m1.oid == m1.oid
+        assert m2.oid == m2.oid
+        assert m1.oid != m2.oid
+
+    def test_subprocess_oid(self):
+        """Tests that subprocess will not share oid with parent process."""
+        oid = GLOBAL_PIDBOX.oid
+        mp_context = multiprocessing.get_context('forkserver')
+        with ProcessPoolExecutor(mp_context=mp_context) as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid
+
+    def test_thread_oid(self):
+        """Tests that threads will not share oid."""
+        oid = GLOBAL_PIDBOX.oid
+        with ThreadPoolExecutor() as e:
+            res = e.submit(getoid)
+            subprocess_oid = res.result()
+        assert subprocess_oid != oid

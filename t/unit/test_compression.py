@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import sys
 
 import pytest
-from case import mock
 
 from kombu import compression
 
@@ -26,7 +27,7 @@ class test_compression:
         assert 'application/x-lzma' in compression.encoders()
 
     def test_encoders__zstd(self):
-        pytest.importorskip('zstandard')
+        pytest.importorskip('compression.zstd' if sys.version_info >= (3, 14) else 'backports.zstd')
 
         assert 'application/zstd' in compression.encoders()
 
@@ -63,7 +64,7 @@ class test_compression:
         assert d == text
 
     def test_compress__decompress__zstd(self):
-        pytest.importorskip('zstandard')
+        pytest.importorskip('compression.zstd' if sys.version_info >= (3, 14) else 'backports.zstd')
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'zstd')
@@ -71,8 +72,8 @@ class test_compression:
         d = compression.decompress(c, ctype)
         assert d == text
 
-    @mock.mask_modules('bz2')
-    def test_no_bz2(self):
+    @pytest.mark.masked_modules('bz2')
+    def test_no_bz2(self, mask_modules):
         c = sys.modules.pop('kombu.compression')
         try:
             import kombu.compression
@@ -81,8 +82,8 @@ class test_compression:
             if c is not None:
                 sys.modules['kombu.compression'] = c
 
-    @mock.mask_modules('lzma')
-    def test_no_lzma(self):
+    @pytest.mark.masked_modules('lzma')
+    def test_no_lzma(self, mask_modules):
         c = sys.modules.pop('kombu.compression')
         try:
             import kombu.compression

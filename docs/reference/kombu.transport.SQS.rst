@@ -23,6 +23,7 @@
         :members:
         :undoc-members:
 
+
 Back-off policy
 ------------------------
 Back-off policy is using SQS visibility timeout mechanism altering the time difference between task retries.
@@ -63,3 +64,98 @@ The above policy:
 +-----------------------------------------+--------------------------------------------+
 | ``6th attempt``                         | 640 seconds                                |
 +-----------------------------------------+--------------------------------------------+
+
+
+Message Attributes
+------------------------
+
+SQS supports sending message attributes along with the message body.
+To use this feature, you can pass a 'message_attributes' as keyword argument
+to `basic_publish` method.
+
+Per-message Delay
+------------------------
+
+.. versionadded:: 5.7.0
+
+SQS can hold an individual message back before delivering it, by passing a
+delay in seconds when publishing. This is a broker-side delay: unlike a
+``countdown``, no worker waits for the message, it simply does not become
+visible until the delay has passed.
+
+The delay is passed as a keyword argument to the `publish` method, either as
+``delay_seconds`` or as ``DelaySeconds``::
+
+    producer.publish(
+        message,
+        routing_key='my-queue',
+        delay_seconds=30,
+    )
+
+The value is the number of seconds to hold the message, and SQS accepts at
+most 900 (15 minutes). A larger value is clamped to that maximum, ``0`` is a
+valid delay, and a negative value is ignored, so a message is never rejected
+by SQS because of the delay it was given. A value that is not a number at all
+is ignored too, and logged as a warning -- the message still goes out, just
+without the delay.
+
+Only one of the two spellings is used: the first one given wins, so passing
+``delay_seconds=None`` falls through to ``DelaySeconds``. A float is
+truncated toward zero, so ``2.5`` becomes ``2``.
+
+A delay is applied per message and does not block the messages behind it.
+Standard SQS queues make no ordering promise, so delaying one message can
+change the order in which the queue delivers them.
+
+FIFO queues take no per-message delay -- SQS rejects ``DelaySeconds`` on them
+outright -- so a delay requested for a FIFO queue is dropped and logged as a
+warning. If you need a delay on a FIFO queue, have the consumer hold the
+message itself rather than asking the broker for one.
+
+Fair Queue Support (only available from version 5.7.0+)
+------------------------
+
+Kombu supports Amazon SQS Fair Queues, which provide improved message processing fairness by ensuring that messages from different message groups
+are processed in a balanced manner.
+
+Fair Queues are designed to prevent a single message group (or tenant) from monopolizing
+consumer resources, which can happen with standard queues that handle multi-tenant
+workloads with unbalanced message distribution.
+
+When publishing messages to a Fair Queue, you should provide a `MessageGroupId`. This can be done by passing it as a
+keyword argument to the `publish` method. While the Kombu implementation only sends `MessageGroupId` if it is present,
+AWS requires it for FIFO and Fair Queues. If omitted, (a) FIFO: Kombu will assign a default group id,
+(b) standard fair queues: group id is needed to get fairness but omission shouldn't imply AWS rejection.
+Example:
+    producer.publish(
+        message,
+        routing_key='my-fair-queue',
+        MessageGroupId='customer-123'  # Required for FIFO queues, if not provided, Kombu will assign a default group id; needed for Fair queue functionality on standard queues, else fairness will not be guaranteed.
+    )
+
+Benefits of using Fair Queues with Kombu:
+- Improved message processing fairness across message groups
+- Better workload distribution among consumers
+- Eliminates noisy neighbor problem
+
+For more information, refer to the AWS documentation on Fair Queues: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fair-queues.html
+
+
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.exceptions``
+=========================================================
+
+.. automodule:: kombu.transport.SQS.exceptions
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+
+Amazon SQS Transport - ``kombu.transport.SQS.SNS``
+==================================================
+
+.. automodule:: kombu.transport.SQS.SNS
+   :members:
+   :show-inheritance:
+   :undoc-members:

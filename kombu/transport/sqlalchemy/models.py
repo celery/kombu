@@ -1,10 +1,12 @@
 """Kombu transport using SQLAlchemy as the message store."""
 
+from __future__ import annotations
+
 import datetime
 
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Index, Integer,
-                        Sequence, SmallInteger, String, Text)
-from sqlalchemy.orm import relation
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, ForeignKey,
+                        Index, Integer, Sequence, SmallInteger, String, Text)
+from sqlalchemy.orm import relationship
 from sqlalchemy.schema import MetaData
 
 try:
@@ -17,14 +19,18 @@ class_registry = {}
 metadata = MetaData()
 ModelBase = declarative_base(metadata=metadata, class_registry=class_registry)
 
+# SQL Server sequences are BIGINT and start at their minimum value by default,
+# which overflows an INT column on the first insert.
+DialectSpecificInteger = Integer().with_variant(BigInteger, 'mssql')
+
 
 class Queue:
     """The queue class."""
 
     __table_args__ = {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
 
-    id = Column(Integer, Sequence('queue_id_sequence'), primary_key=True,
-                autoincrement=True)
+    id = Column(DialectSpecificInteger, Sequence('queue_id_sequence'),
+                primary_key=True, autoincrement=True)
     name = Column(String(200), unique=True)
 
     def __init__(self, name):
@@ -35,7 +41,7 @@ class Queue:
 
     @declared_attr
     def messages(cls):
-        return relation('Message', backref='queue', lazy='noload')
+        return relationship('Message', backref='queue', lazy='noload')
 
 
 class Message:
@@ -46,7 +52,7 @@ class Message:
         {'sqlite_autoincrement': True, 'mysql_engine': 'InnoDB'}
     )
 
-    id = Column(Integer, Sequence('message_id_sequence'),
+    id = Column(DialectSpecificInteger, Sequence('message_id_sequence'),
                 primary_key=True, autoincrement=True)
     visible = Column(Boolean, default=True, index=True)
     sent_at = Column('timestamp', DateTime, nullable=True, index=True,
@@ -66,7 +72,7 @@ class Message:
     @declared_attr
     def queue_id(self):
         return Column(
-            Integer,
+            DialectSpecificInteger,
             ForeignKey(
                 '%s.id' % class_registry['Queue'].__tablename__,
                 name='FK_kombu_message_queue'

@@ -42,6 +42,8 @@ Transport Options
 
 """
 
+from __future__ import annotations
+
 import os
 import socket
 from queue import Empty
@@ -98,10 +100,10 @@ class Channel(virtual.Channel):
     """Zookeeper Channel."""
 
     _client = None
-    _queues = {}
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
+        self._queues = {}
         vhost = self.connection.client.virtual_host
         self._vhost = '/{}'.format(vhost.strip('/'))
 

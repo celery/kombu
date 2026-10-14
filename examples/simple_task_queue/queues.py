@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from kombu import Exchange, Queue
 
 task_exchange = Exchange('tasks', type='direct')

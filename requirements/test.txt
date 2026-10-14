@@ -1,5 +1,7 @@
-pytz>dev
-case>=1.5.2
-pytest<=5.3.5
-pytest-sugar
-Pyro4
+hypothesis<7
+Pyro4==4.82
+pytest-freezer==0.4.9
+pytest-sugar==1.1.1
+pre-commit==4.6.2
+pytest==9.1.1
+

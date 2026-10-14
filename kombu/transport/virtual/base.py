@@ -3,9 +3,10 @@
 Emulates the AMQ API for non-AMQ transports.
 """
 
+from __future__ import annotations
+
 import base64
 import socket
-import sys
 import warnings
 from array import array
 from collections import OrderedDict, defaultdict, namedtuple
@@ -13,6 +14,7 @@ from itertools import count
 from multiprocessing.util import Finalize
 from queue import Empty
 from time import monotonic, sleep
+from typing import TYPE_CHECKING
 
 from amqp.protocol import queue_declare_ok_t
 
@@ -25,6 +27,9 @@ from kombu.utils.scheduling import FairCycle
 from kombu.utils.uuid import uuid
 
 from .exchange import STANDARD_EXCHANGE_TYPES
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 ARRAY_TYPE_H = 'H'
 
@@ -153,6 +158,7 @@ class QoS:
     Only supports `prefetch_count` at this point.
 
     Arguments:
+    ---------
         channel (ChannelT): Connection channel.
         prefetch_count (int): Initial prefetch count (defaults to 0).
     """
@@ -177,6 +183,8 @@ class QoS:
         self.channel = channel
         self.prefetch_count = prefetch_count or 0
 
+        # Standard Python dictionaries do not support setting attributes
+        # on the object, hence the use of OrderedDict
         self._delivered = OrderedDict()
         self._delivered.restored = False
         self._dirty = set()
@@ -203,7 +211,8 @@ class QoS:
         bulk 'get message' calls are preferred to many individual 'get message'
         calls - like SQS.
 
-        Returns:
+        Returns
+        -------
             int: greater than zero.
         """
         pcount = self.prefetch_count
@@ -250,14 +259,18 @@ class QoS:
 
         while delivered:
             try:
-                _, message = pop_message()
+                key, message = pop_message()
             except KeyError:  # pragma: no cover
                 break
 
             try:
                 restore(message)
             except BaseException as exc:
-                errors.append((exc, message))
+                if key not in self._dirty:
+                    # Another thread may have acked the message after the earlier '_flush' call.
+                    # This may cause the restore attempt to fail (e.g. in SQS).
+                    # If restore fails, we only care about errors for messages that have not been 'acked'.
+                    errors.append((exc, message))
         delivered.clear()
         return errors
 
@@ -265,12 +278,12 @@ class QoS:
         """Restore all unacknowledged messages at shutdown/gc collect.
 
         Note:
+        ----
             Can only be called once for each instance, subsequent
             calls will be ignored.
         """
         self._on_collect.cancel()
         self._flush()
-        stderr = sys.stderr if stderr is None else stderr
         state = self._delivered
 
         if not self.restore_at_shutdown or not self.channel.do_restore:
@@ -280,24 +293,33 @@ class QoS:
             return
         try:
             if state:
-                print(RESTORING_FMT.format(len(self._delivered)),
-                      file=stderr)
+                if stderr is not None:
+                    print(RESTORING_FMT.format(len(self._delivered)), file=stderr)
+                else:
+                    logger.info(RESTORING_FMT.format(len(self._delivered)))
                 unrestored = self.restore_unacked()
 
                 if unrestored:
                     errors, messages = list(zip(*unrestored))
-                    print(RESTORE_PANIC_FMT.format(len(errors), errors),
-                          file=stderr)
-                    emergency_dump_state(messages, stderr=stderr)
+                    if stderr:
+                        print(RESTORE_PANIC_FMT.format(len(errors), errors), file=stderr)
+                    else:
+                        logger.error(RESTORE_PANIC_FMT.format(len(errors), errors))
+
+                    emergency_dump_state(
+                        [message.serializable() for message in messages],
+                        stderr=stderr,
+                    )
         finally:
             state.restored = True
 
     def restore_visible(self, *args, **kwargs):
-        """Restore any pending unackwnowledged messages.
+        """Restore any pending unacknowledged messages.
 
         To be filled in for visibility_timeout style implementations.
 
         Note:
+        ----
             This is implementation optional, and currently only
             used by the Redis transport.
         """
@@ -347,6 +369,7 @@ class AbstractChannel:
     you'd usually want to implement in a virtual channel.
 
     Note:
+    ----
         Do not subclass directly, but rather inherit
         from :class:`Channel`.
     """
@@ -371,6 +394,7 @@ class AbstractChannel:
         """Delete `queue`.
 
         Note:
+        ----
             This just purges the queue, if you need to do more you can
             override this method.
         """
@@ -380,6 +404,7 @@ class AbstractChannel:
         """Create new queue.
 
         Note:
+        ----
             Your transport can override this method if it needs
             to do something whenever a new queue is declared.
         """
@@ -387,7 +412,8 @@ class AbstractChannel:
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
+        -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
         """
@@ -406,6 +432,7 @@ class Channel(AbstractChannel, base.StdChannel):
     """Virtual channel.
 
     Arguments:
+    ---------
         connection (ConnectionT): The transport instance this
             channel is part of.
     """
@@ -462,14 +489,7 @@ class Channel(AbstractChannel, base.StdChannel):
             typ: cls(self) for typ, cls in self.exchange_types.items()
         }
 
-        try:
-            self.channel_id = self.connection._avail_channel_ids.pop()
-        except IndexError:
-            raise ResourceError(
-                'No free channel ids, current={}, channel_max={}'.format(
-                    len(self.connection.channels),
-                    self.connection.channel_max), (20, 10),
-            )
+        self.channel_id = self._get_free_channel_id()
 
         topts = self.connection.client.transport_options
         for opt_name in self.from_transport_options:
@@ -637,12 +657,12 @@ class Channel(AbstractChannel, base.StdChannel):
         """Cancel consumer by consumer tag."""
         if consumer_tag in self._consumers:
             self._consumers.remove(consumer_tag)
-            self._reset_cycle()
             queue = self._tag_to_queue.pop(consumer_tag, None)
             try:
                 self._active_queues.remove(queue)
             except ValueError:
                 pass
+            self._reset_cycle()
             self.connection._callbacks.pop(queue, None)
 
     def basic_get(self, queue, no_ack=False, **kwargs):
@@ -674,6 +694,7 @@ class Channel(AbstractChannel, base.StdChannel):
         """Change QoS settings for this channel.
 
         Note:
+        ----
             Only `prefetch_count` is supported.
         """
         self.qos.prefetch_count = prefetch_count
@@ -696,9 +717,10 @@ class Channel(AbstractChannel, base.StdChannel):
     def _lookup(self, exchange, routing_key, default=None):
         """Find all queues matching `routing_key` for the given `exchange`.
 
-        Returns:
-            str: queue name -- must return the string `default`
-                if no queues matched.
+        Returns
+        -------
+            list[str]: queue names -- must return `[default]`
+                if default is set and no queues matched.
         """
         if default is None:
             default = self.deadletter_queue
@@ -727,7 +749,8 @@ class Channel(AbstractChannel, base.StdChannel):
         message = message.serializable()
         message['redelivered'] = True
         for queue in self._lookup(
-                delivery_info['exchange'], delivery_info['routing_key']):
+            delivery_info['exchange'],
+                delivery_info['routing_key']):
             self._put(queue, message)
 
     def _restore_at_beginning(self, message):
@@ -763,7 +786,8 @@ class Channel(AbstractChannel, base.StdChannel):
     def flow(self, active=True):
         """Enable/disable message flow.
 
-        Raises:
+        Raises
+        ------
             NotImplementedError: as flow
                 is not implemented by the base virtual implementation.
         """
@@ -788,12 +812,12 @@ class Channel(AbstractChannel, base.StdChannel):
         self.exchange_types = None
 
     def encode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).encode(body), encoding
         return body, encoding
 
     def decode_body(self, body, encoding=None):
-        if encoding:
+        if encoding and encoding.lower() != 'utf-8':
             return self.codecs.get(encoding).decode(body)
         return body
 
@@ -804,7 +828,12 @@ class Channel(AbstractChannel, base.StdChannel):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
     @property
@@ -831,6 +860,7 @@ class Channel(AbstractChannel, base.StdChannel):
         The value is limited to within a boundary of 0 to 9.
 
         Note:
+        ----
             Higher value has more priority.
         """
         try:
@@ -843,6 +873,22 @@ class Channel(AbstractChannel, base.StdChannel):
             priority = self.default_priority
 
         return (self.max_priority - priority) if reverse else priority
+
+    def _get_free_channel_id(self):
+        # Cast to a set for fast lookups, and keep stored as an array
+        # for lower memory usage.
+        used_channel_ids = set(self.connection._used_channel_ids)
+
+        for channel_id in range(1, self.connection.channel_max + 1):
+            if channel_id not in used_channel_ids:
+                self.connection._used_channel_ids.append(channel_id)
+                return channel_id
+
+        raise ResourceError(
+            'No free channel ids, current={}, channel_max={}'.format(
+                len(self.connection.channels),
+                self.connection.channel_max), (20, 10),
+        )
 
 
 class Management(base.Management):
@@ -864,15 +910,13 @@ class Transport(base.Transport):
     """Virtual transport.
 
     Arguments:
+    ---------
         client (kombu.Connection): The client this is a transport for.
     """
 
     Channel = Channel
     Cycle = FairCycle
     Management = Management
-
-    #: Global :class:`BrokerState` containing declared exchanges and bindings.
-    state = BrokerState()
 
     #: :class:`~kombu.utils.scheduling.FairCycle` instance
     #: used to fairly drain events from channels (set by constructor).
@@ -901,6 +945,8 @@ class Transport(base.Transport):
 
     def __init__(self, client, **kwargs):
         self.client = client
+        # :class:`BrokerState` containing declared exchanges and bindings.
+        self.state = BrokerState()
         self.channels = []
         self._avail_channels = []
         self._callbacks = {}
@@ -908,9 +954,7 @@ class Transport(base.Transport):
         polling_interval = client.transport_options.get('polling_interval')
         if polling_interval is not None:
             self.polling_interval = polling_interval
-        self._avail_channel_ids = array(
-            ARRAY_TYPE_H, range(self.channel_max, 0, -1),
-        )
+        self._used_channel_ids = array(ARRAY_TYPE_H)
 
     def create_channel(self, connection):
         try:
@@ -922,7 +966,11 @@ class Transport(base.Transport):
 
     def close_channel(self, channel):
         try:
-            self._avail_channel_ids.append(channel.channel_id)
+            try:
+                self._used_channel_ids.remove(channel.channel_id)
+            except ValueError:
+                # channel id already removed
+                pass
             try:
                 self.channels.remove(channel)
             except ValueError:
@@ -935,7 +983,7 @@ class Transport(base.Transport):
         # this channel is then used as the next requested channel.
         # (returned by ``create_channel``).
         self._avail_channels.append(self.create_channel(self))
-        return self     # for drain events
+        return self  # for drain events
 
     def close_connection(self, connection):
         self.cycle.close()

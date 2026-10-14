@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import pytest
@@ -10,7 +12,7 @@ from t.mocks import Transport
 class ExchangeCase:
     type = None
 
-    def setup(self):
+    def setup_method(self):
         if self.type:
             self.e = self.type(Connection(transport=Transport).channel())
 
@@ -68,8 +70,8 @@ class test_Topic(ExchangeCase):
         ('stock.us.*', None, 'rBar'),
     ]
 
-    def setup(self):
-        ExchangeCase.setup(self)
+    def setup_method(self):
+        super().setup_method()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
                       for rkey, _, queue in self.table]
 
@@ -82,6 +84,8 @@ class test_Topic(ExchangeCase):
         ('eFoo', 'stock.europe.OSE', None, {'rFoo'}),
         ('eFoo', 'stockxeuropexOSE', None, set()),
         ('eFoo', 'candy.schleckpulver.snap_crackle', None, set()),
+        # '*' is a single word: only 'stock.#' may match a longer key.
+        ('eFoo', 'stock.us.nasdaq.tech', None, {'rFoo'}),
     ])
     def test_lookup(self, exchange, routing_key, default, expected):
         assert self.e.lookup(
@@ -113,8 +117,8 @@ class test_TopicMultibind(ExchangeCase):
         ('#', None, 'rFoo'),
     ]
 
-    def setup(self):
-        ExchangeCase.setup(self)
+    def setup_method(self):
+        super().setup_method()
         self.table = [(rkey, self.e.key_to_pattern(rkey), queue)
                       for rkey, _, queue in self.table]
 

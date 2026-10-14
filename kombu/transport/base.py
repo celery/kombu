@@ -2,8 +2,11 @@
 # flake8: noqa
 
 
+from __future__ import annotations
+
 import errno
 import socket
+from typing import TYPE_CHECKING
 
 from amqp.exceptions import RecoverableConnectionError
 
@@ -13,15 +16,18 @@ from kombu.utils.functional import dictfilter
 from kombu.utils.objects import cached_property
 from kombu.utils.time import maybe_s_to_ms
 
+if TYPE_CHECKING:
+    from types import TracebackType
+
 __all__ = ('Message', 'StdChannel', 'Management', 'Transport')
 
-RABBITMQ_QUEUE_ARGUMENTS = {  # type: Mapping[str, Tuple[str, Callable]]
+RABBITMQ_QUEUE_ARGUMENTS = {
     'expires': ('x-expires', maybe_s_to_ms),
     'message_ttl': ('x-message-ttl', maybe_s_to_ms),
     'max_length': ('x-max-length', int),
     'max_length_bytes': ('x-max-length-bytes', int),
     'max_priority': ('x-max-priority', int),
-}
+}  # type: Mapping[str, Tuple[str, Callable]]
 
 
 def to_rabbitmq_queue_arguments(arguments, **options):
@@ -48,7 +54,8 @@ def to_rabbitmq_queue_arguments(arguments, **options):
         max_priority (int): Max priority steps for queue.
             This will be converted to ``x-max-priority`` int.
 
-    Returns:
+    Returns
+    -------
         Dict: RabbitMQ compatible queue arguments.
     """
     prepared = dictfilter(dict(
@@ -89,7 +96,8 @@ class StdChannel:
     def after_reply_message_received(self, queue):
         """Callback called after RPC reply received.
 
-        Notes:
+        Notes
+        -----
            Reply queue semantics: can be used to delete the queue
            after transient reply message received.
         """
@@ -100,7 +108,12 @@ class StdChannel:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
 
@@ -132,6 +145,7 @@ class Implements(dict):
 
 default_transport_capabilities = Implements(
     asynchronous=False,
+    batch_publish=False,
     exchange_type=frozenset(['direct', 'topic', 'fanout', 'headers']),
     heartbeats=False,
 )

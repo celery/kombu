@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 from unittest.mock import Mock
 
 import pytest
 
 from kombu import Connection, Producer, pools
-from kombu.connection import ConnectionPool
+from kombu.connection import ConnectionPool, PooledConnection
 from kombu.utils.collections import eqhash
 
 
@@ -14,12 +16,12 @@ class test_ProducerPool:
 
         def __init__(self, *args, **kwargs):
             self.instance = Mock()
-            pools.ProducerPool.__init__(self, *args, **kwargs)
+            super().__init__(*args, **kwargs)
 
         def Producer(self, connection):
             return self.instance
 
-    def setup(self):
+    def setup_method(self):
         self.connections = Mock()
         self.pool = self.Pool(self.connections, limit=10)
 
@@ -34,6 +36,18 @@ class test_ProducerPool:
         with pytest.raises(IOError):
             self.pool.create_producer()
         conn.release.assert_called_with()
+
+    def test_exception_during_connection_use(self):
+        """Tests that the connection is closed in case of an exception."""
+        with pytest.raises(IOError):
+            with self.pool.acquire() as producer:
+                producer.__connection__ = Mock(spec=PooledConnection)
+                producer.__connection__._pool = self.connections
+                producer.publish = Mock()
+                producer.publish.side_effect = IOError()
+                producer.publish("test data")
+
+        self.connections.replace.assert_called_once()
 
     def test_prepare_release_connection_on_error(self):
         pp = Mock()
@@ -139,7 +153,7 @@ class test_PoolGroup:
     def test_delitem(self):
         g = self.MyGroup()
         g['foo']
-        del(g['foo'])
+        del g['foo']
         assert 'foo' not in g
 
     def test_Connections(self):
@@ -242,3 +256,39 @@ class test_fun_PoolGroup:
         r1.release()
         assert not p1._dirty
         assert not p3._dirty
+
+
+class test_bool_limit:
+    def test_set_limit_rejects_bool(self):
+        """bool subclasses int; set_limit(True) must not silently become 1."""
+        import pytest
+
+        from kombu import pools
+
+        prev = pools.get_limit()
+        try:
+            for value in (True, False):
+                with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                    pools.set_limit(value)
+            pools.set_limit(7)
+            assert pools.get_limit() == 7
+        finally:
+            pools.set_limit(prev)
+
+    def test_resource_rejects_bool_limit(self):
+        """bool subclasses int; Resource(limit=True) must not silently become 1."""
+        import pytest
+
+        from kombu.connection import Connection
+
+        for value in (True, False):
+            with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                Connection("memory://").Pool(limit=value)
+        p = Connection("memory://").Pool(limit=3)
+        assert p.limit == 3
+        for value in (True, False):
+            with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                p.resize(value)
+            with pytest.raises(TypeError, match="limit must be an int, not bool"):
+                p.limit = value
+        assert p.limit == 3

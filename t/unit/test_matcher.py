@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from kombu.matcher import (MatcherNotInstalled, fnmatch, match, register,

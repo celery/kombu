@@ -4,6 +4,1359 @@
  Change history
 ================
 
+
+Unreleased
+===
+
+- Fix emergency state dumps to write protocol-0 pickle data when serialization
+  succeeds. Failed virtual-transport message restoration now dumps serializable
+  message dictionaries, including bodies, properties, and headers, instead of
+  ``Message`` objects whose text representation omitted the body. Read a
+  successful dump using ``pickle.load``; only unpickle files you trust.
+  Message bodies use the transport's encoding (base64 by default for virtual
+  transports); use ``channel.message_to_python(entry)`` to reconstruct a message.
+  On Python 3, the helper's default file previously always contained the
+  ``pformat`` fallback, so consumers reading dumps as text must account for
+  the format change. Custom ``dump`` callables still receive files opened in
+  text mode. Custom ``open_file`` callbacks returning text streams,
+  including codec wrappers, retain the text fallback. Failed serialization
+  discards partial output where ``seek`` and ``truncate`` are supported;
+  otherwise it tries to append the fallback after any partial output on a
+  best-effort basis. (#2659)
+=======
+.. _version-5.7.0b1:
+
+5.7.0b1
+=======
+:release-date: 6 October, 2026
+:release-by: Asif Saif Uddin
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update confluent-kafka version to 2.15.1 (#2666)
+- Update kazoo version to 2.11.0 (#2667)
+- Update grpcio version to 1.84.0 (#2668)
+- Update pgmq version to 1.1.4 (#2670)
+- Upgrade grpcio and protobuf dependencies (#2669)
+- Stop channel retries at the same max_retries bound as connections. (#2671)
+- Reject bool for pool limit (#2657)
+- Update sqlalchemy requirement from <2.1,>=1.4.48 to >=1.4.54,<2.1 (#2521)
+- Avoid SQS backoff when acknowledging an invalid receipt handle (#2678)
+- Fix(sqs): scope queue cache, noack set and predefined clients to Connection (#2676)
+- Update Redis version requirement minimum to 6.4.0 (#2682)
+- Fix(hub): wake the event loop when call_soon() is called from another thread (#2694)
+- Fix: recover from broker-closed AMQP connections when publishing to Azure Service Bus (#2693)
+- Honor autoretry options when opening the initial connection (#2690)
+- Scope the zookeeper queue cache to the channel (#2681)
+- Fix(azurestoragequeues): scope queue name cache to Connection (#2679)
+- Track unacked Kafka messages per QoS instance (#2680)
+- Don't mask open errors in the filesystem transport (#2683)
+- Fix(gcpubsub): pass Duration fields as timedelta (#2692)
+- SQS: accept delay_seconds and clamp per-message delays to the range SQS allows (#2705)
+- Fix(sqs): release the prefetch slot when DeleteMessage fails on the network (#2710)
+- Update amqp version constraint.
+
+
+
+.. _version-5.7.0a1:
+
+5.7.0a1
+=======
+:release-date: 21 September, 2026
+:release-by: Asif Saif Uddin
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Add missing reprkwargs export to utils module (#2436)
+- Add support for fair queue in SQS (#2342)
+- Support redis queue expiration (#2251)
+- Fix Logwrapped not supporting context manager protocol (#2461)
+- Cycle through host before calling errback (#2331)
+- Allow enable_exactly_once_delivery for gcpubsub (#2431)
+- Feat(gcpubsub): optimize topic existence check (#2462)
+- Fix active_queues to preserve queue ordering (#2464)
+- fix: allow OSError to propagate to errno-specific handler in unregister() (#2471)
+- Added support for SQS fanout via AWS SNS (#2372)
+- Use compression.zstd (PEP-784) (#2395)
+- Fix#2463 gevent concurrent error (#2478)
+- Fix for SQS transport deadlock (#2479)
+- ChannelPromise: ensure the AttributeError does not appear in the traceback when the contract raises an exception - #2486
+- Fix RabbitMQ 4.x crash: global QoS not supported on classic queues (#2481)
+- Fix: SQS polling_interval transport option ignored in async event loop #2439 (#2489)
+- Support callable passwords for credential refresh on reconnect (#2476)
+- Fix#10205 redis-timer-connection-error (#2498)
+- Fix(redis): prevent timer callbacks from crashing event loop on connection error
+- Fix: gcpubsub transport crash when using Pub/Sub emulator (#2493)
+- Fix(redis): do not remove on_poll_start from on_tick on disconnect (#2492)
+- Allow dots in Azure Service Bus queue names (#2221)
+- Pass through Redis credential_provider from connection_kwargs during client creation in redis transport (#2507)
+- Implement missing _delete() method of filesystem.Channel (#2470)
+- fix delivery tag collision in pubsub transport (#2487)
+- fix: RabbitMQ 4.3.0 compatibility (#2531)
+- feat(gcpubsub): update existing subscriptions on config changes (#2532)
+- fix(azureservicebus): scope queue cache and noack set to Connection (#2543)
+- Azure Service Bus: add AutoLockRenewer support via use_lock_renewal transport option (#2542)
+- Prefixed native delayed delivery (#2540)
+- Use logger instead of print when restoring unacked messages (#2551)
+- Defer _reset_cycle call until after updating _active_queue (#2553)
+- Use logging instead of printing in emergency_dump_state (#2557)
+- Fix azure service bus automatic lock renewal not working on gevent, move automatic lock renewal (#2545)
+- Fix KeyError(<fileno>) crash in Redis transport on_readable/handle_event (#2561)
+- Honor the delivery_mode argument in Exchange.Message
+- Redis: deliver rotating StreamingCredentialProvider tokens to long-lived BRPOP and pub/sub connections (#2563)
+- Fix(SQS): coerce visibility_timeout to a whole number of seconds (#2581)
+- Make the Redis ack-emulation restore cadence configurable (#2558)
+- Fix(serialization): support memoryview and bytearray in the YAML decoder
+- Add transport-aware batch publishing with Redis pipelines (#2572) 
+- Fix(redis): treat stale-fd KeyError as a connection error (#2592)
+- Strip existing delay prefix before adding a new one on retry (#2591)
+- Redis: drop half-open pub/sub connections the subclient health check can't see (#2590)
+- Fix: add missing retry to publisher.publish in gcpubsub _put (#2465)
+- fix: Queue.from_dict no longer drops queue options (#2580)
+- Stop the topic '*' wildcard from matching across dots (#2568)
+- Ensure consumer recovers from broker connection restart/issues (#2593)
+- Fix(utils): don't evict a key when overwriting an existing LRUCache entry (#2621)
+- Fix(utils): never sleep longer than interval_max in retry_over_time (#2588)
+- Raise ValueError when fileno() is given None. (#2623)
+- fix(redis): import from redis submodules (#2625)
+- fix(redis): add sentinel_fanout_compat transport option for mixed-version Sentinel clusters (#2626)
+- fix(redis): replace deprecated ZREVRANGEBYSCORE with ZRANGE BYSCORE REV (#2628)
+- transport/redis: close Sentinel node connections in _disconnect_pools (fixes#1108) (#2631)
+- Add PGMQ transport for PostgreSQL message queues (#2559) 
+- Fix Redis consumer registration cleanup after disconnect (#2630)
+- Fix(redis): catch ValueError in _on_connection_disconnect (#2640)
+- Fix(http): close the async HTTP client's pending requests when the hub closes (#2648)
+- Update amqp version to 5.4.0 (#2660)
+- Restore pypi long description with a bug fix (#2661)
+- Validate exchange names in the filesystem transport, which interpolated
+  them into a path under ``control_folder`` without sanitisation (#2644).
+- Fix :class:`kombu.utils.limits.TokenBucket` over-admitting on the first
+  burst after an idle period. The bucket only advanced its timestamp while
+  it was below capacity, so the time it spent sitting full was later counted
+  as refill time and it topped itself straight back up right after being
+  drained. That granted one extra full refill, so a ``capacity=1`` bucket
+  admitted two consumes instead of one (#680).
+- Fix(filesystem): match queue name exactly, not as a substring (#2647)
+- Fix(azureservicebus): keep renewal receiver out of messages (#2655)
+- Added checks to reject URLs containing dotted schemes (#2642)
+
+
+
+.. _version-5.6.2:
+
+5.6.2
+=====
+:release-date: 29 December, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Improve error handling in GCP Pub/Sub ack deadline extension (#2430)
+- Fix SentinelChannel to pass ACL credentials to master_for() (#2426)
+- Fix credential_provider compatibility with redis-py < 5.3.0 (#2423)
+- Simplify requirements given Py3.9+ baseline (#2414)
+- Prepare for release: v5.6.2 (#2434)
+
+.. _version-5.6.1:
+
+5.6.1
+=====
+:release-date: 25 November, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- fix: ensure hub close does also remove global event loop reference (#2404)
+- fix: default value for SQS's receive message (#2405)
+- Feat: add support for credential_provider to redis broker (#2408)
+- Prepare for release: v5.6.1 (#2416)
+
+.. _version-5.6.0:
+
+5.6.0
+=====
+:release-date: 1 November, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+QoS Max Prefetch Limit
+----------------------
+
+`PR #2348 <https://github.com/celery/kombu/pull/2348>`_
+
+Prevent Out Of Memory crashes when queues flood with ETA/countdown tasks. The new optional ``max_prefetch`` parameter caps how many messages workers hold in memory. Defaults to unlimited (``None``) to preserve existing behavior.
+
+.. code-block:: python
+
+    from kombu.common import QoS
+
+    # Limit prefetch to maximum 100 messages
+    qos = QoS(callback=consumer.qos, initial_value=10, max_prefetch=100)
+
+Redis Polling Interval Support
+------------------------------
+
+`PR #2346 <https://github.com/celery/kombu/pull/2346>`_
+
+Fix Redis transport to properly propagate ``polling_interval`` and ``brpop_timeout`` from ``transport_options`` to the Channel's ``_brpop_start`` timeout.
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {"polling_interval": 10}
+
+Leave it unset to keep the familiar 1-second default, or raise it to slow down idle polling.
+
+Pidbox RabbitMQ 4.x Compatibility
+---------------------------------
+
+`PR #2338 <https://github.com/celery/kombu/pull/2338>`_
+
+Let pidbox queues work on RabbitMQ 4.x brokers that reject transient, non-exclusive queues.
+
+MongoDB Transport Improvements
+------------------------------
+
+`PR #2347 <https://github.com/celery/kombu/pull/2347>`_
+
+URI options now come through lowercase and flattened again, so settings like ``replicaSet=test_rs`` show up as ``options['replicaset']``.
+
+Resource Pool Gevent Compatibility
+----------------------------------
+
+`PR #2314 <https://github.com/celery/kombu/pull/2314>`_
+
+Restore compatibility with recent gevent releases that monkey-patch the standard library queue.
+
+Timezone-aware UTC Timestamps
+-----------------------------
+
+`PR #2355 <https://github.com/celery/kombu/pull/2355>`_
+
+Replace every usage of ``datetime.utcnow()`` with ``datetime.now(timezone.utc)`` to return timezone-aware UTC datetimes.
+
+Redis Client Name Support
+----------------------------------
+
+`PR #2367 <https://github.com/celery/kombu/pull/2367>`_
+
+Support for propagating the ``client_name`` connection parameter through the Redis transport (including Sentinel) so that connections appear with meaningful names in monitoring tools.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+Since v5.6.0rc2:
+- Test on Python 3.14 (#2361)
+- Revert "Revert "Bump pymongo from 4.10.1 to 4.15.3"" (#2401)
+- Prepare for release: v5.6.0 (#2402)
+
+Since v5.5.4:
+- Revert "Feature: urllib3 instead of curl" (#2261)
+- Fix #2286 : SQS - Enhance support for receiving message attributes. Allow string in msg body. (#2300)
+- Update gcpubsub.txt for protobuf (#2320)
+- fix body bytes encoding in curl.py (#2322)
+- Hotfix(aws_ssl): validate secure connection (#2323)
+- Update setup.py to remove deprecation warning (#2298)
+- Update protobuf to 5.29.5 (#2199)
+- Allow setting `tags` in initial `boto3.sqs.create_queue` call via `transport_options` (#2321)
+- Add sts_token_buffer_time parameter to transport options (#2216)
+- Docs: Fix incorrect "added in 5.6.0" note for sts_token_timeout in SQS transport docs (#2327)
+- SQS: when redelivering a message apply visibility timeout based on wait_time_seconds (long polling time) (#2049)
+- Bump redis requirement to <6 to support v5.3 (#2329)
+- Pidbox: support queue_exclusive / queue_durable (RabbitMQ 4.x) (#2338)
+- Prepare for (pre) release: v5.6.0b1 (#2343)
+- Normalize mongodb options keys (#2347)
+- Redis: propagate polling_interval from transport options to _brpop_start timeout (#2346)
+- Add max_prefetch limit to QoS class and related tests (#2348)
+- Prepare for (pre) release: v5.6.0b2 (#2349)
+- Remove custom `LifoQueue` class conflicting with recent gevent (#2314)
+- Replace deprecated datetime.utcnow() with datetime.now(timezone.utc) (#2355)
+- Prepare for (pre) release: v5.6.0b3 (#2359)
+- Bump mypy from 1.14.1 to 1.18.1 AGAIN (#2363)
+- Remove nested query from sqlalchemy _size (#2315)
+- Remove misused argument for autoflake (#2368)
+- Support client_name connection parameter for redis transport (#2367)
+- Prepare for (pre) release: v5.6.0rc1 (#2369)
+- Update Redis version constraint to <6.2 (#2377)
+- remove Python 3.8 from CI as EOL (#2241)
+- Revert "Bump pymongo from 4.10.1 to 4.15.3" (#2384)
+- Update requirements to remove backports.zoneinfo (#2391)
+- Update qpid-python and qpid-tools versions (#2392)
+- Remove Qpid transport from requirements of func test (#2393)
+- Fix comment grammar in entity_name test (#2394)
+- Prepare for (pre) release: v5.6.0rc2 (#2396)
+- Test on Python 3.14 (#2361)
+- Revert "Revert "Bump pymongo from 4.10.1 to 4.15.3"" (#2401)
+- Prepare for release: v5.6.0 (#2402)
+
+.. _version-5.6.0rc2:
+
+5.6.0rc2
+========
+:release-date: 20 October, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+QoS Max Prefetch Limit
+----------------------
+
+`PR #2348 <https://github.com/celery/kombu/pull/2348>`_
+
+Prevent Out Of Memory crashes when queues flood with ETA/countdown tasks. The new optional ``max_prefetch`` parameter caps how many messages workers hold in memory. Defaults to unlimited (``None``) to preserve existing behavior.
+
+.. code-block:: python
+
+    from kombu.common import QoS
+
+    # Limit prefetch to maximum 100 messages
+    qos = QoS(callback=consumer.qos, initial_value=10, max_prefetch=100)
+
+Redis Polling Interval Support
+------------------------------
+
+`PR #2346 <https://github.com/celery/kombu/pull/2346>`_
+
+Fix Redis transport to properly propagate ``polling_interval`` and ``brpop_timeout`` from ``transport_options`` to the Channel's ``_brpop_start`` timeout.
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {"polling_interval": 10}
+
+Leave it unset to keep the familiar 1-second default, or raise it to slow down idle polling.
+
+Pidbox RabbitMQ 4.x Compatibility
+---------------------------------
+
+`PR #2338 <https://github.com/celery/kombu/pull/2338>`_
+
+Let pidbox queues work on RabbitMQ 4.x brokers that reject transient, non-exclusive queues.
+
+MongoDB Transport Improvements
+------------------------------
+
+`PR #2347 <https://github.com/celery/kombu/pull/2347>`_
+
+URI options now come through lowercase and flattened again, so settings like ``replicaSet=test_rs`` show up as ``options['replicaset']``.
+
+Resource Pool Gevent Compatibility
+----------------------------------
+
+`PR #2314 <https://github.com/celery/kombu/pull/2314>`_
+
+Restore compatibility with recent gevent releases that monkey-patch the standard library queue.
+
+Timezone-aware UTC Timestamps
+-----------------------------
+
+`PR #2355 <https://github.com/celery/kombu/pull/2355>`_
+
+Replace every usage of ``datetime.utcnow()`` with ``datetime.now(timezone.utc)`` to return timezone-aware UTC datetimes.
+
+Redis Client Name Support
+----------------------------------
+
+`PR #2367 <https://github.com/celery/kombu/pull/2367>`_
+
+Support for propagating the ``client_name`` connection parameter through the Redis transport (including Sentinel) so that connections appear with meaningful names in monitoring tools.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update Redis version constraint to <6.2 (#2377)
+- remove Python 3.8 from CI as EOL (#2241)
+- Revert "Bump pymongo from 4.10.1 to 4.15.3" (#2384)
+- Update requirements to remove backports.zoneinfo (#2391)
+- Update qpid-python and qpid-tools versions (#2392)
+- Remove Qpid transport from requirements of func test (#2393)
+- Fix comment grammar in entity_name test (#2394)
+- Prepare for (pre) release: v5.6.0rc2 (#2396)
+
+.. _version-5.6.0rc1:
+
+5.6.0rc1
+========
+:release-date: 28 September, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+QoS Max Prefetch Limit
+----------------------
+
+`PR #2348 <https://github.com/celery/kombu/pull/2348>`_
+
+Prevent Out Of Memory crashes when queues flood with ETA/countdown tasks. The new optional ``max_prefetch`` parameter caps how many messages workers hold in memory. Defaults to unlimited (``None``) to preserve existing behavior.
+
+.. code-block:: python
+
+    from kombu.common import QoS
+
+    # Limit prefetch to maximum 100 messages
+    qos = QoS(callback=consumer.qos, initial_value=10, max_prefetch=100)
+
+Redis Polling Interval Support
+------------------------------
+
+`PR #2346 <https://github.com/celery/kombu/pull/2346>`_
+
+Fix Redis transport to properly propagate ``polling_interval`` and ``brpop_timeout`` from ``transport_options`` to the Channel's ``_brpop_start`` timeout.
+
+.. code-block:: python
+
+    app.conf.broker_transport_options = {"polling_interval": 10}
+
+Leave it unset to keep the familiar 1-second default, or raise it to slow down idle polling.
+
+Pidbox RabbitMQ 4.x Compatibility
+---------------------------------
+
+`PR #2338 <https://github.com/celery/kombu/pull/2338>`_
+
+Let pidbox queues work on RabbitMQ 4.x brokers that reject transient, non-exclusive queues.
+
+MongoDB Transport Improvements
+------------------------------
+
+`PR #2347 <https://github.com/celery/kombu/pull/2347>`_
+
+URI options now come through lowercase and flattened again, so settings like ``replicaSet=test_rs`` show up as ``options['replicaset']``.
+
+Resource Pool Gevent Compatibility
+----------------------------------
+
+`PR #2314 <https://github.com/celery/kombu/pull/2314>`_
+
+Restore compatibility with recent gevent releases that monkey-patch the standard library queue.
+
+Timezone-aware UTC Timestamps
+-----------------------------
+
+`PR #2355 <https://github.com/celery/kombu/pull/2355>`_
+
+Replace every usage of ``datetime.utcnow()`` with ``datetime.now(timezone.utc)`` to return timezone-aware UTC datetimes.
+
+Redis Client Name Support
+----------------------------------
+
+`PR #2367 <https://github.com/celery/kombu/pull/2367>`_
+
+Support for propagating the ``client_name`` connection parameter through the Redis transport (including Sentinel) so that connections appear with meaningful names in monitoring tools.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump mypy from 1.14.1 to 1.18.1 AGAIN (#2363)
+- Remove nested query from sqlalchemy _size (#2315)
+- Remove misused argument for autoflake (#2368)
+- Support client_name connection parameter for redis transport (#2367)
+- Prepare for (pre) release: v5.6.0rc1 (#2369)
+
+.. _version-5.6.0b3:
+
+5.6.0b3
+=======
+:release-date: 15 September, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Remove custom `LifoQueue` class conflicting with recent gevent (#2314)
+- Replace deprecated datetime.utcnow() with datetime.now(timezone.utc) (#2355)
+- Prepare for (pre) release: v5.6.0b3 (#2359)
+
+.. _version-5.6.0b2:
+
+5.6.0b2
+=======
+:release-date: 12 August, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Normalize mongodb options keys (#2347)
+- Redis: propagate polling_interval from transport options to _brpop_start timeout (#2346)
+- Add max_prefetch limit to QoS class and related tests (#2348)
+- Prepare for (pre) release: v5.6.0b2 (#2349)
+
+.. _version-5.6.0b1:
+
+5.6.0b1
+=======
+:release-date: 29 July, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Revert "Feature: urllib3 instead of curl" (#2261)
+- Fix #2286 : SQS - Enhance support for receiving message attributes. Allow string in msg body. (#2300)
+- Update gcpubsub.txt for protobuf (#2320)
+- fix body bytes encoding in curl.py (#2322)
+- Hotfix(aws_ssl): validate secure connection (#2323)
+- Update setup.py to remove deprecation warning (#2298)
+- Update protobuf to 5.29.5 (#2199)
+- Allow setting `tags` in initial `boto3.sqs.create_queue` call via `transport_options` (#2321)
+- Add sts_token_buffer_time parameter to transport options (#2216)
+- Docs: Fix incorrect "added in 5.6.0" note for sts_token_timeout in SQS transport docs (#2327)
+- SQS: when redelivering a message apply visibility timeout based on wait_time_seconds (long polling time) (#2049)
+- Bump redis requirement to <6 to support v5.3 (#2329)
+- Pidbox: support queue_exclusive / queue_durable (RabbitMQ 4.x) (#2338)
+- Prepare for (pre) release: v5.6.0b1 (#2343)
+
+.. _version-5.5.4:
+
+5.5.4
+=====
+:release-date: 01 June, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- chore: add Codecov test analytics (#2290)
+- Added DeepWiki to README (#2295)
+- redis.connection.ConnectionPool API change: get_connection does not accept arguments (#2294)
+- Update mongodb.txt to match celery version (#2297)
+- Update ubuntu version as per blacksmiths update (#2301)
+- Resolve logger warnings (#2302)
+- Fixed lint error from `kombu/transport/native_delayed_delivery.py` (#2308)
+- Prepare for release: v5.5.4 (#2309)
+
+.. _version-5.5.3:
+
+5.5.3
+=====
+:release-date: 16 Apr, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Fix error of double normalization options from URI in mongodb transport (#2282)
+- Move use of typing_extensions into TYPE_CHECKING block (#2283)
+- Do not pin package tzdata anymore (#2274)
+- Typo in pools's documentation (#2285)
+- Prepare for release: v5.5.3 (#2288)
+
+.. _version-5.5.2:
+
+5.5.2
+=====
+:release-date: 31 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump tzdata from 2025.1 to 2025.2 (#2268)
+- Downgrad kafka version to make the CI green again (#2271)
+- Attempt to fix retry loop in `maybe_declare()` when broken connection (#2275)
+- Prepare for release: v5.5.2 (#2278)
+
+.. _version-5.5.1:
+
+5.5.1
+=====
+:release-date: 24 Mar, 2025
+:release-by: Tomer Nosrati
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update trove classifier with missing python 3.13 (#2262)
+- Fix native_delayed_delivery for queue with explicit bindings (#2263)
+- SQS: Fix Query Protocol Content-Type header (#2266)
+- SQS: More Protocol Tests (#2267)
+- Prepare for release: v5.5.1 (#2270)
+
+.. _version-5.5.0:
+
+5.5.0
+=====
+:release-date: 13 Mar, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Pin tzdata to latest version 2024.2 (#2121)
+- Refactored CI (#2122)
+- Added unit tests to "tox -e parallel" environment (#2123)
+- Improve pre-commit checks and fix all new lint errors (#2124)
+- Removed codecov flags (#2126)
+- Pin pre-commit to latest version 3.8.0 (#2125)
+- Limit redis-py <5.1.0 (#2132)
+- Removed "on push" from the linter GitHub Actions workflow (#2133)
+- Bump pymongo from 4.9.1 to 4.10.0 (#2130)
+- Update pymongo to 4.10.1 (#2136)
+- fix(pytest): skip file-lock test on Windows (#2138)
+- Apply errback and callback when retry occurs (#2129)
+- Pin pre-commit to latest version 4.0.0 (Python 3.9+) (#2140)
+- Pin pre-commit to latest version 4.0.1 (#2144)
+- Add native delayed delivery API to kombu (#2128)
+- Add support for Google Pub/Sub as transport broker (#2147)
+- Update the transport options according to the retry policy (#2148)
+- Feature: urllib3 instead of curl (#2134)
+- Update mypy to 1.12.0 (#2149)
+- Prepare for (pre) release: v5.5.0rc1 (#2150)
+- Added missing changelog highlight for Google Pub/Sub (#2151)
+- Bump grpcio from 1.66.2 to 1.67.0 (#2158)
+- Fix: restrict google-cloud-pubsub version (#2160)
+- Update mypy to 1.12.1 (#2164)
+- Added a unit test that proves timeout is used when retry policy is specified (#2166)
+- Fix regression from #2148 (#2165)
+- Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2 (#2168)
+- Revert "Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2" (#2169)
+- Update mypy to 1.13.0 (#2172)
+- Fix: restrict google protobuf version (#2175)
+- Add support for Python 3.13 (#2052)
+- Apply retry policy to maybe_declare() (#2174)
+- Pin redis to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.0 (#2178)
+- Added confirm_timeout argument to publish() (#2167)
+- Prepare for (pre) release: v5.5.0rc2 (#2181)
+- Bump pytest-cov from 5.0.0 to 6.0.0 (#2183)
+- Add documentation for debug logs environment variables (#2186)
+- Add documentation for py-amqp transport options (#2187)
+- Bump codecov/codecov-action from 4 to 5 (#2189)
+- Update pytest to 8.3.4 (#2196)
+- Update redis requirement from !=4.5.5,!=5.0.2,<=5.2.0,>=4.5.2 to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.1 (#2203)
+- Close connections in case of an exception (#2201)
+- Bump pytest-freezer from 0.4.8 to 0.4.9 (#2205)
+- Bump mypy from 1.13.0 to 1.14.0 (#2211)
+- fix(sqs): don't crash on multiple predefined queues with aws sts session (#2224)
+- Bump mypy from 1.14.0 to 1.14.1 (#2215)
+- Bump tzdata from 2024.2 to 2025.1 (#2230)
+- fix: interpret the ssl_check_hostname as a boolean (#2229)
+- Revert "Resolving TypeError, during version unpacking " (#2225)
+- Bump flake8 from 7.1.1 to 7.1.2 (#2244)
+- Prepare for (pre) release: v5.5.0rc3 (#2247)
+- Bump pytest from 8.3.4 to 8.3.5 (#2253)
+- Update delayed_infra example for better clarity (#2252)
+- SQS: Support Async JSON SQS Protocol & Message Attributes (#2226)
+- Prepare for release: v5.5.0 (#2255)
+
+Changes since 5.5.0rc3
+----------------------
+
+- Bump pytest from 8.3.4 to 8.3.5 (#2253)
+- Update delayed_infra example for better clarity (#2252)
+- SQS: Support Async JSON SQS Protocol & Message Attributes (#2226)
+
+.. _version-5.5.0rc3:
+
+5.5.0rc3
+========
+:release-date: 20 Feb, 2025
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Bump pytest-cov from 5.0.0 to 6.0.0 (#2183)
+- Add documentation for debug logs environment variables (#2186)
+- Add documentation for py-amqp transport options (#2187)
+- Bump codecov/codecov-action from 4 to 5 (#2189)
+- Update pytest to 8.3.4 (#2196)
+- Update redis requirement from !=4.5.5,!=5.0.2,<=5.2.0,>=4.5.2 to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.1 (#2203)
+- Close connections in case of an exception (#2201)
+- Bump pytest-freezer from 0.4.8 to 0.4.9 (#2205)
+- Bump mypy from 1.13.0 to 1.14.0 (#2211)
+- fix(sqs): don't crash on multiple predefined queues with aws sts session (#2224)
+- Bump mypy from 1.14.0 to 1.14.1 (#2215)
+- Bump tzdata from 2024.2 to 2025.1 (#2230)
+- fix: interpret the ssl_check_hostname as a boolean (#2229)
+- Revert "Resolving TypeError, during version unpacking " (#2225)
+- Bump flake8 from 7.1.1 to 7.1.2 (#2244)
+- Prepare for (pre) release: v5.5.0rc3 (#2247)
+
+.. _version-5.5.0rc2:
+
+5.5.0rc2
+========
+:release-date: 29 Oct, 2024
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Added missing changelog highlight for Google Pub/Sub (#2151)
+- Bump grpcio from 1.66.2 to 1.67.0 (#2158)
+- Fix: restrict google-cloud-pubsub version (#2160)
+- Update mypy to 1.12.1 (#2164)
+- Added a unit test that proves timeout is used when retry policy is specified (#2166)
+- Fix regression from #2148 (#2165)
+- Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2 (#2168)
+- Revert "Update google-cloud-pubsub requirement from <=2.20.3,>=2.18.4 to >=2.18.4,<=2.25.2" (#2169)
+- Update mypy to 1.13.0 (#2172)
+- Fix: restrict google protobuf version (#2175)
+- Add support for Python 3.13 (#2052)
+- Apply retry policy to maybe_declare() (#2174)
+- Pin redis to >=4.5.2,!=4.5.5,!=5.0.2,<=5.2.0 (#2178)
+- Added confirm_timeout argument to publish() (#2167)
+- Prepare for (pre) release: v5.5.0rc2 (#2181)
+
+.. _version-5.5.0rc1:
+
+5.5.0rc1
+========
+:release-date: 14 Oct, 2024
+:release-by: Tomer Nosrati
+
+Key Highlights
+~~~~~~~~~~~~~~
+
+Native Delayed Delivery
+-----------------------
+
+Official support to `RabbitMQ Delayed Delivery <https://docs.particular.net/transports/rabbitmq/delayed-delivery>`_,
+which is required to enable ETA tasks with quorum queues in Celery.
+
+urllib3 instead of curl
+-----------------------
+
+We can finally say goodbye to the :pypi:`pycurl` dependency and use :pypi:`urllib3` instead.
+
+Transport: Google Pub/Sub
+-------------------------
+
+New support for Google Pub/Sub as a transport broker.
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Pin tzdata to latest version 2024.2 (#2121)
+- Refactored CI (#2122)
+- Added unit tests to "tox -e parallel" environment (#2123)
+- Improve pre-commit checks and fix all new lint errors (#2124)
+- Removed codecov flags (#2126)
+- Pin pre-commit to latest version 3.8.0 (#2125)
+- Limit redis-py <5.1.0 (#2132)
+- Removed "on push" from the linter GitHub Actions workflow (#2133)
+- Bump pymongo from 4.9.1 to 4.10.0 (#2130)
+- Update pymongo to 4.10.1 (#2136)
+- fix(pytest): skip file-lock test on Windows (#2138)
+- Apply errback and callback when retry occurs (#2129)
+- Pin pre-commit to latest version 4.0.0 (Python 3.9+) (#2140)
+- Pin pre-commit to latest version 4.0.1 (#2144)
+- Add native delayed delivery API to kombu (#2128)
+- Add support for Google Pub/Sub as transport broker (#2147)
+- Update the transport options according to the retry policy (#2148)
+- Feature: urllib3 instead of curl (#2134)
+- Update mypy to 1.12.0 (#2149)
+- Prepare for (pre) release: v5.5.0rc1 (#2150)
+
+.. _version-5.4.2:
+
+5.4.2
+=====
+:release-date: 19 Sep, 2024
+:release-by: Tomer Nosrati
+
+Fixed issue with SQS #2113
+
+- tzdata is required for machines without IANA database (#2107)
+- blacksmith.sh: Migrate workflows to Blacksmith (#2112)
+- Revert "Validate SQS SSL certs by default" (#2114)
+- Update pymongo to 4.9 (#2115)
+- Bump pymongo from 4.9 to 4.9.1 (#2118)
+- Prepare for release: v5.4.2 (#2119)
+
+.. _version-5.4.1:
+
+5.4.1
+=====
+:release-date: 11 Sep, 2024
+:release-by: Tomer Nosrati
+
+- Update mypy to 1.11.2 (#2101)
+- SQS: Fixes #2091 queue_delete() method doesn't actually delete the queue (#2099)
+- Validate SQS SSL certs by default (#2094)
+- Resolving TypeError, during version unpacking (#2098)
+- Revert: allow users to disable broker heartbeats by not providing a timeout (#2097, #2016) (#2104)
+- Update msgpack to 1.1.0 (#2105)
+- Update pytest to 8.3.3 (#2108)
+- Prepare for release: v5.4.1 (#2109)
+
+.. _version-5.4.0:
+
+5.4.0
+=====
+:release-date: 6 August, 2024
+:release-by: Tomer Nosrati
+
+We want to add a special thanks to contribution `#2007 <https://github.com/celery/kombu/pull/2007>`_ by
+@awmackowiak for fixing the Redis reconnection bug. Restoring Redis stability has been an essential improvement - thank you!
+
+The rest of the changes are listed below.
+
+Changes
+-------
+- fix: Fanout exchange messages mixed across virtual databases in Redis sentinel (#1986)
+- Pin pymongo to latest version 4.7.2 (#1994)
+- enable/fix test_etcd.py (resolves #2001) (#2002)
+- Limit requests<2.32.0 due to docker-py issue 3256 (#2011)
+- enhance: allow users to disable broker heartbeats (#1998)
+- enhance: allow uses to disable broker heartbeats by not providing a timeout (#1997, #1998) (#2016)
+- chore(typing): annotate `utils/debug.py` (#1714)
+- ConnectionPool can't be used after .resize(..., reset=True) (resolves #2018) (#2024)
+- Fix Redis connections after reconnect - consumer starts consuming the tasks after crash (#2007)
+- Add support for mongodb+srv scheme (#1976)
+- Added Changelog for v5.4.0rc1 (#2033)
+- Fixed bumpversion bug with RC versions (#2034)
+- Fix typo in README.rst (#2036)
+- Reverted limiting requests<2.32.0 in requirements/default.txt but kept in tox.ini due to docker-py issue 3256 (#2041)
+- Redis transport - Redelivered messages should respect the original priority (#2026)
+- Exclude Unit 3.9 from CI (#2046)
+- Fixed CI error from excluding Python 3.9 unit tests (#2047)
+- Fixed flaky integration test: test_publish_requeue_consume() (#2048)
+- fix: don't crash on `properties`.`body_encoding`: `utf-8` (#1690)
+- chore: handle kafka transport with confluentkafka ✨ (#1574)
+- Revert "Exclude Unit 3.9 from CI #2046" (#2054)
+- fix azure service bus isinstance checks when None (#2053)
+- Added Changelog for v5.4.0rc2 (#2056)
+- Fixed typo in Changelog for v5.4.0rc2 (#2057)
+- Use logging.Logger.warning (#2058)
+- SQS: add support for passing MessageAttributes (#2059)
+- Added Changelog for v5.4.0rc3 (#2064)
+- Prepare for release: v5.4.0 (#2095)
+
+Dependencies Updates
+--------------------
+- Update mypy to 1.10.0 (#1988)
+- Update pytest to 8.2.0 (#1990)
+- Bump pytest from 8.2.0 to 8.2.1 (#2005)
+- Pin typing_extensions to latest version 4.12.1 (#2017)
+- Bump pytest from 8.2.1 to 8.2.2 (#2021)
+- Bump pymongo from 4.7.2 to 4.7.3 (#2022)
+- Update flake8 to 7.1.0 (#2028)
+- Bump mypy from 1.10.0 to 1.10.1 (#2039)
+- Bump pymongo from 4.7.3 to 4.8.0 (#2044)
+- Pin zstandard to latest version 0.23.0 (#2060)
+- Update mypy to 1.11.0 (#2062)
+- Update pytest to 8.3.1 (#2063)
+- Update typing_extensions to 4.12.2 (#2066)
+- Pin vine to latest version 5.1.0 (#2067)
+- Update pytest to 8.3.2 (#2076)
+- Pin codecov to latest version 2.1.13 (#2084)
+- Pin pytest-freezer to latest version 0.4.8 (#2085)
+- Pin msgpack to latest version 1.0.8 (#2080)
+- Pin python-consul2 to latest version 0.1.5 (#2078)
+- Pin pycouchdb to latest version 1.16.0 (#2079)
+- Pin bumpversion to latest version 0.6.0 (#2083)
+- Pin kazoo to latest version 2.10.0 (#2082)
+- Pin pyro4 to latest version 4.82 (#2081)
+- Bump mypy from 1.11.0 to 1.11.1 (#2087)
+- Bump flake8 from 7.1.0 to 7.1.1 (#2090)
+
+Changes since 5.4.0rc3
+----------------------
+- Update typing_extensions to 4.12.2 (#2066)
+- Pin vine to latest version 5.1.0 (#2067)
+- Update pytest to 8.3.2 (#2076)
+- Pin codecov to latest version 2.1.13 (#2084)
+- Pin pytest-freezer to latest version 0.4.8 (#2085)
+- Pin msgpack to latest version 1.0.8 (#2080)
+- Pin python-consul2 to latest version 0.1.5 (#2078)
+- Pin pycouchdb to latest version 1.16.0 (#2079)
+- Pin bumpversion to latest version 0.6.0 (#2083)
+- Pin kazoo to latest version 2.10.0 (#2082)
+- Pin pyro4 to latest version 4.82 (#2081)
+- Bump mypy from 1.11.0 to 1.11.1 (#2087)
+- Bump flake8 from 7.1.0 to 7.1.1 (#2090)
+- Prepare for release: v5.4.0 (#2095)
+
+.. _version-5.4.0rc3:
+
+5.4.0rc3
+========
+:release-date: 22 July, 2024
+:release-by: Tomer Nosrati
+
+- Fixed typo in Changelog for v5.4.0rc2 (#2057)
+- Use logging.Logger.warning (#2058)
+- Pin zstandard to latest version 0.23.0 (#2060)
+- Update mypy to 1.11.0 (#2062)
+- Update pytest to 8.3.1 (#2063)
+- SQS: add support for passing MessageAttributes (#2059)
+
+.. _version-5.4.0rc2:
+
+5.4.0rc2
+========
+:release-date: 11 July, 2024
+:release-by: Tomer Nosrati
+
+The ``requests`` package is no longer limited to <2.32.0 per #2041.
+Contribution #2007 by @awmackowiak was confirmed to have solved the Redis reconnection bug.
+
+- Bump mypy from 1.10.0 to 1.10.1 (#2039)
+- Fix typo in README.rst (#2036)
+- Reverted limiting requests<2.32.0 in requirements/default.txt but kept in tox.ini due to docker-py issue 3256 (#2041)
+- Redis transport - Redelivered messages should respect the original priority (#2026)
+- Exclude Unit 3.9 from CI (#2046)
+- Fixed CI error from excluding Python 3.9 unit tests (#2047)
+- Fixed flaky integration test: test_publish_requeue_consume() (#2048)
+- Bump pymongo from 4.7.3 to 4.8.0 (#2044)
+- fix: don't crash on `properties`.`body_encoding`: `utf-8` (#1690)
+- chore: handle kafka transport with confluentkafka ✨ (#1574)
+- Revert "Exclude Unit 3.9 from CI #2046" (#2054)
+- fix azure service bus isinstance checks when None (#2053)
+
+.. _version-5.4.0rc1:
+
+5.4.0rc1
+========
+:release-date: 22 June, 2024
+:release-by: Tomer Nosrati
+
+We want to add a special thanks to contribution #2007 by @awmackowiak for fixing the Redis reconnection bug.
+This release candidate aims to allow the community to test the changes and provide feedback.
+
+Please let us know if Redis is stable again!
+
+New: #1998, #2016, #2024, #1976
+The rest of the changes are bug fixes and dependency updates.
+
+Lastly, ``requests`` is limited to <2.32.0 per #2011.
+
+- Update mypy to 1.10.0 (#1988)
+- Update pytest to 8.2.0 (#1990)
+- fix: Fanout exchange messages mixed across virtual databases in Redis sentinel (#1986)
+- Pin pymongo to latest version 4.7.2 (#1994)
+- enable/fix test_etcd.py (resolves #2001) (#2002)
+- Bump pytest from 8.2.0 to 8.2.1 (#2005)
+- Limit requests<2.32.0 due to docker-py issue 3256 (#2011)
+- enhance: allow users to disable broker heartbeats (#1998)
+- enhance: allow uses to disable broker heartbeats by not providing a timeout (#1997,#1998) (#2016)
+- Pin typing_extensions to latest version 4.12.1 (#2017)
+- chore(typing): annotate `utils/debug.py` (#1714)
+- Bump pytest from 8.2.1 to 8.2.2 (#2021)
+- Bump pymongo from 4.7.2 to 4.7.3 (#2022)
+- ConnectionPool can't be used after .resize(..., reset=True) (resolves #2018) (#2024)
+- Fix Redis connections after reconnect - consumer starts consuming the tasks after crash. (#2007)
+- Update flake8 to 7.1.0 (#2028)
+- Add support for mongodb+srv scheme (#1976)
+
+.. _version-5.3.7:
+
+5.3.7
+=====
+:release-date: 11 April, 2024
+:release-by: Tomer Nosrati
+
+The release of v5.3.6 was missing the bumbversion commit so v5.3.7 is only released to sync it back.
+
+.. _version-5.3.6:
+
+5.3.6
+=====
+:release-date: 27 Mar, 2024
+:release-by: Tomer Nosrati
+
+- boto3>=1.26.143 (#1890)
+- Always convert azureservicebus namespace to fully qualified (#1892)
+- Pin pytest-sugar to latest version 1.0.0 (#1912)
+- Upgrade to pytest v8 that removed nose compatibility (#1914)
+- fix warning for usage of utcfromtimestamp (#1926)
+- Update pytest to 8.0.2 (#1942)
+- Hotfix: Fix CI failures (limit redis to <5.0.2 instead of <6.0.0) (#1961)
+- Expose cancel callback from py-amqp channel.basic_consume (#1953)
+- Update mypy to 1.9.0 (#1963)
+- Update pytest to 8.1.1 (#1965)
+- Pin hypothesis to hypothesis<7 (#1966)
+- redis>=4.5.2,<5.0.2,!=4.5.5 -> redis>=4.5.2,!=5.0.2,!=4.5.5 (#1969)
+- add escape hatch for custom JSON serialization (#1955)
+- Pin pytest-cov to latest version 5.0.0 (#1972)
+
+.. _version-5.3.5:
+
+5.3.5
+=====
+:release-date: 12 Jan, 2024
+:release-by: Tomer Nosrati
+
+- Fix ReadTheDocs CI (#1827).
+- fix(docs): add Redis to the list of transports where SSL is supported (#1826).
+- Fixed Improper Method Call: Replaced `mktemp` (#1828).
+- Bump actions/setup-python from 4 to 5 (#1829).
+- Bump github/codeql-action from 2 to 3 (#1832).
+- fix: freeze set during ticks iter in async hub (#1830).
+- azure service bus: fix TypeError when using Managed Identities (#1825).
+- Fix unacknowledge typo in restore_visible() (#1839).
+- Changed pyup -> dependabot for updating dependencies (#1842).
+- Bump pytest from 7.4.3 to 7.4.4 (#1843).
+- Bump flake8 from 6.0.0 to 7.0.0 (#1845).
+- Bump mypy from 1.3.0 to 1.8.0 (#1844).
+- Fix crash when using global_keyprefix with a sentinel connection (#1838)
+- Fixed version_dev in docs/conf.py (#1875).
+
+.. _version-5.3.4:
+
+5.3.4
+=====
+:release-date: 16 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Use the correct protocol for SQS requests (#1807).
+
+
+.. _version-5.3.3:
+
+5.3.3
+=====
+:release-date: 6 Nov, 2023
+:release-by: Asif Saif Uddin
+
+- Raise access denied error when ack.
+- test redis 5.0.0.
+- fix azure servicebus using managed identity support (#1801).
+- Added as_uri method to MongoDB transport - Fixes #1795 (#1796).
+- Revert "[fix #1726] Use boto3 for SQS async requests (#1759)" (#1799).
+- Create a lock on cached_property if not present (#1811).
+- Bump kafka deps versions & fix integration test failures (#1818).
+- Added Python 3.12 support.
+- Fix: redis requeue concurrency bug #1800 (#1805).
+
+
+.. _version-5.3.2:
+
+5.3.2
+=====
+:release-date: 31 Aug, 2023
+:release-by: Tomer Nosrati
+
+- Reverted unwanted constraint introduced in #1629 with max_retries (#1755)
+- Doc fix (hotfix for #1755) (#1758)
+- Python3.12: fix imports in kombu/utils/objects.py (#1756)
+- [fix #1726] Use boto3 for SQS async requests (#1759)
+- docs: Remove SimpleQueue import (#1764)
+- Fixed pre-commit issues (#1773)
+- azure service bus: add managed identity support (#1641)
+- fix: Prevent redis task loss when closing connection while in poll (#1733)
+- Kombu & celery with SQS #222 (#1779)
+- syntax correction (#1780)
+
+.. _version-5.3.1:
+
+5.3.1
+=====
+:release-date: 15 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Update pycurl version.
+- Declare python 3.11 support (#1425).
+- Fix: allow deserializing any version of UUID.
+- Update PyCurl version in SQS (#1747).
+
+
+.. _version-5.3.0:
+
+5.3.0
+=====
+:release-date: 03 Jun, 2023
+:release-by: Asif Saif Uddin
+
+- Support for Kafka as transport.
+- Add fanout to filesystem (#1499).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Support pymongo 4.x (#1536).
+- Support redis-py 4.5.x.
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Add managed identity support to azure storage queue (#1631).
+- Add Support of sqlalchemy v2.0.
+- Deprecate pytz and use zoneinfo (#1680)
+
+
+.. _version-5.3.0rc2:
+
+5.3.0rc2
+========
+:release-date: 31 May, 2023
+:release-by: Asif Saif Uddin
+
+- add missing zoneinfo dependency (#1732).
+- Support redis >= 4.5.2
+- Loosen urlib3 version range for botocore compat
+
+
+.. _version-5.3.0rc1:
+
+5.3.0rc1
+========
+:release-date: 24 May, 2023
+:release-by: Asif Saif Uddin
+
+- Moved to pytest-freezer (#1683).
+- Deprecate pytz and use zoneinfo (#1680).
+- handle keyerror in azureservicebus transport when message is not
+found in qos and perform basic_ack (#1691).
+- fix mongodb transport obsolete calls (#1694).
+- SQS: avoid excessive GetQueueURL calls by using cached queue url (#1621).
+- Update confluentkafka.txt version (#1727).
+- Revert back to pyro4 for now.
+
+
+.. _version-5.3.0b3:
+
+5.3.0b3
+=======
+:release-date: 20 Mar, 2023
+:release-by: Asif Saif Uddin
+
+- Use SPDX license expression in project metadata.
+- Allowing Connection.ensure() to retry on specific exceptions given by policy (#1629).
+- Redis==4.3.4 temporarilly in an attempt to avoid BC (#1634).
+- Add managed identity support to azure storage queue (#1631).
+- Support sqla v2.0 (#1651).
+- Switch to Pyro5 (#1655).
+- Remove unused _setupfuns from serialization.py.
+- Refactor: Refactor utils/json (#1659).
+- Adapt the mock to correctly mock the behaviors as implemented on Python 3.10. (Ref #1663).
+
+
+.. _version-5.3.0b2:
+
+5.3.0b2
+=======
+:release-date: 19 Oct, 2022
+:release-by: Asif Saif Uddin
+
+- fix: save QueueProperties to _queue_name_cache instead of QueueClient.
+- hub: tick delay fix (#1587).
+- Fix incompatibility with redis in disconnect() (#1589).
+- Solve Kombu filesystem transport not thread safe.
+- importlib_metadata remove deprecated entry point interfaces (#1601).
+- Allow azurestoragequeues transport to be used with Azurite emulator in docker-compose (#1611).
+
+
+.. _version-5.3.0b1:
+
+5.3.0b1
+=======
+:release-date: 1 Aug, 2022
+:release-by: Asif Saif Uddin
+
+- Add ext.py files to setup.cfg.
+- Add support to SQS DelaySeconds (#1567).
+- Add WATCH to prefixed complex commands.
+- Avoid losing type of UUID when serializing/deserializing (#1575).
+- chore: add confluentkafka to extras.
+
+.. _version-5.3.0a1:
+
+5.3.0a1
+=======
+:release-date: 29 Jun, 2022
+:release-by: Asif Saif Uddin
+
+- Add fanout to filesystem (#1499).
+- Protect set of ready tasks by lock to avoid concurrent updates. (#1489).
+- Correct documentation stating kombu uses pickle protocol version 2.
+- Use new entry_points interface.
+- Add mypy to the pipeline (#1512).
+- Added possibility to serialize and deserialize binary messages in json (#1516).
+- Bump pyupgrade version and add __future__.annotations import.
+- json.py cleaning from outdated libs (#1533).
+- bump new py-amqp to 5.1.1 (#1534).
+- add GitHub URL for PyPi.
+- Upgrade pytest to ~=7.1.1.
+- Support pymongo 4.x (#1536).
+- Initial Kafka support (#1506).
+- Upgrade Azure Storage Queues transport to version 12 (#1539).
+- move to consul2 (#1544).
+- Datetime serialization and deserialization fixed (#1515).
+- Bump redis>=4.2.2 (#1546).
+- Update sqs dependencies (#1547).
+- Added HLEN to the list of prefixed redis commands (#1540).
+- Added some type annotations.
+
+
+.. _version-5.2.4:
+
+5.2.4
+=====
+:release-date: 06 Mar, 2022
+:release-by: Asif Saif Uddin
+
+- Allow getting recoverable_connection_errors without an active transport.
+- Prevent KeyError: 'purelib' by removing INSTALLED_SCHEME hack from setup.py.
+- Revert "try pining setuptools (#1466)" (#1481).
+- Fix issue #789: Async http code not allowing for proxy config (#790).
+- Fix The incorrect times of retrying.
+- Set redelivered property for Celery with Redis (#1484).
+- Remove use of OrderedDict in various places (#1483).
+- Warn about missing hostname only when default one is available (#1488).
+- All supported versions of Python define __package__.
+- Added global_keyprefix support for pubsub clients (#1495).
+- try pytest 7 (#1497).
+- Add an option to not base64-encode SQS messages.
+- Fix SQS extract_task_name message reference.
+
+
+.. _version-5.2.3:
+
+5.2.3
+=====
+:release-date: 29 Dec, 2021
+:release-by: Asif Saif Uddin
+
+- Allow redis >= 4.0.2.
+- Fix PyPy CI jobs.
+- SQS transport: detect FIFO queue properly by checking queue URL (#1450).
+- Ensure that restore is atomic in redis transport (#1444).
+- Restrict setuptools>=59.1.1,<59.7.0.
+- Bump minimum py-amqp to v5.0.9 (#1462).
+- Reduce memory usage of Transport (#1470).
+- Prevent event loop polling on closed redis transports (and causing leak).
+- Respect connection timeout (#1458)
+- prevent redis event loop stopping on 'consumer: Cannot connect' (#1477).
+
+
+.. _version-5.2.2:
+
+5.2.2
+=====
+:release-date: 16 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Pin redis version to >= 3.4.1<4.0.0 as it is not fully compatible yet.
+
+
+.. _version-5.2.1:
+
+5.2.1
+=====
+:release-date: 8 Nov, 2021
+:release-by: Asif Saif Uddin
+
+- Bump redis version to >= 3.4.1.
+- try latest sqs dependencies ti fix security warning.
+- Tests & dependency updates
+
+.. _version-5.2.0:
+
+5.2.0
+=====
+:release-date: 5 Nov, 2021
+:release-by: Naomi Elstein
+
+- v 1.4.x (#1338).
+- stop mentioning librabbitmq (#1381).
+- Merge branch 'master' of https://github.com/celery/kombu
+- test new pytest version (#1383).
+- drop python 3.6 from CI (#1382).
+- Use ANY from unittest instead of case.mock.
+- Fix missing dependency to redis in docs requirements.
+- [pre-commit.ci] pre-commit autoupdate.
+- Remove dependency to case (#1389).
+- Fix: check redis response type.
+- [pre-commit.ci] pre-commit autoupdate (#1393).
+- py3.7+ on setup (#1392).
+- Prevent caching of oid in pidbox (#1394).
+- Added unittests for #1394 .
+- fix flake8 in kombu/asynchronous/aws/connection.py (#1397).
+- [pre-commit.ci] pre-commit autoupdate.
+- Fix test_pidbox unittests to support non-linux platforms (#1398).
+- [pre-commit.ci] pre-commit autoupdate.
+- removre bdist.
+- add python 3.10 to CI & fix other issues (#1402).
+- try to fix CI (#1407).
+- Dont failfast when pypy3 tests fail (#1408).
+- Return empty list instead of InconsistencyError when exchange table is empty (#1404).
+- [pre-commit.ci] pre-commit autoupdate.
+
+.. _version-5.2.0rc1:
+
+5.2.0rc1
+========
+:release-date: 2021-09-07 7:00 P.M UTC+6:00
+:release-by: Asif Saif Uddin
+
+- Remove backward compatible code not used anymore (#1344).
+- Add support for setting redis username (#1351).
+- Add support for Python 3.9.
+- Use hostname from URI when server_host is None.
+- Use Python's built-in json module by default, instead of simplejson.
+- SQS Channel.predefined_queues should be {} if not defined.
+- Add global key prefix for keys set by Redis transporter (#1349).
+- fix: raise BrokenPipeError (#1231).
+- fix: add missing commands to prefix.
+- Make BrokerState Transport specific.
+- Tests & Docs cleanup.
+
+.. _version-5.1.0:
+
 5.1.0
 =====
 :release-date: 2021-05-23 7:00 P.M UTC+3:00

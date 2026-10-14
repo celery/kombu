@@ -1,5 +1,7 @@
 """Functional Utilities."""
 
+from __future__ import annotations
+
 import inspect
 import random
 import threading
@@ -29,8 +31,9 @@ class ChannelPromise:
         try:
             return self.__value__
         except AttributeError:
-            value = self.__value__ = self.__contract__()
-            return value
+            pass
+        value = self.__value__ = self.__contract__()
+        return value
 
     def __repr__(self):
         try:
@@ -43,6 +46,7 @@ class LRUCache(UserDict):
     """LRU Cache implementation using a doubly linked list to track access.
 
     Arguments:
+    ---------
         limit (int): The maximum number of keys to keep in the cache.
             When a new key is inserted and the limit has been exceeded,
             the *Least Recently Used* key will be discarded from the
@@ -75,7 +79,13 @@ class LRUCache(UserDict):
     def __setitem__(self, key, value):
         # remove least recently used key.
         with self.mutex:
-            if self.limit and len(self.data) >= self.limit:
+            # Only an insert can push the cache over its limit; overwriting
+            # a key that is already there keeps the same number of entries,
+            # so evicting for it would shrink the cache below the limit and
+            # throw away an unrelated key. ``update`` already gets this
+            # right, it only trims once the data has actually grown.
+            if (key not in self.data and
+                    self.limit and len(self.data) >= self.limit):
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 
@@ -219,6 +229,7 @@ def is_list(obj, scalars=(Mapping, str), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
+    ----
         Returns false if object is a mapping or string.
     """
     return isinstance(obj, iters) and not isinstance(obj, scalars or ())
@@ -277,11 +288,13 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     is increased for every retry until the max seconds is reached.
 
     Arguments:
+    ---------
         fun (Callable): The function to try
         catch (Tuple[BaseException]): Exceptions to catch, can be either
             tuple or a single exception class.
 
     Keyword Arguments:
+    -----------------
         args (Tuple): Positional arguments passed on to the function.
         kwargs (Dict): Keyword arguments passed on to the function.
         errback (Callable): Callback for when an exception in ``catch``
@@ -303,9 +316,15 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     """
     kwargs = {} if not kwargs else kwargs
     args = [] if not args else args
-    interval_range = fxrange(interval_start,
-                             interval_max + interval_start,
-                             interval_step, repeatlast=True)
+    interval_range = (
+        min(value, float(interval_max))
+        for value in fxrange(
+            interval_start,
+            interval_max + interval_start,
+            interval_step,
+            repeatlast=True,
+        )
+    )
     end = time() + timeout if timeout else None
     for retries in count():
         try:
@@ -319,6 +338,10 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                 callback()
             tts = float(errback(exc, interval_range, retries) if errback
                         else next(interval_range))
+            # The iterator values are clamped before they are observed by
+            # errback, and custom errback return values are clamped again
+            # before sleeping to honor the configured ceiling.
+            tts = min(tts, float(interval_max))
             if tts:
                 for _ in range(int(tts)):
                     if callback:

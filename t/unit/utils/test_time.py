@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import pytest
 
 from kombu.utils.time import maybe_s_to_ms

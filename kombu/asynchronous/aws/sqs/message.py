@@ -1,5 +1,7 @@
 """Amazon SQS message implementation."""
 
+from __future__ import annotations
+
 import base64
 
 from kombu.message import Message

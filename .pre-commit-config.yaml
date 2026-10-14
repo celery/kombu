@@ -1,22 +1,36 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.23.3
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: ["--py36-plus"]
+        args: ["--py38-plus"]
+
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.4.0
+    hooks:
+      - id: autoflake
+        args: ["--in-place", "--ignore-pass-after-docstring"]
 
   - repo: https://github.com/PyCQA/flake8
-    rev: 3.9.2
+    rev: 7.4.1
     hooks:
       - id: flake8
 
   - repo: https://github.com/asottile/yesqa
-    rev: v1.2.3
+    rev: v1.5.0
     hooks:
       - id: yesqa
 
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell # See pyproject.toml for args
+        args: [--toml, pyproject.toml, --write-changes]
+        additional_dependencies:
+          - tomli
+
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v6.0.0
     hooks:
       - id: check-merge-conflict
       - id: check-toml
@@ -24,6 +38,12 @@ repos:
       - id: mixed-line-ending
 
   - repo: https://github.com/pycqa/isort
-    rev: 5.9.3
+    rev: 9.0.2
     hooks:
       - id: isort
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.4.0
+    hooks:
+    -   id: mypy
+        pass_filenames: false

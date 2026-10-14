@@ -58,15 +58,40 @@ All parameters are passed to ``ssl`` parameter of
 :class:`amqp.connection.Connection` class.
 
 SSL option ``server_hostname`` can be set to ``None`` which is causing using
-hostname from broker URL. This is usefull when failover is used to fill
+hostname from broker URL. This is useful when failover is used to fill
 ``server_hostname`` with currently used broker::
 
     conn = Connect('amqp://broker1.example.com;broker2.example.com', ssl={
             'server_hostname': None
         }
     )
+
+Publisher confirms
+==================
+AMQP ``basic.publish`` is asynchronous: the method returns before the broker
+has processed the message. When the broker rejects the publish afterwards
+(e.g. ``precondition_failed`` for a message larger than the configured
+``max_message_size``), it closes the channel asynchronously, and nothing on
+the publishing side raises — the message is lost without any error visible
+to the caller.
+
+Passing ``confirm_publish=True`` in ``transport_options`` enables publisher
+confirms on every channel of this connection: each publish then waits for
+the broker's ``basic.ack``/``basic.nack``, and a broker-side rejection is
+raised as an exception (carrying the broker's ``reply_code`` and
+``reply_text``) instead of being silently dropped::
+
+    conn = Connect('amqp://broker.example.com', transport_options={
+        'confirm_publish': True,
+    })
+
+.. warning::
+   Confirming each publish adds a round-trip per message. Producers that
+   prioritize throughput should measure the cost before enabling it.
 """
 
+
+from __future__ import annotations
 
 import amqp
 
@@ -185,10 +210,15 @@ class Transport(base.Transport):
                 'server_hostname' in conninfo.ssl and \
                 conninfo.ssl['server_hostname'] is None:
             conninfo.ssl['server_hostname'] = conninfo.hostname
+        # Resolve callable password to support credential refresh
+        # on each connection/reconnection attempt.
+        password = conninfo.password
+        if callable(password):
+            password = password()
         opts = dict({
             'host': conninfo.host,
             'userid': conninfo.userid,
-            'password': conninfo.password,
+            'password': password,
             'login_method': conninfo.login_method,
             'virtual_host': conninfo.virtual_host,
             'insist': conninfo.insist,
@@ -222,7 +252,14 @@ class Transport(base.Transport):
     def qos_semantics_matches_spec(self, connection):
         props = connection.server_properties
         if props.get('product') == 'RabbitMQ':
-            return version_string_as_tuple(props['version']) < (3, 3)
+            version_str = props.get('version')
+            if not version_str:
+                return True
+            version = version_string_as_tuple(version_str)
+            # RabbitMQ < 3.3: per-channel QoS (return True)
+            # RabbitMQ 3.3–3.x: global QoS semantics (return False)
+            # RabbitMQ 4.0+: global QoS removed on classic queues (return True)
+            return version < (3, 3) or version >= (4, 0)
         return True
 
     @property

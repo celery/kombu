@@ -1,10 +1,11 @@
 #!/usr/bin/python
 
+from __future__ import annotations
+
 from base64 import b64decode
 from unittest.mock import call, patch
 
 import pytest
-from case import mock
 
 import t.skip
 from kombu.exceptions import ContentDisallowed, DecodeError, EncodeError
@@ -225,6 +226,23 @@ class test_Serialization:
             content_type='application/x-yaml',
             content_encoding='utf-8') == py_data
 
+    @pytest.mark.parametrize('buffer_type', [memoryview, bytearray])
+    def test_yaml_loads__buffer(self, buffer_type):
+        pytest.importorskip('yaml')
+        register_yaml()
+        assert loads(
+            buffer_type(yaml_data.encode('utf-8')),
+            content_type='application/x-yaml',
+            content_encoding='utf-8') == py_data
+
+    def test_yaml_loads__utf16_buffer(self):
+        pytest.importorskip('yaml')
+        register_yaml()
+        assert loads(
+            memoryview(yaml_data.encode('utf-16')),
+            content_type='application/x-yaml',
+            content_encoding='utf-16') == py_data
+
     def test_yaml_dumps(self):
         pytest.importorskip('yaml')
         register_yaml()
@@ -313,14 +331,14 @@ class test_Serialization:
             'application/data', 'binary', b'foo',
         )
 
-    @mock.mask_modules('yaml')
-    def test_register_yaml__no_yaml(self):
+    @pytest.mark.masked_modules('yaml')
+    def test_register_yaml__no_yaml(self, mask_modules):
         register_yaml()
         with pytest.raises(SerializerNotInstalled):
             loads('foo', 'application/x-yaml', 'utf-8')
 
-    @mock.mask_modules('msgpack')
-    def test_register_msgpack__no_msgpack(self):
+    @pytest.mark.masked_modules('msgpack')
+    def test_register_msgpack__no_msgpack(self, mask_modules):
         register_msgpack()
         with pytest.raises(SerializerNotInstalled):
             loads('foo', 'application/x-msgpack', 'utf-8')

@@ -22,6 +22,8 @@ Connection string is in the following format:
 
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from queue import Queue
 
@@ -89,12 +91,16 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     #: memory backend state is global.
-    state = virtual.BrokerState()
+    global_state = virtual.BrokerState()
 
     implements = base.Transport.implements
 
     driver_type = 'memory'
     driver_name = 'memory'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def driver_version(self):
         return 'N/A'

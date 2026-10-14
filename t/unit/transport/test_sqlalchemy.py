@@ -1,8 +1,11 @@
-from unittest.mock import patch
+from __future__ import annotations
+
+from unittest.mock import Mock, patch
 
 import pytest
 
 from kombu import Connection
+from kombu.exceptions import OperationalError
 
 pytest.importorskip('sqlalchemy')
 
@@ -22,14 +25,26 @@ class test_SqlAlchemy:
                 Connection(url).connect()
 
     def test_simple_queueing(self):
-        conn = Connection('sqlalchemy+sqlite:///:memory:')
+        conn = Connection(
+            'sqlalchemy+sqlite:///:memory:',
+            transport_options={
+                "callback": Mock(),
+                "errback": Mock(),
+                "max_retries": 20,
+                "interval_start": 1,
+                "interval_step": 2,
+                "interval_max": 30,
+                "retry_errors": (OperationalError,)
+            })
         conn.connect()
         try:
             channel = conn.channel()
             assert channel.queue_cls.__table__.name == 'kombu_queue'
             assert channel.message_cls.__table__.name == 'kombu_message'
 
+            assert channel._size('celery') == 0
             channel._put('celery', 'DATA_SIMPLE_QUEUEING')
+            assert channel._size('celery') == 1
             assert channel._get('celery') == 'DATA_SIMPLE_QUEUEING'
         finally:
             conn.release()
@@ -48,3 +63,26 @@ class test_SqlAlchemy:
                 clone.release()
         finally:
             x.release()
+
+    @pytest.mark.parametrize('dialect_name, expected', [
+        ('mssql', 'BIGINT'),
+        ('postgresql', 'INTEGER'),
+        ('mysql', 'INTEGER'),
+        ('sqlite', 'INTEGER'),
+    ])
+    def test_id_column_types(self, dialect_name, expected):
+        from sqlalchemy.dialects import registry
+
+        conn = Connection('sqlalchemy+sqlite:///:memory:')
+        try:
+            channel = conn.channel()
+            dialect = registry.load(dialect_name)()
+            columns = [
+                channel.queue_cls.__table__.c.id,
+                channel.message_cls.__table__.c.id,
+                channel.message_cls.__table__.c.queue_id,
+            ]
+            for column in columns:
+                assert column.type.compile(dialect=dialect) == expected
+        finally:
+            conn.release()

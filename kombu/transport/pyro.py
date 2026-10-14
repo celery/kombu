@@ -32,6 +32,8 @@ Transport Options
 """
 
 
+from __future__ import annotations
+
 import sys
 from queue import Empty, Queue
 
@@ -113,11 +115,16 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     #: memory backend state is global.
-    state = virtual.BrokerState()
+    # TODO: To be checked whether state can be per-Transport
+    global_state = virtual.BrokerState()
 
     default_port = DEFAULT_PORT
 
     driver_type = driver_name = 'pyro'
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        self.state = self.global_state
 
     def _open(self):
         logger.debug("trying Pyro nameserver to find the broker daemon")
@@ -137,7 +144,7 @@ class Transport(virtual.Transport):
                     sys.exc_info()[2])
 
     def driver_version(self):
-        return pyro.__version__
+        return pyro.__version__ if pyro is not None else 'N/A'
 
     @cached_property
     def shared_queues(self):

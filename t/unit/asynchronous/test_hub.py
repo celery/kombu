@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import errno
-from unittest.mock import Mock, call, patch
+import socket
+from concurrent.futures import ThreadPoolExecutor
+from unittest.mock import ANY, Mock, call, patch
 
 import pytest
 from vine import promise
@@ -125,10 +129,10 @@ class test_LaxBoundedSemaphore:
 
 class test_Utils:
 
-    def setup(self):
+    def setup_method(self):
         self._prev_loop = get_event_loop()
 
-    def teardown(self):
+    def teardown_method(self):
         set_event_loop(self._prev_loop)
 
     def test_get_set_event_loop(self):
@@ -151,17 +155,17 @@ class test_Utils:
 
 class test_Hub:
 
-    def setup(self):
+    def setup_method(self):
         self.hub = Hub()
 
-    def teardown(self):
+    def teardown_method(self):
         self.hub.close()
 
     def test_reset(self):
-        self.hub.close = Mock(name='close')
+        self.hub._close = Mock(name='_close')
         self.hub._create_poller = Mock(name='_create_poller')
         self.hub.reset()
-        self.hub.close.assert_called_with()
+        self.hub._close.assert_called_with()
         self.hub._create_poller.assert_called_with()
 
     def test__close_poller__no_poller(self):
@@ -186,6 +190,12 @@ class test_Hub:
         promise.assert_called_with(callback, (1, 2, 3))
         assert promise() in self.hub._ready
         assert ret is promise()
+
+    def test_call_soon_uses_lock(self):
+        callback = Mock(name='callback')
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub.call_soon(callback)
+            lock.__enter__.assert_called_once()
 
     def test_call_soon__promise_argument(self):
         callback = promise(Mock(name='callback'), (1, 2, 3))
@@ -517,6 +527,23 @@ class test_Hub:
         ticks[0].assert_called_once_with()
         ticks[1].assert_called_once_with()
 
+    def test_loop__tick_callbacks_on_ticks_change(self):
+        def callback_1():
+            ticks.remove(ticks_list[0])
+            return Mock(name='cb1')
+
+        ticks_list = [Mock(wraps=callback_1), Mock(name='cb2')]
+        ticks = set(ticks_list)
+
+        self.hub.on_tick = ticks
+        self.hub.poller.unregister = Mock()
+
+        next(self.hub.loop)
+        next(self.hub.loop)
+
+        ticks_list[0].assert_has_calls([call()])
+        ticks_list[1].assert_has_calls([call(), call()])
+
     def test_loop__todo(self):
         deferred = Mock(name='cb_deferred')
 
@@ -533,3 +560,169 @@ class test_Hub:
         callbacks[0].assert_called_once_with()
         callbacks[1].assert_called_once_with()
         deferred.assert_not_called()
+
+    def test_loop__no_todo_tick_delay(self):
+        cb = Mock(name='parent')
+        cb.todo, cb.tick, cb.poller = Mock(), Mock(), Mock()
+        cb.poller.poll.side_effect = lambda obj: ()
+        self.hub.poller = cb.poller
+        self.hub.add(2, Mock(), READ)
+        self.hub.call_soon(cb.todo)
+        self.hub.on_tick = [cb.tick]
+
+        next(self.hub.loop)
+
+        cb.assert_has_calls([
+            call.todo(),
+            call.tick(),
+            call.poller.poll(ANY),
+        ])
+
+    def test__pop_ready_pops_ready_items(self):
+        self.hub._ready.add(None)
+        ret = self.hub._pop_ready()
+        assert ret == {None}
+        assert self.hub._ready == set()
+
+    def test__pop_ready_uses_lock(self):
+        with patch.object(self.hub, '_ready_lock', autospec=True) as lock:
+            self.hub._pop_ready()
+            lock.__enter__.assert_called_once()
+
+    def test_close_clears_global_event_loop(self):
+        # Test that closing a hub clears the global event loop if it's the current one
+        prev_loop = get_event_loop()
+        try:
+            hub = Hub()
+            set_event_loop(hub)
+            assert get_event_loop() is hub
+            hub.close()
+            assert get_event_loop() is None
+        finally:
+            set_event_loop(prev_loop)
+
+    def test_close_does_not_clear_other_event_loop(self):
+        # Test that closing a hub doesn't clear the global event loop if it's a different one
+        prev_loop = get_event_loop()
+        try:
+            hub1 = Hub()
+            hub2 = Hub()
+            set_event_loop(hub1)
+            assert get_event_loop() is hub1
+            hub2.close()
+            # hub1 should still be the current loop
+            assert get_event_loop() is hub1
+            hub1.close()
+        finally:
+            set_event_loop(prev_loop)
+
+
+def call_soon_from_thread(hub, callback):
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        return executor.submit(hub.call_soon, callback).result()
+
+
+class test_Hub_wakeup:
+
+    def setup_method(self):
+        self.hub = Hub()
+
+    def teardown_method(self):
+        self.hub.close()
+
+    def start_loop(self):
+        next(self.hub.loop)
+
+    def test_call_soon_from_other_thread_wakes_poll(self):
+        self.start_loop()
+        call_soon_from_thread(self.hub, Mock())
+        assert self.hub.poller.poll(5)
+
+    def test_call_soon_from_loop_thread_does_not_wake_poll(self):
+        self.start_loop()
+        self.hub.call_soon(Mock())
+        assert not self.hub.poller.poll(0)
+
+    def test_call_soon_from_other_thread_before_loop_starts(self):
+        callback = Mock()
+        call_soon_from_thread(self.hub, callback)
+        self.start_loop()
+        callback.assert_called_once_with()
+        call_soon_from_thread(self.hub, Mock())
+        assert self.hub.poller.poll(5)
+
+    def test_reset_keeps_wakeup(self):
+        self.start_loop()
+        waker = self.hub._waker
+        self.hub.reset()
+        next(self.hub.create_loop())
+        call_soon_from_thread(self.hub, Mock())
+        assert self.hub.poller.poll(5)
+        assert self.hub._waker is waker
+
+    def test_call_soon_burst_writes_one_byte(self):
+        self.start_loop()
+
+        def burst():
+            for _ in range(100):
+                self.hub.call_soon(Mock())
+
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            executor.submit(burst).result()
+        assert len(self.hub._waker.reader.recv(4096)) == 1
+
+    def test_loop_drains_wakeup(self):
+        sock, peer = socket.socketpair()
+        try:
+            on_read = Mock(name='on_read', side_effect=lambda: sock.recv(1))
+            self.start_loop()
+            self.hub.add_reader(sock, on_read)
+            call_soon_from_thread(self.hub, Mock())
+            peer.send(b'x')
+            next(self.hub.loop)
+            on_read.assert_called_once_with()
+            assert not self.hub.poller.poll(0)
+
+            call_soon_from_thread(self.hub, Mock())
+            assert self.hub.poller.poll(5)
+        finally:
+            sock.close()
+            peer.close()
+
+    def test_close_closes_wakeup(self):
+        self.start_loop()
+        waker = self.hub._waker
+        self.hub.close()
+        assert waker.reader.fileno() == -1
+        assert waker.writer.fileno() == -1
+        assert self.hub.poller
+        assert self.hub._waker is None
+
+    def test_loop_after_close_wakes_poll(self):
+        self.start_loop()
+        self.hub.close()
+        next(self.hub.create_loop())
+        call_soon_from_thread(self.hub, Mock())
+        assert self.hub.poller.poll(5)
+
+    def test_call_soon_from_other_thread_after_close(self):
+        self.start_loop()
+        self.hub.close()
+        assert call_soon_from_thread(self.hub, Mock()) in self.hub._ready
+
+    def test_call_soon_from_other_thread_racing_close(self):
+        self.start_loop()
+        self.hub._waker.close()
+        assert call_soon_from_thread(self.hub, Mock()) in self.hub._ready
+
+    def test_forked_child_creates_own_wakeup(self):
+        self.start_loop()
+        parent = self.hub._waker
+        with patch('kombu.asynchronous.hub.os.getpid',
+                   return_value=parent.pid + 1):
+            self.hub.reset()
+            next(self.hub.create_loop())
+        assert self.hub._waker is not parent
+        assert parent.reader.fileno() == -1
+        call_soon_from_thread(self.hub, Mock())
+        assert self.hub.poller.poll(5)
