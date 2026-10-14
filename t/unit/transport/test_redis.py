@@ -2292,6 +2292,44 @@ class test_Channel:
 
         channel._expire_binding_table.assert_not_called()
 
+    def test_expire_binding_table_registers_script_once(self):
+        channel = self.channel
+        channel._create_client = Mock()
+        register = channel._create_client.return_value.register_script
+
+        assert channel._expire_binding_table is register.return_value
+        assert channel._expire_binding_table is register.return_value
+        register.assert_called_once_with(redis.EXPIRE_BINDING_TABLE)
+
+    def _brpop_queue(self, channel):
+        channel._active_queues = ['q']
+        channel._queue_cycle.update(['q'])
+        channel.maybe_refresh_binding_expiry = Mock()
+        channel.client.connection = Mock()
+        return [channel._q_for_pri('q', pri) for pri in channel.priority_steps]
+
+    def test_brpop_start_sends_keys_and_timeout(self):
+        channel = self.channel
+        keys = self._brpop_queue(channel)
+
+        channel._brpop_start(timeout=5)
+
+        channel.client.connection.send_command.assert_called_once_with(
+            'BRPOP', *keys, 5)
+
+    def test_brpop_start_prefixes_keys(self):
+        channel = self.channel
+        keys = self._brpop_queue(channel)
+        channel.global_keyprefix = 'foo_'
+        channel.client._prefix_args = Mock(return_value=['BRPOP', 'foo_q', 1])
+
+        channel._brpop_start()
+
+        channel.client._prefix_args.assert_called_once_with(
+            ['BRPOP', *keys, channel.brpop_timeout])
+        channel.client.connection.send_command.assert_called_once_with(
+            'BRPOP', 'foo_q', 1)
+
     def test_brpop_start_refreshes_binding_expiry(self):
         channel = self.channel
         channel._active_queues = ['q']
