@@ -713,6 +713,30 @@ class test_RedisQueueExpiration:
             assert len(held) == 1
             assert redis_client.pttl(key) > 0
 
+    def test_binding_table_kept_while_drain_events_has_prefetch_full(
+            self, connection, redis_client):
+        name = f'binding_drain_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+        held = []
+
+        with connection as conn:
+            consumer = conn.Consumer(
+                queue, callbacks=[lambda body, message: held.append(message)])
+            consumer.qos(prefetch_count=1)
+            consumer.consume()
+            conn.Producer().publish({}, exchange=name, routing_key=name)
+            deadline = monotonic() + 6
+            while monotonic() < deadline:
+                try:
+                    conn.drain_events(timeout=0.2)
+                except socket.timeout:
+                    pass
+
+            assert len(held) == 1
+            assert redis_client.pttl(key) > 0
+
     def test_binding_table_shared_with_queue_without_expires_never_expires(
             self, connection, redis_client):
         name = f'binding_shared_{uuid4()}'

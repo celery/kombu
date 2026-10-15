@@ -2326,7 +2326,6 @@ class test_Channel:
     def _brpop_queue(self, channel):
         channel._active_queues = ['q']
         channel._queue_cycle.update(['q'])
-        channel.maybe_refresh_binding_expiry = Mock()
         channel.client.connection = Mock()
         return [channel._q_for_pri('q', pri) for pri in channel.priority_steps]
 
@@ -2352,16 +2351,10 @@ class test_Channel:
         channel.client.connection.send_command.assert_called_once_with(
             'BRPOP', 'foo_q', 1)
 
-    def test_brpop_start_refreshes_binding_expiry(self):
-        channel = self.channel
-        channel._active_queues = ['q']
-        channel._queue_cycle.update(['q'])
-        channel.maybe_refresh_binding_expiry = Mock()
-        channel.client.connection = Mock()
-
-        channel._brpop_start()
-
-        channel.maybe_refresh_binding_expiry.assert_called_once_with()
+    @pytest.mark.parametrize('expires,ttl', [(500, 3000), (5000, 10000)])
+    def test_binding_ttl_has_a_minimum(self, expires, ttl):
+        self.channel._expires = {'q': expires}
+        assert self.channel._binding_ttl('q') == ttl
 
 
 class test_Channel_streaming_reauth:
@@ -3405,6 +3398,27 @@ class test_MultiChannelPoller:
         with pytest.raises(redis.Empty):
             p.get(Mock())
 
+        p._register_BRPOP.assert_not_called()
+
+    def test_get_runs_after_read_callbacks(self):
+        p, channel = self.create_get()
+        callback = Mock()
+        p.after_read.add(callback)
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        callback.assert_called_once_with()
+        assert not p.after_read
+
+    def test_get_refreshes_binding_expiry_while_qos_disallows(self):
+        p, channel = self.create_get(queues=['a_queue'])
+        channel.qos.can_consume.return_value = False
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        channel.maybe_refresh_binding_expiry.assert_called_once_with()
         p._register_BRPOP.assert_not_called()
 
     def test_get_listen(self):

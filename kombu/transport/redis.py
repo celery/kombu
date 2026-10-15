@@ -154,6 +154,10 @@ DEFAULT_REAUTH_CHECK_INTERVAL = 10
 #: consumer whose event loop stalls briefly does not lose its bindings.
 BINDING_EXPIRES_FACTOR = 2
 
+#: A binding table's TTL in ms is never below this, so the 1 s refresh
+#: timer can't miss a short one.
+MIN_BINDING_TTL = 3000
+
 #: Adds member ARGV[2] to binding table KEYS[1] and extends its expiry to
 #: ARGV[1] ms. A table without an expiry is left without one.
 EXPIRE_BINDING_TABLE = """
@@ -739,6 +743,9 @@ class MultiChannelPoller:
     def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
+            # Without an event loop there is no timer, so refresh here,
+            # before can_consume() can skip BRPOP below.
+            self.maybe_refresh_binding_expiry()
             for channel in self._channels:
                 if channel.active_queues:           # BRPOP mode?
                     if channel.qos.can_consume():
@@ -1299,8 +1306,6 @@ class Channel(virtual.Channel):
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
-        # Without an event loop there is no timer, so refresh here.
-        self.maybe_refresh_binding_expiry()
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
@@ -1592,7 +1597,8 @@ class Channel(virtual.Channel):
         return self._create_client().register_script(EXPIRE_BINDING_TABLE)
 
     def _binding_ttl(self, queue):
-        return self._expires[queue] * BINDING_EXPIRES_FACTOR
+        return max(self._expires[queue] * BINDING_EXPIRES_FACTOR,
+                   MIN_BINDING_TTL)
 
     def maybe_refresh_binding_expiry(self):
         """Keep the binding tables of consumed, expiring queues alive."""
