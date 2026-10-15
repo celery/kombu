@@ -2330,6 +2330,8 @@ class test_Channel:
         channel.state.binding_declare('q', 'ex', 'rk', None)
         channel.sweep_bindings = Mock()
 
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
     def test_refresh_binding_expiry_of_consumed_queue(self):
         channel = self.channel
         self._consume_expiring(channel)
@@ -2345,6 +2347,8 @@ class test_Channel:
             client=pipeline)
         pipeline.execute.assert_called_once_with()
 
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
     def test_refresh_binding_expiry_retries_after_failure(self):
         channel = self.channel
         self._consume_expiring(channel)
@@ -2369,6 +2373,8 @@ class test_Channel:
 
         channel._refresh_binding.assert_not_called()
 
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
     def test_refresh_binding_expiry_sweeps_once_per_interval(self):
         channel = self.channel
         channel.sweep_bindings = Mock()

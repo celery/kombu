@@ -1104,8 +1104,8 @@ class Channel(virtual.Channel):
         self._sentinel_manager = None
         self._async_sentinel_manager = None
         self._expires = {}
-        self._binding_expiry_refreshed_at = 0.0
-        self._bindings_swept_at = 0.0
+        self._binding_expiry_refreshed_at = float('-inf')
+        self._bindings_swept_at = float('-inf')
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
