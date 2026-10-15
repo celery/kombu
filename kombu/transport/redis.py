@@ -171,9 +171,10 @@ DEFAULT_REAUTH_CHECK_INTERVAL = 10
 #: consumer whose event loop stalls briefly does not lose its bindings.
 BINDING_EXPIRES_FACTOR = 2
 
-#: A binding table's TTL in ms is never below this, so the 1 s refresh
-#: timer can't miss a short one.
-MIN_BINDING_TTL = 3000
+#: A binding table's TTL in ms is never below this, so a consumer that can't
+#: run kombu for a while, such as a long task on Celery's solo pool, keeps its
+#: routing.
+MIN_BINDING_TTL = 60 * 60 * 1000
 
 #: Adds member ARGV[2] to binding table KEYS[1] and extends its expiry to
 #: ARGV[1] ms. A table without an expiry is left without one.

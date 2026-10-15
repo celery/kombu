@@ -12,6 +12,7 @@ import pytest
 import redis
 
 import kombu
+import kombu.transport.redis
 from kombu.asynchronous.hub import Hub
 from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
                                    SentinelChannel, Transport)
@@ -676,8 +677,13 @@ class test_RedisQueueExpiration:
         keyprefix = connection.transport_options.get('global_keyprefix', '')
         return f'{keyprefix}_kombu.binding.{exchange}'
 
+    @pytest.fixture
+    def short_binding_ttl(self, monkeypatch):
+        # The one-hour floor would hide a missing refresh in a short test.
+        monkeypatch.setattr(kombu.transport.redis, 'MIN_BINDING_TTL', 3000)
+
     def test_binding_table_expires_after_consumer_stops(
-            self, connection, redis_client):
+            self, connection, redis_client, short_binding_ttl):
         name = f'binding_expire_{uuid4()}'
         queue = kombu.Queue(
             name, kombu.Exchange(name), routing_key=name, expires=2)
@@ -691,7 +697,7 @@ class test_RedisQueueExpiration:
         assert redis_client.exists(key) == 0
 
     def test_binding_table_kept_while_consumer_is_paused(
-            self, connection, redis_client):
+            self, connection, redis_client, short_binding_ttl):
         name = f'binding_paused_{uuid4()}'
         queue = kombu.Queue(
             name, kombu.Exchange(name), routing_key=name, expires=2)
@@ -716,7 +722,7 @@ class test_RedisQueueExpiration:
             assert redis_client.pttl(key) > 0
 
     def test_binding_table_kept_while_drain_events_has_prefetch_full(
-            self, connection, redis_client):
+            self, connection, redis_client, short_binding_ttl):
         name = f'binding_drain_{uuid4()}'
         queue = kombu.Queue(
             name, kombu.Exchange(name), routing_key=name, expires=2)
@@ -738,6 +744,38 @@ class test_RedisQueueExpiration:
 
             assert len(held) == 1
             assert redis_client.pttl(key) > 0
+
+    def test_binding_table_kept_while_a_callback_blocks(
+            self, connection, redis_client):
+        name = f'binding_blocked_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        queue = kombu.Queue(name, exchange, routing_key=name, expires=1)
+        received = []
+
+        with connection as conn, connection.clone() as other:
+            producer = other.Producer()
+
+            def on_message(body, message):
+                received.append(body['n'])
+                if body['n'] == 1:
+                    # Longer than 2x expires, like a long task on a solo pool.
+                    sleep(5)
+                    producer.publish(
+                        {'n': 2}, exchange=exchange, routing_key=name)
+                message.ack()
+
+            hub = Hub()
+            conn.register_with_event_loop(hub)
+            consumer = conn.Consumer(queue, callbacks=[on_message])
+            consumer.consume()
+            producer.publish({'n': 1}, exchange=exchange, routing_key=name)
+            deadline = monotonic() + 9
+            while monotonic() < deadline and len(received) < 2:
+                hub.run_once()
+                sleep(0.05)
+            hub.close()
+
+        assert received == [1, 2]
 
     def test_binding_table_shared_with_queue_without_expires_never_expires(
             self, connection, redis_client):

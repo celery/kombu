@@ -2293,7 +2293,7 @@ class test_Channel:
 
     def test_queue_bind_expires_table_of_expiring_queue(self):
         channel = self.channel
-        channel._expires = {'q': 5000}
+        channel._expires = {'q': 2_000_000}
         client, _ = self._recording_batch_client(channel)
         channel._expire_binding_table = Mock()
 
@@ -2301,7 +2301,7 @@ class test_Channel:
 
         channel._expire_binding_table.assert_called_once_with(
             keys=['_kombu.binding.ex'],
-            args=[10000, channel.sep.join(['rk', '', 'q'])],
+            args=[4_000_000, channel.sep.join(['rk', '', 'q'])],
             client=client)
 
     def test_queue_bind_persists_table_of_queue_without_expires(self):
@@ -2317,7 +2317,7 @@ class test_Channel:
         pipeline.execute.assert_called_once_with()
         channel._expire_binding_table.assert_not_called()
 
-    def _consume_expiring(self, channel, expires=3000):
+    def _consume_expiring(self, channel, expires=2_000_000):
         channel.exchange_declare('ex', type='direct')
         channel._expires = {'q': expires}
         channel._active_queues = ['q']
@@ -2334,7 +2334,7 @@ class test_Channel:
 
         channel._expire_binding_table.assert_called_once_with(
             keys=['_kombu.binding.ex'],
-            args=[6000, channel.sep.join(['rk', '', 'q'])],
+            args=[4_000_000, channel.sep.join(['rk', '', 'q'])],
             client=pipeline)
         pipeline.execute.assert_called_once_with()
 
@@ -2398,7 +2398,8 @@ class test_Channel:
         channel.client.connection.send_command.assert_called_once_with(
             'BRPOP', 'foo_q', 1)
 
-    @pytest.mark.parametrize('expires,ttl', [(500, 3000), (5000, 10000)])
+    @pytest.mark.parametrize('expires,ttl', [
+        (500, 3_600_000), (2_000_000, 4_000_000)])
     def test_binding_ttl_has_a_minimum(self, expires, ttl):
         self.channel._expires = {'q': expires}
         assert self.channel._binding_ttl('q') == ttl
