@@ -695,6 +695,11 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
+        elif type == 'BRPOP' and not chan._in_poll:
+            # Nothing is expected without a pending BRPOP: the server closed
+            # the idle connection. Drop it so the poll stops waking up for it;
+            # _register_BRPOP reconnects once the QoS can consume again.
+            chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
         chan_type = self._fd_to_chan.get(fileno)
