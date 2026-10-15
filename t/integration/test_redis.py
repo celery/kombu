@@ -138,6 +138,24 @@ def test_failed_credentials():
 
 
 @pytest.mark.env('redis')
+def test_failed_health_check_raises_connection_error():
+    """Tests ConnectionError when the server closed a connection before its health check"""
+    host = os.environ.get('REDIS_HOST', 'localhost')
+    port = os.environ.get('REDIS_6379_TCP', '6379')
+    connection = get_connection(
+        hostname=host, port=port, vhost=None,
+        transport_options={'health_check_interval': 1},
+    )
+    with connection:
+        redis_connection = connection.default_channel.client.connection_pool.get_connection()
+        redis_connection.send_command('CLIENT', 'ID')
+        redis.Redis(host=host, port=port).client_kill_filter(_id=redis_connection.read_response())
+        sleep(1.5)  # let the health check come due
+        with pytest.raises(redis.exceptions.ConnectionError):
+            redis_connection.send_command('PING')
+
+
+@pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisBasicFunctionality(BasicFunctionality):
     def test_failed_connection__ConnectionError(self, invalid_connection):
