@@ -126,13 +126,15 @@ class Client:
             (mapping,) = args
             for item in mapping:
                 self.sets[key].add(item)
+        elif len(args) == 1:
+            self.sets[key].update(args[0])
         else:
             # TODO: remove me when we drop support for Redis-py v2
             (score1, member1) = args
             self.sets[key].add(member1)
 
-    def persist(self, key):
-        pass
+    def register_script(self, script):
+        return lambda keys=(), args=(), client=None: 0
 
     def smembers(self, key):
         return self.sets.get(key, set())
@@ -2141,7 +2143,8 @@ class test_Channel:
             assert [c.args for c in mock_execute_command.mock_calls] == [
                 ('SADD', 'foo__kombu.binding.default',
                  '\x06\x16\x06\x16queue'),
-                ('PERSIST', 'foo__kombu.binding.default'),
+                ('ZADD', 'foo__kombu.binding_deadlines',
+                 float('inf'), 'default'),
             ]
 
     @patch("redis.client.PubSub.execute_command")
@@ -2291,50 +2294,54 @@ class test_Channel:
             for expected_call in expected_calls:
                 assert expected_call in actual_calls
 
-    def test_queue_bind_expires_table_of_expiring_queue(self):
+    def test_queue_bind_raises_deadline_of_expiring_queue(self):
         channel = self.channel
         channel._expires = {'q': 2_000_000}
+        channel.global_keyprefix = 'foo_'
         client, _ = self._recording_batch_client(channel)
-        channel._expire_binding_table = Mock()
+        channel._refresh_binding = Mock()
 
         channel._queue_bind('ex', 'rk', None, 'q')
 
-        channel._expire_binding_table.assert_called_once_with(
-            keys=['_kombu.binding.ex'],
-            args=[4_000_000, channel.sep.join(['rk', '', 'q'])],
+        # The client prefixes only the first key of a script call.
+        channel._refresh_binding.assert_called_once_with(
+            keys=['_kombu.binding.ex', 'foo__kombu.binding_deadlines'],
+            args=[channel.sep.join(['rk', '', 'q']), 'ex', 4_000_000],
             client=client)
 
-    def test_queue_bind_persists_table_of_queue_without_expires(self):
+    def test_queue_bind_without_expires_never_sweeps_the_table(self):
         channel = self.channel
         _, pipeline = self._recording_batch_client(channel)
-        channel._expire_binding_table = Mock()
+        channel._refresh_binding = Mock()
 
         channel._queue_bind('ex', 'rk', None, 'q')
 
         pipeline.sadd.assert_called_once_with(
             '_kombu.binding.ex', channel.sep.join(['rk', '', 'q']))
-        pipeline.persist.assert_called_once_with('_kombu.binding.ex')
+        pipeline.zadd.assert_called_once_with(
+            '_kombu.binding_deadlines', {'ex': float('inf')})
         pipeline.execute.assert_called_once_with()
-        channel._expire_binding_table.assert_not_called()
+        channel._refresh_binding.assert_not_called()
 
     def _consume_expiring(self, channel, expires=2_000_000):
         channel.exchange_declare('ex', type='direct')
         channel._expires = {'q': expires}
         channel._active_queues = ['q']
         channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel.sweep_bindings = Mock()
 
     def test_refresh_binding_expiry_of_consumed_queue(self):
         channel = self.channel
         self._consume_expiring(channel)
         _, pipeline = self._recording_batch_client(channel)
-        channel._expire_binding_table = Mock()
+        channel._refresh_binding = Mock()
 
         channel.maybe_refresh_binding_expiry()
         channel.maybe_refresh_binding_expiry()
 
-        channel._expire_binding_table.assert_called_once_with(
-            keys=['_kombu.binding.ex'],
-            args=[4_000_000, channel.sep.join(['rk', '', 'q'])],
+        channel._refresh_binding.assert_called_once_with(
+            keys=['_kombu.binding.ex', '_kombu.binding_deadlines'],
+            args=[channel.sep.join(['rk', '', 'q']), 'ex', 4_000_000],
             client=pipeline)
         pipeline.execute.assert_called_once_with()
 
@@ -2342,7 +2349,7 @@ class test_Channel:
         channel = self.channel
         self._consume_expiring(channel)
         _, pipeline = self._recording_batch_client(channel)
-        channel._expire_binding_table = Mock()
+        channel._refresh_binding = Mock()
         pipeline.execute.side_effect = [KeyError('down'), None]
 
         with pytest.raises(KeyError):
@@ -2355,20 +2362,46 @@ class test_Channel:
         channel = self.channel
         channel._active_queues = ['q']
         channel.state.binding_declare('q', 'ex', 'rk', None)
-        channel._expire_binding_table = Mock()
+        channel.sweep_bindings = Mock()
+        channel._refresh_binding = Mock()
 
         channel.maybe_refresh_binding_expiry()
 
-        channel._expire_binding_table.assert_not_called()
+        channel._refresh_binding.assert_not_called()
 
-    def test_expire_binding_table_registers_script_once(self):
+    def test_refresh_binding_expiry_sweeps_once_per_interval(self):
+        channel = self.channel
+        channel.sweep_bindings = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        channel.sweep_bindings.assert_called_once_with()
+
+    def test_sweep_bindings_passes_the_table_prefix(self):
+        channel = self.channel
+        channel.global_keyprefix = 'foo_'
+        client, _ = self._recording_batch_client(channel)
+        channel._sweep_bindings = Mock(return_value=2)
+
+        assert channel.sweep_bindings() == 2
+
+        channel._sweep_bindings.assert_called_once_with(
+            keys=['_kombu.binding_deadlines'],
+            args=['foo__kombu.binding.', 100], client=client)
+
+    @pytest.mark.parametrize('name,script', [
+        ('_refresh_binding', 'REFRESH_BINDING'),
+        ('_sweep_bindings', 'SWEEP_BINDINGS'),
+    ])
+    def test_binding_scripts_register_once(self, name, script):
         channel = self.channel
         channel._create_client = Mock()
         register = channel._create_client.return_value.register_script
 
-        assert channel._expire_binding_table is register.return_value
-        assert channel._expire_binding_table is register.return_value
-        register.assert_called_once_with(redis.EXPIRE_BINDING_TABLE)
+        assert getattr(channel, name) is register.return_value
+        assert getattr(channel, name) is register.return_value
+        register.assert_called_once_with(getattr(redis, script))
 
     def _brpop_queue(self, channel):
         channel._active_queues = ['q']

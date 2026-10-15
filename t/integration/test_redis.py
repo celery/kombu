@@ -677,12 +677,28 @@ class test_RedisQueueExpiration:
         keyprefix = connection.transport_options.get('global_keyprefix', '')
         return f'{keyprefix}_kombu.binding.{exchange}'
 
+    @staticmethod
+    def _deadline(connection, redis_client, exchange):
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        return redis_client.zscore(
+            f'{keyprefix}_kombu.binding_deadlines', exchange)
+
+    @staticmethod
+    def _server_ms(redis_client):
+        seconds, microseconds = redis_client.time()
+        return seconds * 1000 + microseconds // 1000
+
+    @staticmethod
+    def _sweep_from_another_worker(connection):
+        with connection.clone() as other:
+            other.default_channel.sweep_bindings()
+
     @pytest.fixture
     def short_binding_ttl(self, monkeypatch):
         # The one-hour floor would hide a missing refresh in a short test.
         monkeypatch.setattr(kombu.transport.redis, 'MIN_BINDING_TTL', 3000)
 
-    def test_binding_table_expires_after_consumer_stops(
+    def test_binding_table_swept_after_consumer_stops(
             self, connection, redis_client, short_binding_ttl):
         name = f'binding_expire_{uuid4()}'
         queue = kombu.Queue(
@@ -691,10 +707,15 @@ class test_RedisQueueExpiration:
 
         with connection as conn:
             with conn.Consumer(queue, callbacks=[]):
-                assert 0 < redis_client.pttl(key) <= 4000
+                # No TTL, so a volatile-* eviction policy can't drop it.
+                assert redis_client.pttl(key) == -1
+                deadline = self._deadline(connection, redis_client, name)
+                assert 0 < deadline - self._server_ms(redis_client) <= 4000
 
         sleep(5)
+        self._sweep_from_another_worker(connection)
         assert redis_client.exists(key) == 0
+        assert self._deadline(connection, redis_client, name) is None
 
     def test_binding_table_kept_while_consumer_is_paused(
             self, connection, redis_client, short_binding_ttl):
@@ -717,9 +738,10 @@ class test_RedisQueueExpiration:
                 hub.run_once()
                 sleep(0.05)
             hub.close()
+            self._sweep_from_another_worker(connection)
 
             assert len(held) == 1
-            assert redis_client.pttl(key) > 0
+            assert redis_client.exists(key) == 1
 
     def test_binding_table_kept_while_drain_events_has_prefetch_full(
             self, connection, redis_client, short_binding_ttl):
@@ -741,9 +763,10 @@ class test_RedisQueueExpiration:
                     conn.drain_events(timeout=0.2)
                 except socket.timeout:
                     pass
+            self._sweep_from_another_worker(connection)
 
             assert len(held) == 1
-            assert redis_client.pttl(key) > 0
+            assert redis_client.exists(key) == 1
 
     def test_binding_table_kept_while_a_callback_blocks(
             self, connection, redis_client):
@@ -760,6 +783,7 @@ class test_RedisQueueExpiration:
                 if body['n'] == 1:
                     # Longer than 2x expires, like a long task on a solo pool.
                     sleep(5)
+                    other.default_channel.sweep_bindings()
                     producer.publish(
                         {'n': 2}, exchange=exchange, routing_key=name)
                 message.ack()
@@ -777,8 +801,8 @@ class test_RedisQueueExpiration:
 
         assert received == [1, 2]
 
-    def test_binding_table_shared_with_queue_without_expires_never_expires(
-            self, connection, redis_client):
+    def test_binding_table_shared_with_queue_without_expires_never_swept(
+            self, connection, redis_client, short_binding_ttl):
         name = f'binding_shared_{uuid4()}'
         exchange = kombu.Exchange(name)
         expiring = kombu.Queue(
@@ -789,38 +813,49 @@ class test_RedisQueueExpiration:
         with connection as conn:
             with conn.channel() as channel:
                 expiring(channel).declare()
-                assert redis_client.pttl(key) > 0
                 lasting(channel).declare()
                 expiring(channel).declare()
 
-        assert redis_client.pttl(key) == -1
+        assert self._deadline(connection, redis_client, name) == float('inf')
+        sleep(5)
+        self._sweep_from_another_worker(connection)
+        assert redis_client.scard(key) == 2
 
-    def test_expire_binding_table_script(self, connection, redis_client):
+    def test_refresh_and_sweep_binding_scripts(
+            self, connection, redis_client):
         name = f'binding_script_{uuid4()}'
         key = self._binding_key(connection, name)
 
         with connection as conn:
             channel = conn.default_channel
+            deadlines = channel._script_binding_deadlines
             with channel.conn_or_acquire() as client:
-                def expire(ttl, member):
-                    channel._expire_binding_table(
-                        keys=[f'_kombu.binding.{name}'], args=[ttl, member],
-                        client=client)
+                def refresh(member, ttl):
+                    channel._refresh_binding(
+                        keys=[f'_kombu.binding.{name}', deadlines],
+                        args=[member, name, ttl], client=client)
 
-                expire(5000, 'a')
-                assert 0 < redis_client.pttl(key) <= 5000
-                expire(1000, 'b')
-                assert redis_client.pttl(key) > 1000
-                expire(9000, 'c')
-                assert redis_client.pttl(key) > 5000
-                redis_client.persist(key)
-                expire(5000, 'd')
-                assert redis_client.pttl(key) == -1
+                def time_left():
+                    return (self._deadline(connection, redis_client, name)
+                            - self._server_ms(redis_client))
+
+                refresh('a', 5000)
+                assert 4000 < time_left() <= 5000
+                refresh('b', 1000)
+                assert time_left() > 4000
+                refresh('c', 9000)
+                assert time_left() > 8000
                 redis_client.delete(key)
-                expire(5000, 'e')
-                assert 0 < redis_client.pttl(key) <= 5000
+                refresh('d', 9000)
+                assert redis_client.smembers(key) == {'d'}
+                assert redis_client.pttl(key) == -1
 
-        assert redis_client.smembers(key) == {'e'}
+                channel.sweep_bindings()
+                assert redis_client.exists(key) == 1
+                redis_client.zadd(deadlines, {name: 0})
+                channel.sweep_bindings()
+                assert redis_client.exists(key) == 0
+                assert self._deadline(connection, redis_client, name) is None
 
 
 @pytest.mark.env('redis')

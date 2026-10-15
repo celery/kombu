@@ -171,20 +171,38 @@ DEFAULT_REAUTH_CHECK_INTERVAL = 10
 #: consumer whose event loop stalls briefly does not lose its bindings.
 BINDING_EXPIRES_FACTOR = 2
 
-#: A binding table's TTL in ms is never below this, so a consumer that can't
-#: run kombu for a while, such as a long task on Celery's solo pool, keeps its
-#: routing.
+#: A binding table's lifetime in ms is never below this, so a consumer that
+#: can't run kombu for a while, such as a long task on Celery's solo pool,
+#: keeps its routing.
 MIN_BINDING_TTL = 60 * 60 * 1000
 
-#: Adds member ARGV[2] to binding table KEYS[1] and extends its expiry to
-#: ARGV[1] ms. A table without an expiry is left without one.
-EXPIRE_BINDING_TABLE = """
-local ttl = redis.call('PTTL', KEYS[1])
-redis.call('SADD', KEYS[1], ARGV[2])
-if ttl == -2 then ttl = 0 end
-if ttl >= 0 and ttl < tonumber(ARGV[1]) then
-    redis.call('PEXPIRE', KEYS[1], ARGV[1])
+#: Seconds between sweeps of overdue binding tables by each channel.
+BINDING_SWEEP_INTERVAL = 60
+
+#: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
+#: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
+#: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
+#: them.
+REFRESH_BINDING = """
+redis.call('SADD', KEYS[1], ARGV[1])
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+"""
+
+#: Deletes up to ARGV[2] binding tables whose deadline in sorted set KEYS[1]
+#: has passed. ARGV[1] is the table key without the exchange name. An
+#: exchange bound by a queue without x-expires has an infinite deadline.
+SWEEP_BINDINGS = """
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local overdue = redis.call(
+    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[2]))
+for _, exchange in ipairs(overdue) do
+    redis.call('DEL', ARGV[1] .. exchange)
+    redis.call('ZREM', KEYS[1], exchange)
 end
+return #overdue
 """
 
 PRIORITY_STEPS = [0, 3, 6, 9]
@@ -304,7 +322,6 @@ class GlobalKeyPrefixMixin:
         "ZRANGE",
         "ZREM",
         "PEXPIRE",
-        "PERSIST",
     ]
 
     PREFIXED_COMPLEX_COMMANDS = {
@@ -954,6 +971,7 @@ class Channel(virtual.Channel):
     _closing = False
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
+    keyprefix_binding_deadlines = '_kombu.binding_deadlines'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
@@ -1087,6 +1105,7 @@ class Channel(virtual.Channel):
         self._async_sentinel_manager = None
         self._expires = {}
         self._binding_expiry_refreshed_at = 0.0
+        self._bindings_swept_at = 0.0
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -1643,30 +1662,59 @@ class Channel(virtual.Channel):
         member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire() as client:
             if queue in self._expires:
-                self._expire_binding_table(
-                    keys=[key], args=[self._binding_ttl(queue), member],
+                self._refresh_binding(
+                    keys=[key, self._script_binding_deadlines],
+                    args=[member, exchange, self._binding_ttl(queue)],
                     client=client)
             else:
                 with client.pipeline() as pipe:
                     pipe.sadd(key, member)
-                    # A queue without x-expires keeps the whole table alive.
-                    pipe.persist(key)
+                    # A queue without x-expires keeps the table forever.
+                    pipe.zadd(self.keyprefix_binding_deadlines,
+                              {exchange: float('inf')})
                     pipe.execute()
 
     @cached_property
-    def _expire_binding_table(self):
-        return self._create_client().register_script(EXPIRE_BINDING_TABLE)
+    def _refresh_binding(self):
+        return self._create_client().register_script(REFRESH_BINDING)
+
+    @cached_property
+    def _sweep_bindings(self):
+        return self._create_client().register_script(SWEEP_BINDINGS)
+
+    @property
+    def _script_binding_deadlines(self):
+        # The prefixed client prefixes only the first key of an EVALSHA.
+        return self.global_keyprefix + self.keyprefix_binding_deadlines
 
     def _binding_ttl(self, queue):
         return max(self._expires[queue] * BINDING_EXPIRES_FACTOR,
                    MIN_BINDING_TTL)
 
+    def sweep_bindings(self, limit=100):
+        """Delete binding tables that no consumer refreshed in time.
+
+        Returns the number of tables removed from the deadline set.
+        """
+        prefix = self.global_keyprefix + self.keyprefix_queue % ('',)
+        with self.conn_or_acquire() as client:
+            return self._sweep_bindings(
+                keys=[self.keyprefix_binding_deadlines],
+                args=[prefix, limit], client=client)
+
     def maybe_refresh_binding_expiry(self):
-        """Keep the binding tables of consumed, expiring queues alive."""
+        """Keep the binding tables of consumed, expiring queues alive.
+
+        Also sweeps overdue tables at most every BINDING_SWEEP_INTERVAL
+        seconds, so any live channel cleans up after stopped ones.
+        """
+        now = monotonic()
+        if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
+            self.sweep_bindings()
+            self._bindings_swept_at = now
         queues = [q for q in self._active_queues if q in self._expires]
         if not queues:
             return
-        now = monotonic()
         refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
         if now - self._binding_expiry_refreshed_at < refresh_every:
             return
@@ -1675,13 +1723,15 @@ class Channel(virtual.Channel):
                 for queue in queues:
                     for exchange, routing_key, args in \
                             self.state.queue_bindings(queue):
-                        # Passing the member re-creates an expired table.
+                        # Passing the member re-creates a wiped table.
                         _, pattern, _ = self.typeof(exchange).prepare_bind(
                             queue, exchange, routing_key, args)
-                        self._expire_binding_table(
-                            keys=[self.keyprefix_queue % (exchange,)],
-                            args=[self._binding_ttl(queue), self.sep.join(
-                                [routing_key or '', pattern or '', queue])],
+                        self._refresh_binding(
+                            keys=[self.keyprefix_queue % (exchange,),
+                                  self._script_binding_deadlines],
+                            args=[self.sep.join(
+                                [routing_key or '', pattern or '', queue]),
+                                exchange, self._binding_ttl(queue)],
                             client=pipe)
                 pipe.execute()
         self._binding_expiry_refreshed_at = now

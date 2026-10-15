@@ -8,16 +8,20 @@
 Unreleased
 ===
 
-- Redis transport: the binding table of a queue declared with ``expires`` now
-  expires too, at twice the queue's ``expires`` and never under an hour, so
-  replaced consumers no longer leave ``_kombu.binding.*`` keys behind for
-  good. The hour covers a consumer that can't run kombu meanwhile, such as a
-  long task on Celery's solo pool. A table that also binds a queue without
-  ``expires`` never expires. Declaring an expiring queue now needs Lua
-  scripting (``EVALSHA``). Upgrade every process that binds to a shared
-  exchange before relying on this: older kombu binds without ``PERSIST``, so
-  its queues don't keep a shared table alive. Tables left behind before the
-  upgrade keep no expiry and can be deleted by hand. (#2732)
+- Redis transport: the binding table of a queue declared with ``expires`` is
+  now deleted once no consumer has refreshed it for twice the queue's
+  ``expires``, and never under an hour, so replaced consumers no longer leave
+  ``_kombu.binding.*`` keys behind for good. The tables still have no TTL, so
+  a ``volatile-*`` eviction policy can't drop them. Each table's deadline is
+  kept in the sorted set ``_kombu.binding_deadlines``, and every consuming
+  channel deletes overdue tables once a minute. The hour covers a consumer
+  that can't run kombu meanwhile, such as a long task on Celery's solo pool.
+  A table that also binds a queue without ``expires`` is never deleted.
+  Declaring an expiring queue now needs Lua scripting (``EVALSHA``).
+  Upgrade every process that binds to a shared exchange before relying on
+  this: older kombu doesn't record a deadline, so its queues don't keep a
+  shared table alive. Tables left behind before the upgrade have no deadline
+  and can be deleted by hand. (#2732)
 
 - Fix emergency state dumps to write protocol-0 pickle data when serialization
   succeeds. Failed virtual-transport message restoration now dumps serializable
