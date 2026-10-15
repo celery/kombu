@@ -1358,6 +1358,42 @@ class test_Channel:
     def test_brpop_start_but_no_queues(self):
         assert self.channel._brpop_start() is None
 
+    def test_brpop_start_records_send_time(self):
+        self.channel._queue_cycle = Mock(name='queue_cycle')
+        self.channel._queue_cycle.consume.return_value = ['a_queue']
+        with patch('kombu.transport.redis.monotonic', return_value=42.0):
+            self.channel._brpop_start()
+        assert self.channel._in_poll is self.channel.client.connection
+        assert self.channel._brpop_sent_at == 42.0
+
+    def test_brpop_health_drop_resets_in_poll(self):
+        """Dropping a stale BRPOP connection lets the next tick resend it.
+
+        The disconnect hook clears ``_in_poll``, so ``_register_BRPOP``
+        registers the new socket and issues a fresh BRPOP.
+        """
+        self.channel._queue_cycle = Mock(name='queue_cycle')
+        self.channel._queue_cycle.consume.return_value = ['a_queue']
+        self.channel.connection.cycle = Mock(name='cycle')
+        connection = self.channel.client.connection
+        with patch('kombu.transport.redis.monotonic', return_value=0.0):
+            self.channel._brpop_start()
+        connection.disconnect = Mock(
+            side_effect=lambda: self.channel._on_connection_disconnect(
+                connection))
+        poller = redis.MultiChannelPoller()
+        poller._channels = [self.channel]
+
+        with patch('kombu.transport.redis.monotonic', return_value=1000.0), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=False):
+            poller.maybe_check_brpop_health()
+
+        connection.disconnect.assert_called_once_with()
+        assert self.channel._in_poll is None
+        self.channel.connection.cycle._on_connection_disconnect \
+            .assert_called_once_with(connection)
+
     def test_receive(self):
         s = self.channel.subclient = Mock()
         self.channel._fanout_to_queue['a'] = 'b'
@@ -1791,6 +1827,7 @@ class test_Channel:
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
             call(25, transport.cycle.maybe_check_subclient_health),
+            call(25, transport.cycle.maybe_check_brpop_health),
             call(10, transport.cycle.maybe_reauth),
         ])
         loop.on_tick.add.assert_called()
@@ -1879,6 +1916,7 @@ class test_Channel:
         loop.call_repeatedly.assert_has_calls([
             call(10, transport.cycle.maybe_restore_messages),
             call(15, transport.cycle.maybe_check_subclient_health),
+            call(15, transport.cycle.maybe_check_brpop_health),
             call(10, transport.cycle.maybe_reauth),
         ])
         loop.on_tick.add.assert_called()
@@ -1904,18 +1942,21 @@ class test_Channel:
         conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
-        tref1, tref2, tref3, tref4 = (Mock(name='tref_restore'),
-                                      Mock(name='tref_health'),
-                                      Mock(name='tref_reauth'),
-                                      Mock(name='tref_binding_expiry'))
-        loop.call_repeatedly.side_effect = [tref1, tref2, tref3, tref4]
+        tref1, tref2, tref3, tref4, tref5 = (
+            Mock(name='tref_restore'),
+            Mock(name='tref_health'),
+            Mock(name='tref_brpop_health'),
+            Mock(name='tref_reauth'),
+            Mock(name='tref_binding_expiry'))
+        loop.call_repeatedly.side_effect = [tref1, tref2, tref3, tref4, tref5]
 
         redis.Transport.register_with_event_loop(transport, conn, loop)
 
         assert transport.cycle._restore_messages_tref is tref1
         assert transport.cycle._subclient_health_tref is tref2
-        assert transport.cycle._reauth_tref is tref3
-        assert transport.cycle._binding_expiry_tref is tref4
+        assert transport.cycle._brpop_health_tref is tref3
+        assert transport.cycle._reauth_tref is tref4
+        assert transport.cycle._binding_expiry_tref is tref5
 
     def test_register_with_event_loop_cancels_stale_trefs_on_reconnect(self):
         """Stale timer entries from a previous connection must be cancelled.
@@ -1933,16 +1974,22 @@ class test_Channel:
 
         old_restore_tref = Mock(name='old_restore_tref')
         old_health_tref = Mock(name='old_health_tref')
+        old_brpop_health_tref = Mock(name='old_brpop_health_tref')
         old_reauth_tref = Mock(name='old_reauth_tref')
+        old_binding_expiry_tref = Mock(name='old_binding_expiry_tref')
         transport.cycle._restore_messages_tref = old_restore_tref
         transport.cycle._subclient_health_tref = old_health_tref
+        transport.cycle._brpop_health_tref = old_brpop_health_tref
         transport.cycle._reauth_tref = old_reauth_tref
+        transport.cycle._binding_expiry_tref = old_binding_expiry_tref
 
         redis.Transport.register_with_event_loop(transport, conn, loop)
 
         old_restore_tref.cancel.assert_called_once()
         old_health_tref.cancel.assert_called_once()
+        old_brpop_health_tref.cancel.assert_called_once()
         old_reauth_tref.cancel.assert_called_once()
+        old_binding_expiry_tref.cancel.assert_called_once()
 
     def test_transport_on_readable(self):
         transport = self.connection.transport
@@ -3140,6 +3187,110 @@ class test_MultiChannelPoller:
         assert client.health_check_response_counter == 0
         client.check_health.assert_not_called()
 
+    def _brpop_channel(self, sent_at=0.0, brpop_timeout=1,
+                       health_check_interval=25):
+        channel = Mock(name='channel')
+        channel._in_poll = Mock(name='connection')
+        channel._brpop_sent_at = sent_at
+        channel.brpop_timeout = brpop_timeout
+        channel.health_check_interval = health_check_interval
+        channel.connection_errors = (ConnectionError,)
+        return channel
+
+    def _check_brpop_health(self, *channels, now, readable=False):
+        p = self.Poller()
+        p._channels = list(channels)
+        with patch('kombu.transport.redis.monotonic', return_value=now), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=readable) as socket_readable:
+            p.maybe_check_brpop_health()
+        return socket_readable
+
+    def test_maybe_check_brpop_health_drops_overdue_reply(self):
+        """BRPOP always gets a reply within ``brpop_timeout``.
+
+        A half-open socket never becomes readable and no socket timeout
+        applies to the event loop, so an overdue reply means the connection
+        is gone and must be dropped to force a reconnect.
+        """
+        channel = self._brpop_channel(sent_at=100.0)
+        connection = channel._in_poll
+
+        self._check_brpop_health(channel, now=126.0)
+
+        connection.disconnect.assert_called_once_with()
+
+    def test_maybe_check_brpop_health_tolerates_pending_reply(self):
+        channel = self._brpop_channel(sent_at=100.0)
+
+        self._check_brpop_health(channel, now=125.9)
+
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_maybe_check_brpop_health_keeps_unread_reply(self):
+        """A reply that arrived while the event loop was busy is not lost."""
+        channel = self._brpop_channel(sent_at=100.0)
+
+        socket_readable = self._check_brpop_health(
+            channel, now=500.0, readable=True)
+
+        socket_readable.assert_called_once_with(channel._in_poll._sock)
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_maybe_check_brpop_health_skips_disconnected_socket(self):
+        channel = self._brpop_channel(sent_at=100.0)
+        channel._in_poll._sock = None
+
+        self._check_brpop_health(channel, now=500.0)
+
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_socket_readable_does_not_consume_data(self):
+        """The check must leave the reply for the event loop to read."""
+        a, b = socket.socketpair()
+        # this module replaces eventio.poll with a fake; use a real poller
+        with patch('kombu.transport.redis.poll', eventio._select):
+            try:
+                assert not redis._socket_readable(a)
+                b.sendall(b'$-1\r\n')
+                assert redis._socket_readable(a)
+                assert redis._socket_readable(a)
+                assert a.recv(16) == b'$-1\r\n'
+            finally:
+                a.close()
+                b.close()
+
+    @pytest.mark.parametrize('in_poll', [False, None])
+    def test_maybe_check_brpop_health_skips_idle_channel(self, in_poll):
+        channel = self._brpop_channel(sent_at=100.0)
+        channel._in_poll = in_poll
+
+        self._check_brpop_health(channel, now=500.0)  # must not raise
+
+    def test_maybe_check_brpop_health_skips_blocking_brpop(self):
+        """``brpop_timeout`` 0 blocks forever, so no reply is ever due."""
+        channel = self._brpop_channel(sent_at=100.0, brpop_timeout=0)
+
+        self._check_brpop_health(channel, now=10000.0)
+
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_maybe_check_brpop_health_disabled_by_interval(self):
+        channel = self._brpop_channel(sent_at=100.0, health_check_interval=0)
+
+        self._check_brpop_health(channel, now=10000.0)
+
+        channel._in_poll.disconnect.assert_not_called()
+
+    def test_maybe_check_brpop_health_checks_every_channel(self):
+        stale = self._brpop_channel(sent_at=100.0)
+        fresh = self._brpop_channel(sent_at=499.0)
+
+        self._check_brpop_health(stale, fresh, now=500.0)
+
+        stale._in_poll.disconnect.assert_called_once_with()
+        fresh._in_poll.disconnect.assert_not_called()
+
     def test_maybe_reauth_delegates_to_channels(self):
         """Happy path: the timer flushes re-auth on every channel."""
         p = self.Poller()
@@ -3354,6 +3505,7 @@ class test_MultiChannelPoller:
 
         p._register_BRPOP = Mock()
         p._register_LISTEN = Mock()
+        p.maybe_check_brpop_health = Mock()
 
         channel = Mock()
         p._channels = [channel]
@@ -3447,6 +3599,24 @@ class test_MultiChannelPoller:
             p.get(Mock())
 
         channel._poll_error.assert_called_with('BRPOP')
+
+    def test_get_checks_brpop_health_when_idle(self):
+        """drain_events() has no timer, so get() runs the BRPOP check."""
+        p, channel = self.create_get(queues=['a_queue'])
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        p.maybe_check_brpop_health.assert_called_once_with()
+
+    def test_get_skips_brpop_health_on_events(self):
+        p, channel = self.create_get(events=[(1, eventio.ERR)])
+        p._fd_to_chan[1] = (channel, 'BRPOP')
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        p.maybe_check_brpop_health.assert_not_called()
 
 
 class test_Mutex:
