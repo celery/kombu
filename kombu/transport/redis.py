@@ -1762,8 +1762,8 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self, *args):
-                    super().disconnect(*args)
+                def disconnect(self, *args, **kwargs):
+                    super().disconnect(*args, **kwargs)
                     # We remove the connection from the poller
                     # only if it has been added properly.
                     if channel._registered:
