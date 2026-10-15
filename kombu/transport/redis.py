@@ -721,6 +721,11 @@ class MultiChannelPoller:
             except channel.connection_errors:
                 logger.debug('maybe_refresh_binding_expiry: connection '
                              'error, will retry', exc_info=True)
+            except channel.ResponseError:
+                # Such as scripts refused on a full noeviction server, where
+                # BRPOP still works, so consuming goes on.
+                logger.warning('maybe_refresh_binding_expiry: Redis error, '
+                               'will retry', exc_info=True)
 
     def maybe_check_subclient_health(self):
         for channel in self._channels:
@@ -1719,12 +1724,16 @@ class Channel(virtual.Channel):
         if not queues:
             return
         now = monotonic()
+        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
+        # Refresh first, so a sweep never deletes this channel's own tables.
+        if now - self._binding_expiry_refreshed_at >= refresh_every:
+            self._refresh_bindings(queues)
+            self._binding_expiry_refreshed_at = now
         if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
             self.sweep_bindings()
             self._bindings_swept_at = now
-        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
-        if now - self._binding_expiry_refreshed_at < refresh_every:
-            return
+
+    def _refresh_bindings(self, queues):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for queue in queues:
@@ -1741,7 +1750,6 @@ class Channel(virtual.Channel):
                                 exchange, self._binding_ttl(queue)],
                             client=pipe)
                 pipe.execute()
-        self._binding_expiry_refreshed_at = now
 
     def _maybe_update_queues_expire(self, client, queue):
         """Update expiration on queue keys.

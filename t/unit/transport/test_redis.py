@@ -2391,6 +2391,35 @@ class test_Channel:
 
         channel.sweep_bindings.assert_called_once_with()
 
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
+    def test_refresh_binding_expiry_refreshes_before_sweeping(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        calls = Mock()
+        channel._refresh_bindings = calls.refresh
+        channel.sweep_bindings = calls.sweep
+
+        channel.maybe_refresh_binding_expiry()
+
+        assert calls.mock_calls == [call.refresh(['q']), call.sweep()]
+
+    def test_refresh_and_sweep_repeat_after_their_intervals(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        channel._refresh_bindings = Mock()
+        clock = [1.0]
+
+        with patch('kombu.transport.redis.monotonic', lambda: clock[0]):
+            channel.maybe_refresh_binding_expiry()
+            clock[0] += redis.BINDING_SWEEP_INTERVAL
+            channel.maybe_refresh_binding_expiry()
+            clock[0] += channel._binding_ttl('q') / 1000 / 3
+            channel.maybe_refresh_binding_expiry()
+
+        assert channel.sweep_bindings.call_count == 3
+        assert channel._refresh_bindings.call_count == 2
+
     def test_channel_without_expiring_queues_never_sweeps(self):
         channel = self.channel
         channel._active_queues = ['q']
@@ -3017,6 +3046,18 @@ class test_MultiChannelPoller:
         chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
         chan1.connection_errors = chan2.connection_errors = (KeyError,)
         chan1.maybe_refresh_binding_expiry.side_effect = KeyError('down')
+        p._channels = [chan1, chan2]
+
+        p.maybe_refresh_binding_expiry()
+
+        chan2.maybe_refresh_binding_expiry.assert_called_once_with()
+
+    def test_maybe_refresh_binding_expiry_survives_redis_errors(self):
+        p = self.Poller()
+        chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
+        chan1.connection_errors = chan2.connection_errors = (KeyError,)
+        chan1.ResponseError = chan2.ResponseError = ValueError
+        chan1.maybe_refresh_binding_expiry.side_effect = ValueError('OOM')
         p._channels = [chan1, chan2]
 
         p.maybe_refresh_binding_expiry()
