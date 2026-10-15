@@ -1330,13 +1330,7 @@ class test_Channel:
         client.delete_message.assert_called_once_with(
             QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
         )
-        if error_code == 'InternalError':
-            client.change_message_visibility.assert_called_once_with(
-                QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
-                VisibilityTimeout=10,
-            )
-        else:
-            client.change_message_visibility.assert_not_called()
+        client.change_message_visibility.assert_not_called()
         assert message.acknowledged
         assert channel.qos.can_consume()
 
@@ -1582,8 +1576,9 @@ class test_Channel:
 
         message_mock = Mock()
         message_mock.delivery_info = {'routing_key': queue_name}
+        channel._restore_at_beginning = Mock()
         channel.qos._delivered['test_message_id'] = message_mock
-        channel.qos.reject('test_message_id')
+        channel.qos.reject('test_message_id', requeue=True)
         mock_apply_policy.assert_called_once_with(
             'queue-1', 'test_message_id',
             {1: 10, 2: 20, 3: 40, 4: 80, 5: 320, 6: 640},
@@ -1606,16 +1601,47 @@ class test_Channel:
         message_mock.delivery_info = {'routing_key': queue_name}
         message_mock.headers = {"task": "svc.tasks.tasks.task1"}
         message_mock.properties = {"delivery_info": {"sqs_message": {"Attributes": {"ApproximateReceiveCount": 2}}}}
+        channel._restore_at_beginning = Mock()
         channel.qos._delivered['test_message_id'] = message_mock
 
         channel.sqs = Mock()
         sqs_queue_mock = Mock()
         channel.sqs.return_value = sqs_queue_mock
-        channel.qos.reject('test_message_id')
+        channel.qos.reject('test_message_id', requeue=True)
 
         sqs_queue_mock.change_message_visibility.assert_called_once_with(
             QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
             ReceiptHandle='test_message_id', VisibilityTimeout=20)
+
+    def test_predefined_queues_reject_without_requeue_deletes_message(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        queue_name = "queue-1"
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {
+            'routing_key': queue_name,
+            'sqs_queue': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            'sqs_message': {'ReceiptHandle': 'receipt-handle'},
+        }
+        channel.qos._delivered['test_message_id'] = message_mock
+
+        channel.sqs = Mock()
+        sqs_queue_mock = Mock()
+        channel.sqs.return_value = sqs_queue_mock
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        sqs_queue_mock.delete_message.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            ReceiptHandle='receipt-handle'
+        )
 
     def test_predefined_queues_put_to_fifo_queue(self):
         connection = Connection(transport=SQS.Transport, transport_options={
