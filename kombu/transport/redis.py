@@ -50,13 +50,30 @@ Transport Options
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
   used by Kombu
-* ``socket_timeout``
+* ``socket_timeout``: (float) Timeout in seconds for blocking socket
+  operations. Defaults to ``None`` (wait forever). Set it when the broker
+  can disappear without closing the TCP connection (failover, NAT or
+  firewall timeout): without it, a synchronous command such as a publish
+  waits forever on the dead connection, and the checks enabled by
+  ``health_check_interval`` never get a chance to run.
 * ``socket_connect_timeout``
 * ``socket_keepalive``
 * ``socket_keepalive_options``
 * ``queue_order_strategy``
 * ``max_connections``
-* ``health_check_interval``
+* ``health_check_interval``: (int) Passed to redis-py, and also the
+  interval in seconds of kombu's own checks of the long-lived pub/sub and
+  BRPOP connections. Defaults to ``25``; ``0`` disables them. A BRPOP
+  connection whose reply is overdue by more than
+  ``brpop_timeout + health_check_interval`` is dropped and reconnected, so a
+  consumer stuck on a half-open connection recovers within about
+  ``brpop_timeout + 2 * health_check_interval`` seconds (51 by default).
+  The BRPOP check runs with the event loop and with
+  :meth:`~kombu.Connection.drain_events`; the pub/sub check only with the
+  event loop. See ``socket_timeout``.
+
+  .. versionchanged:: 5.7.0
+     The BRPOP connection is checked too.
 * ``reauth_check_interval``: (int) How often, in seconds, to flush pending
   streaming re-authentication tokens (emitted by a
   ``redis.credentials.StreamingCredentialProvider`` such as the Entra ID /
@@ -765,6 +782,10 @@ class MultiChannelPoller:
                     ret = self.handle_event(fileno, event)
                     if ret:
                         return
+            else:
+                # drain_events() consumers have no event loop timer to
+                # catch a half-open BRPOP connection.
+                self.maybe_check_brpop_health()
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()

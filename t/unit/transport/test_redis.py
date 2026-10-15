@@ -3373,6 +3373,7 @@ class test_MultiChannelPoller:
 
         p._register_BRPOP = Mock()
         p._register_LISTEN = Mock()
+        p.maybe_check_brpop_health = Mock()
 
         channel = Mock()
         p._channels = [channel]
@@ -3445,6 +3446,24 @@ class test_MultiChannelPoller:
             p.get(Mock())
 
         channel._poll_error.assert_called_with('BRPOP')
+
+    def test_get_checks_brpop_health_when_idle(self):
+        """drain_events() has no timer, so get() runs the BRPOP check."""
+        p, channel = self.create_get(queues=['a_queue'])
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        p.maybe_check_brpop_health.assert_called_once_with()
+
+    def test_get_skips_brpop_health_on_events(self):
+        p, channel = self.create_get(events=[(1, eventio.ERR)])
+        p._fd_to_chan[1] = (channel, 'BRPOP')
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        p.maybe_check_brpop_health.assert_not_called()
 
 
 class test_Mutex:

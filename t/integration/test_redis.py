@@ -984,9 +984,11 @@ class test_RedisBrpopHealthCheck:
 
     def _consumer(self, connection, port, name, received):
         """Return a connection whose BRPOP is in flight through the proxy."""
+        # a regression must fail, not hang on the dead socket in close()
         conn = get_connection(
             hostname='127.0.0.1', port=port, vhost=None,
-            transport_options=connection.transport_options,
+            transport_options={
+                **connection.transport_options, 'socket_timeout': 5},
         )
         queue = kombu.Queue(name, kombu.Exchange(name), routing_key=name)
         channel = conn.channel()
@@ -1069,6 +1071,37 @@ class test_RedisBrpopHealthCheck:
                     pass
                 if received:
                     break
+
+        assert received == [{'msg': 'recovered'}]
+
+    def test_half_open_connection_dropped_by_drain_events(
+            self, connection, proxy):
+        """Without an event loop, an idle drain_events() runs the check."""
+        name = f'brpop_drain_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            proxy.freeze()
+            sleep(channel.brpop_timeout + 0.5)
+            self._publish(connection, queue, {'msg': 'recovered'})
+
+            deadline = channel.brpop_timeout + channel.health_check_interval
+            with patch('kombu.transport.redis.monotonic',
+                       return_value=channel._brpop_sent_at + deadline + 1):
+                with pytest.raises(socket.timeout):
+                    conn.drain_events(timeout=1)
+                assert received == []
+                assert channel.client.connection._sock is None
+                assert not channel._in_poll
+
+                for _ in range(5):
+                    try:
+                        conn.drain_events(timeout=1)
+                    except socket.timeout:
+                        pass
+                    if received:
+                        break
 
         assert received == [{'msg': 'recovered'}]
 
