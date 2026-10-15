@@ -924,6 +924,28 @@ class test_Channel:
             # the on_disconnect counter shouldn't be incremented
             assert chan.on_disconect_count == 0
 
+    def test_redis_disconnect_forwards_keyword_arguments(self):
+        # redis-py >= 7.2 passes error details to disconnect() as keyword
+        # arguments, e.g. when a health check PING fails.
+        from redis.exceptions import ConnectionError
+
+        class RedisConnectionMock:
+            def disconnect(self, *args, **kwargs):
+                self.disconnect_kwargs = kwargs
+
+        self.channel.connection_class = RedisConnectionMock
+        connparams = self.channel._connparams(asynchronous=True)
+        redis_connection = connparams['connection_class']()
+        error = ConnectionError('Connection closed by server.')
+
+        with patch.object(self.channel, '_on_connection_disconnect') as on_disconnect:
+            redis_connection.disconnect(error=error, failure_count=1, health_check_failed=True)
+
+        assert redis_connection.disconnect_kwargs == {
+            'error': error, 'failure_count': 1, 'health_check_failed': True,
+        }
+        on_disconnect.assert_called_once_with(redis_connection)
+
     def test_get_redis_ConnectionError(self):
         from redis.exceptions import ConnectionError
 
@@ -3047,6 +3069,42 @@ class test_MultiChannelPoller:
         p = self.Poller()
         assert 35 not in p._fd_to_chan
         p.on_readable(35)
+
+    def test_on_readable_drops_idle_brpop_connection(self):
+        # The QoS cannot consume and no BRPOP is pending, so the socket is
+        # readable only because the server closed it.
+        p = self.Poller()
+        chan = Mock(name='chan')
+        chan._in_poll = None
+        chan.qos.can_consume.return_value = False
+        chan.handlers = {'BRPOP': Mock(name='BRPOP')}
+        p._fd_to_chan[13] = chan, 'BRPOP'
+
+        p.on_readable(13)
+
+        chan.client.connection.disconnect.assert_called_once_with()
+        chan.handlers['BRPOP'].assert_not_called()
+
+    @pytest.mark.parametrize(
+        ('type', 'pending'),
+        [
+            ('BRPOP', True),
+            ('LISTEN', False),
+        ],
+    )
+    def test_on_readable_keeps_connection(self, type, pending):
+        p = self.Poller()
+        chan = Mock(name='chan')
+        chan._in_poll = chan.client.connection if pending else None
+        chan.qos.can_consume.return_value = False
+        chan.handlers = {type: Mock(name=type)}
+        p._fd_to_chan[13] = chan, type
+
+        p.on_readable(13)
+
+        chan.client.connection.disconnect.assert_not_called()
+        chan.subclient.connection.disconnect.assert_not_called()
+        chan.handlers[type].assert_not_called()
 
     def test_handle_event_ignores_unmapped_fd(self):
         p = self.Poller()
