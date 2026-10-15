@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import ast
+import json
 import os
+import time
 import uuid
 from unittest.mock import patch
 
+import boto3
 import pytest
 
 import kombu
@@ -27,6 +31,29 @@ def get_connection(hostname: str = "localhost", port: int = 4100, queue_prefix: 
             "wait_time_seconds": 0,  # Set to 0 to ensure requeue testing works
         },
     )
+
+
+def _sent_params(params):
+    """Return the SendMessage parameters from a ``before-call`` hook.
+
+    The hook receives the prepared *request*, so the delay only appears in the
+    serialised body. botocore's ``json`` protocol puts a JSON object there,
+    while the ``query`` protocol puts a Python-repr dict literal; this accepts
+    both so the test does not depend on the wire protocol.
+    """
+    body = params.get('body')
+    if not body:
+        return None
+    if isinstance(body, bytes):
+        body = body.decode()
+    try:
+        return json.loads(body)
+    except ValueError:
+        pass
+    try:
+        return ast.literal_eval(body)
+    except (ValueError, SyntaxError):
+        return None
 
 
 @pytest.fixture()
@@ -73,6 +100,29 @@ def connection(hub, test_queue_prefix):
     return conn
 
 
+@pytest.fixture()
+def backoff_queue(connection, test_queue_prefix):
+    queue_name = test_queue_prefix + 'ack_backoff'
+    with connection as setup:
+        client = setup.default_channel.sqs()
+        queue_url = client.create_queue(QueueName=queue_name)['QueueUrl']
+        try:
+            with setup.clone(transport_options={
+                **setup.transport_options,
+                'queue_name_prefix': '',
+                'predefined_queues': {
+                    queue_name: {
+                        'url': queue_url,
+                        'backoff_tasks': ['tasks.example'],
+                        'backoff_policy': {1: 10},
+                    },
+                },
+            }) as conn:
+                yield conn, kombu.Queue(queue_name, routing_key=queue_name)
+        finally:
+            client.delete_queue(QueueUrl=queue_url)
+
+
 @pytest.fixture(autouse=True)
 def mock_set_policy():
     """Mock the _set_policy_on_sqs_queue method as this is not supported by GoAws."""
@@ -110,3 +160,256 @@ class test_SQSBaseExchangeTypes(BaseExchangeTypes):
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_SQSMessage(BaseMessage):
     pass
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSPerConnectionState:
+    """Queue URLs are cached per Connection, not process-wide."""
+
+    def test_same_queue_name_routes_to_each_connections_own_queue(self, hub, test_queue_prefix):
+        # Two Connections whose predefined_queues map `orders` to different
+        # SQS queues: opening a channel on the second must not repoint the
+        # first one's `orders` at the second one's queue.
+        host = os.environ.get('SQS_HOST', 'localhost')
+        port = os.environ.get('SQS_PORT', '4100')
+        admin = boto3.client(
+            'sqs',
+            region_name='us-east-1',
+            endpoint_url=f'http://{host}:{port}',
+            aws_access_key_id='TestUsername',
+            aws_secret_access_key='TestPassword',
+        )
+        url_a = admin.create_queue(QueueName=f'{test_queue_prefix}orders_a')['QueueUrl']
+        url_b = admin.create_queue(QueueName=f'{test_queue_prefix}orders_b')['QueueUrl']
+
+        def connection_for(url):
+            conn = get_connection(hostname=host, port=port)
+            conn.transport_options['predefined_queues'] = {
+                'orders': {
+                    'url': url,
+                    'access_key_id': 'TestUsername',
+                    'secret_access_key': 'TestPassword',
+                },
+            }
+            conn.transport_options['hub'] = hub
+            return conn
+
+        with connection_for(url_a) as conn_a, connection_for(url_b) as conn_b:
+            channel_a = conn_a.channel()
+            conn_b.channel()
+            kombu.Producer(channel_a).publish({'sent_by': 'a'}, routing_key='orders')
+
+        received_a = admin.receive_message(QueueUrl=url_a, WaitTimeSeconds=1).get('Messages', [])
+        received_b = admin.receive_message(QueueUrl=url_b, WaitTimeSeconds=1).get('Messages', [])
+        assert len(received_a) == 1
+        assert received_b == []
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.parametrize('error_code', [
+    'InvalidParameterValue', 'ReceiptHandleIsInvalid',
+])
+def test_ack_invalid_receipt_with_backoff(backoff_queue, error_code):
+    connection, queue = backoff_queue
+    messages = []
+
+    def on_message(body, message):
+        messages.append(message)
+
+    with connection.channel() as channel, kombu.Consumer(
+        channel, [queue], callbacks=[on_message],
+        accept=['json'], prefetch_count=1,
+    ):
+        producer = kombu.Producer(channel)
+        producer.publish(
+            'first', routing_key=queue.name, serializer='json',
+            headers={'task': 'tasks.example'},
+        )
+        connection.drain_events(timeout=2)
+        message = messages.pop()
+        assert message.payload == 'first'
+
+        client = channel.sqs(queue.name)
+        queue_url = message.delivery_info['sqs_queue']
+        client.delete_message(
+            QueueUrl=queue_url,
+            ReceiptHandle=message.delivery_info['sqs_message']['ReceiptHandle'],
+        )
+        delete_responses = []
+
+        def invalid_receipt_response(http_response, parsed, **kwargs):
+            # GoAws does not return AWS's invalid-receipt error codes.
+            delete_responses.append(http_response.status_code)
+            parsed['Error']['Code'] = error_code
+
+        event = 'after-call.sqs.DeleteMessage'
+        client.meta.events.register(event, invalid_receipt_response)
+        try:
+            message.ack()
+        finally:
+            client.meta.events.unregister(event, invalid_receipt_response)
+        assert delete_responses == [404]
+        assert message.acknowledged
+
+        producer.publish(
+            'second', routing_key=queue.name, serializer='json',
+            headers={'task': 'tasks.example'},
+        )
+        connection.drain_events(timeout=2)
+        next_message = messages.pop()
+        assert next_message.payload == 'second'
+        next_message.ack()
+
+
+@pytest.mark.env('sqs')
+class test_SQSDelaySeconds:
+    """Per-message delay reaches SQS from both spellings, coerced and clamped."""
+
+    @pytest.fixture
+    def delay_setup(self, connection, test_queue_prefix):
+        """One connection for the whole class, plus the params put on the wire.
+
+        The delay is only observable where it is actually consumed, so these
+        assertions read the request the transport built rather than the
+        properties the caller passed in.
+
+        The recorded entry is read back off the serialised body via
+        ``_sent_params``, so the assertions are about what actually went on
+        the wire rather than about the properties the caller passed in.
+        """
+        # The connection applies ``queue_name_prefix`` to whatever routing key
+        # it is given, so the queue is created under the prefixed name while
+        # publishes address it by the bare name.
+        routing_key = 'delayq'
+        queue_name = f'{test_queue_prefix}{routing_key}'
+        recorded = []
+
+        def record(params, model, **kwargs):
+            sent = _sent_params(params)
+            if sent is not None:
+                recorded.append(sent)
+
+        with connection as conn:
+            channel = conn.default_channel
+            client = channel.sqs()
+            queue_url = client.create_queue(QueueName=queue_name)['QueueUrl']
+            event = 'before-call.sqs.SendMessage'
+            client.meta.events.register(event, record)
+            try:
+                yield routing_key, queue_url, channel, client, recorded
+            finally:
+                client.meta.events.unregister(event, record)
+                client.delete_queue(QueueUrl=queue_url)
+
+    @pytest.mark.parametrize('spelling', ['delay_seconds', 'DelaySeconds'])
+    def test_both_spellings_reach_sqs(self, delay_setup, spelling):
+        """``delay_seconds`` and ``DelaySeconds`` mean the same thing."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            **{spelling: 30},
+        )
+        assert recorded[-1].get('DelaySeconds') == 30
+
+    def test_numeric_string_is_coerced(self, delay_setup):
+        """A quoted number is still a delay, not a publish-time type error."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds='30',
+        )
+        assert recorded[-1].get('DelaySeconds') == 30
+
+    def test_explicit_zero_is_sent(self, delay_setup):
+        """SQS accepts a zero delay, so the transport forwards it."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds=0,
+        )
+        assert recorded[-1].get('DelaySeconds') == 0
+
+    @pytest.mark.parametrize('spelling', ['delay_seconds', 'DelaySeconds'])
+    def test_out_of_range_is_clamped(self, delay_setup, spelling):
+        """An out-of-range delay must not fail the publish with an SQS error."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            **{spelling: 100000},
+        )
+        assert recorded[-1].get('DelaySeconds') == 900
+
+    @pytest.mark.parametrize('value', ['soon', None, -5])
+    def test_unusable_values_publish_without_a_delay(self, delay_setup, value):
+        """A typo'd delay costs the delay, not the message."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'immediate', routing_key=routing_key, serializer='json',
+            delay_seconds=value,
+        )
+        assert 'DelaySeconds' not in recorded[-1]
+
+    def test_fifo_queue_sends_no_delay(self, connection, test_queue_prefix):
+        """SQS rejects DelaySeconds on a FIFO queue, so none is sent."""
+        queue_name = f'{test_queue_prefix}delay.fifo'
+        with connection as conn:
+            channel = conn.default_channel
+            client = channel.sqs()
+            queue_url = client.create_queue(
+                QueueName=queue_name,
+                Attributes={'FifoQueue': 'true'},
+            )['QueueUrl']
+            recorded = []
+
+            def record(params, model, **kwargs):
+                sent = _sent_params(params)
+                if sent is not None:
+                    recorded.append(sent)
+
+            event = 'before-call.sqs.SendMessage'
+            client.meta.events.register(event, record)
+            try:
+                kombu.Producer(channel).publish(
+                    'delayed', routing_key='delay.fifo', serializer='json',
+                    delay_seconds=10,
+                )
+                assert 'DelaySeconds' not in recorded[-1]
+            finally:
+                client.meta.events.unregister(event, record)
+                client.delete_queue(QueueUrl=queue_url)
+
+    def test_no_delay_by_default(self, delay_setup):
+        """A publish that asks for nothing must not send a delay."""
+        routing_key, _url, channel, _client, recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'immediate', routing_key=routing_key, serializer='json',
+        )
+        assert 'DelaySeconds' not in recorded[-1]
+
+    @pytest.mark.flaky(reruns=3, reruns_delay=2)
+    def test_delayed_message_is_withheld_until_the_delay_elapses(self, delay_setup):
+        """The delay is honoured by the broker, not just sent on the wire."""
+        routing_key, queue_url, channel, client, _recorded = delay_setup
+        kombu.Producer(channel).publish(
+            'delayed', routing_key=routing_key, serializer='json',
+            delay_seconds=2,
+        )
+
+        def receive():
+            return client.receive_message(
+                QueueUrl=queue_url, MaxNumberOfMessages=10,
+                VisibilityTimeout=1, WaitTimeSeconds=0,
+            ).get('Messages', [])
+
+        withheld = [m for m in receive() if m['Body']]
+        assert not withheld, 'message became visible before its delay elapsed'
+
+        # Poll rather than sleep a fixed amount: the delay is broker-side, so
+        # how long it takes is the broker's business, not this test's.
+        deadline = time.monotonic() + 30
+        delivered = withheld
+        while not delivered and time.monotonic() < deadline:
+            time.sleep(0.5)
+            delivered = [m for m in receive() if m['Body']]
+        assert delivered, 'delayed message never became visible'

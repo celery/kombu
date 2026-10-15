@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import errno
+import os
+import socket
 import threading
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from copy import copy
 from queue import Empty
 from time import sleep
@@ -40,6 +42,38 @@ def _raise_stop_error():
 @contextmanager
 def _dummy_context(*args, **kwargs):
     yield
+
+
+class _Waker:
+    """Socket pair that lets another thread interrupt the poller.
+
+    Sockets rather than a pipe, as ``select()`` on Windows only accepts
+    sockets.
+    """
+
+    def __init__(self):
+        self.reader, self.writer = socket.socketpair()
+        self.reader.setblocking(False)
+        self.writer.setblocking(False)
+        self.pid = os.getpid()
+
+    def fileno(self):
+        return self.reader.fileno()
+
+    def wake(self):
+        # The hub can be closed already.
+        with suppress(OSError):
+            self.writer.send(b'\0')
+
+    def drain(self):
+        # One read is enough: call_soon() only sends while no wakeup
+        # is pending.
+        with suppress(OSError):
+            self.reader.recv(4096)
+
+    def close(self):
+        self.reader.close()
+        self.writer.close()
 
 
 def get_event_loop() -> Hub | None:
@@ -85,6 +119,12 @@ class Hub:
         self._ready = set()
         self._ready_lock = threading.Lock()
 
+        # Lets call_soon() from another thread interrupt the poller,
+        # see _create_waker().
+        self._waker = None
+        self._wake_pending = False
+        self._loop_thread = None
+
         self._running = False
         self._loop = None
 
@@ -113,13 +153,29 @@ class Hub:
         self._poller = value
 
     def reset(self):
-        self.close()
+        # Unlike close(), keeps the waker: closing it could race with
+        # another thread's write.
+        self._close()
         self._create_poller()
 
     def _create_poller(self):
         self._poller = poll()
         self._register_fd = self._poller.register
         self._unregister_fd = self._poller.unregister
+        if self._waker is not None:
+            self._register_fd(self._waker.fileno(), READ)
+
+    def _create_waker(self):
+        # Created by the loop, so that a hub that never runs holds no
+        # sockets.  A forked child must not share the parent's.
+        if self._waker is not None:
+            self._unregister(self._waker.fileno())
+            self._waker.close()
+        self._waker = _Waker()
+        with self._ready_lock:
+            self._wake_pending = False
+        self.poller.register(self._waker.fileno(), READ)
+        return self._waker
 
     def _close_poller(self):
         if self._poller is not None:
@@ -206,6 +262,16 @@ class Hub:
             callback = promise(callback, args)
         with self._ready_lock:
             self._ready.add(callback)
+            # The loop thread checks _ready before polling again, and one
+            # pending wakeup is enough for any number of callbacks.
+            wake = (not self._wake_pending and
+                    threading.get_ident() != self._loop_thread)
+            if wake:
+                self._wake_pending = True
+        if wake:
+            waker = self._waker
+            if waker is not None:
+                waker.wake()
         return callback
 
     def call_later(self, delay, callback, *args):
@@ -255,7 +321,20 @@ class Hub:
             self._ready = set()
             return ready
 
+    def _on_wakeup(self, waker):
+        # Drain first: clearing the flag first could let a wakeup sent
+        # in between be drained here, leaving the flag set for good.
+        waker.drain()
+        with self._ready_lock:
+            self._wake_pending = False
+
     def close(self, *args):
+        self._close()
+        if self._waker is not None:
+            self._waker.close()
+            self._waker = None
+
+    def _close(self):
         [self._unregister(fd) for fd in self.readers]
         self.readers.clear()
         [self._unregister(fd) for fd in self.writers]
@@ -295,12 +374,17 @@ class Hub:
                     KeyError=KeyError, READ=READ, WRITE=WRITE, ERR=ERR):
         readers, writers = self.readers, self.writers
         poll = self.poller.poll
+        waker = self._waker
+        if waker is None or waker.pid != os.getpid():
+            waker = self._create_waker()
+        waker_fd = waker.fileno()
         fire_timers = self.fire_timers
         hub_remove = self.remove
         scheduled = self.timer._queue
         consolidate = self.consolidate
         consolidate_callback = self.consolidate_callback
         propagate = self.propagate_errors
+        self._loop_thread = threading.get_ident()
 
         while 1:
             todo = self._pop_ready()
@@ -324,6 +408,9 @@ class Hub:
                     return
 
                 for fd, event in events or ():
+                    if fd == waker_fd:
+                        self._on_wakeup(waker)
+                        continue
                     general_error = False
                     if fd in consolidate and \
                             writers.get(fd) is None:

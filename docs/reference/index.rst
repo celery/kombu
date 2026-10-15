@@ -53,6 +53,7 @@ Kombu Transports
     kombu.transport.zookeeper
     kombu.transport.filesystem
     kombu.transport.sqlalchemy
+    kombu.transport.pgmq
     kombu.transport.SQS
     kombu.transport.SLMQ
     kombu.transport.pyro
