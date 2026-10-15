@@ -924,6 +924,28 @@ class test_Channel:
             # the on_disconnect counter shouldn't be incremented
             assert chan.on_disconect_count == 0
 
+    def test_redis_disconnect_forwards_keyword_arguments(self):
+        # redis-py >= 7.2 passes error details to disconnect() as keyword
+        # arguments, e.g. when a health check PING fails.
+        from redis.exceptions import ConnectionError
+
+        class RedisConnectionMock:
+            def disconnect(self, *args, **kwargs):
+                self.disconnect_kwargs = kwargs
+
+        self.channel.connection_class = RedisConnectionMock
+        connparams = self.channel._connparams(asynchronous=True)
+        redis_connection = connparams['connection_class']()
+        error = ConnectionError('Connection closed by server.')
+
+        with patch.object(self.channel, '_on_connection_disconnect') as on_disconnect:
+            redis_connection.disconnect(error=error, failure_count=1, health_check_failed=True)
+
+        assert redis_connection.disconnect_kwargs == {
+            'error': error, 'failure_count': 1, 'health_check_failed': True,
+        }
+        on_disconnect.assert_called_once_with(redis_connection)
+
     def test_get_redis_ConnectionError(self):
         from redis.exceptions import ConnectionError
 
