@@ -3070,6 +3070,42 @@ class test_MultiChannelPoller:
         assert 35 not in p._fd_to_chan
         p.on_readable(35)
 
+    def test_on_readable_drops_idle_brpop_connection(self):
+        # The QoS cannot consume and no BRPOP is pending, so the socket is
+        # readable only because the server closed it.
+        p = self.Poller()
+        chan = Mock(name='chan')
+        chan._in_poll = None
+        chan.qos.can_consume.return_value = False
+        chan.handlers = {'BRPOP': Mock(name='BRPOP')}
+        p._fd_to_chan[13] = chan, 'BRPOP'
+
+        p.on_readable(13)
+
+        chan.client.connection.disconnect.assert_called_once_with()
+        chan.handlers['BRPOP'].assert_not_called()
+
+    @pytest.mark.parametrize(
+        ('type', 'pending'),
+        [
+            ('BRPOP', True),
+            ('LISTEN', False),
+        ],
+    )
+    def test_on_readable_keeps_connection(self, type, pending):
+        p = self.Poller()
+        chan = Mock(name='chan')
+        chan._in_poll = chan.client.connection if pending else None
+        chan.qos.can_consume.return_value = False
+        chan.handlers = {type: Mock(name=type)}
+        p._fd_to_chan[13] = chan, type
+
+        p.on_readable(13)
+
+        chan.client.connection.disconnect.assert_not_called()
+        chan.subclient.connection.disconnect.assert_not_called()
+        chan.handlers[type].assert_not_called()
+
     def test_handle_event_ignores_unmapped_fd(self):
         p = self.Poller()
         assert 35 not in p._fd_to_chan
