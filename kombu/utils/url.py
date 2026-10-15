@@ -7,7 +7,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from functools import partial
 from typing import NamedTuple
-from urllib.parse import parse_qsl, quote, unquote, urlparse
+from urllib.parse import parse_qsl, quote, unquote, urlencode, urlparse
 
 try:
     import ssl
@@ -98,6 +98,12 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
     if port:
         parts.extend([':', port])
     parts.extend(['/', path])
+    # sanitize_url passes the parsed query here. Dropping it removed
+    # every parameter, not only the password.
+    if query:
+        if isinstance(query, Mapping):
+            query = urlencode(query)
+        parts.append(f'?{query}')
     return ''.join(str(part) for part in parts if part)
 
 
