@@ -50,13 +50,30 @@ Transport Options
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
   used by Kombu
-* ``socket_timeout``
+* ``socket_timeout``: (float) Timeout in seconds for blocking socket
+  operations. Defaults to ``None`` (wait forever). Set it when the broker
+  can disappear without closing the TCP connection (failover, NAT or
+  firewall timeout): without it, a synchronous command such as a publish
+  waits forever on the dead connection, and the checks enabled by
+  ``health_check_interval`` never get a chance to run.
 * ``socket_connect_timeout``
 * ``socket_keepalive``
 * ``socket_keepalive_options``
 * ``queue_order_strategy``
 * ``max_connections``
-* ``health_check_interval``
+* ``health_check_interval``: (int) Passed to redis-py, and also the
+  interval in seconds of kombu's own checks of the long-lived pub/sub and
+  BRPOP connections. Defaults to ``25``; ``0`` disables them. A BRPOP
+  connection whose reply is overdue by more than
+  ``brpop_timeout + health_check_interval`` is dropped and reconnected, so a
+  consumer stuck on a half-open connection recovers within about
+  ``brpop_timeout + 2 * health_check_interval`` seconds (51 by default).
+  The BRPOP check runs with the event loop and with
+  :meth:`~kombu.Connection.drain_events`; the pub/sub check only with the
+  event loop. See ``socket_timeout``.
+
+  .. versionchanged:: 5.7.0
+     The BRPOP connection is checked too.
 * ``reauth_check_interval``: (int) How often, in seconds, to flush pending
   streaming re-authentication tokens (emitted by a
   ``redis.credentials.StreamingCredentialProvider`` such as the Entra ID /
@@ -97,7 +114,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import time
+from time import monotonic, time
 
 from packaging.version import Version
 from vine import promise
@@ -523,6 +540,20 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
+def _socket_readable(sock):
+    """Return whether ``sock`` has data to read, without consuming it.
+
+    ``Connection.can_read()`` would pull the pending reply into the parser
+    buffer, where the event loop no longer sees the socket as readable.
+    """
+    poller = poll()
+    try:
+        poller.register(sock, READ)
+        return bool(poller.poll(0))
+    finally:
+        poller.close()
+
+
 class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
@@ -673,6 +704,29 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_check_brpop_health(self):
+        now = monotonic()
+        for channel in self._channels:
+            connection = channel._in_poll
+            if not connection or channel._brpop_sent_at is None \
+                    or not channel.brpop_timeout \
+                    or not channel.health_check_interval:
+                continue
+            # BRPOP is sent with a server-side timeout, so a live server
+            # always replies within ``brpop_timeout``.  A half-open socket
+            # never becomes readable and no socket timeout applies to the
+            # event loop, so drop the connection once the reply is overdue.
+            waited = now - channel._brpop_sent_at
+            if waited < channel.brpop_timeout + channel.health_check_interval:
+                continue
+            sock = getattr(connection, '_sock', None)
+            if sock is None or _socket_readable(sock):
+                continue
+            warning(
+                'Redis BRPOP got no reply for %.0f seconds; '
+                'dropping stale connection', waited)
+            connection.disconnect()
+
     def maybe_reauth(self):
         for channel in self._channels:
             try:
@@ -695,6 +749,11 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
+        elif type == 'BRPOP' and not chan._in_poll:
+            # Nothing is expected without a pending BRPOP: the server closed
+            # the idle connection. Drop it so the poll stops waking up for it;
+            # _register_BRPOP reconnects once the QoS can consume again.
+            chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
         chan_type = self._fd_to_chan.get(fileno)
@@ -723,6 +782,10 @@ class MultiChannelPoller:
                     ret = self.handle_event(fileno, event)
                     if ret:
                         return
+            else:
+                # drain_events() consumers have no event loop timer to
+                # catch a half-open BRPOP connection.
+                self.maybe_check_brpop_health()
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()
@@ -862,6 +925,7 @@ class Channel(virtual.Channel):
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
+    _brpop_sent_at = None
     _in_listen = False
     _fanout_queues = {}
     ack_emulation = True
@@ -1272,6 +1336,7 @@ class Channel(virtual.Channel):
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
@@ -1762,8 +1827,8 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self, *args):
-                    super().disconnect(*args)
+                def disconnect(self, *args, **kwargs):
+                    super().disconnect(*args, **kwargs)
                     # We remove the connection from the poller
                     # only if it has been added properly.
                     if channel._registered:
@@ -1935,7 +2000,7 @@ class Transport(virtual.Transport):
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
         for attr in ('_restore_messages_tref', '_subclient_health_tref',
-                     '_reauth_tref'):
+                     '_brpop_health_tref', '_reauth_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
@@ -1955,6 +2020,10 @@ class Transport(virtual.Transport):
         cycle._subclient_health_tref = loop.call_repeatedly(
             health_check_interval,
             cycle.maybe_check_subclient_health
+        )
+        cycle._brpop_health_tref = loop.call_repeatedly(
+            health_check_interval,
+            cycle.maybe_check_brpop_health
         )
         reauth_check_interval = connection.client.transport_options.get(
             'reauth_check_interval',
