@@ -167,8 +167,9 @@ SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
 #: :meth:`Channel.maybe_reauth` for why this is needed.
 DEFAULT_REAUTH_CHECK_INTERVAL = 10
 
-#: A binding table outlives its queue's x-expires by this factor, so a
-#: consumer whose event loop stalls briefly does not lose its bindings.
+#: A binding table is swept once no consumer has refreshed it for this many
+#: times its queue's x-expires, and never under MIN_BINDING_TTL, so a consumer
+#: whose event loop stalls briefly does not lose its bindings.
 BINDING_EXPIRES_FACTOR = 2
 
 #: A binding table's lifetime in ms is never below this, so a consumer that
@@ -190,16 +191,19 @@ local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
 redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
 """
 
-#: Deletes up to ARGV[2] binding tables whose deadline in sorted set KEYS[1]
-#: has passed. ARGV[1] is the table key without the exchange name. An
-#: exchange bound by a queue without x-expires has an infinite deadline.
+#: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
+#: has passed. ARGV[1] and ARGV[2] are the table and permanent-set keys
+#: without the exchange name. A table whose permanent set still lists a queue
+#: without x-expires is kept, and only its deadline is dropped.
 SWEEP_BINDINGS = """
 local now = redis.call('TIME')
 local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
 local overdue = redis.call(
-    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[2]))
+    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[3]))
 for _, exchange in ipairs(overdue) do
-    redis.call('DEL', ARGV[1] .. exchange)
+    if redis.call('EXISTS', ARGV[2] .. exchange) == 0 then
+        redis.call('DEL', ARGV[1] .. exchange)
+    end
     redis.call('ZREM', KEYS[1], exchange)
 end
 return #overdue
@@ -972,6 +976,7 @@ class Channel(virtual.Channel):
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
     keyprefix_binding_deadlines = '_kombu.binding_deadlines'
+    keyprefix_binding_permanent = '_kombu.binding_permanent.%s'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
@@ -1669,9 +1674,9 @@ class Channel(virtual.Channel):
             else:
                 with client.pipeline() as pipe:
                     pipe.sadd(key, member)
-                    # A queue without x-expires keeps the table forever.
-                    pipe.zadd(self.keyprefix_binding_deadlines,
-                              {exchange: float('inf')})
+                    # The sweep keeps the table while this set has members.
+                    pipe.sadd(self.keyprefix_binding_permanent % (exchange,),
+                              member)
                     pipe.execute()
 
     @cached_property
@@ -1696,25 +1701,27 @@ class Channel(virtual.Channel):
 
         Returns the number of tables removed from the deadline set.
         """
-        prefix = self.global_keyprefix + self.keyprefix_queue % ('',)
+        prefixes = [self.global_keyprefix + keyprefix % ('',) for keyprefix in
+                    (self.keyprefix_queue, self.keyprefix_binding_permanent)]
         with self.conn_or_acquire() as client:
             return self._sweep_bindings(
                 keys=[self.keyprefix_binding_deadlines],
-                args=[prefix, limit], client=client)
+                args=[*prefixes, limit], client=client)
 
     def maybe_refresh_binding_expiry(self):
         """Keep the binding tables of consumed, expiring queues alive.
 
         Also sweeps overdue tables at most every BINDING_SWEEP_INTERVAL
-        seconds, so any live channel cleans up after stopped ones.
+        seconds, so a channel consuming an expiring queue cleans up after
+        stopped ones. A channel without one runs no script.
         """
+        queues = [q for q in self._active_queues if q in self._expires]
+        if not queues:
+            return
         now = monotonic()
         if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
             self.sweep_bindings()
             self._bindings_swept_at = now
-        queues = [q for q in self._active_queues if q in self._expires]
-        if not queues:
-            return
         refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
         if now - self._binding_expiry_refreshed_at < refresh_every:
             return
@@ -1770,11 +1777,10 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire(client=kwargs.get('client')) as client:
-            client.srem(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            client.srem(self.keyprefix_queue % (exchange,), member)
+            client.srem(self.keyprefix_binding_permanent % (exchange,), member)
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
                     pipe = pipe.delete(self._q_for_pri(queue, pri))

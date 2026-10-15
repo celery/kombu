@@ -816,10 +816,28 @@ class test_RedisQueueExpiration:
                 lasting(channel).declare()
                 expiring(channel).declare()
 
-        assert self._deadline(connection, redis_client, name) == float('inf')
         sleep(5)
         self._sweep_from_another_worker(connection)
         assert redis_client.scard(key) == 2
+
+    def test_binding_table_swept_after_its_queue_without_expires_is_deleted(
+            self, connection, redis_client, short_binding_ttl):
+        name = f'binding_sticky_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        expiring = kombu.Queue(
+            f'{name}_short', exchange, routing_key='short', expires=2)
+        lasting = kombu.Queue(f'{name}_long', exchange, routing_key='long')
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                lasting(channel).declare()
+                lasting(channel).delete()
+                expiring(channel).declare()
+
+        sleep(5)
+        self._sweep_from_another_worker(connection)
+        assert redis_client.exists(key) == 0
 
     def test_refresh_and_sweep_binding_scripts(
             self, connection, redis_client):

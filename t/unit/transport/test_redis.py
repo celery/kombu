@@ -1553,8 +1553,11 @@ class test_Channel:
         delete.assert_has_calls([
             call(x._q_for_pri('queue', pri)) for pri in redis.PRIORITY_STEPS
         ])
-        srem.assert_called_with(x.keyprefix_queue % ('exchange',),
-                                x.sep.join(['routing_key', '', 'queue']))
+        member = x.sep.join(['routing_key', '', 'queue'])
+        srem.assert_has_calls([
+            call(x.keyprefix_queue % ('exchange',), member),
+            call(x.keyprefix_binding_permanent % ('exchange',), member),
+        ])
 
     def test_has_queue(self):
         self.channel._create_client = Mock()
@@ -2143,8 +2146,8 @@ class test_Channel:
             assert [c.args for c in mock_execute_command.mock_calls] == [
                 ('SADD', 'foo__kombu.binding.default',
                  '\x06\x16\x06\x16queue'),
-                ('ZADD', 'foo__kombu.binding_deadlines',
-                 float('inf'), 'default'),
+                ('SADD', 'foo__kombu.binding_permanent.default',
+                 '\x06\x16\x06\x16queue'),
             ]
 
     @patch("redis.client.PubSub.execute_command")
@@ -2309,17 +2312,19 @@ class test_Channel:
             args=[channel.sep.join(['rk', '', 'q']), 'ex', 4_000_000],
             client=client)
 
-    def test_queue_bind_without_expires_never_sweeps_the_table(self):
+    def test_queue_bind_without_expires_marks_the_table_permanent(self):
         channel = self.channel
         _, pipeline = self._recording_batch_client(channel)
         channel._refresh_binding = Mock()
 
         channel._queue_bind('ex', 'rk', None, 'q')
 
-        pipeline.sadd.assert_called_once_with(
-            '_kombu.binding.ex', channel.sep.join(['rk', '', 'q']))
-        pipeline.zadd.assert_called_once_with(
-            '_kombu.binding_deadlines', {'ex': float('inf')})
+        member = channel.sep.join(['rk', '', 'q'])
+        pipeline.sadd.assert_has_calls([
+            call('_kombu.binding.ex', member),
+            call('_kombu.binding_permanent.ex', member),
+        ])
+        pipeline.zadd.assert_not_called()
         pipeline.execute.assert_called_once_with()
         channel._refresh_binding.assert_not_called()
 
@@ -2377,14 +2382,26 @@ class test_Channel:
     @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
     def test_refresh_binding_expiry_sweeps_once_per_interval(self):
         channel = self.channel
-        channel.sweep_bindings = Mock()
+        self._consume_expiring(channel)
+        self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
 
         channel.maybe_refresh_binding_expiry()
         channel.maybe_refresh_binding_expiry()
 
         channel.sweep_bindings.assert_called_once_with()
 
-    def test_sweep_bindings_passes_the_table_prefix(self):
+    def test_channel_without_expiring_queues_never_sweeps(self):
+        channel = self.channel
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel.sweep_bindings = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+
+        channel.sweep_bindings.assert_not_called()
+
+    def test_sweep_bindings_passes_the_key_prefixes(self):
         channel = self.channel
         channel.global_keyprefix = 'foo_'
         client, _ = self._recording_batch_client(channel)
@@ -2394,7 +2411,8 @@ class test_Channel:
 
         channel._sweep_bindings.assert_called_once_with(
             keys=['_kombu.binding_deadlines'],
-            args=['foo__kombu.binding.', 100], client=client)
+            args=['foo__kombu.binding.', 'foo__kombu.binding_permanent.', 100],
+            client=client)
 
     @pytest.mark.parametrize('name,script', [
         ('_refresh_binding', 'REFRESH_BINDING'),
