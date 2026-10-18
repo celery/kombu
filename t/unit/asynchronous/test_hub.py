@@ -3,6 +3,7 @@ from __future__ import annotations
 import errno
 import socket
 from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from unittest.mock import ANY, Mock, call, patch
 
 import pytest
@@ -234,6 +235,8 @@ class test_Hub:
 
         assert _rcb(f) == f.__name__
         assert _rcb('foo') == 'foo'
+        assert _rcb(partial(f)) == repr(partial(f))
+        assert _rcb((partial(f), (1,))) == f'{partial(f)!r}(1)'
 
     @patch('kombu.asynchronous.hub.poll')
     def test_start_stop(self, poll):
