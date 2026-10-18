@@ -424,6 +424,7 @@ class Channel(virtual.Channel):
 
     def queue_unbind(self, queue, exchange=None, routing_key='',
                      arguments=None, **kwargs):
+        exchange = exchange or 'amq.direct'
         queue_name = self._queue_name(queue)
         exchange_type = self.typeof(exchange).type
         if exchange_type == 'fanout':

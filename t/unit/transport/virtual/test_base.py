@@ -12,7 +12,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from kombu import Connection, Queue
+from kombu import Connection, Exchange, Queue
 from kombu.compression import compress
 from kombu.exceptions import ChannelError, ResourceError
 from kombu.transport import virtual
@@ -249,6 +249,30 @@ class test_Channel:
 
     def test_queue_unbind_interface(self):
         self.channel.queue_unbind('dest', 'ex', 'key')
+
+    def test_queue_unbind_default_exchange(self):
+        c = self.channel
+        c.exchange_declare('amq.direct', 'direct')
+        c.queue_declare('x')
+        c.queue_bind('x', routing_key='r')
+        assert c.state.has_binding('x', 'amq.direct', 'r')
+        assert len(c.get_table('amq.direct')) == 1
+
+        c.queue_unbind('x', routing_key='r')
+        assert not c.state.has_binding('x', 'amq.direct', 'r')
+        assert len(c.get_table('amq.direct')) == 0
+
+    def test_queue_unbind_default_exchange_via_queue_api(self):
+        c = self.channel
+        c.exchange_declare('amq.direct', 'direct')
+        q = Queue('y', exchange=Exchange(''), routing_key='rk', channel=c)
+        c.queue_bind('y', routing_key='rk')
+        assert c.state.has_binding('y', 'amq.direct', 'rk')
+        assert len(c.get_table('amq.direct')) == 1
+
+        q.queue_unbind()
+        assert not c.state.has_binding('y', 'amq.direct', 'rk')
+        assert len(c.get_table('amq.direct')) == 0
 
     def test_management(self):
         m = self.channel.connection.client.get_manager()
