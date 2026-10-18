@@ -1016,6 +1016,127 @@ class test_RedisRestoreVisible:
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisRestoreBindingLookupFailure:
+    """An unacked message survives a failed restore.
+
+    Putting a message published to a named exchange back on its queue
+    looks up the exchange's bindings (``SMEMBERS``) inside the restore
+    transaction.  When that read fails, the transaction must not remove
+    the message from the unacked keys, so a later restore can requeue it.
+    The lookup failure is injected; everything else runs against Redis.
+    """
+
+    def _connection(self, connection, visibility_timeout):
+        name = f'restore_lookup_{uuid4().hex}'
+        connection = connection.clone(transport_options={
+            **connection.transport_options,
+            'visibility_timeout': visibility_timeout,
+            'unacked_key': f'{name}_unacked',
+            'unacked_index_key': f'{name}_unacked_index',
+            'unacked_mutex_key': f'{name}_unacked_mutex',
+        })
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        keys = (f'{keyprefix}{name}_unacked',
+                f'{keyprefix}{name}_unacked_index')
+        exchange = kombu.Exchange(name, type='direct')
+        queue = kombu.Queue(name, exchange=exchange, routing_key=name)
+        return connection, keys, queue
+
+    def _get_unacked(self, channel, queue, payload):
+        bound_queue = queue(channel)
+        bound_queue.declare()
+        kombu.Producer(channel).publish(
+            payload, exchange=queue.exchange, routing_key=queue.routing_key,
+            serializer='json',
+        )
+        message = bound_queue.get(no_ack=False)
+        assert message.payload == payload
+        return bound_queue, message
+
+    def _lookup_times_out(self):
+        return patch.object(
+            redis.Redis, 'smembers',
+            side_effect=redis.exceptions.TimeoutError(
+                'Timeout reading from socket'),
+        )
+
+    def _assert_requeued_once(self, bound_queue, payload):
+        restored = bound_queue.get(no_ack=True)
+        assert restored is not None
+        assert restored.payload == payload
+        assert restored.headers['redelivered'] is True
+        assert bound_queue.get(no_ack=True) is None
+
+    def test_requeue_requeues_message(self, connection, redis_client):
+        connection, (unacked_key, unacked_index_key), queue = (
+            self._connection(connection, 3600))
+        payload = {'msg': 'requeue me'}
+        with connection as conn:
+            with conn.channel() as channel:
+                bound_queue, message = self._get_unacked(
+                    channel, queue, payload)
+                message.requeue()
+                assert not redis_client.hexists(
+                    unacked_key, message.delivery_tag)
+                self._assert_requeued_once(bound_queue, payload)
+
+    def test_failed_requeue_keeps_message_unacked(
+            self, connection, redis_client):
+        connection, (unacked_key, unacked_index_key), queue = (
+            self._connection(connection, 3600))
+        payload = {'msg': 'requeue me'}
+        with connection as conn:
+            with conn.channel() as channel:
+                bound_queue, message = self._get_unacked(
+                    channel, queue, payload)
+                tag = message.delivery_tag
+                stored = redis_client.hget(unacked_key, tag)
+
+                with self._lookup_times_out():
+                    with pytest.raises(
+                            redis.exceptions.TimeoutError,
+                            match='Timeout reading from socket'):
+                        message.requeue()
+
+                assert redis_client.hget(unacked_key, tag) == stored
+                assert redis_client.zscore(unacked_index_key, tag) is not None
+                assert bound_queue.get(no_ack=True) is None
+
+                message.requeue()
+                assert not redis_client.hexists(unacked_key, tag)
+                self._assert_requeued_once(bound_queue, payload)
+
+    def test_failed_restore_visible_keeps_message_unacked(
+            self, connection, redis_client):
+        visibility_timeout = 1
+        connection, (unacked_key, unacked_index_key), queue = (
+            self._connection(connection, visibility_timeout))
+        payload = {'msg': 'restore me'}
+        with connection as conn:
+            with conn.channel() as channel:
+                bound_queue, message = self._get_unacked(
+                    channel, queue, payload)
+                tag = message.delivery_tag
+                stored = redis_client.hget(unacked_key, tag)
+                sleep(visibility_timeout + 0.5)
+
+                with self._lookup_times_out():
+                    with pytest.raises(
+                            redis.exceptions.TimeoutError,
+                            match='Timeout reading from socket'):
+                        channel.qos.restore_visible(interval=1)
+
+                assert redis_client.hget(unacked_key, tag) == stored
+                assert redis_client.zscore(unacked_index_key, tag) is not None
+                assert bound_queue.get(no_ack=True) is None
+
+                channel.qos.restore_visible(interval=1)
+                assert not redis_client.hexists(unacked_key, tag)
+                self._assert_requeued_once(bound_queue, payload)
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisRestoreAtShutdown:
     """A message a consumer holds unacked is requeued when its connection closes.
 
