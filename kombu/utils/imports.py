@@ -18,27 +18,27 @@ def symbol_by_name(name, aliases=None, imp=None, package=None,
 
     Example::
 
-        celery.concurrency.processes.TaskPool
+        celery.concurrency.prefork.TaskPool
                                     ^- class name
 
     or using ':' to separate module and symbol::
 
-        celery.concurrency.processes:TaskPool
+        celery.concurrency.prefork:TaskPool
 
     If `aliases` is provided, a dict containing short name/long name
     mappings, the name is looked up in the aliases first.
 
     Examples
     --------
-        >>> symbol_by_name('celery.concurrency.processes.TaskPool')
-        <class 'celery.concurrency.processes.TaskPool'>
+        >>> symbol_by_name('celery.concurrency.prefork.TaskPool')
+        <class 'celery.concurrency.prefork.TaskPool'>
 
         >>> symbol_by_name('default', {
-        ...     'default': 'celery.concurrency.processes.TaskPool'})
-        <class 'celery.concurrency.processes.TaskPool'>
+        ...     'default': 'celery.concurrency.prefork.TaskPool'})
+        <class 'celery.concurrency.prefork.TaskPool'>
 
         # Does not try to look up non-string names.
-        >>> from celery.concurrency.processes import TaskPool
+        >>> from celery.concurrency.prefork import TaskPool
         >>> symbol_by_name(TaskPool) is TaskPool
         True
     """
