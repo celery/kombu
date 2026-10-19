@@ -858,7 +858,7 @@ class Channel(virtual.Channel):
                     for i, msg in enumerate(messages)
                 ],
             )
-        except (ClientError, aws_exceptions.BotoCoreError, socket.error) as exc:
+        except (ClientError, aws_exceptions.BotoCoreError, OSError) as exc:
             # The messages become visible again once their visibility
             # timeout expires, so they are delayed but not lost.
             logger.warning(
