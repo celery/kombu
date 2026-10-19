@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import os
+import select
 import socket
+import threading
 from time import monotonic, sleep
 from unittest.mock import patch
 from uuid import uuid4
@@ -10,6 +12,7 @@ import pytest
 import redis
 
 import kombu
+import kombu.transport.redis
 from kombu.asynchronous.hub import Hub
 from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
                                    SentinelChannel, Transport)
@@ -133,6 +136,24 @@ def test_failed_credentials():
             user_name='wrong_redis_user',
             password='wrong_redis_password'
         ).connect()
+
+
+@pytest.mark.env('redis')
+def test_failed_health_check_raises_connection_error():
+    """Tests ConnectionError when the server closed a connection before its health check"""
+    host = os.environ.get('REDIS_HOST', 'localhost')
+    port = os.environ.get('REDIS_6379_TCP', '6379')
+    connection = get_connection(
+        hostname=host, port=port, vhost=None,
+        transport_options={'health_check_interval': 1},
+    )
+    with connection:
+        redis_connection = connection.default_channel.client.connection_pool.get_connection()
+        redis_connection.send_command('CLIENT', 'ID')
+        redis.Redis(host=host, port=port).client_kill_filter(_id=redis_connection.read_response())
+        sleep(1.5)  # let the health check come due
+        with pytest.raises(redis.exceptions.ConnectionError):
+            redis_connection.send_command('PING')
 
 
 @pytest.mark.env('redis')
@@ -651,6 +672,273 @@ class test_RedisQueueExpiration:
             ttl = redis_client.pttl(key)
             assert ttl > 0 and ttl <= expires_ms, f"Expected TTL for {key} to be set but got {ttl}"
 
+    @staticmethod
+    def _binding_key(connection, exchange):
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        return f'{keyprefix}_kombu.binding.{exchange}'
+
+    @staticmethod
+    def _deadline(connection, redis_client, exchange):
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        return redis_client.zscore(
+            f'{keyprefix}_kombu.binding_deadlines', exchange)
+
+    @staticmethod
+    def _make_overdue(connection, redis_client, exchange):
+        keyprefix = connection.transport_options.get('global_keyprefix', '')
+        redis_client.zadd(
+            f'{keyprefix}_kombu.binding_deadlines', {exchange: 0})
+
+    @staticmethod
+    def _server_ms(redis_client):
+        seconds, microseconds = redis_client.time()
+        return seconds * 1000 + microseconds // 1000
+
+    @staticmethod
+    def _sweep_from_another_worker(connection):
+        with connection.clone() as other:
+            other.default_channel.sweep_bindings()
+
+    @pytest.fixture
+    def short_binding_ttl(self, monkeypatch):
+        # The one-hour floor would hide a missing refresh in a short test.
+        monkeypatch.setattr(kombu.transport.redis, 'MIN_BINDING_TTL', 3000)
+
+    def test_binding_table_swept_after_consumer_stops(
+            self, connection, redis_client, short_binding_ttl):
+        name = f'binding_expire_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.Consumer(queue, callbacks=[]):
+                # No TTL, so a volatile-* eviction policy can't drop it.
+                assert redis_client.pttl(key) == -1
+                deadline = self._deadline(connection, redis_client, name)
+                assert 0 < deadline - self._server_ms(redis_client) <= 4000
+
+        self._make_overdue(connection, redis_client, name)
+        self._sweep_from_another_worker(connection)
+        assert redis_client.exists(key) == 0
+        assert self._deadline(connection, redis_client, name) is None
+
+    def test_binding_table_kept_while_consumer_is_paused(
+            self, connection, redis_client, short_binding_ttl):
+        name = f'binding_paused_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+        held = []
+
+        with connection as conn:
+            hub = Hub()
+            conn.register_with_event_loop(hub)
+            consumer = conn.Consumer(
+                queue, callbacks=[lambda body, message: held.append(message)])
+            consumer.qos(prefetch_count=1)
+            consumer.consume()
+            conn.Producer().publish({}, exchange=name, routing_key=name)
+            deadline = monotonic() + 6
+            while monotonic() < deadline:
+                hub.run_once()
+                sleep(0.05)
+            hub.close()
+            self._sweep_from_another_worker(connection)
+
+            assert len(held) == 1
+            assert redis_client.exists(key) == 1
+
+    def test_binding_table_kept_while_drain_events_has_prefetch_full(
+            self, connection, redis_client, short_binding_ttl):
+        name = f'binding_drain_{uuid4()}'
+        queue = kombu.Queue(
+            name, kombu.Exchange(name), routing_key=name, expires=2)
+        key = self._binding_key(connection, name)
+        held = []
+
+        with connection as conn:
+            consumer = conn.Consumer(
+                queue, callbacks=[lambda body, message: held.append(message)])
+            consumer.qos(prefetch_count=1)
+            consumer.consume()
+            conn.Producer().publish({}, exchange=name, routing_key=name)
+            deadline = monotonic() + 6
+            while monotonic() < deadline:
+                try:
+                    conn.drain_events(timeout=0.2)
+                except socket.timeout:
+                    pass
+            self._sweep_from_another_worker(connection)
+
+            assert len(held) == 1
+            assert redis_client.exists(key) == 1
+
+    def test_binding_table_kept_while_a_callback_blocks(
+            self, connection, redis_client):
+        name = f'binding_blocked_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        queue = kombu.Queue(name, exchange, routing_key=name, expires=1)
+        received = []
+
+        with connection as conn, connection.clone() as other:
+            producer = other.Producer()
+
+            def on_message(body, message):
+                received.append(body['n'])
+                if body['n'] == 1:
+                    # Longer than 2x expires, like a long task on a solo pool.
+                    sleep(5)
+                    other.default_channel.sweep_bindings()
+                    producer.publish(
+                        {'n': 2}, exchange=exchange, routing_key=name)
+                message.ack()
+
+            hub = Hub()
+            conn.register_with_event_loop(hub)
+            consumer = conn.Consumer(queue, callbacks=[on_message])
+            consumer.consume()
+            producer.publish({'n': 1}, exchange=exchange, routing_key=name)
+            deadline = monotonic() + 9
+            while monotonic() < deadline and len(received) < 2:
+                hub.run_once()
+                sleep(0.05)
+            hub.close()
+
+        assert received == [1, 2]
+
+    def test_binding_table_shared_with_queue_without_expires_never_swept(
+            self, connection, redis_client):
+        name = f'binding_shared_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        expiring = kombu.Queue(
+            f'{name}_short', exchange, routing_key='short', expires=2)
+        lasting = kombu.Queue(f'{name}_long', exchange, routing_key='long')
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                expiring(channel).declare()
+                lasting(channel).declare()
+                expiring(channel).declare()
+
+        self._make_overdue(connection, redis_client, name)
+        self._sweep_from_another_worker(connection)
+        assert redis_client.scard(key) == 2
+        # The deadline goes, so later sweeps don't scan this exchange again.
+        assert self._deadline(connection, redis_client, name) is None
+
+    def test_binding_table_swept_after_its_queue_without_expires_is_deleted(
+            self, connection, redis_client):
+        name = f'binding_sticky_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        expiring = kombu.Queue(
+            f'{name}_short', exchange, routing_key='short', expires=2)
+        lasting = kombu.Queue(f'{name}_long', exchange, routing_key='long')
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                lasting(channel).declare()
+                lasting(channel).delete()
+                expiring(channel).declare()
+
+        self._make_overdue(connection, redis_client, name)
+        self._sweep_from_another_worker(connection)
+        assert redis_client.exists(key) == 0
+
+    def test_deleting_an_expiring_queue_removes_its_binding(
+            self, connection, redis_client):
+        name = f'binding_delete_{uuid4()}'
+        exchange = kombu.Exchange(name)
+        kept = kombu.Queue(f'{name}_a', exchange, routing_key='a', expires=2)
+        deleted = kombu.Queue(f'{name}_b', exchange, routing_key='b', expires=2)
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.channel() as channel:
+                kept(channel).declare()
+                deleted(channel).declare()
+                deleted(channel).delete()
+
+        assert [m.split('\x06\x16')[0]
+                for m in redis_client.smembers(key)] == ['a']
+
+    def test_refresh_keeps_a_topic_binding_as_bound(
+            self, connection, redis_client):
+        name = f'binding_topic_{uuid4()}'
+        queue = kombu.Queue(name, kombu.Exchange(name, type='topic'),
+                            routing_key='a.#', expires=2)
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            with conn.Consumer(queue, callbacks=[]) as consumer:
+                bound = redis_client.smembers(key)
+                channel = consumer.channel
+                channel._binding_expiry_refreshed_at = float('-inf')
+                channel.maybe_refresh_binding_expiry()
+                assert redis_client.smembers(key) == bound
+                assert len(bound) == 1
+
+    def test_refresh_and_sweep_binding_scripts(
+            self, connection, redis_client):
+        name = f'binding_script_{uuid4()}'
+        key = self._binding_key(connection, name)
+
+        with connection as conn:
+            channel = conn.default_channel
+            deadlines = channel._script_binding_deadlines
+            with channel.conn_or_acquire() as client:
+                def refresh(member, ttl):
+                    channel._refresh_binding(
+                        keys=[f'_kombu.binding.{name}', deadlines],
+                        args=[member, name, ttl], client=client)
+
+                def time_left():
+                    return (self._deadline(connection, redis_client, name)
+                            - self._server_ms(redis_client))
+
+                refresh('a', 5000)
+                assert 4000 < time_left() <= 5000
+                refresh('b', 1000)
+                assert time_left() > 4000
+                refresh('c', 9000)
+                assert time_left() > 8000
+                redis_client.delete(key)
+                refresh('d', 9000)
+                assert redis_client.smembers(key) == {'d'}
+                assert redis_client.pttl(key) == -1
+
+                channel.sweep_bindings()
+                assert redis_client.exists(key) == 1
+                redis_client.zadd(deadlines, {name: 0})
+                channel.sweep_bindings()
+                assert redis_client.exists(key) == 0
+                assert self._deadline(connection, redis_client, name) is None
+
+    def test_sweep_script_honors_its_limit(self, connection, redis_client):
+        name = f'binding_limit_{uuid4()}'
+        # A private deadline set, so other tests' sweeps can't interfere.
+        deadlines = f'_kombu.binding_deadlines_{name}'
+
+        with connection as conn:
+            channel = conn.default_channel
+            keyprefix = channel.global_keyprefix
+            redis_client.zadd(keyprefix + deadlines,
+                              {f'{name}_{n}': 0 for n in range(3)})
+            with channel.conn_or_acquire() as client:
+                def sweep(limit):
+                    return channel._sweep_bindings(
+                        keys=[deadlines],
+                        args=[keyprefix + '_kombu.binding.',
+                              keyprefix + '_kombu.binding_permanent.', limit],
+                        client=client)
+
+                assert sweep(2) == 2
+                assert redis_client.zcard(keyprefix + deadlines) == 1
+                assert sweep(2) == 1
+                assert sweep(2) == 0
+
 
 @pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
@@ -879,6 +1167,209 @@ class test_RedisSubclientHealthCheck:
             producer.publish(
                 {'msg': 'recovered'}, exchange=exchange, serializer='json')
             conn.drain_events(timeout=1)
+
+        assert received == [{'msg': 'recovered'}]
+
+
+class _FreezableProxy:
+    """TCP proxy whose open connections can be silently black-holed.
+
+    ``freeze()`` keeps every established connection open but discards the
+    bytes flowing through it in both directions, like a broker failover or
+    an expired NAT entry: no FIN, no RST, the socket simply never becomes
+    readable again.  Connections accepted afterwards are forwarded normally,
+    so a client that drops the dead connection can reconnect.
+    """
+
+    def __init__(self, upstream):
+        self.upstream = upstream
+        self.listener = socket.create_server(('127.0.0.1', 0))
+        self.port = self.listener.getsockname()[1]
+        self._pairs = []
+        self._closed = threading.Event()
+        threading.Thread(target=self._accept, daemon=True).start()
+
+    def _accept(self):
+        while not self._closed.is_set():
+            try:
+                client, _ = self.listener.accept()
+            except OSError:
+                return
+            server = socket.create_connection(self.upstream)
+            frozen = threading.Event()
+            self._pairs.append((client, server, frozen))
+            threading.Thread(
+                target=self._pump, args=(client, server, frozen),
+                daemon=True).start()
+
+    def _pump(self, client, server, frozen):
+        peers = {client: server, server: client}
+        while not self._closed.is_set():
+            readable, _, _ = select.select(list(peers), [], [], 0.1)
+            for sock in readable:
+                try:
+                    data = sock.recv(65536)
+                except OSError:
+                    return
+                if not data:
+                    return
+                if not frozen.is_set():
+                    peers[sock].sendall(data)
+
+    def freeze(self):
+        for _, _, frozen in self._pairs:
+            frozen.set()
+
+    def close(self):
+        self._closed.set()
+        self.listener.close()
+        for client, server, _ in self._pairs:
+            client.close()
+            server.close()
+
+
+@pytest.mark.env('redis')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_RedisBrpopHealthCheck:
+    """Integration tests for dropping half-open BRPOP connections.
+
+    BRPOP is sent with a server-side timeout, so a live server always
+    replies within ``brpop_timeout``.  On a half-open socket no reply ever
+    arrives and no socket timeout applies to the poller, so kombu drops the
+    connection once the reply is overdue by ``health_check_interval``.
+    The sockets below are really live or really half-open; only the clock
+    seen by the health check is moved past that deadline.
+    """
+
+    @pytest.fixture()
+    def proxy(self):
+        proxy = _FreezableProxy((
+            os.environ.get('REDIS_HOST', 'localhost'),
+            int(os.environ.get('REDIS_6379_TCP', '6379')),
+        ))
+        yield proxy
+        proxy.close()
+
+    def _consumer(self, connection, port, name, received):
+        """Return a connection whose BRPOP is in flight through the proxy."""
+        # a regression must fail, not hang on the dead socket in close()
+        conn = get_connection(
+            hostname='127.0.0.1', port=port, vhost=None,
+            transport_options={
+                **connection.transport_options, 'socket_timeout': 5},
+        )
+        queue = kombu.Queue(name, kombu.Exchange(name), routing_key=name)
+        channel = conn.channel()
+        consumer = kombu.Consumer(
+            channel, [queue], accept=['json'], no_ack=True)
+        consumer.register_callback(
+            lambda body, message: received.append(body))
+        consumer.consume()
+        # registers the BRPOP connection with the poller and sends BRPOP
+        with pytest.raises(socket.timeout):
+            conn.drain_events(timeout=0.1)
+        assert channel._in_poll
+        return conn, channel, queue
+
+    def _publish(self, connection, queue, body):
+        with connection as conn:
+            kombu.Producer(conn).publish(
+                body, exchange=queue.exchange, routing_key=queue.routing_key,
+                declare=[queue], serializer='json')
+
+    def _check_past_deadline(self, conn, channel):
+        deadline = channel.brpop_timeout + channel.health_check_interval
+        with patch('kombu.transport.redis.monotonic',
+                   return_value=channel._brpop_sent_at + deadline + 1):
+            conn.transport.cycle.maybe_check_brpop_health()
+
+    def test_live_connection_with_unread_reply_not_dropped(
+            self, connection, proxy):
+        """A reply that arrived while the loop was busy keeps the socket."""
+        name = f'brpop_live_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            # the server answers the BRPOP, but nobody has read it yet
+            sleep(channel.brpop_timeout + 0.5)
+
+            self._check_past_deadline(conn, channel)
+
+            assert channel.client.connection._sock is not None
+            self._publish(connection, queue, {'msg': 'alive'})
+            for _ in range(5):
+                try:
+                    conn.drain_events(timeout=1)
+                except socket.timeout:
+                    pass
+                if received:
+                    break
+
+        assert received == [{'msg': 'alive'}]
+
+    def test_half_open_connection_dropped_and_consumption_resumes(
+            self, connection, proxy):
+        """An overdue BRPOP reply drops the connection; the next poll
+        reconnects, resends BRPOP and consumes again."""
+        name = f'brpop_drop_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            proxy.freeze()
+            # let the server answer the in-flight BRPOP into the void, so
+            # the message published next stays in the queue
+            sleep(channel.brpop_timeout + 0.5)
+            self._publish(connection, queue, {'msg': 'recovered'})
+
+            # the message is waiting but the half-open socket never delivers
+            with pytest.raises(socket.timeout):
+                conn.drain_events(timeout=1)
+            assert received == []
+
+            self._check_past_deadline(conn, channel)
+
+            assert channel.client.connection._sock is None
+            assert not channel._in_poll
+            for _ in range(5):
+                try:
+                    conn.drain_events(timeout=1)
+                except socket.timeout:
+                    pass
+                if received:
+                    break
+
+        assert received == [{'msg': 'recovered'}]
+
+    def test_half_open_connection_dropped_by_drain_events(
+            self, connection, proxy):
+        """Without an event loop, an idle drain_events() runs the check."""
+        name = f'brpop_drain_{uuid4().hex}'
+        received = []
+        conn, channel, queue = self._consumer(
+            connection, proxy.port, name, received)
+        with conn:
+            proxy.freeze()
+            sleep(channel.brpop_timeout + 0.5)
+            self._publish(connection, queue, {'msg': 'recovered'})
+
+            deadline = channel.brpop_timeout + channel.health_check_interval
+            with patch('kombu.transport.redis.monotonic',
+                       return_value=channel._brpop_sent_at + deadline + 1):
+                with pytest.raises(socket.timeout):
+                    conn.drain_events(timeout=1)
+                assert received == []
+                assert channel.client.connection._sock is None
+                assert not channel._in_poll
+
+                for _ in range(5):
+                    try:
+                        conn.drain_events(timeout=1)
+                    except socket.timeout:
+                        pass
+                    if received:
+                        break
 
         assert received == [{'msg': 'recovered'}]
 

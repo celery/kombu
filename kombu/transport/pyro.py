@@ -144,7 +144,7 @@ class Transport(virtual.Transport):
                     sys.exc_info()[2])
 
     def driver_version(self):
-        return pyro.__version__
+        return pyro.__version__ if pyro is not None else 'N/A'
 
     @cached_property
     def shared_queues(self):
