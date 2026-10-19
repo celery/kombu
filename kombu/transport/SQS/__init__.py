@@ -821,18 +821,20 @@ class Channel(virtual.Channel):
         )
 
     def _on_messages_ready(self, queue, qname, messages):
-        if 'Messages' in messages and messages['Messages']:
-            callback = self.connection._callbacks.get(qname)
-            if callback is None:
-                # The consumer was cancelled (e.g. warm shutdown) while
-                # the receive request was in flight.
-                self._release_messages(queue, qname, messages['Messages'])
-                return 0
-            for msg in messages['Messages']:
-                msg_parsed = self._message_to_python(msg, qname, queue)
-                callback(msg_parsed)
-            return len(messages['Messages'])
-        return 0
+        msgs = messages.get('Messages')
+        if not msgs:
+            return 0
+        callback = self.connection._callbacks.get(qname)
+        if callback is None:
+            # Not routed through Transport._deliver(): its requeue path
+            # parses each message first (deleting it on no-ack queues) and
+            # hides it again for wait_time_seconds, one call per message.
+            self._release_messages(queue, qname, msgs)
+            return 0
+        for msg in msgs:
+            msg_parsed = self._message_to_python(msg, qname, queue)
+            callback(msg_parsed)
+        return len(msgs)
 
     def _release_messages(self, queue, qname, messages):
         """Make received messages visible again without consuming them."""
@@ -840,8 +842,12 @@ class Channel(virtual.Channel):
             'Consumer for queue %s is gone, releasing %d received message(s)',
             qname, len(messages),
         )
+        # The blocking client is used instead of asynsqs(): the hub may stop
+        # right after the consumer is cancelled, before an async call returns.
         try:
-            self.sqs(queue=qname).change_message_visibility_batch(
+            resp = self.sqs(
+                queue=self.canonical_queue_name(qname),
+            ).change_message_visibility_batch(
                 QueueUrl=queue,
                 Entries=[
                     {
@@ -852,11 +858,17 @@ class Channel(virtual.Channel):
                     for i, msg in enumerate(messages)
                 ],
             )
-        except ClientError as exc:
+        except (ClientError, aws_exceptions.BotoCoreError, socket.error) as exc:
             # The messages become visible again once their visibility
             # timeout expires, so they are delayed but not lost.
             logger.warning(
                 'Failed to release messages for queue %s: %r', qname, exc,
+            )
+            return
+        if failed := resp.get('Failed'):
+            logger.warning(
+                'Failed to release %d message(s) for queue %s: %r',
+                len(failed), qname, failed,
             )
 
     def _get_from_sqs(self, queue_name, queue_url,
