@@ -50,13 +50,30 @@ Transport Options
 * ``fanout_patterns``
 * ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
   used by Kombu
-* ``socket_timeout``
+* ``socket_timeout``: (float) Timeout in seconds for blocking socket
+  operations. Defaults to ``None`` (wait forever). Set it when the broker
+  can disappear without closing the TCP connection (failover, NAT or
+  firewall timeout): without it, a synchronous command such as a publish
+  waits forever on the dead connection, and the checks enabled by
+  ``health_check_interval`` never get a chance to run.
 * ``socket_connect_timeout``
 * ``socket_keepalive``
 * ``socket_keepalive_options``
 * ``queue_order_strategy``
 * ``max_connections``
-* ``health_check_interval``
+* ``health_check_interval``: (int) Passed to redis-py, and also the
+  interval in seconds of kombu's own checks of the long-lived pub/sub and
+  BRPOP connections. Defaults to ``25``; ``0`` disables them. A BRPOP
+  connection whose reply is overdue by more than
+  ``brpop_timeout + health_check_interval`` is dropped and reconnected, so a
+  consumer stuck on a half-open connection recovers within about
+  ``brpop_timeout + 2 * health_check_interval`` seconds (51 by default).
+  The BRPOP check runs with the event loop and with
+  :meth:`~kombu.Connection.drain_events`; the pub/sub check only with the
+  event loop. See ``socket_timeout``.
+
+  .. versionchanged:: 5.7.0
+     The BRPOP connection is checked too.
 * ``reauth_check_interval``: (int) How often, in seconds, to flush pending
   streaming re-authentication tokens (emitted by a
   ``redis.credentials.StreamingCredentialProvider`` such as the Entra ID /
@@ -97,7 +114,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import time
+from time import monotonic, time
 
 from packaging.version import Version
 from vine import promise
@@ -149,6 +166,48 @@ SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
 #: tokens onto the long-lived BRPOP and pub/sub connections.  See
 #: :meth:`Channel.maybe_reauth` for why this is needed.
 DEFAULT_REAUTH_CHECK_INTERVAL = 10
+
+#: A binding table is swept once no consumer has refreshed it for this many
+#: times its queue's x-expires, and never under MIN_BINDING_TTL, so a consumer
+#: whose event loop stalls briefly does not lose its bindings.
+BINDING_EXPIRES_FACTOR = 2
+
+#: A binding table's lifetime in ms is never below this, so a consumer that
+#: can't run kombu for a while, such as a long task on Celery's solo pool,
+#: keeps its routing.
+MIN_BINDING_TTL = 60 * 60 * 1000
+
+#: Seconds between sweeps of overdue binding tables by each channel.
+BINDING_SWEEP_INTERVAL = 60
+
+#: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
+#: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
+#: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
+#: them.
+REFRESH_BINDING = """
+redis.call('SADD', KEYS[1], ARGV[1])
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+"""
+
+#: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
+#: has passed. ARGV[1] and ARGV[2] are the table and permanent-set keys
+#: without the exchange name. A table whose permanent set still lists a queue
+#: without x-expires is kept, and only its deadline is dropped.
+SWEEP_BINDINGS = """
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local overdue = redis.call(
+    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[3]))
+for _, exchange in ipairs(overdue) do
+    if redis.call('EXISTS', ARGV[2] .. exchange) == 0 then
+        redis.call('DEL', ARGV[1] .. exchange)
+    end
+    redis.call('ZREM', KEYS[1], exchange)
+end
+return #overdue
+"""
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -523,6 +582,20 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
+def _socket_readable(sock):
+    """Return whether ``sock`` has data to read, without consuming it.
+
+    ``Connection.can_read()`` would pull the pending reply into the parser
+    buffer, where the event loop no longer sees the socket as readable.
+    """
+    poller = poll()
+    try:
+        poller.register(sock, READ)
+        return bool(poller.poll(0))
+    finally:
+        poller.close()
+
+
 class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
@@ -641,6 +714,19 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_refresh_binding_expiry(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_refresh_binding_expiry()
+            except channel.connection_errors:
+                logger.debug('maybe_refresh_binding_expiry: connection '
+                             'error, will retry', exc_info=True)
+            except channel.ResponseError:
+                # Such as scripts refused on a full noeviction server, where
+                # BRPOP still works, so consuming goes on.
+                logger.warning('maybe_refresh_binding_expiry: Redis error, '
+                               'will retry', exc_info=True)
+
     def maybe_check_subclient_health(self):
         for channel in self._channels:
             # only if subclient property is cached
@@ -673,6 +759,29 @@ class MultiChannelPoller:
                     )
                     return
 
+    def maybe_check_brpop_health(self):
+        now = monotonic()
+        for channel in self._channels:
+            connection = channel._in_poll
+            if not connection or channel._brpop_sent_at is None \
+                    or not channel.brpop_timeout \
+                    or not channel.health_check_interval:
+                continue
+            # BRPOP is sent with a server-side timeout, so a live server
+            # always replies within ``brpop_timeout``.  A half-open socket
+            # never becomes readable and no socket timeout applies to the
+            # event loop, so drop the connection once the reply is overdue.
+            waited = now - channel._brpop_sent_at
+            if waited < channel.brpop_timeout + channel.health_check_interval:
+                continue
+            sock = getattr(connection, '_sock', None)
+            if sock is None or _socket_readable(sock):
+                continue
+            warning(
+                'Redis BRPOP got no reply for %.0f seconds; '
+                'dropping stale connection', waited)
+            connection.disconnect()
+
     def maybe_reauth(self):
         for channel in self._channels:
             try:
@@ -695,6 +804,11 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
+        elif type == 'BRPOP' and not chan._in_poll:
+            # Nothing is expected without a pending BRPOP: the server closed
+            # the idle connection. Drop it so the poll stops waking up for it;
+            # _register_BRPOP reconnects once the QoS can consume again.
+            chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
         chan_type = self._fd_to_chan.get(fileno)
@@ -710,6 +824,9 @@ class MultiChannelPoller:
     def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
+            # Without an event loop there is no timer, so refresh here,
+            # before can_consume() can skip BRPOP below.
+            self.maybe_refresh_binding_expiry()
             for channel in self._channels:
                 if channel.active_queues:           # BRPOP mode?
                     if channel.qos.can_consume():
@@ -723,6 +840,10 @@ class MultiChannelPoller:
                     ret = self.handle_event(fileno, event)
                     if ret:
                         return
+            else:
+                # drain_events() consumers have no event loop timer to
+                # catch a half-open BRPOP connection.
+                self.maybe_check_brpop_health()
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()
@@ -859,9 +980,12 @@ class Channel(virtual.Channel):
     _closing = False
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
+    keyprefix_binding_deadlines = '_kombu.binding_deadlines'
+    keyprefix_binding_permanent = '_kombu.binding_permanent.%s'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
+    _brpop_sent_at = None
     _in_listen = False
     _fanout_queues = {}
     ack_emulation = True
@@ -990,6 +1114,8 @@ class Channel(virtual.Channel):
         self._sentinel_manager = None
         self._async_sentinel_manager = None
         self._expires = {}
+        self._binding_expiry_refreshed_at = float('-inf')
+        self._bindings_swept_at = float('-inf')
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -1272,6 +1398,7 @@ class Channel(virtual.Channel):
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
         self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
@@ -1541,11 +1668,88 @@ class Channel(virtual.Channel):
             self._fanout_queues[queue] = (
                 exchange, routing_key.replace('#', '*'),
             )
+        key = self.keyprefix_queue % (exchange,)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire() as client:
-            client.sadd(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            if queue in self._expires:
+                self._refresh_binding(
+                    keys=[key, self._script_binding_deadlines],
+                    args=[member, exchange, self._binding_ttl(queue)],
+                    client=client)
+            else:
+                with client.pipeline() as pipe:
+                    pipe.sadd(key, member)
+                    # The sweep keeps the table while this set has members.
+                    pipe.sadd(self.keyprefix_binding_permanent % (exchange,),
+                              member)
+                    pipe.execute()
+
+    @cached_property
+    def _refresh_binding(self):
+        return self._create_client().register_script(REFRESH_BINDING)
+
+    @cached_property
+    def _sweep_bindings(self):
+        return self._create_client().register_script(SWEEP_BINDINGS)
+
+    @property
+    def _script_binding_deadlines(self):
+        # The prefixed client prefixes only the first key of an EVALSHA.
+        return self.global_keyprefix + self.keyprefix_binding_deadlines
+
+    def _binding_ttl(self, queue):
+        return max(self._expires[queue] * BINDING_EXPIRES_FACTOR,
+                   MIN_BINDING_TTL)
+
+    def sweep_bindings(self, limit=100):
+        """Delete binding tables that no consumer refreshed in time.
+
+        Returns the number of tables removed from the deadline set.
+        """
+        prefixes = [self.global_keyprefix + keyprefix % ('',) for keyprefix in
+                    (self.keyprefix_queue, self.keyprefix_binding_permanent)]
+        with self.conn_or_acquire() as client:
+            return self._sweep_bindings(
+                keys=[self.keyprefix_binding_deadlines],
+                args=[*prefixes, limit], client=client)
+
+    def maybe_refresh_binding_expiry(self):
+        """Keep the binding tables of consumed, expiring queues alive.
+
+        Also sweeps overdue tables at most every BINDING_SWEEP_INTERVAL
+        seconds, so a channel consuming an expiring queue cleans up after
+        stopped ones. A channel without one runs no script.
+        """
+        queues = [q for q in self._active_queues if q in self._expires]
+        if not queues:
+            return
+        now = monotonic()
+        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
+        # Refresh first, so a sweep never deletes this channel's own tables.
+        if now - self._binding_expiry_refreshed_at >= refresh_every:
+            self._refresh_bindings(queues)
+            self._binding_expiry_refreshed_at = now
+        if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
+            self.sweep_bindings()
+            self._bindings_swept_at = now
+
+    def _refresh_bindings(self, queues):
+        with self.conn_or_acquire() as client:
+            with client.pipeline() as pipe:
+                for queue in queues:
+                    for exchange, routing_key, args in \
+                            self.state.queue_bindings(queue):
+                        # Passing the member re-creates a wiped table.
+                        _, pattern, _ = self.typeof(exchange).prepare_bind(
+                            queue, exchange, routing_key, args)
+                        self._refresh_binding(
+                            keys=[self.keyprefix_queue % (exchange,),
+                                  self._script_binding_deadlines],
+                            args=[self.sep.join(
+                                [routing_key or '', pattern or '', queue]),
+                                exchange, self._binding_ttl(queue)],
+                            client=pipe)
+                pipe.execute()
 
     def _maybe_update_queues_expire(self, client, queue):
         """Update expiration on queue keys.
@@ -1581,11 +1785,10 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire(client=kwargs.get('client')) as client:
-            client.srem(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            client.srem(self.keyprefix_queue % (exchange,), member)
+            client.srem(self.keyprefix_binding_permanent % (exchange,), member)
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
                     pipe = pipe.delete(self._q_for_pri(queue, pri))
@@ -1762,8 +1965,8 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self, *args):
-                    super().disconnect(*args)
+                def disconnect(self, *args, **kwargs):
+                    super().disconnect(*args, **kwargs)
                     # We remove the connection from the poller
                     # only if it has been added properly.
                     if channel._registered:
@@ -1935,7 +2138,8 @@ class Transport(virtual.Transport):
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
         for attr in ('_restore_messages_tref', '_subclient_health_tref',
-                     '_reauth_tref'):
+                     '_brpop_health_tref', '_reauth_tref',
+                     '_binding_expiry_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
@@ -1956,6 +2160,10 @@ class Transport(virtual.Transport):
             health_check_interval,
             cycle.maybe_check_subclient_health
         )
+        cycle._brpop_health_tref = loop.call_repeatedly(
+            health_check_interval,
+            cycle.maybe_check_brpop_health
+        )
         reauth_check_interval = connection.client.transport_options.get(
             'reauth_check_interval',
             DEFAULT_REAUTH_CHECK_INTERVAL
@@ -1963,6 +2171,9 @@ class Transport(virtual.Transport):
         cycle._reauth_tref = loop.call_repeatedly(
             reauth_check_interval,
             cycle.maybe_reauth
+        )
+        cycle._binding_expiry_tref = loop.call_repeatedly(
+            1, cycle.maybe_refresh_binding_expiry
         )
 
     def on_readable(self, fileno):
