@@ -822,12 +822,42 @@ class Channel(virtual.Channel):
 
     def _on_messages_ready(self, queue, qname, messages):
         if 'Messages' in messages and messages['Messages']:
-            callbacks = self.connection._callbacks
+            callback = self.connection._callbacks.get(qname)
+            if callback is None:
+                # The consumer was cancelled (e.g. warm shutdown) while
+                # the receive request was in flight.
+                self._release_messages(queue, qname, messages['Messages'])
+                return 0
             for msg in messages['Messages']:
                 msg_parsed = self._message_to_python(msg, qname, queue)
-                callbacks[qname](msg_parsed)
+                callback(msg_parsed)
             return len(messages['Messages'])
         return 0
+
+    def _release_messages(self, queue, qname, messages):
+        """Make received messages visible again without consuming them."""
+        logger.info(
+            'Consumer for queue %s is gone, releasing %d received message(s)',
+            qname, len(messages),
+        )
+        try:
+            self.sqs(queue=qname).change_message_visibility_batch(
+                QueueUrl=queue,
+                Entries=[
+                    {
+                        'Id': str(i),
+                        'ReceiptHandle': msg['ReceiptHandle'],
+                        'VisibilityTimeout': 0,
+                    }
+                    for i, msg in enumerate(messages)
+                ],
+            )
+        except ClientError as exc:
+            # The messages become visible again once their visibility
+            # timeout expires, so they are delayed but not lost.
+            logger.warning(
+                'Failed to release messages for queue %s: %r', qname, exc,
+            )
 
     def _get_from_sqs(self, queue_name, queue_url,
                       connection, count=1, callback=None):

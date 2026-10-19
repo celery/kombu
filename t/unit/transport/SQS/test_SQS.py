@@ -864,6 +864,60 @@ class test_Channel:
         )
         assert result == 0
 
+    def test_on_messages_ready_releases_messages_when_consumer_cancelled(self):
+        """Messages received after basic_cancel are released, not dispatched.
+
+        A receive request may still be in flight when the consumer is
+        cancelled (e.g. during warm shutdown), so its callback can be gone
+        by the time the response arrives.
+        """
+        self.channel.connection._callbacks = {}
+        client = Mock(name='sqs_client')
+        self.channel.sqs = Mock(return_value=client)
+        self.channel._message_to_python = Mock(name='_message_to_python')
+        q_url = 'https://sqs.us-east-1.amazonaws.com/xxx/unittest'
+        messages = {
+            'Messages': [
+                {'Body': '{}', 'ReceiptHandle': 'rh1'},
+                {'Body': '{}', 'ReceiptHandle': 'rh2'},
+            ]
+        }
+
+        result = self.channel._on_messages_ready(
+            q_url, self.queue_name, messages
+        )
+
+        assert result == 0
+        self.channel._message_to_python.assert_not_called()
+        self.channel.sqs.assert_called_once_with(queue=self.queue_name)
+        client.change_message_visibility_batch.assert_called_once_with(
+            QueueUrl=q_url,
+            Entries=[
+                {'Id': '0', 'ReceiptHandle': 'rh1', 'VisibilityTimeout': 0},
+                {'Id': '1', 'ReceiptHandle': 'rh2', 'VisibilityTimeout': 0},
+            ],
+        )
+
+    def test_on_messages_ready_release_failure_is_logged(self, caplog):
+        """A failed release is logged instead of raised."""
+        self.channel.connection._callbacks = {}
+        client = Mock(name='sqs_client')
+        client.change_message_visibility_batch.side_effect = ClientError(
+            {'Error': {'Code': 'InternalError', 'Message': 'boom'}},
+            'ChangeMessageVisibilityBatch',
+        )
+        self.channel.sqs = Mock(return_value=client)
+        messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
+
+        with caplog.at_level(logging.WARNING):
+            result = self.channel._on_messages_ready(
+                'https://sqs.us-east-1.amazonaws.com/xxx/unittest',
+                self.queue_name, messages,
+            )
+
+        assert result == 0
+        assert 'Failed to release messages' in caplog.text
+
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
         hub = Mock(name='hub')
