@@ -999,12 +999,115 @@ class test_Channel:
         client.rpush.assert_any_call('george', spl2)
         client.rpush.assert_any_call('elaine', spl2)
 
-        client.rpush.side_effect = KeyError()
+        client.rpush.side_effect = ValueError()
         with patch('kombu.transport.redis.crit') as crit:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
             )
             crit.assert_called()
+
+    def test_do_restore_message_connection_error_propagates(self):
+        # A connection error while looking up the bindings must reach the
+        # restore transaction, so it aborts instead of deleting the message.
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._do_restore_message(
+                    {'body': 'BODY', 'headers': {}}, 'ex', 'rkey', pipe,
+                )
+        crit.assert_not_called()
+        pipe.rpush.assert_not_called()
+        pipe.lpush.assert_not_called()
+
+    def test_do_restore_message_other_error_logged_with_payload(self):
+        payload = {'body': 'BODY', 'headers': {}}
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=ValueError('bad binding'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            self.channel._do_restore_message(payload, 'ex', 'rkey', pipe)
+        crit.assert_called_once_with(
+            'Could not restore message: %r', payload, exc_info=True,
+        )
+        pipe.rpush.assert_not_called()
+
+    def _stored_unacked_transaction(self, stored):
+        # Like redis-py's ``Redis.transaction``: the queued commands are only
+        # sent (EXEC) when the callable returns without raising.
+        def transaction(func, *watches):
+            queued = []
+            pipe = Mock(name='pipe')
+
+            def queue(command):
+                queued.append(command)
+                return pipe
+
+            pipe.hget.side_effect = lambda key, tag: stored[key].get(tag)
+            pipe.hdel.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.zrem.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.rpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).append(value))
+            pipe.lpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).insert(0, value))
+            func(pipe)
+            for command in queued:
+                command()
+        return transaction
+
+    def _stored_unacked_message(self, tag):
+        message = [{'body': 'BODY', 'headers': {}, 'properties': {
+            'delivery_info': {}}}, 'ex', 'rkey']
+        stored = {
+            self.channel.unacked_key: {tag: dumps(message)},
+            self.channel.unacked_index_key: {tag: 1.0},
+        }
+        client = self.channel._create_client = Mock(name='client')
+        client.return_value.transaction.side_effect = (
+            self._stored_unacked_transaction(stored))
+        return stored, dumps(message)
+
+    def test_restore_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        message = Mock(name='message', delivery_tag='tag1')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._restore(message)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+
+    def test_restore_by_tag_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel.qos.restore_by_tag('tag1', leftmost=True)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+        assert stored[self.channel.unacked_index_key] == {'tag1': 1.0}
+
+    def test_restore_by_tag_requeues_when_lookup_succeeds(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        self.channel._lookup = Mock(name='_lookup', return_value=['work'])
+        self.channel.qos.restore_by_tag('tag1')
+        assert stored[self.channel.unacked_key] == {}
+        assert stored[self.channel.unacked_index_key] == {}
+        requeued = loads(stored[self.channel._q_for_pri('work', 0)][0])
+        assert requeued['body'] == 'BODY'
+        assert requeued['headers']['redelivered'] is True
 
     def test_do_restore_message_celery(self):
         # Payload value from real Celery project
