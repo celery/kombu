@@ -77,9 +77,9 @@ def pending_reply(consuming, hub=None, message=True):
     if message:
         Producer(connection).publish(2, routing_key=queue.name, serializer='json')
     consumer.qos(prefetch_count=1)
-    # Wait for a real server reply without consuming it into redis-py's parser.
+    # Wait without consuming the reply into redis-py's parser. Check its
+    # decoded result after resuming, independently of RESP2/RESP3 framing.
     assert select.select([sock], [], [], 5)[0]
-    assert sock.recv(5, socket.MSG_PEEK).startswith(b'*2' if message else b'*-1')
     return pending, sock
 
 
