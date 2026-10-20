@@ -844,31 +844,21 @@ class Channel(virtual.Channel):
         )
         # The blocking client is used instead of asynsqs(): the hub may stop
         # right after the consumer is cancelled, before an async call returns.
+        # ChangeMessageVisibilityBatch is not used because GoAws, which the
+        # integration tests run against, does not implement it.
         try:
-            resp = self.sqs(
-                queue=self.canonical_queue_name(qname),
-            ).change_message_visibility_batch(
-                QueueUrl=queue,
-                Entries=[
-                    {
-                        'Id': str(i),
-                        'ReceiptHandle': msg['ReceiptHandle'],
-                        'VisibilityTimeout': 0,
-                    }
-                    for i, msg in enumerate(messages)
-                ],
-            )
+            client = self.sqs(queue=self.canonical_queue_name(qname))
+            for msg in messages:
+                client.change_message_visibility(
+                    QueueUrl=queue,
+                    ReceiptHandle=msg['ReceiptHandle'],
+                    VisibilityTimeout=0,
+                )
         except (ClientError, aws_exceptions.BotoCoreError, OSError) as exc:
-            # The messages become visible again once their visibility
+            # The messages left become visible again once their visibility
             # timeout expires, so they are delayed but not lost.
             logger.warning(
                 'Failed to release messages for queue %s: %r', qname, exc,
-            )
-            return
-        if failed := resp.get('Failed'):
-            logger.warning(
-                'Failed to release %d message(s) for queue %s: %r',
-                len(failed), qname, failed,
             )
 
     def _get_from_sqs(self, queue_name, queue_url,

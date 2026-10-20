@@ -867,9 +867,7 @@ class test_Channel:
     def test_on_messages_ready_releases_messages_when_consumer_cancelled(self):
         """Messages received after basic_cancel are released, not dispatched."""
         self.channel.connection._callbacks = {}
-        release = self.sqs_conn_mock.change_message_visibility_batch = Mock(
-            return_value={'Successful': [{'Id': '0'}, {'Id': '1'}]},
-        )
+        release = self.sqs_conn_mock.change_message_visibility = Mock()
         q_url = self.channel._new_queue(self.queue_name)
         messages = {
             'Messages': [
@@ -883,21 +881,16 @@ class test_Channel:
         )
 
         assert result == 0
-        release.assert_called_once_with(
-            QueueUrl=q_url,
-            Entries=[
-                {'Id': '0', 'ReceiptHandle': 'rh1', 'VisibilityTimeout': 0},
-                {'Id': '1', 'ReceiptHandle': 'rh2', 'VisibilityTimeout': 0},
-            ],
-        )
+        assert release.call_args_list == [
+            call(QueueUrl=q_url, ReceiptHandle='rh1', VisibilityTimeout=0),
+            call(QueueUrl=q_url, ReceiptHandle='rh2', VisibilityTimeout=0),
+        ]
 
     def test_on_messages_ready_release_uses_canonical_queue_name(self):
         """The release looks the SQS client up by the canonical queue name."""
         self.channel.connection._callbacks = {}
         self.channel.queue_name_prefix = 'prefix-'
-        self.sqs_conn_mock.change_message_visibility_batch = Mock(
-            return_value={},
-        )
+        self.sqs_conn_mock.change_message_visibility = Mock()
         messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
 
         with patch.object(
@@ -913,35 +906,16 @@ class test_Channel:
     @pytest.mark.parametrize('error', [
         ClientError(
             {'Error': {'Code': 'InternalError', 'Message': 'boom'}},
-            'ChangeMessageVisibilityBatch',
+            'ChangeMessageVisibility',
         ),
         EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
         ConnectionResetError(),
     ])
     def test_on_messages_ready_release_failure_is_logged(self, caplog, error):
-        """A failed release is logged instead of raised."""
+        """A failed release is logged instead of raised, and stops the release."""
         self.channel.connection._callbacks = {}
-        self.sqs_conn_mock.change_message_visibility_batch = Mock(
+        release = self.sqs_conn_mock.change_message_visibility = Mock(
             side_effect=error,
-        )
-        messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
-
-        with caplog.at_level(logging.WARNING):
-            result = self.channel._on_messages_ready(
-                self.channel._new_queue(self.queue_name),
-                self.queue_name, messages,
-            )
-
-        assert result == 0
-        assert 'Failed to release messages' in caplog.text
-
-    def test_on_messages_ready_release_partial_failure_is_logged(self, caplog):
-        """Entries SQS reports as failed in a batch response are logged."""
-        self.channel.connection._callbacks = {}
-        failed = [{'Id': '1', 'Code': 'ReceiptHandleIsInvalid',
-                   'SenderFault': True}]
-        self.sqs_conn_mock.change_message_visibility_batch = Mock(
-            return_value={'Successful': [{'Id': '0'}], 'Failed': failed},
         )
         messages = {
             'Messages': [
@@ -957,8 +931,27 @@ class test_Channel:
             )
 
         assert result == 0
-        assert 'Failed to release 1 message(s)' in caplog.text
-        assert 'ReceiptHandleIsInvalid' in caplog.text
+        assert release.call_count == 1
+        assert 'Failed to release messages' in caplog.text
+
+    def test_on_messages_ready_client_lookup_failure_is_logged(self, caplog):
+        """A failure to get the SQS client is logged instead of raised."""
+        self.channel.connection._callbacks = {}
+        messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
+        error = ClientError(
+            {'Error': {'Code': 'AccessDenied', 'Message': 'boom'}},
+            'AssumeRole',
+        )
+
+        with patch.object(self.channel, 'sqs', side_effect=error), \
+                caplog.at_level(logging.WARNING):
+            result = self.channel._on_messages_ready(
+                self.channel._new_queue(self.queue_name),
+                self.queue_name, messages,
+            )
+
+        assert result == 0
+        assert 'Failed to release messages' in caplog.text
 
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
