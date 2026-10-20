@@ -677,9 +677,10 @@ class MultiChannelPoller:
     def _update_brpop_polling(self):
         for fd, (channel, redis_client, connection, sock) in list(
                 self._paused_brpop.items()):
+            ident = channel, redis_client, 'BRPOP'
             if (channel._in_poll is not connection or
                     connection._sock is not sock or
-                    self._chan_to_sock.get((channel, redis_client, 'BRPOP')) is not sock or
+                    self._chan_to_sock.get(ident) is not sock or
                     self._fd_to_chan.get(fd) != (channel, 'BRPOP')):
                 self._discard_paused_brpop(fd)
             elif channel.qos.can_consume():
@@ -887,13 +888,7 @@ class MultiChannelPoller:
             # Without an event loop there is no timer, so refresh here,
             # before can_consume() can skip BRPOP below.
             self.maybe_refresh_binding_expiry()
-            self._update_brpop_polling()
-            for channel in self._channels:
-                if channel.active_queues:           # BRPOP mode?
-                    if channel.qos.can_consume():
-                        self._register_BRPOP(channel)
-                if channel.active_fanout_queues:    # LISTEN mode?
-                    self._register_LISTEN(channel)
+            self.on_poll_start()
 
             if self._paused_brpop and not self.fds:
                 # select() cannot wait on empty sets on Windows. Also recheck
