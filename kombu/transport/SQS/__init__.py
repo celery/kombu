@@ -211,6 +211,11 @@ after seconds rather than minutes, and the first failure stops the release
 for that queue. The messages left become visible again once their
 visibility timeout expires.
 
+.. versionchanged:: 5.7.0
+    Messages received after a consumer is cancelled are released back to
+    the queue with short timeouts and no retries, instead of raising
+    ``KeyError`` and staying invisible until their visibility timeout.
+
 Features
 ========
 * Type: Virtual
