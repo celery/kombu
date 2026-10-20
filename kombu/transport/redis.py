@@ -114,7 +114,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import monotonic, time
+from time import monotonic, sleep, time
 
 from packaging.version import Version
 from vine import promise
@@ -614,6 +614,8 @@ class MultiChannelPoller:
         self._fd_to_chan = {}
         # channel -> socket map
         self._chan_to_sock = {}
+        # Paused BRPOP replies retain their connection and registration.
+        self._paused_brpop = {}
         # poll implementation (epoll/kqueue/select)
         self.poller = poll()
         # one-shot callbacks called after reading from socket.
@@ -628,18 +630,69 @@ class MultiChannelPoller:
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
+        self._paused_brpop.clear()
 
     def add(self, channel):
         self._channels.add(channel)
 
     def discard(self, channel):
         self._channels.discard(channel)
+        for fd, (chan, _, _, _) in list(self._paused_brpop.items()):
+            if chan is channel:
+                self._discard_paused_brpop(fd)
 
     def _on_connection_disconnect(self, connection):
+        self._discard_paused_connection(connection)
         try:
             self.poller.unregister(connection._sock)
         except (AttributeError, TypeError, ValueError):
             pass
+
+    def _unregister_from_poll(self, fileno):
+        self.poller.unregister(fileno)
+
+    def _pause_brpop(self, channel, fileno):
+        if fileno not in self._paused_brpop:
+            connection = channel._in_poll
+            self._unregister_from_poll(fileno)
+            self._paused_brpop[fileno] = (
+                channel, channel.client, connection, connection._sock,
+            )
+
+    def _discard_paused_brpop(self, fileno):
+        channel, client, _, sock = self._paused_brpop.pop(fileno)
+        ident = channel, client, 'BRPOP'
+        # A reconnect may already have replaced this registration, possibly
+        # reusing the same fd. Never remove the new socket's registration.
+        if self._chan_to_sock.get(ident) is sock:
+            del self._chan_to_sock[ident]
+            if self._fd_to_chan.get(fileno) == (channel, 'BRPOP'):
+                del self._fd_to_chan[fileno]
+
+    def _discard_paused_connection(self, connection):
+        for fd, (_, _, conn, _) in list(self._paused_brpop.items()):
+            if conn is connection:
+                self._discard_paused_brpop(fd)
+
+    def _update_brpop_polling(self):
+        for fd, (channel, redis_client, connection, sock) in list(
+                self._paused_brpop.items()):
+            if (channel._in_poll is not connection or
+                    connection._sock is not sock or
+                    self._chan_to_sock.get((channel, redis_client, 'BRPOP')) is not sock or
+                    self._fd_to_chan.get(fd) != (channel, 'BRPOP')):
+                self._discard_paused_brpop(fd)
+            elif channel.qos.can_consume():
+                self.poller.register(sock, self.eventflags)
+                del self._paused_brpop[fd]
+
+        for fd, (channel, type) in list(self._fd_to_chan.items()):
+            if (type == 'BRPOP' and channel._in_poll and
+                    not channel.qos.can_consume()):
+                # A pending reply may contain a message already popped from
+                # Redis. Keep it intact until credit returns, but stop polling
+                # the readable socket so it cannot spin the event loop.
+                self._pause_brpop(channel, fd)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -681,6 +734,7 @@ class MultiChannelPoller:
             channel._subscribe()  # send SUBSCRIBE
 
     def on_poll_start(self):
+        self._update_brpop_polling()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
                 if channel.qos.can_consume():
@@ -797,6 +851,8 @@ class MultiChannelPoller:
                 return
 
     def on_readable(self, fileno):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
@@ -804,13 +860,17 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
-        elif type == 'BRPOP' and not chan._in_poll:
-            # Nothing is expected without a pending BRPOP: the server closed
-            # the idle connection. Drop it so the poll stops waking up for it;
-            # _register_BRPOP reconnects once the QoS can consume again.
-            chan.client.connection.disconnect()
+        elif type == 'BRPOP':
+            if chan._in_poll:
+                self._pause_brpop(chan, fileno)
+            else:
+                # Nothing is expected without a pending BRPOP: the server
+                # closed the idle connection. Reconnect once credit returns.
+                chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
@@ -827,6 +887,7 @@ class MultiChannelPoller:
             # Without an event loop there is no timer, so refresh here,
             # before can_consume() can skip BRPOP below.
             self.maybe_refresh_binding_expiry()
+            self._update_brpop_polling()
             for channel in self._channels:
                 if channel.active_queues:           # BRPOP mode?
                     if channel.qos.can_consume():
@@ -834,7 +895,13 @@ class MultiChannelPoller:
                 if channel.active_fanout_queues:    # LISTEN mode?
                     self._register_LISTEN(channel)
 
-            events = self.poller.poll(timeout)
+            if self._paused_brpop and not self.fds:
+                # select() cannot wait on empty sets on Windows. Also recheck
+                # credit periodically when drain_events has no timeout.
+                sleep(min(timeout, 1) if timeout is not None else 1)
+                events = []
+            else:
+                events = self.poller.poll(timeout)
             if events:
                 for fileno, event in events:
                     ret = self.handle_event(fileno, event)
@@ -860,7 +927,8 @@ class MultiChannelPoller:
 
     @property
     def fds(self):
-        return self._fd_to_chan
+        return {fd: chan for fd, chan in self._fd_to_chan.items()
+                if fd not in self._paused_brpop}
 
 
 def _batch_publish_retry_safe(connection_kwargs):
@@ -2115,8 +2183,10 @@ class Transport(virtual.Transport):
         cycle_poll_start = cycle.on_poll_start
         add_reader = loop.add_reader
         on_readable = self.on_readable
+        cycle._unregister_from_poll = loop.remove_reader
 
         def _on_disconnect(connection):
+            cycle._discard_paused_connection(connection)
             # redis-py clears connection._sock before calling us. Use existing
             # registrations, without evaluating cached client/subclient properties.
             disconnected = set()
