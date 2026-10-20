@@ -1213,6 +1213,10 @@ class Channel(virtual.Channel):
                 (pipe.lpush if leftmost else pipe.rpush)(
                     self._q_for_pri(queue, pri), dumps(payload),
                 )
+        except self.connection_errors:
+            # Abort the transaction: it would otherwise remove the message
+            # from the unacked hash without requeueing it.
+            raise
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
 
