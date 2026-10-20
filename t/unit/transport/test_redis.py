@@ -3229,6 +3229,77 @@ class test_PausedBRPOP:
         assert self.cycle._chan_to_sock[self.ident] is replacement._sock
         assert self.channel._in_poll is replacement
 
+    def test_poll_start_preserves_replacement_before_disconnect_callback(self):
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            self.cycle.on_poll_start()
+            self.cycle.on_readable(self.fd)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+        self.cycle.poller.register.assert_not_called()
+        start.assert_not_called()
+        self.read.assert_called_once_with()
+
+    @pytest.mark.parametrize('operation', ['discard', 'disconnect'])
+    def test_removing_paused_channel_preserves_another(self, operation):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other.queue_declare('other-paused-brpop')
+        other.basic_consume(
+            'other-paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='other-paused-consumer',
+        )
+        self.cycle._register_BRPOP(other)
+        other.qos.can_consume = Mock(return_value=False)
+        other_connection = other.client.connection
+        other_socket = other_connection._sock
+        other_fd = other_socket.fileno()
+        self.cycle.on_readable(other_fd)
+        other_pause = self.cycle._paused_brpop[other_fd]
+
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.pending._sock = None
+            self.channel._on_connection_disconnect(self.pending)
+
+        assert self.cycle._paused_brpop == {other_fd: other_pause}
+        assert self.cycle._fd_to_chan == {other_fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert not self.cycle.fds
+        assert other._in_poll is other_connection
+        assert other_connection._sock is other_socket
+
+    def test_late_disconnect_preserves_fd_reused_by_another_channel(self):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other_socket = other.client.connection._sock
+        other_socket._fileno = self.fd
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert other.client.connection._sock is other_socket
+
     @pytest.mark.parametrize('operation', ['close', 'discard'])
     def test_poller_removal_cannot_resume_paused_channel(self, operation):
         self.cycle.on_readable(self.fd)
