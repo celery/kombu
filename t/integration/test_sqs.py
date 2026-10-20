@@ -413,3 +413,62 @@ class test_SQSDelaySeconds:
             time.sleep(0.5)
             delivered = [m for m in receive() if m['Body']]
         assert delivered, 'delayed message never became visible'
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSCancelDuringReceive:
+    """A receive that completes after basic_cancel() releases its messages."""
+
+    def test_messages_received_after_cancel_are_released(self, hub, test_queue_prefix):
+        host = os.environ.get('SQS_HOST', 'localhost')
+        port = os.environ.get('SQS_PORT', '4100')
+        conn = get_connection(hostname=host, port=port, queue_prefix=test_queue_prefix)
+        # Long poll, so the receive is still in flight when the consumer is cancelled.
+        conn.transport_options.update(hub=hub, wait_time_seconds=2)
+        queue = kombu.Queue('cancel_during_receive', routing_key='cancel_during_receive')
+        received = []
+        ready = []
+        on_messages_ready = kombu.transport.SQS.Channel._on_messages_ready
+
+        def spy(channel, *args):
+            result = on_messages_ready(channel, *args)
+            ready.append(result)
+            return result
+
+        with conn, patch.object(
+            kombu.transport.SQS.Channel, '_on_messages_ready', spy,
+        ):
+            consumer = kombu.Consumer(
+                conn, [queue], callbacks=[lambda body, message: received.append(body)],
+                prefetch_count=1,
+            )
+            consumer.consume()
+            conn.register_with_event_loop(hub)
+            deadline = time.monotonic() + 0.5
+            while time.monotonic() < deadline:
+                hub.run_once()
+
+            consumer.cancel()
+            kombu.Producer(conn.channel()).publish(
+                'late', routing_key=queue.routing_key, declare=[queue],
+            )
+            deadline = time.monotonic() + 5
+            while not ready and time.monotonic() < deadline:
+                hub.run_once()
+
+            assert ready == [0]
+            assert received == []
+            admin = boto3.client(
+                'sqs',
+                region_name='us-east-1',
+                endpoint_url=f'http://{host}:{port}',
+                aws_access_key_id='TestUsername',
+                aws_secret_access_key='TestPassword',
+            )
+            queue_url = conn.default_channel._new_queue(queue.name)
+            messages = admin.receive_message(
+                QueueUrl=queue_url, WaitTimeSeconds=1,
+            ).get('Messages', [])
+            assert len(messages) == 1
+            admin.delete_queue(QueueUrl=queue_url)
