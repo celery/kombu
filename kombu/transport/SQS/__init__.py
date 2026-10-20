@@ -201,6 +201,21 @@ as follows:
 For a complete list of settings you can adjust using this option see
 https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 
+When a consumer is cancelled, for example on a Celery warm shutdown, a
+``ReceiveMessage`` call may still be in flight. Any messages it returns are
+made visible again with ``ChangeMessageVisibility`` so other consumers can
+receive them right away. This call blocks the shutdown, so it uses its own
+client with a 5 second connect and read timeout and no retries, applied on
+top of ``client-config``. On a degraded network each call then gives up
+after seconds rather than minutes, and the first failure stops the release
+for that queue. The messages left become visible again once their
+visibility timeout expires.
+
+.. versionchanged:: 5.7.0
+    Messages received after a consumer is cancelled are released back to
+    the queue with short timeouts and no retries, instead of raising
+    ``KeyError`` and staying invisible until their visibility timeout.
+
 Features
 ========
 * Type: Virtual
@@ -329,6 +344,13 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 10  # up to 20 seconds max
+    # Not client-config alone: botocore's default 60 s timeouts and retries
+    # could hold up the shutdown for minutes on a degraded network.
+    release_client_config = Config(
+        connect_timeout=5,
+        read_timeout=5,
+        retries={'total_max_attempts': 1},
+    )
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
     _sqs = None
@@ -822,13 +844,68 @@ class Channel(virtual.Channel):
         )
 
     def _on_messages_ready(self, queue, qname, messages):
-        if 'Messages' in messages and messages['Messages']:
-            callbacks = self.connection._callbacks
-            for msg in messages['Messages']:
-                msg_parsed = self._message_to_python(msg, qname, queue)
-                callbacks[qname](msg_parsed)
-            return len(messages['Messages'])
-        return 0
+        msgs = messages.get('Messages')
+        if not msgs:
+            return 0
+        callback = self.connection._callbacks.get(qname)
+        if callback is None:
+            # Not routed through Transport._deliver(): its requeue path
+            # parses each message first (deleting it on no-ack queues) and
+            # hides it again for wait_time_seconds, one call per message.
+            self._release_messages(queue, qname, msgs)
+            return 0
+        for msg in msgs:
+            msg_parsed = self._message_to_python(msg, qname, queue)
+            callback(msg_parsed)
+        return len(msgs)
+
+    def _release_messages(self, queue, qname, messages):
+        """Make received messages visible again without consuming them."""
+        logger.info(
+            'Consumer for queue %s is gone, releasing %d received message(s)',
+            qname, len(messages),
+        )
+        # The blocking client is used instead of asynsqs(): the hub may stop
+        # right after the consumer is cancelled, before an async call returns.
+        # ChangeMessageVisibilityBatch is not used because GoAws, which the
+        # integration tests run against, does not implement it.
+        try:
+            client = self._new_release_client(
+                self.sqs(queue=self.canonical_queue_name(qname)),
+            )
+            for msg in messages:
+                client.change_message_visibility(
+                    QueueUrl=queue,
+                    ReceiptHandle=msg['ReceiptHandle'],
+                    VisibilityTimeout=0,
+                )
+        except (ClientError, aws_exceptions.BotoCoreError, OSError) as exc:
+            # The messages left become visible again once their visibility
+            # timeout expires, so they are delayed but not lost.
+            logger.warning(
+                'Failed to release messages for queue %s: %r', qname, exc,
+            )
+
+    def _new_release_client(self, client):
+        """Copy *client* with the short timeouts of release_client_config."""
+        # Not copied when new_sqs_client() is overridden: the copy would drop
+        # whatever the override customises, such as the endpoint or hooks.
+        if type(self).new_sqs_client is not Channel.new_sqs_client:
+            return client
+        # The credentials are taken from the client because sqs() does not
+        # keep them, e.g. the STS credentials of a predefined queue.
+        credentials = client._request_signer._credentials
+        if credentials is None:
+            return client
+        frozen = credentials.get_frozen_credentials()
+        return self._new_boto_client(
+            service='sqs',
+            region=client.meta.region_name,
+            access_key_id=frozen.access_key,
+            secret_access_key=frozen.secret_key,
+            session_token=frozen.token,
+            config=self.release_client_config,
+        )
 
     def _get_from_sqs(self, queue_name, queue_url,
                       connection, count=1, callback=None):
@@ -974,6 +1051,7 @@ class Channel(virtual.Channel):
         access_key_id,
         secret_access_key,
         session_token=None,
+        config=None,
     ):
         session = boto3.Session(
             region_name=region,
@@ -987,9 +1065,12 @@ class Channel(virtual.Channel):
         }
         if self.endpoint_url is not None:
             client_kwargs['endpoint_url'] = self.endpoint_url
-        client_config = self.transport_options.get('client-config') or {}
-        config = Config(**client_config)
-        return session.client(service, config=config, **client_kwargs)
+        client_config = Config(
+            **(self.transport_options.get('client-config') or {}),
+        )
+        if config is not None:
+            client_config = client_config.merge(config)
+        return session.client(service, config=client_config, **client_kwargs)
 
     def sqs(self, queue=None):
         # If a queue has been provided, check if the queue has been defined already. Reuse it's client if possible.
