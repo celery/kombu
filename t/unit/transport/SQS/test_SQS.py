@@ -864,7 +864,17 @@ class test_Channel:
         )
         assert result == 0
 
-    def test_on_messages_ready_releases_messages_when_consumer_cancelled(self):
+    @pytest.fixture
+    def release_through_mock(self):
+        """Release through the mocked sqs() client, not a new boto client."""
+        with patch.object(
+            SQS.Channel, '_new_release_client', side_effect=lambda client: client,
+        ):
+            yield
+
+    def test_on_messages_ready_releases_messages_when_consumer_cancelled(
+        self, release_through_mock,
+    ):
         """Messages received after basic_cancel are released, not dispatched."""
         self.channel.connection._callbacks = {}
         release = self.sqs_conn_mock.change_message_visibility = Mock()
@@ -886,7 +896,9 @@ class test_Channel:
             call(QueueUrl=q_url, ReceiptHandle='rh2', VisibilityTimeout=0),
         ]
 
-    def test_on_messages_ready_release_uses_canonical_queue_name(self):
+    def test_on_messages_ready_release_uses_canonical_queue_name(
+        self, release_through_mock,
+    ):
         """The release looks the SQS client up by the canonical queue name."""
         self.channel.connection._callbacks = {}
         self.channel.queue_name_prefix = 'prefix-'
@@ -911,7 +923,9 @@ class test_Channel:
         EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
         ConnectionResetError(),
     ])
-    def test_on_messages_ready_release_failure_is_logged(self, caplog, error):
+    def test_on_messages_ready_release_failure_is_logged(
+        self, release_through_mock, caplog, error,
+    ):
         """A failed release is logged instead of raised, and stops the release."""
         self.channel.connection._callbacks = {}
         release = self.sqs_conn_mock.change_message_visibility = Mock(
@@ -934,7 +948,9 @@ class test_Channel:
         assert release.call_count == 1
         assert 'Failed to release messages' in caplog.text
 
-    def test_on_messages_ready_client_lookup_failure_is_logged(self, caplog):
+    def test_on_messages_ready_client_lookup_failure_is_logged(
+        self, release_through_mock, caplog,
+    ):
         """A failure to get the SQS client is logged instead of raised."""
         self.channel.connection._callbacks = {}
         messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
@@ -952,6 +968,49 @@ class test_Channel:
 
         assert result == 0
         assert 'Failed to release messages' in caplog.text
+
+    def test_new_release_client_has_short_timeouts_and_no_retries(self):
+        """The release client copies the client but does not wait long."""
+        connection = Connection(
+            transport=SQS.Transport,
+            transport_options={
+                'client-config': {
+                    'connect_timeout': 60,
+                    'user_agent_extra': 'kombu-test',
+                },
+            },
+        )
+        channel = connection.channel()
+        client = channel.new_sqs_client(
+            region='eu-west-1',
+            access_key_id='access-key',
+            secret_access_key='secret-key',
+            session_token='session-token',
+        )
+
+        release_client = channel._new_release_client(client)
+
+        config = release_client._client_config
+        assert config.connect_timeout == 5
+        assert config.read_timeout == 5
+        assert config.retries['total_max_attempts'] == 1
+        assert config.user_agent_extra == 'kombu-test'
+        assert release_client.meta.region_name == 'eu-west-1'
+        credentials = release_client._request_signer._credentials
+        assert credentials.access_key == 'access-key'
+        assert credentials.secret_key == 'secret-key'
+        assert credentials.token == 'session-token'
+
+    def test_new_release_client_keeps_client_of_overridden_factory(self):
+        """A client from an overridden new_sqs_client() is used as is."""
+        class CustomChannel(SQS.Channel):
+            def new_sqs_client(self, *args, **kwargs):
+                return super().new_sqs_client(*args, **kwargs)
+
+        channel = CustomChannel(self.channel.connection)
+        client = Mock(name='client')
+
+        assert channel._new_release_client(client) is client
 
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
