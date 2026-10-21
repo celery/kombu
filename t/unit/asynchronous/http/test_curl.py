@@ -79,11 +79,36 @@ class test_CurlClient:
         # the client that reset() just closed.
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = get_client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
             hub.reset()
+            # The old client's in-flight requests belong to the channels
+            # being torn down, so reset() must close it too.
+            x._multi.close.assert_called_once_with()
             assert x.close not in hub.on_close
             y = get_client(hub)
             assert y is not x
             assert y.close in hub.on_close
+
+    def test_closed_client_drops_new_requests(self, hub):
+        # Hub.close() runs on_close before the callbacks still queued on the
+        # hub, so a queued poll can reach the client after it was closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x._process_queue = Mock(name='_process_queue')
+            hub.close()
+            request = Mock(name='request')
+            assert x.add_request(request) is request
+            assert request not in x._pending
+            x._process_queue.assert_not_called()
+
+    def test_close_is_idempotent(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            x.close()
+            x._multi.close.assert_called_once_with()
 
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):

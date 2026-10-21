@@ -51,6 +51,7 @@ class CurlClient(BaseClient):
         self._curls = [self.Curl() for i in range(max_clients)]
         self._free_list = self._curls[:]
         self._pending = deque()
+        self._closed = False
         self._fds = {}
 
         self._socket_action = self._multi.socket_action
@@ -64,6 +65,9 @@ class CurlClient(BaseClient):
         self._multi.remove_handle(dummy_curl_handle)
 
     def close(self, *args):
+        if self._closed:
+            return
+        self._closed = True
         super().close(*args)
         self._timeout_check_tref.cancel()
         for _curl in self._curls:
@@ -71,6 +75,11 @@ class CurlClient(BaseClient):
         self._multi.close()
 
     def add_request(self, request):
+        if self._closed:
+            # Hub.close() runs on_close before the callbacks still queued on
+            # the hub, so a queued poll can get here after the curl handles
+            # are gone. Nothing may run once the hub has closed.
+            return request
         self._pending.append(request)
         self._process_queue()
         self._set_timeout(0)

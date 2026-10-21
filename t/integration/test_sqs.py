@@ -533,3 +533,33 @@ class test_SQSReconnectAfterHubReset:
             conn.default_channel.sqs().delete_queue(
                 QueueUrl=conn.default_channel._new_queue(queue.name),
             )
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSHubCloseWithQueuedPoll:
+    """Hub.close() with an active consumer whose next poll is queued."""
+
+    def test_hub_close_does_not_raise(self, hub, test_queue_prefix):
+        # Hub.close() runs on_close, which closes the HTTP client, before
+        # the callbacks still queued on the hub, so the queued poll reaches
+        # a closed client.
+        host = os.environ.get('SQS_HOST', 'localhost')
+        port = os.environ.get('SQS_PORT', '4100')
+        conn = get_connection(hostname=host, port=port, queue_prefix=test_queue_prefix)
+        conn.transport_options.update(hub=hub, wait_time_seconds=1)
+        queue = kombu.Queue('close_with_queued_poll', routing_key='close_with_queued_poll')
+        with conn:
+            kombu.Consumer(conn, [queue]).consume()
+            conn.register_with_event_loop(hub)
+            loop = hub.create_loop()
+            deadline = time.monotonic() + 0.5
+            while time.monotonic() < deadline:
+                next(loop)
+            channel = conn.default_channel
+            # What the channel does after a poll that fetched messages.
+            channel._loop1(queue.name, 1)
+
+            hub.close()
+
+            channel.sqs().delete_queue(QueueUrl=channel._new_queue(queue.name))
