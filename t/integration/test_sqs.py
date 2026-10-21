@@ -472,3 +472,64 @@ class test_SQSCancelDuringReceive:
             ).get('Messages', [])
             assert len(messages) == 1
             admin.delete_queue(QueueUrl=queue_url)
+
+
+@pytest.mark.env('sqs')
+@pytest.mark.flaky(reruns=5, reruns_delay=2)
+class test_SQSReconnectAfterHubReset:
+    """A consumer reconnected after Hub.reset() keeps receiving messages."""
+
+    def test_reconnected_consumer_receives_after_hub_reset(self, hub, test_queue_prefix):
+        # Celery's asynloop calls hub.reset() when a recoverable error
+        # escapes the loop, then reconnects on a new connection and channel
+        # that share the same hub. The HTTP client cached on the hub must
+        # not be the one reset() closed.
+        host = os.environ.get('SQS_HOST', 'localhost')
+        port = os.environ.get('SQS_PORT', '4100')
+        queue = kombu.Queue('reconnect_after_reset', routing_key='reconnect_after_reset')
+        wait_time_seconds = 1
+
+        def connect():
+            conn = get_connection(hostname=host, port=port, queue_prefix=test_queue_prefix)
+            # Long poll, so a receive is in flight when the hub resets.
+            conn.transport_options.update(hub=hub, wait_time_seconds=wait_time_seconds)
+            return conn
+
+        def run_hub(loop, seconds, until=lambda: False):
+            deadline = time.monotonic() + seconds
+            while not until() and time.monotonic() < deadline:
+                next(loop)
+
+        with connect() as conn:
+            kombu.Consumer(conn, [queue]).consume()
+            conn.register_with_event_loop(hub)
+            run_hub(hub.create_loop(), 0.5)
+            hub.reset()
+
+        # The server still completes the receive that was in flight, and a
+        # message it returns there stays invisible until its visibility
+        # timeout; wait that receive out so the message goes to the new
+        # consumer.
+        time.sleep(wait_time_seconds + 0.5)
+        # reset() also clears the global event loop (#2768), which the new
+        # channel reads its hub from; restore it so only #2777 is under test.
+        kombu.asynchronous.set_event_loop(hub)
+        # Like asynloop on restart, poll through a new loop: the old one is
+        # bound to the poller that reset() closed.
+        loop = hub.create_loop()
+        received = []
+        with connect() as conn:
+            kombu.Consumer(
+                conn, [queue],
+                callbacks=[lambda body, message: (received.append(body), message.ack())],
+            ).consume()
+            conn.register_with_event_loop(hub)
+            kombu.Producer(conn.channel()).publish(
+                'after reset', routing_key=queue.routing_key, declare=[queue],
+            )
+            run_hub(loop, 10, until=lambda: received)
+
+            assert received == ['after reset']
+            conn.default_channel.sqs().delete_queue(
+                QueueUrl=conn.default_channel._new_queue(queue.name),
+            )
