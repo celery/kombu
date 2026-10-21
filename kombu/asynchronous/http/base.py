@@ -262,7 +262,12 @@ class BaseClient:
         raise NotImplementedError('must implement add_request')
 
     def close(self, *args):
-        pass
+        # Hub.reset() runs on_close but keeps the hub, so drop this client
+        # from it: the next get_client() then creates a new client instead
+        # of returning this closed one.
+        self.hub.on_close.discard(self.close)
+        if getattr(self.hub, '_current_http_client', None) is self:
+            del self.hub._current_http_client
 
     def on_header(self, headers, line):
         try:
