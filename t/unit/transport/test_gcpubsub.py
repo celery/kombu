@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from _socket import timeout as socket_timeout
 from concurrent.futures import Future
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import datetime, timedelta
 from queue import Empty
 from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
@@ -547,6 +548,67 @@ class test_Channel:
         call_kwargs = channel.publisher.publish.call_args[1]
         assert isinstance(call_kwargs['retry'], Retry)
         assert call_kwargs['retry']._timeout == 60
+
+    def test_put_does_not_wait_for_the_publish_by_default(self, channel):
+        future = self._put_with_future(channel, confirm_publish=False)
+
+        future.result.assert_not_called()
+
+    def test_put_waits_for_the_publish_with_confirm_publish(self, channel):
+        future = self._put_with_future(
+            channel, confirm_publish=True, confirm_timeout=5,
+        )
+
+        future.result.assert_called_once_with(timeout=5)
+
+    def test_put_raises_when_a_confirmed_publish_fails(self, channel):
+        failed = Future()
+        failed.set_exception(DeadlineExceeded("publish failed"))
+
+        with pytest.raises(DeadlineExceeded):
+            self._put_with_future(
+                channel, confirm_publish=True, future=failed,
+            )
+
+    def test_put_raises_when_a_confirmed_publish_times_out(self, channel):
+        with pytest.raises(FuturesTimeoutError):
+            self._put_with_future(
+                channel, confirm_publish=True, future=Future(),
+                confirm_timeout=0.01,
+            )
+
+    def test_put_fanout_waits_for_the_publish_with_confirm_publish(
+        self, channel
+    ):
+        future = MagicMock()
+        channel._lookup = MagicMock()
+        channel.publisher.publish = MagicMock(return_value=future)
+        channel.confirm_publish = True
+
+        channel._put_fanout(
+            "test_exchange", {"properties": {}}, "test_key",
+            confirm_timeout=5,
+        )
+
+        future.result.assert_called_once_with(timeout=5)
+
+    @staticmethod
+    def _put_with_future(channel, confirm_publish, future=None, **kwargs):
+        queue = "test_queue"
+        channel.entity_name = MagicMock(return_value=queue)
+        channel._queue_cache[queue] = QueueDescriptor(
+            name=queue,
+            topic_path="topic_path",
+            subscription_id=queue,
+            subscription_path="subscription_path",
+        )
+        channel._get_routing_key = MagicMock(return_value="test_key")
+        future = future or MagicMock()
+        channel.publisher.publish = MagicMock(return_value=future)
+        channel.retry_timeout_seconds = 300
+        channel.confirm_publish = confirm_publish
+        channel._put(queue, {"properties": {}}, **kwargs)
+        return future
 
     def test_put_fanout(self, channel):
         exchange = "test_exchange"
@@ -1222,6 +1284,21 @@ class test_Channel:
             # When: Accessing the enable_exactly_once_delivery property
             # Then: It should return the expected value
             assert channel.enable_exactly_once_delivery is expected_value
+
+    @pytest.mark.parametrize(
+        "transport_options,expected_value",
+        [
+            ({}, False),
+            ({'confirm_publish': True}, True),
+            ({'confirm_publish': False}, False),
+        ],
+    )
+    def test_confirm_publish(self, channel, transport_options, expected_value):
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock, return_value=transport_options
+        ):
+            assert channel.confirm_publish is expected_value
 
     @pytest.mark.parametrize(
         "enable_exactly_once,expected_value",
