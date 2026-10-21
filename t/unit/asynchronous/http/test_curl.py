@@ -61,7 +61,7 @@ class test_CurlClient:
         # consumer has already torn down.
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client(hub)
-            assert x.close in hub.on_close
+            assert x._on_hub_close in hub.on_close
 
     def test_hub_close_closes_client(self, hub):
         with patch('kombu.asynchronous.http.curl.pycurl'):
@@ -84,10 +84,10 @@ class test_CurlClient:
             # The old client's in-flight requests belong to the channels
             # being torn down, so reset() must close it too.
             x._multi.close.assert_called_once_with()
-            assert x.close not in hub.on_close
+            assert x._on_hub_close not in hub.on_close
             y = get_client(hub)
             assert y is not x
-            assert y.close in hub.on_close
+            assert y._on_hub_close in hub.on_close
 
     def test_closed_client_drops_new_requests(self, hub):
         # Hub.close() runs on_close before the callbacks still queued on the
