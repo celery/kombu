@@ -6,6 +6,7 @@ from unittest.mock import ANY, Mock, call, patch
 import pytest
 
 import t.skip
+from kombu.asynchronous.http import get_client
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 pytest.importorskip('pycurl')
@@ -71,6 +72,18 @@ class test_CurlClient:
             for _curl in x._curls:
                 _curl.close.assert_called_with()
             x._multi.close.assert_called_with()
+
+    def test_hub_reset_does_not_reuse_closed_client(self, hub):
+        # Celery calls hub.reset() after a recoverable error and then
+        # reconnects on the same hub, so get_client() must not hand back
+        # the client that reset() just closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = get_client(hub)
+            hub.reset()
+            assert x.close not in hub.on_close
+            y = get_client(hub)
+            assert y is not x
+            assert y.close in hub.on_close
 
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):
