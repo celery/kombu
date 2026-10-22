@@ -1765,6 +1765,127 @@ class test_Channel:
             QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
             ReceiptHandle='test_message_id', VisibilityTimeout=20)
 
+    def _reject_channel(self, task='svc.tasks.tasks.task2'):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        queue_name = 'queue-1'
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {
+            'routing_key': queue_name,
+            'sqs_queue': 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            'sqs_message': {'ReceiptHandle': 'receipt-handle'},
+        }
+        message_mock.headers = {'task': task}
+        message_mock.properties = {'delivery_info': {'sqs_message': {
+            'Attributes': {'ApproximateReceiveCount': 2}}}}
+        channel.qos._delivered['test_message_id'] = message_mock
+
+        channel.sqs = Mock()
+        channel._restore_at_beginning = Mock()
+        return channel, message_mock
+
+    def test_basic_reject_without_requeue_deletes_message(self):
+        channel, _ = self._reject_channel()
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.assert_called_once_with(queue='queue-1')
+        channel.sqs.return_value.delete_message.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            ReceiptHandle='receipt-handle',
+        )
+        channel.sqs.return_value.change_message_visibility.assert_not_called()
+        channel._restore_at_beginning.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_without_routing_key_deletes_message(self):
+        channel, message = self._reject_channel()
+        del message.delivery_info['routing_key']
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.assert_called_once_with(queue=None)
+        channel.sqs.return_value.delete_message.assert_called_once_with(
+            QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+            ReceiptHandle='receipt-handle',
+        )
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_with_requeue_does_not_delete_message(self):
+        channel, message = self._reject_channel()
+
+        channel.basic_reject('test_message_id', requeue=True)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        channel._restore_at_beginning.assert_called_once_with(message)
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_backoff_task_applies_backoff_policy(self):
+        channel, _ = self._reject_channel(task='svc.tasks.tasks.task1')
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        channel.sqs.return_value.change_message_visibility \
+            .assert_called_once_with(
+                QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
+                ReceiptHandle='test_message_id', VisibilityTimeout=20)
+        assert channel.qos._dirty == {'test_message_id'}
+
+    @pytest.mark.parametrize('missing_key', ['sqs_message', 'sqs_queue'])
+    def test_basic_reject_without_sqs_info_does_not_delete(self, missing_key):
+        channel, message = self._reject_channel()
+        del message.delivery_info[missing_key]
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_unknown_delivery_tag(self):
+        channel, _ = self._reject_channel()
+
+        channel.basic_reject('unknown', requeue=False)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'unknown'}
+
+    def test_basic_reject_releases_delivery_when_delete_fails(self):
+        channel, _ = self._reject_channel()
+        channel.sqs.return_value.delete_message.side_effect = ClientError(
+            {'Error': {'Code': 'InternalError', 'Message': 'boom'}},
+            'DeleteMessage',
+        )
+
+        with pytest.raises(ClientError):
+            channel.basic_reject('test_message_id', requeue=False)
+
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_is_backoff_task(self):
+        channel, message = self._reject_channel(task='svc.tasks.tasks.task1')
+        assert channel.qos.is_backoff_task('test_message_id')
+
+        message.headers = {'task': 'svc.tasks.tasks.task2'}
+        assert not channel.qos.is_backoff_task('test_message_id')
+
+        message.headers = None
+        assert not channel.qos.is_backoff_task('test_message_id')
+
+        assert not channel.qos.is_backoff_task('unknown')
+
+    def test_is_backoff_task_without_backoff_config(self):
+        channel, message = self._reject_channel(task='svc.tasks.tasks.task1')
+        message.delivery_info['routing_key'] = 'queue-2'
+        assert not channel.qos.is_backoff_task('test_message_id')
+
     def test_predefined_queues_put_to_fifo_queue(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,
