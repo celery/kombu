@@ -6,6 +6,7 @@ from unittest.mock import ANY, Mock, call, patch
 import pytest
 
 import t.skip
+from kombu.asynchronous.http import get_client
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
 pytest.importorskip('pycurl')
@@ -60,7 +61,7 @@ class test_CurlClient:
         # consumer has already torn down.
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client(hub)
-            assert x.close in hub.on_close
+            assert x._on_hub_close in hub.on_close
 
     def test_hub_close_closes_client(self, hub):
         with patch('kombu.asynchronous.http.curl.pycurl'):
@@ -71,6 +72,70 @@ class test_CurlClient:
             for _curl in x._curls:
                 _curl.close.assert_called_with()
             x._multi.close.assert_called_with()
+
+    def test_hub_reset_does_not_reuse_closed_client(self, hub):
+        # Celery calls hub.reset() after a recoverable error and then
+        # reconnects on the same hub, so get_client() must not hand back
+        # the client that reset() just closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = get_client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            hub.reset()
+            # The old client's in-flight requests belong to the channels
+            # being torn down, so reset() must close it too.
+            x._multi.close.assert_called_once_with()
+            assert x._on_hub_close not in hub.on_close
+            y = get_client(hub)
+            assert y is not x
+            assert y._on_hub_close in hub.on_close
+
+    def test_closed_client_drops_new_requests(self, hub):
+        # Hub.close() runs on_close before the callbacks still queued on the
+        # hub, so a queued poll can reach the client after it was closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x._process_queue = Mock(name='_process_queue')
+            hub.close()
+            request = Mock(name='request')
+            assert x.add_request(request) is request
+            assert request not in x._pending
+            x._process_queue.assert_not_called()
+
+    def test_close_is_idempotent(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            x.close()
+            x._multi.close.assert_called_once_with()
+
+    def test_owner_close_removes_client_from_hub(self, hub):
+        # BaseClient is a context manager, so its owner can close the
+        # cached client without the hub closing.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            with get_client(hub) as x:
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+            assert x._on_hub_close not in hub.on_close
+            assert get_client(hub) is not x
+
+    def test_closed_clients_are_not_kept_by_hub(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            before = len(hub.on_close)
+            for _ in range(50):
+                x = self.Client(hub)
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+                x.close()
+            assert len(hub.on_close) == before
+
+    def test_dropped_request_is_logged(self, hub, caplog):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            with caplog.at_level('DEBUG', logger='kombu.asynchronous.http.curl'):
+                x.add_request(Mock(name='request'))
+            assert 'closed' in caplog.text
 
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):

@@ -24,7 +24,8 @@ from .conftest import example_predefined_exchanges, example_predefined_queues
 
 boto3 = pytest.importorskip('boto3')
 
-from botocore.exceptions import ClientError  # noqa
+from botocore.exceptions import (ClientError, ConnectTimeoutError,  # noqa
+                                 EndpointConnectionError, ReadTimeoutError)
 
 from kombu.transport import SQS  # noqa
 
@@ -863,6 +864,154 @@ class test_Channel:
         )
         assert result == 0
 
+    @pytest.fixture
+    def release_through_mock(self):
+        """Release through the mocked sqs() client, not a new boto client."""
+        with patch.object(
+            SQS.Channel, '_new_release_client', side_effect=lambda client: client,
+        ):
+            yield
+
+    def test_on_messages_ready_releases_messages_when_consumer_cancelled(
+        self, release_through_mock,
+    ):
+        """Messages received after basic_cancel are released, not dispatched."""
+        self.channel.connection._callbacks = {}
+        release = self.sqs_conn_mock.change_message_visibility = Mock()
+        q_url = self.channel._new_queue(self.queue_name)
+        messages = {
+            'Messages': [
+                {'Body': '{}', 'ReceiptHandle': 'rh1'},
+                {'Body': '{}', 'ReceiptHandle': 'rh2'},
+            ]
+        }
+
+        result = self.channel._on_messages_ready(
+            q_url, self.queue_name, messages
+        )
+
+        assert result == 0
+        assert release.call_args_list == [
+            call(QueueUrl=q_url, ReceiptHandle='rh1', VisibilityTimeout=0),
+            call(QueueUrl=q_url, ReceiptHandle='rh2', VisibilityTimeout=0),
+        ]
+
+    def test_on_messages_ready_release_uses_canonical_queue_name(
+        self, release_through_mock,
+    ):
+        """The release looks the SQS client up by the canonical queue name."""
+        self.channel.connection._callbacks = {}
+        self.channel.queue_name_prefix = 'prefix-'
+        self.sqs_conn_mock.change_message_visibility = Mock()
+        messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
+
+        with patch.object(
+            self.channel, 'sqs', wraps=self.channel.sqs,
+        ) as sqs:
+            self.channel._on_messages_ready(
+                'https://sqs.us-east-1.amazonaws.com/xxx/prefix-unittest',
+                self.queue_name, messages,
+            )
+
+        sqs.assert_called_once_with(queue='prefix-unittest')
+
+    @pytest.mark.parametrize('error', [
+        ClientError(
+            {'Error': {'Code': 'InternalError', 'Message': 'boom'}},
+            'ChangeMessageVisibility',
+        ),
+        EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
+        ConnectionResetError(),
+    ])
+    def test_on_messages_ready_release_failure_is_logged(
+        self, release_through_mock, caplog, error,
+    ):
+        """A failed release is logged instead of raised, and stops the release."""
+        self.channel.connection._callbacks = {}
+        release = self.sqs_conn_mock.change_message_visibility = Mock(
+            side_effect=error,
+        )
+        messages = {
+            'Messages': [
+                {'Body': '{}', 'ReceiptHandle': 'rh1'},
+                {'Body': '{}', 'ReceiptHandle': 'rh2'},
+            ]
+        }
+
+        with caplog.at_level(logging.WARNING):
+            result = self.channel._on_messages_ready(
+                self.channel._new_queue(self.queue_name),
+                self.queue_name, messages,
+            )
+
+        assert result == 0
+        assert release.call_count == 1
+        assert 'Failed to release messages' in caplog.text
+
+    def test_on_messages_ready_client_lookup_failure_is_logged(
+        self, release_through_mock, caplog,
+    ):
+        """A failure to get the SQS client is logged instead of raised."""
+        self.channel.connection._callbacks = {}
+        messages = {'Messages': [{'Body': '{}', 'ReceiptHandle': 'rh1'}]}
+        error = ClientError(
+            {'Error': {'Code': 'AccessDenied', 'Message': 'boom'}},
+            'AssumeRole',
+        )
+
+        with patch.object(self.channel, 'sqs', side_effect=error), \
+                caplog.at_level(logging.WARNING):
+            result = self.channel._on_messages_ready(
+                self.channel._new_queue(self.queue_name),
+                self.queue_name, messages,
+            )
+
+        assert result == 0
+        assert 'Failed to release messages' in caplog.text
+
+    def test_new_release_client_has_short_timeouts_and_no_retries(self):
+        """The release client copies the client but does not wait long."""
+        connection = Connection(
+            transport=SQS.Transport,
+            transport_options={
+                'client-config': {
+                    'connect_timeout': 60,
+                    'user_agent_extra': 'kombu-test',
+                },
+            },
+        )
+        channel = connection.channel()
+        client = channel.new_sqs_client(
+            region='eu-west-1',
+            access_key_id='access-key',
+            secret_access_key='secret-key',
+            session_token='session-token',
+        )
+
+        release_client = channel._new_release_client(client)
+
+        config = release_client._client_config
+        assert config.connect_timeout == 5
+        assert config.read_timeout == 5
+        assert config.retries['total_max_attempts'] == 1
+        assert config.user_agent_extra == 'kombu-test'
+        assert release_client.meta.region_name == 'eu-west-1'
+        credentials = release_client._request_signer._credentials
+        assert credentials.access_key == 'access-key'
+        assert credentials.secret_key == 'secret-key'
+        assert credentials.token == 'session-token'
+
+    def test_new_release_client_keeps_client_of_overridden_factory(self):
+        """A client from an overridden new_sqs_client() is used as is."""
+        class CustomChannel(SQS.Channel):
+            def new_sqs_client(self, *args, **kwargs):
+                return super().new_sqs_client(*args, **kwargs)
+
+        channel = CustomChannel(self.channel.connection)
+        client = Mock(name='client')
+
+        assert channel._new_release_client(client) is client
+
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
         hub = Mock(name='hub')
@@ -1339,6 +1488,117 @@ class test_Channel:
         assert message.acknowledged
         assert channel.qos.can_consume()
 
+    def _prefetched_message(self, queue_name, task_name, delivery_tag):
+        """Return a channel holding one delivery in its only prefetch slot."""
+        queue_config = {
+            **example_predefined_queues[queue_name],
+            'backoff_tasks': [task_name],
+            'backoff_policy': {1: 10},
+        }
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': {queue_name: queue_config},
+        })
+        channel = connection.channel()
+        channel.basic_qos(0, 1, False)
+        message = channel.Message({
+            'body': 'COPY_PROBE_123',
+            'headers': {'task': task_name},
+            'properties': {
+                'delivery_tag': delivery_tag,
+                'delivery_info': {
+                    'routing_key': queue_name,
+                    'sqs_queue': queue_config['url'],
+                    'sqs_message': {
+                        'ReceiptHandle': delivery_tag,
+                        'Attributes': {'ApproximateReceiveCount': '1'},
+                    },
+                },
+            },
+        }, channel=channel)
+        channel.qos.append(message, delivery_tag)
+        assert not channel.qos.can_consume()
+        return connection, channel, message, queue_config
+
+    @pytest.mark.parametrize('error', [
+        ConnectTimeoutError(endpoint_url='https://sqs.example.com/'),
+        EndpointConnectionError(endpoint_url='https://sqs.example.com/'),
+        ReadTimeoutError(endpoint_url='https://sqs.example.com/'),
+        OSError('Connection reset by peer'),
+        # BaseException, e.g. an interrupt or a gevent Timeout mid-request.
+        KeyboardInterrupt(),
+    ])
+    def test_basic_ack_network_error_releases_delivery(self, error):
+        """A delete that fails to complete still frees the prefetch slot."""
+        task_name = 'svc.tasks.tasks.task1'
+        delivery_tag = 'RECEIPT_HANDLE'
+        _, channel, message, queue_config = self._prefetched_message(
+            'queue-1', task_name, delivery_tag,
+        )
+        client = Mock()
+        client.delete_message.side_effect = error
+        channel.sqs = Mock(return_value=client)
+
+        with pytest.raises(type(error)):
+            message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        # No backoff: changing the visibility would fail the same way.
+        client.change_message_visibility.assert_not_called()
+        # The message was not deleted, so it is not acknowledged; SQS
+        # redelivers it after the visibility timeout.
+        assert not message.acknowledged
+        assert channel.qos.can_consume()
+
+    def test_basic_ack_access_denied_releases_delivery(self):
+        """AccessDenied still raises, but no longer holds the prefetch slot."""
+        task_name = 'svc.tasks.tasks.task1'
+        delivery_tag = 'RECEIPT_HANDLE'
+        _, channel, message, queue_config = self._prefetched_message(
+            'queue-1', task_name, delivery_tag,
+        )
+        client = Mock()
+        client.delete_message.side_effect = ClientError({'Error': {
+            'Code': 'AccessDenied',
+            'Message': 'Access to the resource is denied.',
+        }}, 'DeleteMessage')
+        channel.sqs = Mock(return_value=client)
+
+        with pytest.raises(SQS.AccessDeniedQueueException):
+            message.ack()
+
+        client.delete_message.assert_called_once_with(
+            QueueUrl=queue_config['url'], ReceiptHandle=delivery_tag,
+        )
+        client.change_message_visibility.assert_not_called()
+        assert not message.acknowledged
+        assert channel.qos.can_consume()
+
+    def test_basic_ack_network_error_logged_by_ack_log_error(self):
+        """The failure is logged and the consumer can fetch the next message.
+
+        ``Message.ack_log_error`` (used by Celery) swallows the transport's
+        connection errors, so without the slot being freed a consumer with a
+        prefetch count of one would never poll SQS again.
+        """
+        task_name = 'svc.tasks.tasks.task1'
+        connection, channel, message, _ = self._prefetched_message(
+            'queue-1', task_name, 'RECEIPT_HANDLE',
+        )
+        client = Mock()
+        client.delete_message.side_effect = ConnectTimeoutError(
+            endpoint_url='https://sqs.example.com/',
+        )
+        channel.sqs = Mock(return_value=client)
+        logger = Mock()
+
+        message.ack_log_error(logger, connection.connection_errors)
+
+        logger.critical.assert_called_once()
+        assert channel.qos.can_consume()
+        assert channel.qos.can_consume_max_estimate() == 1
+
     @patch('kombu.transport.virtual.base.Channel.basic_ack')
     @patch('kombu.transport.virtual.base.Channel.basic_reject')
     def test_basic_ack_access_denied(self, basic_reject_mock, basic_ack_mock):
@@ -1377,7 +1637,7 @@ class test_Channel:
             ReceiptHandle=message['sqs_message']['ReceiptHandle']
         )
         assert not basic_reject_mock.called
-        assert not basic_ack_mock.called
+        basic_ack_mock.assert_called_once_with(2)
 
     def test_reject_when_no_predefined_queues(self):
         connection = Connection(transport=SQS.Transport, transport_options={})
