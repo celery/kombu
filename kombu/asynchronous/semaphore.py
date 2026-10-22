@@ -30,13 +30,16 @@ class LaxBoundedSemaphore:
 
         >>> x.acquire(print, 'HELLO 1')
         HELLO 1
+        True
 
         >>> x.acquire(print, 'HELLO 2')
         HELLO 2
+        True
 
         >>> x.acquire(print, 'HELLO 3')
-        >>> x._waiters   # private, do not access directly
-        [print, ('HELLO 3',)]
+        False
+        >>> x._waiting   # private, do not access directly
+        deque([(<built-in function print>, ('HELLO 3',), {})])
 
         >>> x.release()
         HELLO 3
