@@ -110,6 +110,33 @@ class test_CurlClient:
             x.close()
             x._multi.close.assert_called_once_with()
 
+    def test_owner_close_removes_client_from_hub(self, hub):
+        # BaseClient is a context manager, so its owner can close the
+        # cached client without the hub closing.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            with get_client(hub) as x:
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+            assert x._on_hub_close not in hub.on_close
+            assert get_client(hub) is not x
+
+    def test_closed_clients_are_not_kept_by_hub(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            before = len(hub.on_close)
+            for _ in range(50):
+                x = self.Client(hub)
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+                x.close()
+            assert len(hub.on_close) == before
+
+    def test_dropped_request_is_logged(self, hub, caplog):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            with caplog.at_level('DEBUG', logger='kombu.asynchronous.http.curl'):
+                x.add_request(Mock(name='request'))
+            assert 'closed' in caplog.text
+
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client()

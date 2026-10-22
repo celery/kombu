@@ -264,13 +264,16 @@ class BaseClient:
     def close(self):
         pass
 
+    def _detach_from_hub(self):
+        # Hub.reset() and a close by the owner both keep the hub, so drop
+        # this client from it: the next get_client() then creates a new
+        # client instead of returning this closed one.
+        self.hub.on_close.discard(self._on_hub_close)
+        if getattr(self.hub, '_current_http_client', None) is self:
+            del self.hub._current_http_client
+
     def _on_hub_close(self, hub):
-        # Hub.reset() runs on_close but keeps the hub, so drop this client
-        # from it: the next get_client() then creates a new client instead
-        # of returning this closed one.
-        hub.on_close.discard(self._on_hub_close)
-        if getattr(hub, '_current_http_client', None) is self:
-            del hub._current_http_client
+        self._detach_from_hub()
         self.close()
 
     def on_header(self, headers, line):

@@ -9,9 +9,12 @@ from time import time
 
 from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
 from kombu.exceptions import HttpError
+from kombu.log import get_logger
 from kombu.utils.encoding import bytes_to_str
 
 from .base import BaseClient
+
+logger = get_logger(__name__)
 
 try:
     import pycurl
@@ -68,6 +71,7 @@ class CurlClient(BaseClient):
         if self._closed:
             return
         self._closed = True
+        self._detach_from_hub()
         self._timeout_check_tref.cancel()
         for _curl in self._curls:
             _curl.close()
@@ -78,6 +82,7 @@ class CurlClient(BaseClient):
             # Hub.close() runs on_close before the callbacks still queued on
             # the hub, so a queued poll can get here after the curl handles
             # are gone. Nothing may run once the hub has closed.
+            logger.debug('dropping %r: HTTP client is closed', request)
             return request
         self._pending.append(request)
         self._process_queue()
