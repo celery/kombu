@@ -66,9 +66,8 @@ from kombu.utils import cached_property
 from kombu.utils.encoding import bytes_to_str
 
 from .models import Message as MessageBase
-from .models import ModelBase
+from .models import ModelBase, class_registry, metadata
 from .models import Queue as QueueBase
-from .models import class_registry, metadata
 
 # SQLAlchemy overrides != False to have special meaning and pep8 complains
 # flake8: noqa
