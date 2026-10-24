@@ -249,6 +249,8 @@ class SerializerRegistry:
         """
         content_type = (bytes_to_str(content_type) if content_type
                         else 'application/data')
+        # Ignore MIME type parameters, e.g. "application/json; charset=utf-8".
+        content_type = content_type.split(';', 1)[0].strip()
         if accept is not None:
             if content_type not in _trusted_content \
                     and content_type not in accept:
