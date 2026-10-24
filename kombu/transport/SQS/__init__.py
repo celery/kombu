@@ -138,6 +138,11 @@ automatically change the message visibility timeout, in order to have
 different times between specific task retries. This would apply after
 task failure.
 
+A message rejected without requeue is deleted from SQS, as it would
+otherwise be redelivered once its visibility timeout expires. Messages of
+tasks listed in backoff_tasks are the exception: they are left in the queue
+so the backoff policy can retry them.
+
 AWS STS authentication is supported, by using sts_role_arn, and
 sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
@@ -310,6 +315,15 @@ class QoS(virtual.QoS):
         backoff_tasks = queue_config.get('backoff_tasks')
         backoff_policy = queue_config.get('backoff_policy')
         return routing_key, message, backoff_tasks, backoff_policy
+
+    def is_backoff_task(self, delivery_tag):
+        """Return True if a backoff policy retries this delivery's task."""
+        _, message, backoff_tasks, backoff_policy = \
+            self._extract_backoff_policy_configuration_and_message(
+                delivery_tag)
+        if not (message and backoff_tasks and backoff_policy):
+            return False
+        return (message.headers or {}).get('task') in backoff_tasks
 
     def apply_backoff_policy(self, routing_key, delivery_tag,
                              backoff_policy, backoff_tasks):
@@ -970,6 +984,33 @@ class Channel(virtual.Channel):
                 raise
             else:
                 super().basic_ack(delivery_tag)
+
+    def basic_reject(self, delivery_tag, requeue=False):
+        try:
+            if not requeue and not self.qos.is_backoff_task(delivery_tag):
+                # A message rejected without requeue is discarded. Unless it
+                # is deleted, SQS redelivers it once its visibility timeout
+                # expires, so it would be received again and again forever.
+                # Tasks with a backoff policy are left in the queue, as that
+                # policy relies on SQS redelivering them.
+                self._delete_rejected_message(delivery_tag)
+        finally:
+            super().basic_reject(delivery_tag, requeue=requeue)
+
+    def _delete_rejected_message(self, delivery_tag):
+        try:
+            message = self.qos.get(delivery_tag).delivery_info
+            sqs_message = message['sqs_message']
+            queue_url = message['sqs_queue']
+        except KeyError:
+            return
+        queue = None
+        if 'routing_key' in message:
+            queue = self.canonical_queue_name(message['routing_key'])
+        self.sqs(queue=queue).delete_message(
+            QueueUrl=queue_url,
+            ReceiptHandle=sqs_message['ReceiptHandle']
+        )
 
     def _size(self, queue):
         """Return the number of messages in a queue."""
