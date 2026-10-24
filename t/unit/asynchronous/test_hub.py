@@ -95,12 +95,14 @@ class test_LaxBoundedSemaphore:
         x.grow(2)
         cb2.assert_called_with(2)
         cb3.assert_called_with(3)
-        assert x.value == 2
+        assert x.value == 0
         assert x.initial_value == 3
 
         assert not x._waiting
         x.grow(3)
-        for i in range(x.initial_value):
+        # The three callbacks above still hold their slots.
+        assert x.value == 3
+        for i in range(x.value):
             assert x.acquire(Mock())
         assert not x.acquire(Mock())
         x.clear()
