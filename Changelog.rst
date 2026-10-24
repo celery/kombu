@@ -4,16 +4,187 @@
  Change history
 ================
 
-Next release
-============
+
+.. _version-5.7.0rc1:
+
+5.7.0rc1
+========
+:release-date: 18 October, 2026
+:release-by: Asif Saif Uddin
+
 
 What's Changed
 ~~~~~~~~~~~~~~
 
-- Add a transport-aware :meth:`kombu.Producer.batch` API. The Redis transport
-  uses a non-transactional pipeline to publish multiple messages in fewer
-  network round trips while retaining normal serialization, routing,
-  priorities, queue expiry, and fanout behavior.
+Redis
+-----
+
+- Forward ``disconnect()`` keyword arguments and discard closed idle
+  ``BRPOP`` connections (#2761)
+- Discard ``BRPOP`` connections whose replies are overdue (#2757)
+- Expire binding tables for expiring queues (#2732)
+
+SQLAlchemy
+----------
+
+- Use ``BIGINT`` IDs on MSSQL to prevent sequence overflow (#2728)
+- Count only pending messages when purging a queue (#2733)
+
+Fixes
+-----
+
+- Fix binary emergency state dumps (#2659)
+- Handle missing Pyro4 in ``driver_version`` and skip tests when Pyro4
+  is not installed (#2725)
+
+Packaging
+---------
+
+- Add ``py.typed`` marker for PEP 561 compliance (#2677)
+- Update the minimum ``amqp`` requirement to ``5.4.1`` (#2734)
+
+Documentation
+-------------
+
+- Fix reStructuredText markup for starred arguments and the SQS link (#2749)
+- Simplify line continuation in the py-amqp documentation (#2731)
+
+Dependencies
+------------
+
+- Update ``azure-identity`` to 1.26.0 (#2722)
+- Update ``azure-storage-queue`` to 12.18.0 (#2726)
+- Update ``azure-servicebus`` to 7.15.0 (#2751)
+- Update ``boto3`` minimum requirement to 1.43.112 (#2752, #2764)
+- Update ``google-cloud-monitoring`` to 2.32.0 (#2729)
+- Update ``google-cloud-pubsub`` to 2.42.0 (#2730)
+- Update ``protobuf`` to 7.36.2 (#2702)
+- Update ``pytest-rerunfailures`` to 16.7 (#2758)
+- Update ``tox`` to 4.64.9 (#2727, #2735)
+- Update GitHub CodeQL Action to 4.38.3 (#2750)
+- Update pre-commit hooks (#2721)
+
+
+
+.. _version-5.7.0b1:
+
+5.7.0b1
+=======
+:release-date: 6 October, 2026
+:release-by: Asif Saif Uddin
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Update confluent-kafka version to 2.15.1 (#2666)
+- Update kazoo version to 2.11.0 (#2667)
+- Update grpcio version to 1.84.0 (#2668)
+- Update pgmq version to 1.1.4 (#2670)
+- Upgrade grpcio and protobuf dependencies (#2669)
+- Stop channel retries at the same max_retries bound as connections. (#2671)
+- Reject bool for pool limit (#2657)
+- Update sqlalchemy requirement from <2.1,>=1.4.48 to >=1.4.54,<2.1 (#2521)
+- Avoid SQS backoff when acknowledging an invalid receipt handle (#2678)
+- Fix(sqs): scope queue cache, noack set and predefined clients to Connection (#2676)
+- Update Redis version requirement minimum to 6.4.0 (#2682)
+- Fix(hub): wake the event loop when call_soon() is called from another thread (#2694)
+- Fix: recover from broker-closed AMQP connections when publishing to Azure Service Bus (#2693)
+- Honor autoretry options when opening the initial connection (#2690)
+- Scope the zookeeper queue cache to the channel (#2681)
+- Fix(azurestoragequeues): scope queue name cache to Connection (#2679)
+- Track unacked Kafka messages per QoS instance (#2680)
+- Don't mask open errors in the filesystem transport (#2683)
+- Fix(gcpubsub): pass Duration fields as timedelta (#2692)
+- SQS: accept delay_seconds and clamp per-message delays to the range SQS allows (#2705)
+- Fix(sqs): release the prefetch slot when DeleteMessage fails on the network (#2710)
+- Update amqp version constraint.
+
+
+
+.. _version-5.7.0a1:
+
+5.7.0a1
+=======
+:release-date: 21 September, 2026
+:release-by: Asif Saif Uddin
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Add missing reprkwargs export to utils module (#2436)
+- Add support for fair queue in SQS (#2342)
+- Support redis queue expiration (#2251)
+- Fix Logwrapped not supporting context manager protocol (#2461)
+- Cycle through host before calling errback (#2331)
+- Allow enable_exactly_once_delivery for gcpubsub (#2431)
+- Feat(gcpubsub): optimize topic existence check (#2462)
+- Fix active_queues to preserve queue ordering (#2464)
+- fix: allow OSError to propagate to errno-specific handler in unregister() (#2471)
+- Added support for SQS fanout via AWS SNS (#2372)
+- Use compression.zstd (PEP-784) (#2395)
+- Fix#2463 gevent concurrent error (#2478)
+- Fix for SQS transport deadlock (#2479)
+- ChannelPromise: ensure the AttributeError does not appear in the traceback when the contract raises an exception - #2486
+- Fix RabbitMQ 4.x crash: global QoS not supported on classic queues (#2481)
+- Fix: SQS polling_interval transport option ignored in async event loop #2439 (#2489)
+- Support callable passwords for credential refresh on reconnect (#2476)
+- Fix#10205 redis-timer-connection-error (#2498)
+- Fix(redis): prevent timer callbacks from crashing event loop on connection error
+- Fix: gcpubsub transport crash when using Pub/Sub emulator (#2493)
+- Fix(redis): do not remove on_poll_start from on_tick on disconnect (#2492)
+- Allow dots in Azure Service Bus queue names (#2221)
+- Pass through Redis credential_provider from connection_kwargs during client creation in redis transport (#2507)
+- Implement missing _delete() method of filesystem.Channel (#2470)
+- fix delivery tag collision in pubsub transport (#2487)
+- fix: RabbitMQ 4.3.0 compatibility (#2531)
+- feat(gcpubsub): update existing subscriptions on config changes (#2532)
+- fix(azureservicebus): scope queue cache and noack set to Connection (#2543)
+- Azure Service Bus: add AutoLockRenewer support via use_lock_renewal transport option (#2542)
+- Prefixed native delayed delivery (#2540)
+- Use logger instead of print when restoring unacked messages (#2551)
+- Defer _reset_cycle call until after updating _active_queue (#2553)
+- Use logging instead of printing in emergency_dump_state (#2557)
+- Fix azure service bus automatic lock renewal not working on gevent, move automatic lock renewal (#2545)
+- Fix KeyError(<fileno>) crash in Redis transport on_readable/handle_event (#2561)
+- Honor the delivery_mode argument in Exchange.Message
+- Redis: deliver rotating StreamingCredentialProvider tokens to long-lived BRPOP and pub/sub connections (#2563)
+- Fix(SQS): coerce visibility_timeout to a whole number of seconds (#2581)
+- Make the Redis ack-emulation restore cadence configurable (#2558)
+- Fix(serialization): support memoryview and bytearray in the YAML decoder
+- Add transport-aware batch publishing with Redis pipelines (#2572) 
+- Fix(redis): treat stale-fd KeyError as a connection error (#2592)
+- Strip existing delay prefix before adding a new one on retry (#2591)
+- Redis: drop half-open pub/sub connections the subclient health check can't see (#2590)
+- Fix: add missing retry to publisher.publish in gcpubsub _put (#2465)
+- fix: Queue.from_dict no longer drops queue options (#2580)
+- Stop the topic '*' wildcard from matching across dots (#2568)
+- Ensure consumer recovers from broker connection restart/issues (#2593)
+- Fix(utils): don't evict a key when overwriting an existing LRUCache entry (#2621)
+- Fix(utils): never sleep longer than interval_max in retry_over_time (#2588)
+- Raise ValueError when fileno() is given None. (#2623)
+- fix(redis): import from redis submodules (#2625)
+- fix(redis): add sentinel_fanout_compat transport option for mixed-version Sentinel clusters (#2626)
+- fix(redis): replace deprecated ZREVRANGEBYSCORE with ZRANGE BYSCORE REV (#2628)
+- transport/redis: close Sentinel node connections in _disconnect_pools (fixes#1108) (#2631)
+- Add PGMQ transport for PostgreSQL message queues (#2559) 
+- Fix Redis consumer registration cleanup after disconnect (#2630)
+- Fix(redis): catch ValueError in _on_connection_disconnect (#2640)
+- Fix(http): close the async HTTP client's pending requests when the hub closes (#2648)
+- Update amqp version to 5.4.0 (#2660)
+- Restore pypi long description with a bug fix (#2661)
+- Validate exchange names in the filesystem transport, which interpolated
+  them into a path under ``control_folder`` without sanitisation (#2644).
+- Fix :class:`kombu.utils.limits.TokenBucket` over-admitting on the first
+  burst after an idle period. The bucket only advanced its timestamp while
+  it was below capacity, so the time it spent sitting full was later counted
+  as refill time and it topped itself straight back up right after being
+  drained. That granted one extra full refill, so a ``capacity=1`` bucket
+  admitted two consumes instead of one (#680).
+- Fix(filesystem): match queue name exactly, not as a substring (#2647)
+- Fix(azureservicebus): keep renewal receiver out of messages (#2655)
+- Added checks to reject URLs containing dotted schemes (#2642)
+
+
 
 .. _version-5.6.2:
 

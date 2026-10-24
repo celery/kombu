@@ -74,7 +74,7 @@ class Broadcast(Queue):
             queue name here.
         unique (bool): Always create a unique queue
             even if a queue name is supplied.
-        **kwargs (Any): See :class:`~kombu.Queue` for a list
+        ``**kwargs`` (Any): See :class:`~kombu.Queue` for a list
             of additional keyword arguments supported.
     """
 
@@ -250,7 +250,7 @@ def send_reply(exchange, req, msg,
         retry (bool): If true must retry according to
             the ``reply_policy`` argument.
         retry_policy (Dict): Retry settings.
-        **props (Any): Extra properties.
+        ``**props`` (Any): Extra properties.
     """
     return producer.publish(
         msg, exchange=exchange,

@@ -1,16 +1,17 @@
 from __future__ import annotations
 
 import os
+from _socket import timeout as socket_timeout
 from concurrent.futures import Future
-from datetime import datetime
+from datetime import datetime, timedelta
 from queue import Empty
-from unittest.mock import MagicMock, PropertyMock, call, patch
+from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 
 import pytest
-from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         GoogleAPICallError, NotFound,
                                         PermissionDenied)
+from google.api_core.retry import Retry
 from google.pubsub_v1.types.pubsub import Subscription
 
 from kombu.transport.gcpubsub import (_ACK_MODIFY_BATCH_SIZE_DEFAULT,
@@ -234,7 +235,7 @@ class test_Channel:
             dict(
                 request={
                     'name': 'topic_path',
-                    'message_retention_duration': '10s',
+                    'message_retention_duration': timedelta(seconds=10),
                 }
             )
             in channel.publisher.create_topic.call_args
@@ -272,6 +273,9 @@ class test_Channel:
         topic_id = "topic_id"
         subscription_path = "subscription_path"
         topic_path = "topic_path"
+        channel.ack_deadline_seconds = 240
+        channel.expiration_seconds = 86400
+        channel.enable_exactly_once_delivery = False
         channel.subscriber.subscription_path = MagicMock(
             return_value=subscription_path
         )
@@ -285,17 +289,92 @@ class test_Channel:
         )
         assert result == subscription_path
         channel.subscriber.create_subscription.assert_called_once()
+        request = channel.subscriber.create_subscription.call_args.kwargs[
+            'request'
+        ]
+        assert request['expiration_policy']['ttl'] == timedelta(seconds=86400)
+        assert request['message_retention_duration'] == timedelta(
+            seconds=86400
+        )
+
+    def test_create_subscription_coerces_string_msg_retention(self, channel):
+        """String retention seconds become timedelta, not \"Ns\" strings."""
+        channel.project_id = "project_id"
+        channel.ack_deadline_seconds = 60
+        channel.expiration_seconds = 120.0
+        channel.enable_exactly_once_delivery = False
+        channel.subscriber.create_subscription = MagicMock()
+        channel._create_subscription(
+            project_id=channel.project_id,
+            topic_id="topic_id",
+            subscription_path="subscription_path",
+            topic_path="topic_path",
+            msg_retention='90',
+        )
+        request = channel.subscriber.create_subscription.call_args.kwargs[
+            'request'
+        ]
+        assert request['message_retention_duration'] == timedelta(seconds=90)
+        assert request['expiration_policy']['ttl'] == timedelta(seconds=120)
+
+    def test_expiration_seconds_accepts_string(self, channel):
+        """Env-style transport options may pass seconds as a string."""
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock,
+            return_value={'expiration_seconds': '3600'},
+        ):
+            # cached_property: clear if already evaluated
+            channel.__dict__.pop('expiration_seconds', None)
+            assert channel.expiration_seconds == 3600.0
+
+    def test_expiration_seconds_invalid_falls_back_to_default(self, channel):
+        with patch.object(
+            type(channel), 'transport_options',
+            new_callable=PropertyMock,
+            return_value={'expiration_seconds': 'not-a-number'},
+        ):
+            channel.__dict__.pop('expiration_seconds', None)
+            assert channel.expiration_seconds == float(
+                channel.default_expiration_seconds
+            )
+
+    def test_create_topic_coerces_string_retention(self, channel):
+        channel.project_id = "project_id"
+        topic_id = "topic_id"
+        channel._is_topic_exists = MagicMock(return_value=False)
+        channel.publisher.topic_path = MagicMock(return_value="topic_path")
+        channel.publisher.create_topic = MagicMock()
+        channel._create_topic(
+            channel.project_id, topic_id, message_retention_duration='10'
+        )
+        assert (
+            dict(
+                request={
+                    'name': 'topic_path',
+                    'message_retention_duration': timedelta(seconds=10),
+                }
+            )
+            in channel.publisher.create_topic.call_args
+        )
 
     def test_create_subscription_protobuf_compat(self):
+
         request = {
             'name': 'projects/my_project/subscriptions/kombu-1111-2222',
             'topic': 'projects/jether-fox/topics/reply.celery.pidbox',
             'ack_deadline_seconds': 240,
-            'expiration_policy': {'ttl': '86400s'},
-            'message_retention_duration': '86400s',
+            'expiration_policy': {
+                'ttl': timedelta(seconds=86400)
+            },
+            'message_retention_duration': timedelta(seconds=86400),
             'filter': 'attributes.routing_key="1111-2222"',
         }
-        Subscription(request)
+        subscription = Subscription(request)
+        assert subscription.expiration_policy.ttl.total_seconds() == 86400
+        assert (
+            subscription.message_retention_duration.total_seconds() == 86400
+        )
 
     def test_create_subscription_updates_when_exists(self, channel):
         """Subscription settings are updated when the subscription exists."""
@@ -437,8 +516,37 @@ class test_Channel:
         )
         channel._get_routing_key = MagicMock(return_value="test_key")
         channel.publisher.publish = MagicMock()
+        channel.retry_timeout_seconds = 300
         channel._put(queue, message)
-        channel.publisher.publish.assert_called_once()
+        channel.publisher.publish.assert_called_once_with(
+            "topic_path",
+            ANY,
+            routing_key="test_key",
+            retry=ANY,
+        )
+        call_kwargs = channel.publisher.publish.call_args[1]
+        assert isinstance(call_kwargs['retry'], Retry)
+        assert call_kwargs['retry']._timeout == 300
+
+    def test_put_uses_custom_retry_timeout(self, channel):
+        queue = "test_queue"
+        message = {
+            "properties": {"delivery_info": {"routing_key": "test_key"}}
+        }
+        channel.entity_name = MagicMock(return_value=queue)
+        channel._queue_cache[channel.entity_name(queue)] = QueueDescriptor(
+            name=queue,
+            topic_path="topic_path",
+            subscription_id=queue,
+            subscription_path="subscription_path",
+        )
+        channel._get_routing_key = MagicMock(return_value="test_key")
+        channel.publisher.publish = MagicMock()
+        channel.retry_timeout_seconds = 60
+        channel._put(queue, message)
+        call_kwargs = channel.publisher.publish.call_args[1]
+        assert isinstance(call_kwargs['retry'], Retry)
+        assert call_kwargs['retry']._timeout == 60
 
     def test_put_fanout(self, channel):
         exchange = "test_exchange"

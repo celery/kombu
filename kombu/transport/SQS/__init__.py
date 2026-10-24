@@ -201,6 +201,21 @@ as follows:
 For a complete list of settings you can adjust using this option see
 https://botocore.amazonaws.com/v1/documentation/api/latest/reference/config.html
 
+When a consumer is cancelled, for example on a Celery warm shutdown, a
+``ReceiveMessage`` call may still be in flight. Any messages it returns are
+made visible again with ``ChangeMessageVisibility`` so other consumers can
+receive them right away. This call blocks the shutdown, so it uses its own
+client with a 5 second connect and read timeout and no retries, applied on
+top of ``client-config``. On a degraded network each call then gives up
+after seconds rather than minutes, and the first failure stops the release
+for that queue. The messages left become visible again once their
+visibility timeout expires.
+
+.. versionchanged:: 5.7.0
+    Messages received after a consumer is cancelled are released back to
+    the queue with short timeouts and no retries, instead of raising
+    ``KeyError`` and staying invisible until their visibility timeout.
+
 Features
 ========
 * Type: Virtual
@@ -256,6 +271,9 @@ CHARS_REPLACE_TABLE[0x2e] = 0x2d  # '.' -> '-'
 
 #: SQS bulk get supports a maximum of 10 messages at a time.
 SQS_MAX_MESSAGES = 10
+
+#: SQS accepts at most 900 seconds of per-message delay.
+MAX_DELAY_SECONDS = 900
 
 _SUPPORTED_BOTO_SERVICES = Literal["sqs", "sns"]
 
@@ -325,14 +343,17 @@ class Channel(virtual.Channel):
     default_region = 'us-east-1'
     default_visibility_timeout = 1800  # 30 minutes.
     default_wait_time_seconds = 10  # up to 20 seconds max
+    # Not client-config alone: botocore's default 60 s timeouts and retries
+    # could hold up the shutdown for minutes on a degraded network.
+    release_client_config = Config(
+        connect_timeout=5,
+        read_timeout=5,
+        retries={'total_max_attempts': 1},
+    )
     domain_format = 'kombu%(vhost)s'
     _asynsqs = None
-    _predefined_queue_async_clients = {}  # A client for each predefined queue
     _sqs = None
     _fanout = None
-    _predefined_queue_clients = {}  # A client for each predefined queue
-    _queue_cache = {}  # SQS queue name => SQS queue URL
-    _noack_queues = set()
 
     QoS = QoS
     # https://stackoverflow.com/questions/475074/regex-to-parse-or-validate-base64-data
@@ -540,6 +561,58 @@ class Channel(virtual.Channel):
 
         self._queue_cache.pop(queue, None)
 
+    def _resolve_delay_seconds(self, properties):
+        """Return the per-message delay to apply, or ``None`` for no delay.
+
+        Accepts the delay either as ``delay_seconds`` or as ``DelaySeconds``,
+        so callers can use the snake_case spelling that matches Kombu's own
+        ``Producer.publish`` style.  A value of ``None`` under one spelling
+        means it was not supplied there, so the other spelling is consulted.
+        Values are coerced to ``int`` (a float truncates toward zero) and
+        clamped to the range SQS accepts, since anything above the maximum
+        is rejected by AWS at publish time.
+
+        Arguments:
+        ---------
+            properties (dict): The message properties to read the delay from.
+
+        Returns
+        -------
+            int: The delay in seconds -- including ``0``, which SQS accepts
+                and treats as no delay -- or ``None`` when no delay was
+                requested or the requested value cannot be honoured.
+        """
+        for key in ('delay_seconds', 'DelaySeconds'):
+            if key not in properties:
+                continue
+            value = properties[key]
+            if value is None:
+                # Not supplied under this spelling; the other one may carry it.
+                continue
+            try:
+                delay = int(value)
+            except (TypeError, ValueError, OverflowError):
+                logger.warning(
+                    'SQS delay %r is not a number, publishing without a delay',
+                    value,
+                )
+                return None
+            if delay < 0:
+                logger.warning(
+                    'SQS delay of %s is negative, publishing without a delay',
+                    delay,
+                )
+                return None
+            if delay > MAX_DELAY_SECONDS:
+                logger.warning(
+                    'SQS delay of %s exceeds the maximum of %s seconds, '
+                    'clamping to the maximum',
+                    delay, MAX_DELAY_SECONDS,
+                )
+                delay = MAX_DELAY_SECONDS
+            return delay
+        return None
+
     def _put(self, queue, message, **kwargs):
         """Put message onto queue."""
         q_url = self._new_queue(queue)
@@ -553,6 +626,9 @@ class Channel(virtual.Channel):
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
                     message['properties']['MessageGroupId']
+            delay_seconds = self._resolve_delay_seconds(
+                message['properties'])
+
             # Support FIFO queues.
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' not in kwargs:
@@ -562,10 +638,16 @@ class Channel(virtual.Channel):
                         message['properties']['MessageDeduplicationId']
                 else:
                     kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
-            else:
-                if "DelaySeconds" in message['properties']:
-                    kwargs['DelaySeconds'] = \
-                        message['properties']['DelaySeconds']
+                if delay_seconds is not None:
+                    # SQS rejects DelaySeconds on a FIFO queue outright, so it
+                    # is dropped here -- loudly, rather than silently.
+                    logger.warning(
+                        'SQS FIFO queues take no per-message delay, ignoring '
+                        'delay of %s seconds',
+                        delay_seconds,
+                    )
+            elif delay_seconds is not None:
+                kwargs['DelaySeconds'] = delay_seconds
 
         if self.sqs_base64_encoding:
             body = AsyncMessage().encode(dumps(message))
@@ -761,13 +843,68 @@ class Channel(virtual.Channel):
         )
 
     def _on_messages_ready(self, queue, qname, messages):
-        if 'Messages' in messages and messages['Messages']:
-            callbacks = self.connection._callbacks
-            for msg in messages['Messages']:
-                msg_parsed = self._message_to_python(msg, qname, queue)
-                callbacks[qname](msg_parsed)
-            return len(messages['Messages'])
-        return 0
+        msgs = messages.get('Messages')
+        if not msgs:
+            return 0
+        callback = self.connection._callbacks.get(qname)
+        if callback is None:
+            # Not routed through Transport._deliver(): its requeue path
+            # parses each message first (deleting it on no-ack queues) and
+            # hides it again for wait_time_seconds, one call per message.
+            self._release_messages(queue, qname, msgs)
+            return 0
+        for msg in msgs:
+            msg_parsed = self._message_to_python(msg, qname, queue)
+            callback(msg_parsed)
+        return len(msgs)
+
+    def _release_messages(self, queue, qname, messages):
+        """Make received messages visible again without consuming them."""
+        logger.info(
+            'Consumer for queue %s is gone, releasing %d received message(s)',
+            qname, len(messages),
+        )
+        # The blocking client is used instead of asynsqs(): the hub may stop
+        # right after the consumer is cancelled, before an async call returns.
+        # ChangeMessageVisibilityBatch is not used because GoAws, which the
+        # integration tests run against, does not implement it.
+        try:
+            client = self._new_release_client(
+                self.sqs(queue=self.canonical_queue_name(qname)),
+            )
+            for msg in messages:
+                client.change_message_visibility(
+                    QueueUrl=queue,
+                    ReceiptHandle=msg['ReceiptHandle'],
+                    VisibilityTimeout=0,
+                )
+        except (ClientError, aws_exceptions.BotoCoreError, OSError) as exc:
+            # The messages left become visible again once their visibility
+            # timeout expires, so they are delayed but not lost.
+            logger.warning(
+                'Failed to release messages for queue %s: %r', qname, exc,
+            )
+
+    def _new_release_client(self, client):
+        """Copy *client* with the short timeouts of release_client_config."""
+        # Not copied when new_sqs_client() is overridden: the copy would drop
+        # whatever the override customises, such as the endpoint or hooks.
+        if type(self).new_sqs_client is not Channel.new_sqs_client:
+            return client
+        # The credentials are taken from the client because sqs() does not
+        # keep them, e.g. the STS credentials of a predefined queue.
+        credentials = client._request_signer._credentials
+        if credentials is None:
+            return client
+        frozen = credentials.get_frozen_credentials()
+        return self._new_boto_client(
+            service='sqs',
+            region=client.meta.region_name,
+            access_key_id=frozen.access_key,
+            secret_access_key=frozen.secret_key,
+            session_token=frozen.token,
+            config=self.release_client_config,
+        )
 
     def _get_from_sqs(self, queue_name, queue_url,
                       connection, count=1, callback=None):
@@ -805,11 +942,32 @@ class Channel(virtual.Channel):
                     ReceiptHandle=sqs_message['ReceiptHandle']
                 )
             except ClientError as exception:
-                if exception.response['Error']['Code'] == 'AccessDenied':
+                error_code = exception.response['Error']['Code']
+                if error_code == 'AccessDenied':
+                    # Raised so the misconfiguration is not silently retried,
+                    # but the delivery is released first, as for any other
+                    # failed ack, so its prefetch slot is not held forever.
+                    super().basic_ack(delivery_tag)
                     raise AccessDeniedQueueException(
                         exception.response["Error"]["Message"]
                     )
-                super().basic_reject(delivery_tag)
+                if error_code in ('InvalidParameterValue',
+                                  'ReceiptHandleIsInvalid'):
+                    # Forget the delivery without applying backoff to a stale handle.
+                    super().basic_ack(delivery_tag)
+                else:
+                    super().basic_reject(delivery_tag)
+            except BaseException:
+                # DeleteMessage did not complete (it may or may not have
+                # reached SQS: a read timeout can lose only the response). If
+                # the message was not deleted, SQS redelivers it after the
+                # visibility timeout. Either way the delivery must be released
+                # here: otherwise its prefetch slot is held for the life of the
+                # channel, and once every slot is held ``can_consume()`` stays
+                # False and the consumer stops polling. Re-raise so the caller
+                # still sees and logs the failure.
+                super().basic_ack(delivery_tag)
+                raise
             else:
                 super().basic_ack(delivery_tag)
 
@@ -871,6 +1029,7 @@ class Channel(virtual.Channel):
         access_key_id,
         secret_access_key,
         session_token=None,
+        config=None,
     ):
         session = boto3.Session(
             region_name=region,
@@ -884,9 +1043,12 @@ class Channel(virtual.Channel):
         }
         if self.endpoint_url is not None:
             client_kwargs['endpoint_url'] = self.endpoint_url
-        client_config = self.transport_options.get('client-config') or {}
-        config = Config(**client_config)
-        return session.client(service, config=config, **client_kwargs)
+        client_config = Config(
+            **(self.transport_options.get('client-config') or {}),
+        )
+        if config is not None:
+            client_config = client_config.merge(config)
+        return session.client(service, config=client_config, **client_kwargs)
 
     def sqs(self, queue=None):
         # If a queue has been provided, check if the queue has been defined already. Reuse it's client if possible.
@@ -1093,6 +1255,22 @@ class Channel(virtual.Channel):
     @property
     def transport_options(self):
         return self.connection.client.transport_options
+
+    @property
+    def _queue_cache(self):
+        return self.connection._queue_cache
+
+    @property
+    def _noack_queues(self):
+        return self.connection._noack_queues
+
+    @property
+    def _predefined_queue_clients(self):
+        return self.connection._predefined_queue_clients
+
+    @property
+    def _predefined_queue_async_clients(self):
+        return self.connection._predefined_queue_async_clients
 
     @cached_property
     def visibility_timeout(self):
@@ -1479,6 +1657,15 @@ class Transport(virtual.Transport):
         asynchronous=True,
         exchange_type=frozenset(['direct']),
     )
+
+    def __init__(self, client, **kwargs):
+        super().__init__(client, **kwargs)
+        # Scoped to this Connection: its channels share them, but another
+        # Connection (different region, account or credentials) must not.
+        self._queue_cache = {}  # SQS queue name => SQS queue URL
+        self._noack_queues = set()
+        self._predefined_queue_clients = {}  # A client for each predefined queue
+        self._predefined_queue_async_clients = {}
 
     @property
     def default_connection_params(self):

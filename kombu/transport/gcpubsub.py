@@ -51,6 +51,8 @@ import datetime
 import os
 import string
 import threading
+from _socket import gethostname
+from _socket import timeout as socket_timeout
 from concurrent.futures import (FIRST_COMPLETED, Future, ThreadPoolExecutor,
                                 wait)
 from contextlib import suppress
@@ -60,8 +62,6 @@ from threading import Lock
 from time import monotonic, sleep
 from uuid import NAMESPACE_OID, uuid3
 
-from _socket import gethostname
-from _socket import timeout as socket_timeout
 from google.api_core.exceptions import (AlreadyExists, DeadlineExceeded,
                                         GoogleAPICallError, NotFound,
                                         PermissionDenied)
@@ -288,9 +288,9 @@ class Channel(virtual.Channel):
             logger.debug('creating topic: %s', topic_path)
             request = {'name': topic_path}
             if message_retention_duration:
-                request[
-                    'message_retention_duration'
-                ] = f'{message_retention_duration}s'
+                request['message_retention_duration'] = datetime.timedelta(
+                    seconds=float(message_retention_duration)
+                )
             self.publisher.create_topic(request=request)
         except AlreadyExists:
             pass
@@ -320,12 +320,20 @@ class Channel(virtual.Channel):
             project_id, topic_id
         )
         msg_retention = msg_retention or self.expiration_seconds
+        # protobuf Duration fields require timedelta (string "Ns" fails on
+        # protobuf 5+, which gcpubsub extras pin). Coerce seconds so string
+        # transport options from env-style config still work.
+        msg_retention = float(msg_retention)
         subscription_config = {
             "name": subscription_path,
             "topic": topic_path,
             "ack_deadline_seconds": self.ack_deadline_seconds,
-            "expiration_policy": {"ttl": f"{self.expiration_seconds}s"},
-            "message_retention_duration": f"{msg_retention}s",
+            "expiration_policy": {
+                "ttl": datetime.timedelta(seconds=self.expiration_seconds)
+            },
+            "message_retention_duration": datetime.timedelta(
+                seconds=msg_retention
+            ),
             "enable_exactly_once_delivery": self.enable_exactly_once_delivery,
             **(filter_args or {}),
         }
@@ -394,6 +402,7 @@ class Channel(virtual.Channel):
             qdesc.topic_path,
             encoded_message.encode("utf-8"),
             routing_key=routing_key,
+            retry=Retry(deadline=self.retry_timeout_seconds),
         )
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
@@ -713,9 +722,15 @@ class Channel(virtual.Channel):
 
     @cached_property
     def expiration_seconds(self):
-        return self.transport_options.get(
+        value = self.transport_options.get(
             'expiration_seconds', self.default_expiration_seconds
         )
+        # Transport options often arrive as strings from env-style config;
+        # Duration fields need a numeric timedelta constructor argument.
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return float(self.default_expiration_seconds)
 
     @cached_property
     def bulk_max_messages(self):

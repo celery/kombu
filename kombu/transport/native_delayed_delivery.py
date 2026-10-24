@@ -4,6 +4,8 @@ Only relevant for RabbitMQ.
 """
 from __future__ import annotations
 
+import re
+
 from kombu import Connection, Exchange, Queue, binding
 from kombu.log import get_logger
 
@@ -12,6 +14,8 @@ logger = get_logger(__name__)
 MAX_NUMBER_OF_BITS_TO_USE = 28
 MAX_LEVEL = MAX_NUMBER_OF_BITS_TO_USE - 1
 CELERY_DELAYED_DELIVERY_EXCHANGE = "celery_delayed_delivery"
+
+_delay_prefix_re = re.compile(r'^(?:[01]\.){%d}' % MAX_NUMBER_OF_BITS_TO_USE)
 
 
 def level_name(level: int, prefix: str | None = None) -> str:
@@ -154,4 +158,11 @@ def calculate_routing_key(countdown: int, routing_key: str) -> str:
     if not routing_key:
         raise ValueError("routing_key must be non-empty")
 
-    return '.'.join(list(f'{countdown:028b}')) + f'.{routing_key}'
+    # A retried task carries its previous delivery's routing key forward
+    # (e.g. via Celery's signature_from_request), which may already carry a
+    # delay prefix from an earlier retry. Strip it before prepending a new
+    # one, otherwise the prefix keeps growing on every delayed retry until
+    # the routing key exceeds AMQP's 255-byte short string limit.
+    routing_key = _delay_prefix_re.sub('', routing_key, count=1)
+
+    return '.'.join(f'{countdown:0{MAX_NUMBER_OF_BITS_TO_USE}b}') + f'.{routing_key}'

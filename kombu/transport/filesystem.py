@@ -92,6 +92,7 @@ Transport Options
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 import uuid
@@ -155,14 +156,63 @@ else:
 exchange_queue_t = namedtuple("exchange_queue_t",
                               ["routing_key", "pattern", "queue"])
 
+#: Characters accepted in an exchange name.  The name is interpolated into a
+#: filename under ``control_folder``, so rather than blocklisting the
+#: constructs that can redirect that path, only characters that cannot are
+#: allowed.  This rejects path separators, ``..``, Windows drive-relative
+#: prefixes (``D:evil``) and UNC prefixes on every platform, rather than only
+#: on the one the tests happen to run on.
+EXCHANGE_NAME_RE = re.compile(r'\A[A-Za-z0-9._-]+\Z')
+
+#: Names that address a device rather than a file on Windows.  A suffix does
+#: not help: ``CON.exchange`` is still the console.  Windows resolves these
+#: case-insensitively and on the portion before the first dot, and counts the
+#: ISO/IEC 8859-1 superscript digits as digits in ``COM#``/``LPT#``.  Mirrors
+#: the list :mod:`pathlib` carries.  ``EXCHANGE_NAME_RE`` happens to reject
+#: the non-ASCII and ``$`` spellings before they reach this set, but the set
+#: is kept complete on its own so that widening the pattern later cannot
+#: quietly let them through.
+WIN_RESERVED_NAMES = frozenset(
+    ['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$']
+    + [f'COM{c}' for c in '123456789\xb9\xb2\xb3']
+    + [f'LPT{c}' for c in '123456789\xb9\xb2\xb3']
+)
+
 
 class Channel(virtual.Channel):
     """Filesystem Channel."""
 
     supports_fanout = True
 
-    def get_table(self, exchange):
+    @staticmethod
+    def _is_valid_exchange_name(exchange):
+        if not isinstance(exchange, str):
+            return False
+        if exchange == "":
+            # the AMQP default exchange.  It yields a plain ".exchange"
+            # file inside the control folder and cannot redirect the path,
+            # so it keeps working as it always has.
+            return True
+        if not EXCHANGE_NAME_RE.match(exchange):
+            return False
+        if not exchange.strip("."):
+            # "." and "..", and any all-dot name, name a directory
+            return False
+        # a suffix does not disarm a Windows device name
+        return exchange.partition(".")[0].upper() not in WIN_RESERVED_NAMES
+
+    def _exchange_file(self, exchange):
+        if not self._is_valid_exchange_name(exchange):
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
         file = self.control_folder / f"{exchange}.exchange"
+        # defence in depth: whatever the platform makes of the name, the
+        # result has to be a direct child of the control folder.
+        if file.parent != self.control_folder:
+            raise ChannelError(f"Invalid exchange name: {exchange!r}")
+        return file
+
+    def get_table(self, exchange):
+        file = self._exchange_file(exchange)
         try:
             f_obj = file.open("r")
             try:
@@ -174,14 +224,15 @@ class Channel(virtual.Channel):
                 f_obj.close()
         except FileNotFoundError:
             return []
-        except OSError:
-            raise ChannelError(f"Cannot open {file}")
+        except OSError as exc:
+            raise ChannelError(f"Cannot open {file}") from exc
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         self.control_folder.mkdir(exist_ok=True)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
+        f_obj = None
         try:
             if file.exists():
                 f_obj = file.open("rb+", buffering=0)
@@ -197,9 +248,12 @@ class Channel(virtual.Channel):
                 lock(f_obj, LOCK_EX)
                 queues = [queue_val]
                 f_obj.write(str_to_bytes(dumps(queues)))
+        except OSError as exc:
+            raise ChannelError(f"Cannot open {file}") from exc
         finally:
-            unlock(f_obj)
-            f_obj.close()
+            if f_obj is not None:
+                unlock(f_obj)
+                f_obj.close()
 
     def _put_fanout(self, exchange, payload, routing_key, **kwargs):
         for q in self.get_table(exchange):
@@ -211,27 +265,29 @@ class Channel(virtual.Channel):
                                          uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
+        f = None
         try:
             f = open(filename, 'wb', buffering=0)
             lock(f, LOCK_EX)
             f.write(str_to_bytes(dumps(payload)))
-        except OSError:
+        except OSError as exc:
             raise ChannelError(
-                f'Cannot add file {filename!r} to directory')
+                f'Cannot add file {filename!r} to directory') from exc
         finally:
-            unlock(f)
-            f.close()
+            if f is not None:
+                unlock(f)
+                f.close()
 
     def _get(self, queue):
         """Get next message from `queue`."""
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         folder = sorted(folder)
         while len(folder) > 0:
             filename = folder.pop(0)
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             if self.store_processed:
@@ -249,14 +305,13 @@ class Channel(virtual.Channel):
 
             filename = os.path.join(processed_folder, filename)
             try:
-                f = open(filename, 'rb')
-                payload = f.read()
-                f.close()
+                with open(filename, 'rb') as f:
+                    payload = f.read()
                 if not self.store_processed:
                     os.remove(filename)
-            except OSError:
+            except OSError as exc:
                 raise ChannelError(
-                    f'Cannot read file {filename!r} from queue.')
+                    f'Cannot read file {filename!r} from queue.') from exc
 
             return loads(bytes_to_str(payload))
 
@@ -265,7 +320,7 @@ class Channel(virtual.Channel):
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
 
-        file = self.control_folder / f"{exchange}.exchange"
+        file = self._exchange_file(exchange)
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
         f_obj = None
@@ -296,14 +351,14 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         """Remove all messages from `queue`."""
         count = 0
-        queue_find = '.' + queue + '.msg'
+        queue_find = f'{queue}.msg'
 
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
             try:
                 # only purge messages for the requested queue
-                if filename.find(queue_find) < 0:
+                if filename.partition('.')[2] != queue_find:
                     continue
 
                 filename = os.path.join(self.data_folder_in, filename)
@@ -322,13 +377,13 @@ class Channel(virtual.Channel):
         """Return the number of messages in `queue` as an :class:`int`."""
         count = 0
 
-        queue_find = f'.{queue}.msg'
+        queue_find = f'{queue}.msg'
         folder = os.listdir(self.data_folder_in)
         while len(folder) > 0:
             filename = folder.pop()
 
             # only handle message for the requested queue
-            if filename.find(queue_find) < 0:
+            if filename.partition('.')[2] != queue_find:
                 continue
 
             count += 1

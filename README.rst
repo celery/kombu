@@ -4,7 +4,7 @@
 
 |build-status| |coverage| |license| |wheel| |pyversion| |pyimp| |downloads|
 
-:Version: 5.6.2
+:Version: 5.7.0rc1
 :Documentation: https://kombu.readthedocs.io/
 :Download: https://pypi.org/project/kombu/
 :Source: https://github.com/celery/kombu/
@@ -34,7 +34,7 @@ Features
 
     * Virtual transports makes it really easy to add support for non-AMQP
       transports. There is already built-in support for `Redis`_,
-      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_ and `Pyro`_.
+      `Amazon SQS`_, `ZooKeeper`_, `SoftLayer MQ`_, `MongoDB`_, `PGMQ`_ and `Pyro`_.
 
     * In-memory transport for unit testing.
 
@@ -68,8 +68,9 @@ and the `Wikipedia article about AMQP`_.
 .. _`carrot`: https://pypi.org/project/carrot/
 .. _`librabbitmq`: https://pypi.org/project/librabbitmq/
 .. _`Pyro`: https://pyro4.readthedocs.io/
-.. _`SoftLayer MQ`: https://sldn.softlayer.com/reference/messagequeueapi
+.. _`SoftLayer MQ`: https://web.archive.org/web/20180313081320/http://sldn.softlayer.com/reference/messagequeueapi
 .. _`MongoDB`: https://www.mongodb.com/
+.. _`PGMQ`: https://pgmq.github.io/pgmq/
 .. _`AWS SNS`: https://aws.amazon.com/sns/
 
 .. _transport-comparison:
@@ -87,6 +88,8 @@ Transport Comparison
 | *redis*       | Virtual  | Yes        | Yes        | Yes (PUB/SUB) | Yes          | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *mongodb*     | Virtual  | Yes        | Yes        | Yes           | Yes          | Yes                   |
++---------------+----------+------------+------------+---------------+--------------+-----------------------+
+| *pgmq*        | Virtual  | Yes        | Yes        | Yes           | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
 | *SQS*         | Virtual  | Yes        | Yes [#f1]_ | Yes [#f2]_    | No           | No                    |
 +---------------+----------+------------+------------+---------------+--------------+-----------------------+
@@ -302,10 +305,10 @@ by doing the following,:
 Getting Help
 ============
 
-Mailing list
-------------
+Discussions Forum
+-----------------
 
-Join the `celery-users`_ mailing list.
+Join the `kombu forum`_.
 
 .. _`kombu forum`: https://github.com/celery/kombu/discussions
 
@@ -363,7 +366,7 @@ file in the top distribution directory for the full license text.
 
 
 kombu as part of the Tidelift Subscription
-=======
+==========================================
 
 The maintainers of kombu and thousands of other packages are working with Tidelift to deliver commercial support and maintenance for the open source dependencies you use to build your applications. Save time, reduce risk, and improve code health, while paying the maintainers of the exact dependencies you use. [Learn more.](https://tidelift.com/subscription/pkg/pypi-kombu?utm_source=pypi-kombu&utm_medium=referral&utm_campaign=readme&utm_term=repo)
 

@@ -79,7 +79,13 @@ class LRUCache(UserDict):
     def __setitem__(self, key, value):
         # remove least recently used key.
         with self.mutex:
-            if self.limit and len(self.data) >= self.limit:
+            # Only an insert can push the cache over its limit; overwriting
+            # a key that is already there keeps the same number of entries,
+            # so evicting for it would shrink the cache below the limit and
+            # throw away an unrelated key. ``update`` already gets this
+            # right, it only trims once the data has actually grown.
+            if (key not in self.data and
+                    self.limit and len(self.data) >= self.limit):
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 
@@ -310,9 +316,15 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     """
     kwargs = {} if not kwargs else kwargs
     args = [] if not args else args
-    interval_range = fxrange(interval_start,
-                             interval_max + interval_start,
-                             interval_step, repeatlast=True)
+    interval_range = (
+        min(value, float(interval_max))
+        for value in fxrange(
+            interval_start,
+            interval_max + interval_start,
+            interval_step,
+            repeatlast=True,
+        )
+    )
     end = time() + timeout if timeout else None
     for retries in count():
         try:
@@ -326,6 +338,10 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                 callback()
             tts = float(errback(exc, interval_range, retries) if errback
                         else next(interval_range))
+            # The iterator values are clamped before they are observed by
+            # errback, and custom errback return values are clamped again
+            # before sleeping to honor the configured ceiling.
+            tts = min(tts, float(interval_max))
             if tts:
                 for _ in range(int(tts)):
                     if callback:

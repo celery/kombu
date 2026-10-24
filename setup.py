@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import re
 import sys
+from pathlib import Path
 
 import setuptools
 from setuptools import setup
@@ -52,10 +53,12 @@ def fullsplit(path, result=None):
     return fullsplit(head, [tail] + result)
 
 
-# if os.path.exists('README.rst'):
-#    long_description = codecs.open('README.rst', 'r', 'utf-8').read()
-# else:
-#    long_description = 'See https://pypi.org/project/kombu/'
+README = Path(__file__).with_name("README.rst")
+
+if README.exists():
+    long_description = README.read_text(encoding="utf-8")
+else:
+    long_description = "See https://pypi.org/project/kombu/"
 
 # -*- Installation Requires -*-
 py_version = sys.version_info
@@ -83,8 +86,12 @@ def readme():
 setup(
     name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
+    package_data={'kombu': ['py.typed']},
+    zip_safe=False,
     version=meta['version'],
     description=meta['doc'],
+    long_description=long_description,
+    long_description_content_type="text/x-rst",
     keywords='messaging message amqp rabbitmq redis actor producer consumer',
     author=meta['author'],
     author_email=meta['contact'],
@@ -94,7 +101,7 @@ setup(
     },
     platforms=['any'],
     license='BSD-3-Clause',
-    python_requires=">=3.9",
+    python_requires=">=3.10",
     install_requires=reqs('default.txt'),
     tests_require=reqs('test.txt'),
     extras_require={
@@ -114,6 +121,7 @@ setup(
         'qpid': extras('qpid.txt'),
         'consul': extras('consul.txt'),
         'confluentkafka': extras('confluentkafka.txt'),
+        'pgmq': extras('pgmq.txt'),
     },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
@@ -121,11 +129,11 @@ setup(
         'Programming Language :: Python',
         'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3.11',
         'Programming Language :: Python :: 3.12',
         'Programming Language :: Python :: 3.13',
+        'Programming Language :: Python :: 3.14',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Intended Audience :: Developers',

@@ -103,6 +103,25 @@ class test_LRUCache:
         x[7] = 7
         assert list(x.keys()), [3, 6 == 7]
 
+    def test_setitem_existing_key_does_not_evict(self):
+        x = LRUCache(limit=3)
+        x['a'], x['b'], x['c'] = 1, 2, 3
+
+        # overwriting a key already in the cache does not make it grow,
+        # so nothing may be evicted to make room for it.
+        x['c'] = 30
+
+        assert list(x.items()) == [('a', 1), ('b', 2), ('c', 30)]
+        assert len(x) == 3
+
+    def test_setitem_new_key_evicts_least_recently_used(self):
+        x = LRUCache(limit=2)
+        x['a'], x['b'] = 1, 2
+
+        x['c'] = 3
+
+        assert list(x.items()) == [('b', 2), ('c', 3)]
+
     def test_update_larger_than_cache_size(self):
         x = LRUCache(2)
         x.update({x: x for x in range(100)})
@@ -191,7 +210,7 @@ class test_retry_over_time:
 
     def errback(self, exc, intervals, retries):
         interval = next(intervals)
-        sleepvals = (None, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 16.0, 16.0)
+        sleepvals = (None, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 14.0, 14.0, 14.0)
         self.index += 1
         assert interval == sleepvals[self.index]
         return interval
@@ -283,6 +302,66 @@ class test_retry_over_time:
             fun, self.Predicate,
             max_retries=None, errback=None, interval_max=14) == 42
         assert fun.calls == 11
+
+    def test_never_sleeps_longer_than_interval_max(self, monkeypatch):
+        durations = []
+        observed = []
+        pending = [0.0]
+
+        def fun():
+            # record the total time slept since the previous attempt.
+            durations.append(pending[0])
+            pending[0] = 0.0
+            raise KeyError()
+
+        def fake_sleep(seconds):
+            pending[0] += seconds
+
+        def errback(exc, intervals, retries):
+            interval = next(intervals)
+            observed.append(interval)
+            return interval
+
+        monkeypatch.setattr(utils, 'sleep', fake_sleep)
+
+        with pytest.raises(KeyError):
+            retry_over_time(
+                fun, (KeyError,),
+                max_retries=10,
+                errback=errback,
+                interval_start=1, interval_step=2, interval_max=6,
+            )
+
+        assert max(observed) <= 6
+        assert max(durations) <= 6
+
+    def test_errback_return_value_is_clamped(self, monkeypatch):
+        durations = []
+        pending = [0.0]
+
+        def fun():
+            durations.append(pending[0])
+            pending[0] = 0.0
+            raise KeyError()
+
+        def fake_sleep(seconds):
+            pending[0] += seconds
+
+        def errback(exc, intervals, retries):
+            next(intervals)
+            return 20
+
+        monkeypatch.setattr(utils, 'sleep', fake_sleep)
+
+        with pytest.raises(KeyError):
+            retry_over_time(
+                fun, (KeyError,),
+                max_retries=1,
+                errback=errback,
+                interval_start=1, interval_step=2, interval_max=6,
+            )
+
+        assert max(durations) <= 6
 
 
 @pytest.mark.parametrize('obj,expected', [
