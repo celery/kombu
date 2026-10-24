@@ -66,7 +66,11 @@ class LRUCache(UserDict):
     def update(self, *args, **kwargs):
         with self.mutex:
             data, limit = self.data, self.limit
-            data.update(*args, **kwargs)
+            for key, value in dict(*args, **kwargs).items():
+                # writing a key counts as using it, so an existing key
+                # moves to the most recently used end, as in __setitem__.
+                data[key] = value
+                data.move_to_end(key)
             if limit and len(data) > limit:
                 # pop additional items in case limit exceeded
                 for _ in range(len(data) - limit):
@@ -84,8 +88,11 @@ class LRUCache(UserDict):
             # so evicting for it would shrink the cache below the limit and
             # throw away an unrelated key. ``update`` already gets this
             # right, it only trims once the data has actually grown.
-            if (key not in self.data and
-                    self.limit and len(self.data) >= self.limit):
+            if key in self.data:
+                # overwriting counts as a use: make it the most recently
+                # used key instead of leaving it next in line for eviction.
+                self.data.move_to_end(key)
+            elif self.limit and len(self.data) >= self.limit:
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 
