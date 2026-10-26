@@ -16,10 +16,20 @@ from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
 
 
+class BaseErrorsTransport(Transport):
+    # Classifies errors like kombu.transport.base.Transport does (no
+    # recoverable/irrecoverable split). Declared here because other tests
+    # overwrite connection_errors and channel_errors on t.mocks.Transport.
+    connection_errors = (amqp.ConnectionError,)
+    channel_errors = (amqp.ChannelError,)
+
+
 class AMQPErrorsTransport(Transport):
     # Classifies errors like the py-amqp transport does.
     connection_errors = amqp.Connection.connection_errors
+    channel_errors = amqp.Connection.channel_errors
     recoverable_connection_errors = amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
 
 class RecordingPublishBatch:
@@ -290,7 +300,7 @@ class test_Producer:
         channel.close = lambda: setattr(channel, 'connection', None)
 
     @pytest.mark.parametrize('transport,error', [
-        (Transport, amqp.ConnectionError('connection lost')),
+        (BaseErrorsTransport, amqp.ConnectionError('connection lost')),
         (AMQPErrorsTransport, ConnectionResetError('connection reset')),
     ])
     def test_publish_retry_declares_exchange_on_new_channel(self, transport,
@@ -311,7 +321,7 @@ class test_Producer:
         assert errback.call_count == 1
 
     def test_publish_retry_default_exchange_after_reconnect(self):
-        conn = Connection(transport=Transport)
+        conn = Connection(transport=BaseErrorsTransport)
         p = Producer(conn)
         first = p.channel
         self._drop_connection_on_publish(
