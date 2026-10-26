@@ -6,6 +6,7 @@ import threading
 from collections import defaultdict
 from unittest.mock import ANY, Mock, patch
 
+import amqp
 import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
@@ -13,6 +14,12 @@ from kombu.exceptions import MessageStateError, OperationalError
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
+
+
+class AMQPErrorsTransport(Transport):
+    # Classifies errors like the py-amqp transport does.
+    connection_errors = amqp.Connection.connection_errors
+    recoverable_connection_errors = amqp.Connection.recoverable_connection_errors
 
 
 class RecordingPublishBatch:
@@ -275,6 +282,49 @@ class test_Producer:
         ex = Exchange('foo')
         p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
         p.maybe_declare.assert_called_with(ex, retry=False)
+
+    def _drop_connection_on_publish(self, channel, error):
+        # basic_publish fails with a connection error, and closing the
+        # channel detaches it from its connection, as transport channels do.
+        channel.basic_publish = Mock(side_effect=error)
+        channel.close = lambda: setattr(channel, 'connection', None)
+
+    @pytest.mark.parametrize('transport,error', [
+        (Transport, amqp.ConnectionError('connection lost')),
+        (AMQPErrorsTransport, ConnectionResetError('connection reset')),
+    ])
+    def test_publish_retry_declares_exchange_on_new_channel(self, transport,
+                                                            error):
+        conn = Connection(transport=transport)
+        p = Producer(conn, exchange=Exchange('foo', 'direct'))
+        first = p.channel
+        self._drop_connection_on_publish(first, error)
+        errback = Mock()
+
+        p.publish('hello', routing_key='rk', retry=True,
+                  retry_policy={'max_retries': 3, 'errback': errback})
+
+        second = p.channel
+        assert second is not first
+        assert 'exchange_declare' in second
+        assert 'basic_publish' in second
+        assert errback.call_count == 1
+
+    def test_publish_retry_default_exchange_after_reconnect(self):
+        conn = Connection(transport=Transport)
+        p = Producer(conn)
+        first = p.channel
+        self._drop_connection_on_publish(
+            first, amqp.ConnectionError('connection lost'))
+        queue = Queue('bar', Exchange('foo', 'direct'), 'bar')
+
+        p.publish('hello', routing_key='bar', declare=[queue], retry=True,
+                  retry_policy={'max_retries': 3})
+
+        second = p.channel
+        assert second is not first
+        assert 'queue_declare' in second
+        assert 'basic_publish' in second
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()
