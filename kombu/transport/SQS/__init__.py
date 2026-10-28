@@ -145,8 +145,10 @@ the queue in these cases:
 * Its task is listed in backoff_tasks, so the backoff policy can retry it.
 * The queue has a redrive policy. SQS redelivers the message until it has
   been received maxReceiveCount times, and then moves it to the dead-letter
-  queue. The policy is read once per queue with GetQueueAttributes; if that
-  call fails, the message is left in the queue.
+  queue. The policy is read with GetQueueAttributes and the answer is
+  reused for 5 minutes, so a dead-letter queue added to a live queue
+  applies within that time without reconnecting. If that call fails, the
+  message is left in the queue.
 * DeleteMessage fails, for example because the receipt handle has expired.
   The error is logged, and SQS redelivers the message.
 
@@ -249,6 +251,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from queue import Empty
+from time import monotonic
 from typing import Any, Literal
 
 from botocore.client import BaseClient, Config
@@ -372,6 +375,10 @@ class Channel(virtual.Channel):
         retries={'total_max_attempts': 1},
     )
     domain_format = 'kombu%(vhost)s'
+    #: Seconds a queue's redrive policy is reused before it is read again.
+    #: Deleting a rejected message can't be undone, so a dead-letter queue
+    #: added while workers run must be noticed without a reconnect.
+    redrive_policy_cache_ttl = 300
     _asynsqs = None
     _sqs = None
     _fanout = None
@@ -1033,10 +1040,12 @@ class Channel(virtual.Channel):
             )
 
     def _has_redrive_policy(self, queue, queue_url):
-        try:
-            return self._redrive_policies[queue_url]
-        except KeyError:
-            pass
+        now = monotonic()
+        cached = self._redrive_policies.get(queue_url)
+        if cached is not None:
+            has_policy, read_at = cached
+            if now - read_at < self.redrive_policy_cache_ttl:
+                return has_policy
         try:
             resp = self.sqs(queue=queue).get_queue_attributes(
                 QueueUrl=queue_url,
@@ -1048,11 +1057,11 @@ class Channel(virtual.Channel):
                 'messages are left in the queue: %s', queue_url, exception,
             )
             if exception.response['Error']['Code'] == 'AccessDenied':
-                # Asking again would be denied again.
-                self._redrive_policies[queue_url] = True
+                # Asking again right away would be denied again.
+                self._redrive_policies[queue_url] = (True, now)
             return True
         has_policy = 'RedrivePolicy' in resp.get('Attributes', {})
-        self._redrive_policies[queue_url] = has_policy
+        self._redrive_policies[queue_url] = (has_policy, now)
         return has_policy
 
     def _size(self, queue):
@@ -1751,7 +1760,8 @@ class Transport(virtual.Transport):
         # Scoped to this Connection: its channels share them, but another
         # Connection (different region, account or credentials) must not.
         self._queue_cache = {}  # SQS queue name => SQS queue URL
-        # SQS queue URL => whether the queue has a redrive policy
+        # SQS queue URL => (whether the queue has a redrive policy,
+        # monotonic time it was read)
         self._redrive_policies = {}
         self._noack_queues = set()
         self._predefined_queue_clients = {}  # A client for each predefined queue

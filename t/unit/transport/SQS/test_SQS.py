@@ -1898,9 +1898,40 @@ class test_Channel:
         sqs = channel.sqs.return_value
         sqs.get_queue_attributes.assert_called_once()
         assert sqs.delete_message.call_count == 2
-        assert channel.connection._redrive_policies == {
-            self.QUEUE_1_URL: False,
-        }
+        assert [has_policy for has_policy, _ in
+                channel.connection._redrive_policies.values()] == [False]
+
+    @pytest.mark.parametrize('first,then', [
+        ({}, {'RedrivePolicy': '{"maxReceiveCount": "3"}'}),
+        ({'RedrivePolicy': '{"maxReceiveCount": "3"}'}, {}),
+    ])
+    def test_basic_reject_rereads_redrive_policy_after_ttl(
+            self, reject_channel, first, then):
+        # A dead-letter queue is usually added to a live queue once
+        # messages start looping. Deleting a rejected message can't be
+        # undone, so a cached answer must not outlive the TTL.
+        channel, message = reject_channel
+        channel.qos._delivered['later_message_id'] = message
+        channel.qos._delivered['after_ttl_message_id'] = message
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.side_effect = [
+            {'Attributes': first}, {'Attributes': then},
+        ]
+        clock = [1000.0]
+
+        with patch('kombu.transport.SQS.monotonic', lambda: clock[0]):
+            channel.basic_reject('test_message_id', requeue=False)
+            clock[0] += channel.redrive_policy_cache_ttl - 1
+            channel.basic_reject('later_message_id', requeue=False)
+            assert sqs.get_queue_attributes.call_count == 1
+            clock[0] += 1
+            channel.basic_reject('after_ttl_message_id', requeue=False)
+
+        assert sqs.get_queue_attributes.call_count == 2
+        deletes_before_ttl = 0 if 'RedrivePolicy' in first else 2
+        deletes_after_ttl = 0 if 'RedrivePolicy' in then else 1
+        assert sqs.delete_message.call_count == (
+            deletes_before_ttl + deletes_after_ttl)
 
     @pytest.mark.parametrize('error_code,cached', [
         ('AccessDenied', True),
