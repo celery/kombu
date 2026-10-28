@@ -2985,6 +2985,365 @@ class test_DisconnectRegistration:
         self.loop.remove.assert_called_once_with(old_fd)
 
 
+class test_PausedBRPOP:
+
+    def setup_method(self):
+        self.connection = Connection(transport=Transport)
+        self.channel = self.connection.default_channel
+        self.channel.queue_declare('paused-brpop')
+        self.channel.basic_consume(
+            'paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='paused-consumer',
+        )
+        self.cycle = self.connection.transport.cycle
+        self.cycle.poller = Mock()
+        self.cycle.poller.poll.return_value = []
+        self.cycle._register_BRPOP(self.channel)
+        self.client = self.channel.client
+        self.pending = self.client.connection
+        self.sock = self.pending._sock
+        self.fd = self.sock.fileno()
+        self.ident = self.channel, self.client, 'BRPOP'
+        self.read = self.channel.handlers['BRPOP'] = Mock()
+        self.qos_patch = patch.object(
+            self.channel.qos, 'can_consume', return_value=False,
+        )
+        self.can_consume = self.qos_patch.start()
+        self.channel.qos.restore_visible = Mock()
+        self.cycle.poller.reset_mock()
+
+    def teardown_method(self):
+        self.qos_patch.stop()
+        self.channel._in_poll = None
+        self.connection.close()
+
+    def bind_hub(self):
+        loop = Mock(on_tick=set())
+        with patch.object(self.channel.qos, 'restore_visible'):
+            self.connection.register_with_event_loop(loop)
+        return loop
+
+    def test_pause_preserves_pending_reply_and_connection(self):
+        registrations = self.cycle._fd_to_chan.copy()
+        sockets = self.cycle._chan_to_sock.copy()
+        commands = self.sock.data[:]
+
+        with patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.cycle._fd_to_chan == registrations
+        assert self.cycle._chan_to_sock == sockets
+        assert self.cycle._paused_brpop[self.fd] == (
+            self.channel, self.client, self.pending, self.sock,
+        )
+        assert self.channel._in_poll is self.pending
+        assert self.pending._sock is self.sock
+        assert self.sock.data == commands
+        self.read.assert_not_called()
+        disconnect.assert_not_called()
+
+    def test_pause_is_idempotent_for_stale_read_events(self):
+        self.cycle.on_readable(self.fd)
+        self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    def test_full_qos_pauses_before_polling(self, poll_method):
+        if poll_method == 'get':
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0)
+        else:
+            self.cycle.on_poll_start()
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.channel._in_poll is self.pending
+        self.read.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ('timeout', 'expected_wait'),
+        [(0, 0), (0.1, 0.1), (5, 1), (None, 1)],
+    )
+    def test_paused_only_polling_wait_is_bounded(
+        self, timeout, expected_wait,
+    ):
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep, \
+                patch.object(self.cycle, 'maybe_check_brpop_health') as health:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=timeout)
+
+        sleep.assert_called_once_with(expected_wait)
+        self.cycle.poller.poll.assert_not_called()
+        health.assert_called_once_with()
+        self.channel.qos.restore_visible.assert_called_once()
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    def test_paused_channel_keeps_polling_other_socket(self):
+        other = self.connection.channel()
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0.1)
+
+        sleep.assert_not_called()
+        self.cycle.poller.poll.assert_called_once_with(0.1)
+        assert other.client.connection._sock.fileno() in self.cycle.fds
+
+    @pytest.mark.parametrize('event', [redis.ERR, redis.READ | redis.ERR])
+    def test_stale_events_do_not_read_paused_reply(self, event):
+        self.cycle.on_readable(self.fd)
+
+        with patch.object(self.channel, '_poll_error') as poll_error:
+            self.cycle.handle_event(self.fd, event)
+
+        self.read.assert_not_called()
+        poll_error.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    @pytest.mark.parametrize('cancel_consumer', [False, True])
+    def test_credit_resumes_pending_brpop_without_sending_another(
+        self, poll_method, cancel_consumer,
+    ):
+        self.cycle.on_readable(self.fd)
+        if cancel_consumer:
+            self.channel.basic_cancel('paused-consumer')
+            assert not self.channel.active_queues
+        self.cycle.poller.reset_mock()
+        self.can_consume.return_value = True
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            if poll_method == 'get':
+                with pytest.raises(Empty):
+                    self.cycle.get(Mock(), timeout=0)
+            else:
+                self.cycle.on_poll_start()
+
+        assert self.cycle.fds[self.fd] == (self.channel, 'BRPOP')
+        assert not self.cycle._paused_brpop
+        assert self.cycle._chan_to_sock[self.ident] is self.sock
+        assert self.channel._in_poll is self.pending
+        self.cycle.poller.register.assert_called_once_with(
+            self.sock, self.cycle.eventflags,
+        )
+        start.assert_not_called()
+        self.cycle.on_readable(self.fd)
+        self.read.assert_called_once_with()
+
+    def test_hub_does_not_readd_paused_reader(self):
+        loop = self.bind_hub()
+
+        self.cycle.on_readable(self.fd)
+        for _ in range(3):
+            for callback in loop.on_tick:
+                callback()
+
+        loop.remove_reader.assert_called_once_with(self.fd)
+        loop.add_reader.assert_not_called()
+        self.read.assert_not_called()
+
+        self.can_consume.return_value = True
+        for callback in loop.on_tick:
+            callback()
+
+        loop.add_reader.assert_called_once_with(
+            self.fd, self.connection.transport.on_readable, self.fd,
+        )
+        assert self.channel._in_poll is self.pending
+
+    def test_pause_preserves_other_channel_and_listen(self):
+        other = self.connection.channel()
+        other.qos.can_consume = Mock(return_value=True)
+        self.cycle._register(other, other.client, 'BRPOP')
+        other_fd = other.client.connection._sock.fileno()
+        self.cycle._register(
+            self.channel, self.channel.subclient, 'LISTEN',
+        )
+        listen_fd = self.channel.subclient.connection._sock.fileno()
+
+        self.cycle.on_readable(self.fd)
+
+        assert self.cycle.fds == {
+            other_fd: (other, 'BRPOP'),
+            listen_fd: (self.channel, 'LISTEN'),
+        }
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    @pytest.mark.parametrize('reuse_fd', [False, True])
+    def test_disconnect_clears_pause_before_reconnect(
+        self, use_hub, reuse_fd,
+    ):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        assert self.channel._in_poll is None
+
+        replacement = Client._sconnection._socket()
+        if reuse_fd:
+            replacement._fileno = self.fd
+        self.pending._sock = replacement
+        self.can_consume.return_value = True
+        self.cycle.on_poll_start()
+
+        assert self.cycle.fds == {
+            replacement.fileno(): (self.channel, 'BRPOP'),
+        }
+        assert self.cycle._chan_to_sock[self.ident] is replacement
+        assert self.channel._in_poll is self.pending
+        assert len(replacement.data) == 1
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    def test_late_disconnect_preserves_replacement_with_same_fd(self, use_hub):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+
+    def test_poll_start_preserves_replacement_before_disconnect_callback(self):
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            self.cycle.on_poll_start()
+            self.cycle.on_readable(self.fd)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+        self.cycle.poller.register.assert_not_called()
+        start.assert_not_called()
+        self.read.assert_called_once_with()
+
+    @pytest.mark.parametrize('operation', ['discard', 'disconnect'])
+    def test_removing_paused_channel_preserves_another(self, operation):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other.queue_declare('other-paused-brpop')
+        other.basic_consume(
+            'other-paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='other-paused-consumer',
+        )
+        self.cycle._register_BRPOP(other)
+        other.qos.can_consume = Mock(return_value=False)
+        other_connection = other.client.connection
+        other_socket = other_connection._sock
+        other_fd = other_socket.fileno()
+        self.cycle.on_readable(other_fd)
+        other_pause = self.cycle._paused_brpop[other_fd]
+
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.pending._sock = None
+            self.channel._on_connection_disconnect(self.pending)
+
+        assert self.cycle._paused_brpop == {other_fd: other_pause}
+        assert self.cycle._fd_to_chan == {other_fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert not self.cycle.fds
+        assert other._in_poll is other_connection
+        assert other_connection._sock is other_socket
+
+    def test_late_disconnect_preserves_fd_reused_by_another_channel(self):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other_socket = other.client.connection._sock
+        other_socket._fileno = self.fd
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert other.client.connection._sock is other_socket
+
+    @pytest.mark.parametrize('operation', ['close', 'discard'])
+    def test_poller_removal_cannot_resume_paused_channel(self, operation):
+        self.cycle.on_readable(self.fd)
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.cycle.close()
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        self.cycle.on_poll_start()
+
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        self.cycle.poller.register.assert_not_called()
+
+    def test_channel_close_drains_pending_reply_and_removes_pause(self):
+        self.cycle.on_readable(self.fd)
+        with patch.object(self.channel, '_brpop_read',
+                          side_effect=Empty) as read:
+            self.channel.close()
+
+        read.assert_called_once_with()
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+
+    def test_health_check_preserves_readable_paused_connection(self):
+        self.cycle.on_readable(self.fd)
+        self.channel._brpop_sent_at = 0
+        with patch('kombu.transport.redis.monotonic', return_value=1000), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=True), \
+                patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.maybe_check_brpop_health()
+
+        disconnect.assert_not_called()
+        assert self.channel._in_poll is self.pending
+        assert self.fd not in self.cycle.fds
+
+
 class test_Redis:
 
     def setup_method(self):
@@ -3525,8 +3884,11 @@ class test_MultiChannelPoller:
 
     def test_handle_event(self):
         p = self.Poller()
+        p.poller = Mock()
         chan = Mock(name='chan')
-        p._fd_to_chan[13] = chan, 'BRPOP'
+        chan.client.connection._sock.fileno.return_value = 13
+        chan._in_poll = chan.client.connection
+        p._register(chan, chan.client, 'BRPOP')
         chan.handlers = {'BRPOP': Mock(name='BRPOP')}
 
         chan.qos.can_consume.return_value = False
@@ -3534,6 +3896,7 @@ class test_MultiChannelPoller:
         chan.handlers['BRPOP'].assert_not_called()
 
         chan.qos.can_consume.return_value = True
+        p.on_poll_start()
         p.handle_event(13, redis.READ)
         chan.handlers['BRPOP'].assert_called_with()
 
