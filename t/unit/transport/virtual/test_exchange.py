@@ -77,7 +77,7 @@ class test_Topic(ExchangeCase):
 
     def test_prepare_bind(self):
         x = self.e.prepare_bind('qFoo', 'eFoo', 'stock.#', {})
-        assert x == ('stock.#', r'^stock\..*?$', 'qFoo')
+        assert x == ('stock.#', r'^stock(?:\..*?)?$', 'qFoo')
 
     @pytest.mark.parametrize('exchange,routing_key,default,expected', [
         ('eFoo', 'stock.us.nasdaq', None, {'rFoo', 'rBar'}),
@@ -86,11 +86,47 @@ class test_Topic(ExchangeCase):
         ('eFoo', 'candy.schleckpulver.snap_crackle', None, set()),
         # '*' is a single word: only 'stock.#' may match a longer key.
         ('eFoo', 'stock.us.nasdaq.tech', None, {'rFoo'}),
+        # '#' also matches zero words.
+        ('eFoo', 'stock', None, {'rFoo'}),
     ])
     def test_lookup(self, exchange, routing_key, default, expected):
         assert self.e.lookup(
             self.table, exchange, routing_key, default) == expected
         assert self.e._compiled
+
+    @pytest.mark.parametrize('binding_key,routing_key,matches', [
+        # '#' matches zero or more words, as in AMQP 0-9-1.
+        ('stock.#', 'stock', True),
+        ('stock.#', 'stock.us', True),
+        ('stock.#', 'stock.us.nasdaq', True),
+        ('stock.#', 'stockx', False),
+        ('stock.#', 'candy', False),
+        ('#.error', 'error', True),
+        ('#.error', 'app.error', True),
+        ('#.error', 'app.db.error', True),
+        ('#.error', 'apperror', False),
+        ('#.error', 'error.app', False),
+        ('a.#.b', 'a.b', True),
+        ('a.#.b', 'a.x.b', True),
+        ('a.#.b', 'a.x.y.b', True),
+        ('a.#.b', 'a.xb', False),
+        ('a.#.b', 'ab', False),
+        ('#', '', True),
+        ('#', 'a.b.c', True),
+        ('#.#', 'a', True),
+        ('#.#', 'a.b', True),
+        ('a.#.#.b', 'a.b', True),
+        ('*.#', 'a', True),
+        ('*.#', 'a.b.c', True),
+        ('#.*', 'a', True),
+        ('#.*', '', False),
+        ('a.*.#', 'a', False),
+        ('a.*.#', 'a.b', True),
+        ('a.*.#', 'a.b.c', True),
+    ])
+    def test_key_to_pattern(self, binding_key, routing_key, matches):
+        pattern = self.e.key_to_pattern(binding_key)
+        assert bool(self.e._match(pattern, routing_key)) is matches
 
     def test_deliver(self):
         self.e.channel = Mock()
