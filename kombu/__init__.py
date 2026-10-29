@@ -8,7 +8,7 @@ import sys
 from collections import namedtuple
 from typing import Any, cast
 
-__version__ = '5.7.0b1'
+__version__ = '5.7.0rc1'
 __author__ = 'Ask Solem'
 __maintainer__ = 'Asif Saif Uddin'
 __contact__ = 'auvipy@gmail.com'
