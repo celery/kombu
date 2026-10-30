@@ -12,7 +12,8 @@ if TYPE_CHECKING:
     from kombu.asynchronous.http import Response
 
 __all__ = (
-    'reraise', 'KombuError', 'OperationalError', 'BatchPublishError',
+    'reraise', 'KombuError', 'OperationalError', 'PublicationTimeout',
+    'BatchPublishError',
     'NotBoundError', 'MessageStateError', 'TimeoutError',
     'LimitExceeded', 'ConnectionLimitExceeded',
     'ChannelLimitExceeded', 'ConnectionError', 'ChannelError',
@@ -41,6 +42,15 @@ class KombuError(Exception):
 
 class OperationalError(KombuError):
     """Recoverable message transport connection error."""
+
+
+class PublicationTimeout(OperationalError):
+    """Publication budget exhausted, with an uncertain delivery outcome."""
+
+    def __init__(self, message: str = 'Publication deadline exceeded', *,
+                 connection_usable: bool = False) -> None:
+        super().__init__(message)
+        self.connection_usable = connection_usable
 
 
 class BatchPublishError(KombuError):
