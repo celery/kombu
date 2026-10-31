@@ -1765,6 +1765,242 @@ class test_Channel:
             QueueUrl='https://sqs.us-east-1.amazonaws.com/xxx/queue-1',
             ReceiptHandle='test_message_id', VisibilityTimeout=20)
 
+    QUEUE_1_URL = 'https://sqs.us-east-1.amazonaws.com/xxx/queue-1'
+
+    @pytest.fixture
+    def reject_channel(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+
+        queue_name = 'queue-1'
+        exchange = Exchange('test_SQS', type='direct')
+        queue = Queue(queue_name, exchange, queue_name)
+        queue(channel).declare()
+
+        message_mock = Mock()
+        message_mock.delivery_info = {
+            'routing_key': queue_name,
+            'sqs_queue': self.QUEUE_1_URL,
+            'sqs_message': {'ReceiptHandle': 'receipt-handle'},
+        }
+        message_mock.headers = {'task': 'svc.tasks.tasks.task2'}
+        message_mock.properties = {'delivery_info': {'sqs_message': {
+            'Attributes': {'ApproximateReceiveCount': 2}}}}
+        channel.qos._delivered['test_message_id'] = message_mock
+
+        channel.sqs = Mock()
+        channel.sqs.return_value.get_queue_attributes.return_value = {
+            'Attributes': {},
+        }
+        channel._restore_at_beginning = Mock()
+        yield channel, message_mock
+        # A mock left here cannot be pickled when kombu dumps unacked
+        # messages at exit.
+        channel.qos._delivered.clear()
+
+    def test_basic_reject_without_requeue_deletes_message(
+            self, reject_channel):
+        channel, _ = reject_channel
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.assert_called_with(queue='queue-1')
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.assert_called_once_with(
+            QueueUrl=self.QUEUE_1_URL, AttributeNames=['RedrivePolicy'],
+        )
+        sqs.delete_message.assert_called_once_with(
+            QueueUrl=self.QUEUE_1_URL, ReceiptHandle='receipt-handle',
+        )
+        sqs.change_message_visibility.assert_not_called()
+        channel._restore_at_beginning.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_without_routing_key_deletes_message(
+            self, reject_channel):
+        channel, message = reject_channel
+        del message.delivery_info['routing_key']
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.assert_called_with(queue=None)
+        channel.sqs.return_value.delete_message.assert_called_once_with(
+            QueueUrl=self.QUEUE_1_URL, ReceiptHandle='receipt-handle',
+        )
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_with_requeue_does_not_delete_message(
+            self, reject_channel):
+        channel, message = reject_channel
+
+        channel.basic_reject('test_message_id', requeue=True)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        channel._restore_at_beginning.assert_called_once_with(message)
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_backoff_task_applies_backoff_policy(
+            self, reject_channel):
+        channel, message = reject_channel
+        message.headers = {'task': 'svc.tasks.tasks.task1'}
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        sqs = channel.sqs.return_value
+        sqs.delete_message.assert_not_called()
+        sqs.change_message_visibility.assert_called_once_with(
+            QueueUrl=self.QUEUE_1_URL,
+            ReceiptHandle='test_message_id', VisibilityTimeout=20)
+        assert channel.qos._dirty == {'test_message_id'}
+
+    @pytest.mark.parametrize('missing_key', ['sqs_message', 'sqs_queue'])
+    def test_basic_reject_without_sqs_info_does_not_delete(
+            self, reject_channel, missing_key):
+        channel, message = reject_channel
+        del message.delivery_info[missing_key]
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_unknown_delivery_tag(self, reject_channel):
+        channel, _ = reject_channel
+
+        channel.basic_reject('unknown', requeue=False)
+
+        channel.sqs.return_value.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'unknown'}
+
+    def test_basic_reject_queue_with_redrive_policy_keeps_message(
+            self, reject_channel):
+        channel, _ = reject_channel
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.return_value = {'Attributes': {
+            'RedrivePolicy': '{"maxReceiveCount": "3"}',
+        }}
+
+        channel.basic_reject('test_message_id', requeue=False)
+
+        sqs.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_basic_reject_reads_redrive_policy_once_per_queue(
+            self, reject_channel):
+        channel, message = reject_channel
+        channel.qos._delivered['other_message_id'] = message
+
+        channel.basic_reject('test_message_id', requeue=False)
+        channel.basic_reject('other_message_id', requeue=False)
+
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.assert_called_once()
+        assert sqs.delete_message.call_count == 2
+        assert [has_policy for has_policy, _ in
+                channel.connection._redrive_policies.values()] == [False]
+
+    @pytest.mark.parametrize('first,then', [
+        ({}, {'RedrivePolicy': '{"maxReceiveCount": "3"}'}),
+        ({'RedrivePolicy': '{"maxReceiveCount": "3"}'}, {}),
+    ])
+    def test_basic_reject_rereads_redrive_policy_after_ttl(
+            self, reject_channel, first, then):
+        # A dead-letter queue is usually added to a live queue once
+        # messages start looping. Deleting a rejected message can't be
+        # undone, so a cached answer must not outlive the TTL.
+        channel, message = reject_channel
+        channel.qos._delivered['later_message_id'] = message
+        channel.qos._delivered['after_ttl_message_id'] = message
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.side_effect = [
+            {'Attributes': first}, {'Attributes': then},
+        ]
+        clock = [1000.0]
+
+        with patch('kombu.transport.SQS.monotonic', lambda: clock[0]):
+            channel.basic_reject('test_message_id', requeue=False)
+            clock[0] += channel.redrive_policy_cache_ttl - 1
+            channel.basic_reject('later_message_id', requeue=False)
+            assert sqs.get_queue_attributes.call_count == 1
+            clock[0] += 1
+            channel.basic_reject('after_ttl_message_id', requeue=False)
+
+        assert sqs.get_queue_attributes.call_count == 2
+        deletes_before_ttl = 0 if 'RedrivePolicy' in first else 2
+        deletes_after_ttl = 0 if 'RedrivePolicy' in then else 1
+        assert sqs.delete_message.call_count == (
+            deletes_before_ttl + deletes_after_ttl)
+
+    @pytest.mark.parametrize('error_code,cached', [
+        ('AccessDenied', True),
+        ('InternalError', False),
+    ])
+    def test_basic_reject_redrive_policy_read_fails_keeps_message(
+            self, reject_channel, caplog, error_code, cached):
+        channel, _ = reject_channel
+        sqs = channel.sqs.return_value
+        sqs.get_queue_attributes.side_effect = ClientError(
+            {'Error': {'Code': error_code, 'Message': 'boom'}},
+            'GetQueueAttributes',
+        )
+
+        with caplog.at_level(logging.WARNING):
+            channel.basic_reject('test_message_id', requeue=False)
+
+        sqs.delete_message.assert_not_called()
+        assert channel.qos._dirty == {'test_message_id'}
+        assert 'Could not read the redrive policy' in caplog.text
+        assert (self.QUEUE_1_URL in channel.connection._redrive_policies) \
+            is cached
+
+    @pytest.mark.parametrize('error_code', [
+        'InvalidParameterValue', 'ReceiptHandleIsInvalid', 'InternalError',
+    ])
+    def test_basic_reject_delete_client_error_is_logged(
+            self, reject_channel, caplog, error_code):
+        channel, _ = reject_channel
+        channel.sqs.return_value.delete_message.side_effect = ClientError(
+            {'Error': {'Code': error_code, 'Message': 'boom'}},
+            'DeleteMessage',
+        )
+
+        with caplog.at_level(logging.WARNING):
+            channel.basic_reject('test_message_id', requeue=False)
+
+        assert channel.qos._dirty == {'test_message_id'}
+        assert 'Could not delete rejected message' in caplog.text
+
+    def test_basic_reject_releases_delivery_when_delete_fails(
+            self, reject_channel):
+        channel, _ = reject_channel
+        channel.sqs.return_value.delete_message.side_effect = OSError()
+
+        with pytest.raises(OSError):
+            channel.basic_reject('test_message_id', requeue=False)
+
+        assert channel.qos._dirty == {'test_message_id'}
+
+    def test_is_backoff_task(self, reject_channel):
+        channel, message = reject_channel
+        message.headers = {'task': 'svc.tasks.tasks.task1'}
+        assert channel.qos.is_backoff_task('test_message_id')
+
+        message.headers = {'task': 'svc.tasks.tasks.task2'}
+        assert not channel.qos.is_backoff_task('test_message_id')
+
+        message.headers = None
+        assert not channel.qos.is_backoff_task('test_message_id')
+
+        assert not channel.qos.is_backoff_task('unknown')
+
+    def test_is_backoff_task_without_backoff_config(self, reject_channel):
+        channel, message = reject_channel
+        message.headers = {'task': 'svc.tasks.tasks.task1'}
+        message.delivery_info['routing_key'] = 'queue-2'
+        assert not channel.qos.is_backoff_task('test_message_id')
+
     def test_predefined_queues_put_to_fifo_queue(self):
         connection = Connection(transport=SQS.Transport, transport_options={
             'predefined_queues': example_predefined_queues,

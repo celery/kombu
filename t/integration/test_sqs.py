@@ -263,6 +263,55 @@ def test_ack_invalid_receipt_with_backoff(backoff_queue, error_code):
 
 
 @pytest.mark.env('sqs')
+def test_reject_no_requeue_is_not_redelivered(connection):
+    conn = connection.clone(transport_options={
+        **connection.transport_options, 'visibility_timeout': 1,
+    })
+    with conn, conn.SimpleQueue('reject_no_requeue_vt') as queue:
+        queue.put({'Hello': 'World'})
+        queue.get(timeout=5).reject(requeue=False)
+        time.sleep(2)  # longer than the visibility timeout
+        with pytest.raises(queue.Empty):
+            queue.get(timeout=2)
+
+
+@pytest.mark.env('sqs')
+def test_reject_no_requeue_with_redrive_policy_is_redelivered(
+        connection, test_queue_prefix):
+    with connection as conn:
+        client = conn.default_channel.sqs()
+        dlq_url = client.create_queue(
+            QueueName=test_queue_prefix + 'reject_redrive_dlq',
+        )['QueueUrl']
+        dlq_arn = client.get_queue_attributes(
+            QueueUrl=dlq_url, AttributeNames=['QueueArn'],
+        )['Attributes']['QueueArn']
+        queue_url = client.create_queue(
+            QueueName=test_queue_prefix + 'reject_redrive',
+            Attributes={
+                'VisibilityTimeout': '1',
+                'RedrivePolicy': json.dumps({
+                    'deadLetterTargetArn': dlq_arn,
+                    'maxReceiveCount': '5',
+                }),
+            },
+        )['QueueUrl']
+        try:
+            with conn.SimpleQueue('reject_redrive') as queue:
+                queue.put({'Hello': 'World'})
+                queue.get(timeout=5).reject(requeue=False)
+                time.sleep(2)  # longer than the visibility timeout
+                # Left in the queue, so SQS can move it to the dead-letter
+                # queue once it has been received maxReceiveCount times.
+                message = queue.get(timeout=5)
+                assert message.payload == {'Hello': 'World'}
+                message.ack()
+        finally:
+            client.delete_queue(QueueUrl=queue_url)
+            client.delete_queue(QueueUrl=dlq_url)
+
+
+@pytest.mark.env('sqs')
 class test_SQSDelaySeconds:
     """Per-message delay reaches SQS from both spellings, coerced and clamped."""
 
