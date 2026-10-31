@@ -20,8 +20,8 @@ def _rcb(obj):
         return obj
     if isinstance(obj, tuple):
         cb, args = obj
-        return reprcall(cb.__name__, args=args)
-    return obj.__name__
+        return reprcall(getattr(cb, '__name__', repr(cb)), args=args)
+    return getattr(obj, '__name__', repr(obj))
 
 
 def repr_active(h):

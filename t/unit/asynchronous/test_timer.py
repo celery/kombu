@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from functools import partial
 from unittest.mock import Mock, patch
 
 import pytest
@@ -36,6 +37,10 @@ class test_Entry:
     def test_repr(self):
         tref = Entry(lambda x: x(1,), {})
         assert repr(tref)
+
+    def test_repr_without_name(self):
+        tref = Entry(partial(print, 1))
+        assert 'partial' in repr(tref)
 
     def test_hash(self):
         assert hash(Entry(lambda: None))
