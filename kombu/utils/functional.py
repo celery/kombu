@@ -281,7 +281,7 @@ def fxrangemax(start=1.0, stop=None, step=1.0, max=100.0):
 
 def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                     max_retries=None, interval_start=2, interval_step=2,
-                    interval_max=30, callback=None, timeout=None):
+                    interval_max=30, callback=None, timeout=None, deadline=None):
     """Retry the function over and over until max retries is exceeded.
 
     For each retry we sleep a for a while before we try again, this interval
@@ -327,9 +327,16 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     )
     end = time() + timeout if timeout else None
     for retries in count():
+        if deadline is not None:
+            deadline.check()
         try:
-            return fun(*args, **kwargs)
+            result = fun(*args, **kwargs)
+            if deadline is not None:
+                deadline.check()
+            return result
         except catch as exc:
+            if deadline is not None:
+                deadline.check()
             if max_retries is not None and retries >= max_retries:
                 raise
             if end and time() > end:
@@ -346,9 +353,14 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                 for _ in range(int(tts)):
                     if callback:
                         callback()
-                    sleep(1.0)
+                    sleep(deadline.remaining(1.0) if deadline else 1.0)
+                    if deadline is not None:
+                        deadline.check()
                 # sleep remainder after int truncation above.
-                sleep(abs(int(tts) - tts))
+                remainder = abs(int(tts) - tts)
+                sleep(deadline.remaining(remainder) if deadline else remainder)
+                if deadline is not None:
+                    deadline.check()
 
 
 def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):

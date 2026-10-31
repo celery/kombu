@@ -28,6 +28,7 @@ from .transport import get_transport_cls, supports_librabbitmq
 from .utils.collections import HashedSeq
 from .utils.functional import dictfilter, lazy, retry_over_time, shufflecycle
 from .utils.objects import cached_property
+from .utils.time import current_publication_deadline
 from .utils.url import as_url, maybe_sanitize_url, parse_url, quote, urlparse
 
 if TYPE_CHECKING:
@@ -419,8 +420,13 @@ class Connection:
 
     def _close(self):
         """Really close connection, even if part of a connection pool."""
-        self._do_close_self()
-        self._do_close_transport()
+        if (current_publication_deadline() is not None and
+                getattr(self._transport, 'having_deadline', None) is not None):
+            # Pool cleanup may outlive the transport's deadline context.
+            self.collect()
+        else:
+            self._do_close_self()
+            self._do_close_transport()
         self._debug('closed')
         self._closed = True
 
@@ -518,21 +524,47 @@ class Connection:
         ctx = self._reraise_as_library_errors
         if not reraise_as_library_errors:
             ctx = self._dummy_context
+        retry_options = {'timeout': timeout}
+        deadline = current_publication_deadline()
+        if deadline is not None:
+            retry_options['deadline'] = deadline
         with ctx():
             return retry_over_time(
                 self._connection_factory, self.recoverable_connection_errors,
                 (), {}, on_error, max_retries,
                 interval_start, interval_step, interval_max,
-                callback, timeout=timeout
+                callback, **retry_options
             )
+
+    @contextmanager
+    def _publication_timeout(self):
+        deadline = current_publication_deadline()
+        if deadline is None:
+            yield
+            return
+        deadline.check()
+        bridge = getattr(self.transport, 'having_deadline', None)
+        if bridge is None:
+            exc = NotImplementedError(
+                'publication_timeout is supported only by pyamqp')
+            exc.connection_usable = True
+            raise exc
+        with bridge(deadline.expires):
+            yield
 
     @contextmanager
     def _reraise_as_library_errors(
             self,
             ConnectionError=exceptions.OperationalError,
             ChannelError=exceptions.OperationalError):
+        operation_errors = (
+            getattr(self.transport, 'operation_timeout_errors', ())
+            if current_publication_deadline() is not None else ())
         try:
             yield
+        except operation_errors as exc:
+            raise exceptions.PublicationTimeout(
+                str(exc), connection_usable=exc.connection_usable) from exc
         except (ConnectionError, ChannelError):
             raise
         except self.recoverable_connection_errors as exc:
@@ -575,9 +607,11 @@ class Connection:
                 use it.  A :class:`~kombu.Producer` is a common example,
                 but any object that implements this contract is accepted.
                 ``revive`` is not called on every retry: channel errors
-                and errors in ``retry_errors`` are retried without this
+                with a usable connection and errors in ``retry_errors``
+                are retried without this
                 reconnection sequence, and an exhausted retry limit may
-                raise before revival.
+                raise before revival. A channel error marked
+                ``connection_usable=False`` requires connection recovery.
             fun (Callable): Operation to retry.  Typically a method on
                 ``obj``, but any callable is accepted; it does not have
                 to be a bound method.
@@ -626,16 +660,39 @@ class Connection:
             has_modern_errors = hasattr(
                 self.transport, 'recoverable_connection_errors',
             )
+            deadline = current_publication_deadline()
+            operation_errors = (getattr(self.transport, 'operation_timeout_errors', ())
+                                if deadline is not None else ())
             with self._reraise_as_library_errors():
                 for retries in count(0):  # for infinity
+                    if deadline is not None:
+                        deadline.check()
                     try:
                         return fun(*args, **kwargs)
+                    except exceptions.PublicationTimeout:
+                        raise
+                    except operation_errors as exc:
+                        raise exceptions.PublicationTimeout(
+                            str(exc), connection_usable=exc.connection_usable) from exc
                     except retry_errors as exc:
+                        if deadline is not None:
+                            deadline.check()
                         if max_retries is not None and retries >= max_retries:
                             raise
                         self._debug('ensure retry policy error: %r',
                                     exc, exc_info=1)
-                    except conn_errors as exc:
+                    except conn_errors + chan_errors as exc:
+                        if deadline is not None:
+                            deadline.check()
+                        if (isinstance(exc, chan_errors) and
+                                not isinstance(exc, conn_errors) and
+                                getattr(exc, 'connection_usable', True)):
+                            if max_retries is not None and retries >= max_retries:
+                                raise
+                            self._debug('ensure channel error: %r',
+                                        exc, exc_info=1)
+                            errback and errback(exc, 0)
+                            continue
                         self.maybe_switch_next()  # select next host
                         if got_connection and not has_modern_errors:
                             # transport can not distinguish between
@@ -663,12 +720,6 @@ class Connection:
                         if on_revive:
                             on_revive(channel)
                         got_connection += 1
-                    except chan_errors as exc:
-                        if max_retries is not None and retries >= max_retries:
-                            raise
-                        self._debug('ensure channel error: %r',
-                                    exc, exc_info=1)
-                        errback and errback(exc, 0)
         _ensured.__name__ = f'{fun.__name__}(ensured)'
         _ensured.__doc__ = fun.__doc__
         _ensured.__module__ = fun.__module__
@@ -953,7 +1004,8 @@ class Connection:
 
     def _establish_connection(self):
         self._debug('establishing connection...')
-        conn = self.transport.establish_connection()
+        with self._publication_timeout():
+            conn = self.transport.establish_connection()
         self._debug('connection established: %r', self)
         return conn
 
@@ -1146,7 +1198,8 @@ class PooledConnection(Connection):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if exc_type is not None and self._pool.limit:
+        if (exc_type is not None and self._pool.limit and
+                not getattr(exc_val, 'connection_usable', False)):
             self._pool.replace(self)
         return super().__exit__(exc_type, exc_val, exc_tb)
 
