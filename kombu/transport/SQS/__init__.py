@@ -138,6 +138,20 @@ automatically change the message visibility timeout, in order to have
 different times between specific task retries. This would apply after
 task failure.
 
+A message rejected without requeue is deleted from SQS, as it would
+otherwise be redelivered once its visibility timeout expires. It is left in
+the queue in these cases:
+
+* Its task is listed in backoff_tasks, so the backoff policy can retry it.
+* The queue has a redrive policy. SQS redelivers the message until it has
+  been received maxReceiveCount times, and then moves it to the dead-letter
+  queue. The policy is read with GetQueueAttributes and the answer is
+  reused for 5 minutes, so a dead-letter queue added to a live queue
+  applies within that time without reconnecting. If that call fails, the
+  message is left in the queue.
+* DeleteMessage fails, for example because the receipt handle has expired.
+  The error is logged, and SQS redelivers the message.
+
 AWS STS authentication is supported, by using sts_role_arn, and
 sts_token_timeout. sts_role_arn is the assumed IAM role ARN we are trying
 to access with. sts_token_timeout is the token timeout, defaults (and minimum)
@@ -237,6 +251,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
 from queue import Empty
+from time import monotonic
 from typing import Any, Literal
 
 from botocore.client import BaseClient, Config
@@ -311,6 +326,15 @@ class QoS(virtual.QoS):
         backoff_policy = queue_config.get('backoff_policy')
         return routing_key, message, backoff_tasks, backoff_policy
 
+    def is_backoff_task(self, delivery_tag):
+        """Return True if a backoff policy retries this delivery's task."""
+        routing_key, message, backoff_tasks, backoff_policy = \
+            self._extract_backoff_policy_configuration_and_message(
+                delivery_tag)
+        if not (routing_key and message and backoff_tasks and backoff_policy):
+            return False
+        return (message.headers or {}).get('task') in backoff_tasks
+
     def apply_backoff_policy(self, routing_key, delivery_tag,
                              backoff_policy, backoff_tasks):
         queue_url = self.channel._queue_cache[routing_key]
@@ -351,6 +375,10 @@ class Channel(virtual.Channel):
         retries={'total_max_attempts': 1},
     )
     domain_format = 'kombu%(vhost)s'
+    #: Seconds a queue's redrive policy is reused before it is read again.
+    #: Deleting a rejected message can't be undone, so a dead-letter queue
+    #: added while workers run must be noticed without a reconnect.
+    redrive_policy_cache_ttl = 300
     _asynsqs = None
     _sqs = None
     _fanout = None
@@ -971,6 +999,71 @@ class Channel(virtual.Channel):
             else:
                 super().basic_ack(delivery_tag)
 
+    def basic_reject(self, delivery_tag, requeue=False):
+        try:
+            if not requeue and not self.qos.is_backoff_task(delivery_tag):
+                # A message rejected without requeue is discarded. Unless it
+                # is deleted, SQS redelivers it once its visibility timeout
+                # expires, so it would be received again and again forever.
+                # Tasks with a backoff policy are left in the queue, as that
+                # policy relies on SQS redelivering them.
+                self._delete_rejected_message(delivery_tag)
+        finally:
+            super().basic_reject(delivery_tag, requeue=requeue)
+
+    def _delete_rejected_message(self, delivery_tag):
+        try:
+            message = self.qos.get(delivery_tag).delivery_info
+            sqs_message = message['sqs_message']
+            queue_url = message['sqs_queue']
+        except KeyError:
+            return
+        queue = None
+        if 'routing_key' in message:
+            queue = self.canonical_queue_name(message['routing_key'])
+        if self._has_redrive_policy(queue, queue_url):
+            # SQS moves the message to the dead-letter queue once it has been
+            # received maxReceiveCount times, so it must not be deleted.
+            return
+        try:
+            self.sqs(queue=queue).delete_message(
+                QueueUrl=queue_url,
+                ReceiptHandle=sqs_message['ReceiptHandle']
+            )
+        except ClientError as exception:
+            # The message is not deleted, so SQS redelivers it once its
+            # visibility timeout expires. Raising would stop the worker, as
+            # the caller only handles the transport's connection errors.
+            logger.warning(
+                'Could not delete rejected message from %s: %s',
+                queue_url, exception,
+            )
+
+    def _has_redrive_policy(self, queue, queue_url):
+        now = monotonic()
+        cached = self._redrive_policies.get(queue_url)
+        if cached is not None:
+            has_policy, read_at = cached
+            if now - read_at < self.redrive_policy_cache_ttl:
+                return has_policy
+        try:
+            resp = self.sqs(queue=queue).get_queue_attributes(
+                QueueUrl=queue_url,
+                AttributeNames=['RedrivePolicy'],
+            )
+        except ClientError as exception:
+            logger.warning(
+                'Could not read the redrive policy of %s, so rejected '
+                'messages are left in the queue: %s', queue_url, exception,
+            )
+            if exception.response['Error']['Code'] == 'AccessDenied':
+                # Asking again right away would be denied again.
+                self._redrive_policies[queue_url] = (True, now)
+            return True
+        has_policy = 'RedrivePolicy' in resp.get('Attributes', {})
+        self._redrive_policies[queue_url] = (has_policy, now)
+        return has_policy
+
     def _size(self, queue):
         """Return the number of messages in a queue."""
         q_url = self._new_queue(queue)
@@ -1259,6 +1352,10 @@ class Channel(virtual.Channel):
     @property
     def _queue_cache(self):
         return self.connection._queue_cache
+
+    @property
+    def _redrive_policies(self):
+        return self.connection._redrive_policies
 
     @property
     def _noack_queues(self):
@@ -1663,6 +1760,9 @@ class Transport(virtual.Transport):
         # Scoped to this Connection: its channels share them, but another
         # Connection (different region, account or credentials) must not.
         self._queue_cache = {}  # SQS queue name => SQS queue URL
+        # SQS queue URL => (whether the queue has a redrive policy,
+        # monotonic time it was read)
+        self._redrive_policies = {}
         self._noack_queues = set()
         self._predefined_queue_clients = {}  # A client for each predefined queue
         self._predefined_queue_async_clients = {}
