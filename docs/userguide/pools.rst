@@ -124,9 +124,16 @@ Pool limits
 
 By default every connection instance has a limit of 10 connections.
 You can change this limit using :func:`kombu.pools.set_limit`.
-You are able to grow the pool at runtime, but you can't shrink it,
-so it is best to set the limit as early as possible after your application
-starts:
+You can grow pools at runtime, or shrink them when no resources are in use.
+Shrinking a pool with acquired resources raises :exc:`RuntimeError` by default.
+If resizing fails, the global limit is unchanged, so you can release the
+resources and retry with the same limit. Pools resized before the failure
+are not rolled back.
+
+Passing ``force=True`` allows shrinking pools in use by closing their resources,
+including acquired connections. Use this with care. Passing ``ignore_errors=True``
+bypasses the in-use shrink check without closing acquired resources.
+It is best to set the limit as early as possible after your application starts:
 
 .. code-block:: pycon
 
