@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 from amqp import RecoverableConnectionError
 
-from kombu import common
+from kombu import Exchange, common
 from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
                           declaration_cached, generate_oid, ignore_errors,
                           maybe_declare, send_reply)
@@ -298,6 +298,21 @@ class test_maybe_declare:
         # Then: the RecoverableConnectionError should be raised
         with pytest.raises(RecoverableConnectionError):
             maybe_declare(entity, channel, retry=True)
+
+    def test_with_retry_entity_bound_to_closed_channel(self):
+        # Given: An exchange bound to a channel that has since been closed
+        old_channel = self._get_mock_channel()
+        exchange = Exchange('foo', 'direct')(old_channel)
+        old_channel.connection = None
+        # Given: A live channel (e.g. opened by a reconnect)
+        channel = self._get_mock_channel()
+        channel.connection.client.ensure = lambda obj, fun, **policy: fun
+        # When: calling maybe_declare with retry on the live channel
+        assert maybe_declare(exchange, channel, retry=True)
+        # Then: the exchange was declared on the live channel
+        channel.exchange_declare.assert_called_once()
+        old_channel.exchange_declare.assert_not_called()
+        assert exchange.channel is channel
 
 
 class test_replies:
