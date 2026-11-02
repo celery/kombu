@@ -213,7 +213,10 @@ class Channel(virtual.Channel):
         try:
             self.session.commit()
         except OperationalError:
+            # Re-raise so the purge fails instead of reporting messages as
+            # purged that are still in the queue.
             self.session.rollback()
+            raise
         return count
 
     def _size(self, queue):
