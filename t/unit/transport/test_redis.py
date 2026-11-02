@@ -126,10 +126,15 @@ class Client:
             (mapping,) = args
             for item in mapping:
                 self.sets[key].add(item)
+        elif len(args) == 1:
+            self.sets[key].update(args[0])
         else:
             # TODO: remove me when we drop support for Redis-py v2
             (score1, member1) = args
             self.sets[key].add(member1)
+
+    def register_script(self, script):
+        return lambda keys=(), args=(), client=None: 0
 
     def smembers(self, key):
         return self.sets.get(key, set())
@@ -994,12 +999,115 @@ class test_Channel:
         client.rpush.assert_any_call('george', spl2)
         client.rpush.assert_any_call('elaine', spl2)
 
-        client.rpush.side_effect = KeyError()
+        client.rpush.side_effect = ValueError()
         with patch('kombu.transport.redis.crit') as crit:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
             )
             crit.assert_called()
+
+    def test_do_restore_message_connection_error_propagates(self):
+        # A connection error while looking up the bindings must reach the
+        # restore transaction, so it aborts instead of deleting the message.
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._do_restore_message(
+                    {'body': 'BODY', 'headers': {}}, 'ex', 'rkey', pipe,
+                )
+        crit.assert_not_called()
+        pipe.rpush.assert_not_called()
+        pipe.lpush.assert_not_called()
+
+    def test_do_restore_message_other_error_logged_with_payload(self):
+        payload = {'body': 'BODY', 'headers': {}}
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=ValueError('bad binding'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            self.channel._do_restore_message(payload, 'ex', 'rkey', pipe)
+        crit.assert_called_once_with(
+            'Could not restore message: %r', payload, exc_info=True,
+        )
+        pipe.rpush.assert_not_called()
+
+    def _stored_unacked_transaction(self, stored):
+        # Like redis-py's ``Redis.transaction``: the queued commands are only
+        # sent (EXEC) when the callable returns without raising.
+        def transaction(func, *watches):
+            queued = []
+            pipe = Mock(name='pipe')
+
+            def queue(command):
+                queued.append(command)
+                return pipe
+
+            pipe.hget.side_effect = lambda key, tag: stored[key].get(tag)
+            pipe.hdel.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.zrem.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.rpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).append(value))
+            pipe.lpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).insert(0, value))
+            func(pipe)
+            for command in queued:
+                command()
+        return transaction
+
+    def _stored_unacked_message(self, tag):
+        message = [{'body': 'BODY', 'headers': {}, 'properties': {
+            'delivery_info': {}}}, 'ex', 'rkey']
+        stored = {
+            self.channel.unacked_key: {tag: dumps(message)},
+            self.channel.unacked_index_key: {tag: 1.0},
+        }
+        client = self.channel._create_client = Mock(name='client')
+        client.return_value.transaction.side_effect = (
+            self._stored_unacked_transaction(stored))
+        return stored, dumps(message)
+
+    def test_restore_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        message = Mock(name='message', delivery_tag='tag1')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._restore(message)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+
+    def test_restore_by_tag_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel.qos.restore_by_tag('tag1', leftmost=True)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+        assert stored[self.channel.unacked_index_key] == {'tag1': 1.0}
+
+    def test_restore_by_tag_requeues_when_lookup_succeeds(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        self.channel._lookup = Mock(name='_lookup', return_value=['work'])
+        self.channel.qos.restore_by_tag('tag1')
+        assert stored[self.channel.unacked_key] == {}
+        assert stored[self.channel.unacked_index_key] == {}
+        requeued = loads(stored[self.channel._q_for_pri('work', 0)][0])
+        assert requeued['body'] == 'BODY'
+        assert requeued['headers']['redelivered'] is True
 
     def test_do_restore_message_celery(self):
         # Payload value from real Celery project
@@ -1548,8 +1656,11 @@ class test_Channel:
         delete.assert_has_calls([
             call(x._q_for_pri('queue', pri)) for pri in redis.PRIORITY_STEPS
         ])
-        srem.assert_called_with(x.keyprefix_queue % ('exchange',),
-                                x.sep.join(['routing_key', '', 'queue']))
+        member = x.sep.join(['routing_key', '', 'queue'])
+        srem.assert_has_calls([
+            call(x.keyprefix_queue % ('exchange',), member),
+            call(x.keyprefix_binding_permanent % ('exchange',), member),
+        ])
 
     def test_has_queue(self):
         self.channel._create_client = Mock()
@@ -1939,11 +2050,13 @@ class test_Channel:
         conn = Mock(name='conn')
         conn.client = Mock(name='client', transport_options={})
         loop = Mock(name='loop')
-        tref1, tref2, tref3, tref4 = (Mock(name='tref_restore'),
-                                      Mock(name='tref_health'),
-                                      Mock(name='tref_brpop_health'),
-                                      Mock(name='tref_reauth'))
-        loop.call_repeatedly.side_effect = [tref1, tref2, tref3, tref4]
+        tref1, tref2, tref3, tref4, tref5 = (
+            Mock(name='tref_restore'),
+            Mock(name='tref_health'),
+            Mock(name='tref_brpop_health'),
+            Mock(name='tref_reauth'),
+            Mock(name='tref_binding_expiry'))
+        loop.call_repeatedly.side_effect = [tref1, tref2, tref3, tref4, tref5]
 
         redis.Transport.register_with_event_loop(transport, conn, loop)
 
@@ -1951,6 +2064,7 @@ class test_Channel:
         assert transport.cycle._subclient_health_tref is tref2
         assert transport.cycle._brpop_health_tref is tref3
         assert transport.cycle._reauth_tref is tref4
+        assert transport.cycle._binding_expiry_tref is tref5
 
     def test_register_with_event_loop_cancels_stale_trefs_on_reconnect(self):
         """Stale timer entries from a previous connection must be cancelled.
@@ -1970,10 +2084,12 @@ class test_Channel:
         old_health_tref = Mock(name='old_health_tref')
         old_brpop_health_tref = Mock(name='old_brpop_health_tref')
         old_reauth_tref = Mock(name='old_reauth_tref')
+        old_binding_expiry_tref = Mock(name='old_binding_expiry_tref')
         transport.cycle._restore_messages_tref = old_restore_tref
         transport.cycle._subclient_health_tref = old_health_tref
         transport.cycle._brpop_health_tref = old_brpop_health_tref
         transport.cycle._reauth_tref = old_reauth_tref
+        transport.cycle._binding_expiry_tref = old_binding_expiry_tref
 
         redis.Transport.register_with_event_loop(transport, conn, loop)
 
@@ -1981,6 +2097,7 @@ class test_Channel:
         old_health_tref.cancel.assert_called_once()
         old_brpop_health_tref.cancel.assert_called_once()
         old_reauth_tref.cancel.assert_called_once()
+        old_binding_expiry_tref.cancel.assert_called_once()
 
     def test_transport_on_readable(self):
         transport = self.connection.transport
@@ -2117,7 +2234,7 @@ class test_Channel:
                 dumps(body)
             )
 
-    @patch("redis.StrictRedis.execute_command")
+    @patch("redis.client.Pipeline.execute_command")
     def test_global_keyprefix_queue_bind(self, mock_execute_command):
         from kombu.transport.redis import PrefixedStrictRedis
 
@@ -2129,11 +2246,12 @@ class test_Channel:
             channel._create_client.return_value = client
 
             channel._queue_bind('default', '', None, 'queue')
-            mock_execute_command.assert_called_with(
-                'SADD',
-                'foo__kombu.binding.default',
-                '\x06\x16\x06\x16queue'
-            )
+            assert [c.args for c in mock_execute_command.mock_calls] == [
+                ('SADD', 'foo__kombu.binding.default',
+                 '\x06\x16\x06\x16queue'),
+                ('SADD', 'foo__kombu.binding_permanent.default',
+                 '\x06\x16\x06\x16queue'),
+            ]
 
     @patch("redis.client.PubSub.execute_command")
     def test_global_keyprefix_pubsub(self, mock_execute_command):
@@ -2281,6 +2399,199 @@ class test_Channel:
             actual_calls = pipeline_mock.method_calls
             for expected_call in expected_calls:
                 assert expected_call in actual_calls
+
+    def test_queue_bind_raises_deadline_of_expiring_queue(self):
+        channel = self.channel
+        channel._expires = {'q': 2_000_000}
+        channel.global_keyprefix = 'foo_'
+        client, _ = self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
+
+        channel._queue_bind('ex', 'rk', None, 'q')
+
+        # The client prefixes only the first key of a script call.
+        channel._refresh_binding.assert_called_once_with(
+            keys=['_kombu.binding.ex', 'foo__kombu.binding_deadlines'],
+            args=[channel.sep.join(['rk', '', 'q']), 'ex', 4_000_000],
+            client=client)
+
+    def test_queue_bind_without_expires_marks_the_table_permanent(self):
+        channel = self.channel
+        _, pipeline = self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
+
+        channel._queue_bind('ex', 'rk', None, 'q')
+
+        member = channel.sep.join(['rk', '', 'q'])
+        pipeline.sadd.assert_has_calls([
+            call('_kombu.binding.ex', member),
+            call('_kombu.binding_permanent.ex', member),
+        ])
+        pipeline.zadd.assert_not_called()
+        pipeline.execute.assert_called_once_with()
+        channel._refresh_binding.assert_not_called()
+
+    def _consume_expiring(self, channel, expires=2_000_000):
+        channel.exchange_declare('ex', type='direct')
+        channel._expires = {'q': expires}
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel.sweep_bindings = Mock()
+
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
+    def test_refresh_binding_expiry_of_consumed_queue(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        _, pipeline = self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        channel._refresh_binding.assert_called_once_with(
+            keys=['_kombu.binding.ex', '_kombu.binding_deadlines'],
+            args=[channel.sep.join(['rk', '', 'q']), 'ex', 4_000_000],
+            client=pipeline)
+        pipeline.execute.assert_called_once_with()
+
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
+    def test_refresh_binding_expiry_retries_after_failure(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        _, pipeline = self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
+        pipeline.execute.side_effect = [KeyError('down'), None]
+
+        with pytest.raises(KeyError):
+            channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        assert pipeline.execute.call_count == 2
+
+    def test_refresh_binding_expiry_skips_queues_without_expires(self):
+        channel = self.channel
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel.sweep_bindings = Mock()
+        channel._refresh_binding = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+
+        channel._refresh_binding.assert_not_called()
+
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
+    def test_refresh_binding_expiry_sweeps_once_per_interval(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        self._recording_batch_client(channel)
+        channel._refresh_binding = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+        channel.maybe_refresh_binding_expiry()
+
+        channel.sweep_bindings.assert_called_once_with()
+
+    # A host that booted a second ago, like a fresh CI runner.
+    @patch('kombu.transport.redis.monotonic', new=lambda: 1.0)
+    def test_refresh_binding_expiry_refreshes_before_sweeping(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        calls = Mock()
+        channel._refresh_bindings = calls.refresh
+        channel.sweep_bindings = calls.sweep
+
+        channel.maybe_refresh_binding_expiry()
+
+        assert calls.mock_calls == [call.refresh(['q']), call.sweep()]
+
+    def test_refresh_and_sweep_repeat_after_their_intervals(self):
+        channel = self.channel
+        self._consume_expiring(channel)
+        channel._refresh_bindings = Mock()
+        clock = [1.0]
+
+        with patch('kombu.transport.redis.monotonic', lambda: clock[0]):
+            channel.maybe_refresh_binding_expiry()
+            clock[0] += redis.BINDING_SWEEP_INTERVAL
+            channel.maybe_refresh_binding_expiry()
+            clock[0] += channel._binding_ttl('q') / 1000 / 3
+            channel.maybe_refresh_binding_expiry()
+
+        assert channel.sweep_bindings.call_count == 3
+        assert channel._refresh_bindings.call_count == 2
+
+    def test_channel_without_expiring_queues_never_sweeps(self):
+        channel = self.channel
+        channel._active_queues = ['q']
+        channel.state.binding_declare('q', 'ex', 'rk', None)
+        channel.sweep_bindings = Mock()
+
+        channel.maybe_refresh_binding_expiry()
+
+        channel.sweep_bindings.assert_not_called()
+
+    def test_sweep_bindings_passes_the_key_prefixes(self):
+        channel = self.channel
+        channel.global_keyprefix = 'foo_'
+        client, _ = self._recording_batch_client(channel)
+        channel._sweep_bindings = Mock(return_value=2)
+
+        assert channel.sweep_bindings() == 2
+
+        channel._sweep_bindings.assert_called_once_with(
+            keys=['_kombu.binding_deadlines'],
+            args=['foo__kombu.binding.', 'foo__kombu.binding_permanent.', 100],
+            client=client)
+
+    @pytest.mark.parametrize('name,script', [
+        ('_refresh_binding', 'REFRESH_BINDING'),
+        ('_sweep_bindings', 'SWEEP_BINDINGS'),
+    ])
+    def test_binding_scripts_register_once(self, name, script):
+        channel = self.channel
+        channel._create_client = Mock()
+        register = channel._create_client.return_value.register_script
+
+        assert getattr(channel, name) is register.return_value
+        assert getattr(channel, name) is register.return_value
+        register.assert_called_once_with(getattr(redis, script))
+
+    def _brpop_queue(self, channel):
+        channel._active_queues = ['q']
+        channel._queue_cycle.update(['q'])
+        channel.client.connection = Mock()
+        return [channel._q_for_pri('q', pri) for pri in channel.priority_steps]
+
+    def test_brpop_start_sends_keys_and_timeout(self):
+        channel = self.channel
+        keys = self._brpop_queue(channel)
+
+        channel._brpop_start(timeout=5)
+
+        channel.client.connection.send_command.assert_called_once_with(
+            'BRPOP', *keys, 5)
+
+    def test_brpop_start_prefixes_keys(self):
+        channel = self.channel
+        keys = self._brpop_queue(channel)
+        channel.global_keyprefix = 'foo_'
+        channel.client._prefix_args = Mock(return_value=['BRPOP', 'foo_q', 1])
+
+        channel._brpop_start()
+
+        channel.client._prefix_args.assert_called_once_with(
+            ['BRPOP', *keys, channel.brpop_timeout])
+        channel.client.connection.send_command.assert_called_once_with(
+            'BRPOP', 'foo_q', 1)
+
+    @pytest.mark.parametrize('expires,ttl', [
+        (500, 3_600_000), (2_000_000, 4_000_000)])
+    def test_binding_ttl_has_a_minimum(self, expires, ttl):
+        self.channel._expires = {'q': expires}
+        assert self.channel._binding_ttl('q') == ttl
 
 
 class test_Channel_streaming_reauth:
@@ -2674,6 +2985,365 @@ class test_DisconnectRegistration:
         self.loop.remove.assert_called_once_with(old_fd)
 
 
+class test_PausedBRPOP:
+
+    def setup_method(self):
+        self.connection = Connection(transport=Transport)
+        self.channel = self.connection.default_channel
+        self.channel.queue_declare('paused-brpop')
+        self.channel.basic_consume(
+            'paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='paused-consumer',
+        )
+        self.cycle = self.connection.transport.cycle
+        self.cycle.poller = Mock()
+        self.cycle.poller.poll.return_value = []
+        self.cycle._register_BRPOP(self.channel)
+        self.client = self.channel.client
+        self.pending = self.client.connection
+        self.sock = self.pending._sock
+        self.fd = self.sock.fileno()
+        self.ident = self.channel, self.client, 'BRPOP'
+        self.read = self.channel.handlers['BRPOP'] = Mock()
+        self.qos_patch = patch.object(
+            self.channel.qos, 'can_consume', return_value=False,
+        )
+        self.can_consume = self.qos_patch.start()
+        self.channel.qos.restore_visible = Mock()
+        self.cycle.poller.reset_mock()
+
+    def teardown_method(self):
+        self.qos_patch.stop()
+        self.channel._in_poll = None
+        self.connection.close()
+
+    def bind_hub(self):
+        loop = Mock(on_tick=set())
+        with patch.object(self.channel.qos, 'restore_visible'):
+            self.connection.register_with_event_loop(loop)
+        return loop
+
+    def test_pause_preserves_pending_reply_and_connection(self):
+        registrations = self.cycle._fd_to_chan.copy()
+        sockets = self.cycle._chan_to_sock.copy()
+        commands = self.sock.data[:]
+
+        with patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.cycle._fd_to_chan == registrations
+        assert self.cycle._chan_to_sock == sockets
+        assert self.cycle._paused_brpop[self.fd] == (
+            self.channel, self.client, self.pending, self.sock,
+        )
+        assert self.channel._in_poll is self.pending
+        assert self.pending._sock is self.sock
+        assert self.sock.data == commands
+        self.read.assert_not_called()
+        disconnect.assert_not_called()
+
+    def test_pause_is_idempotent_for_stale_read_events(self):
+        self.cycle.on_readable(self.fd)
+        self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    def test_full_qos_pauses_before_polling(self, poll_method):
+        if poll_method == 'get':
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0)
+        else:
+            self.cycle.on_poll_start()
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.channel._in_poll is self.pending
+        self.read.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ('timeout', 'expected_wait'),
+        [(0, 0), (0.1, 0.1), (5, 1), (None, 1)],
+    )
+    def test_paused_only_polling_wait_is_bounded(
+        self, timeout, expected_wait,
+    ):
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep, \
+                patch.object(self.cycle, 'maybe_check_brpop_health') as health:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=timeout)
+
+        sleep.assert_called_once_with(expected_wait)
+        self.cycle.poller.poll.assert_not_called()
+        health.assert_called_once_with()
+        self.channel.qos.restore_visible.assert_called_once()
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    def test_paused_channel_keeps_polling_other_socket(self):
+        other = self.connection.channel()
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0.1)
+
+        sleep.assert_not_called()
+        self.cycle.poller.poll.assert_called_once_with(0.1)
+        assert other.client.connection._sock.fileno() in self.cycle.fds
+
+    @pytest.mark.parametrize('event', [redis.ERR, redis.READ | redis.ERR])
+    def test_stale_events_do_not_read_paused_reply(self, event):
+        self.cycle.on_readable(self.fd)
+
+        with patch.object(self.channel, '_poll_error') as poll_error:
+            self.cycle.handle_event(self.fd, event)
+
+        self.read.assert_not_called()
+        poll_error.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    @pytest.mark.parametrize('cancel_consumer', [False, True])
+    def test_credit_resumes_pending_brpop_without_sending_another(
+        self, poll_method, cancel_consumer,
+    ):
+        self.cycle.on_readable(self.fd)
+        if cancel_consumer:
+            self.channel.basic_cancel('paused-consumer')
+            assert not self.channel.active_queues
+        self.cycle.poller.reset_mock()
+        self.can_consume.return_value = True
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            if poll_method == 'get':
+                with pytest.raises(Empty):
+                    self.cycle.get(Mock(), timeout=0)
+            else:
+                self.cycle.on_poll_start()
+
+        assert self.cycle.fds[self.fd] == (self.channel, 'BRPOP')
+        assert not self.cycle._paused_brpop
+        assert self.cycle._chan_to_sock[self.ident] is self.sock
+        assert self.channel._in_poll is self.pending
+        self.cycle.poller.register.assert_called_once_with(
+            self.sock, self.cycle.eventflags,
+        )
+        start.assert_not_called()
+        self.cycle.on_readable(self.fd)
+        self.read.assert_called_once_with()
+
+    def test_hub_does_not_readd_paused_reader(self):
+        loop = self.bind_hub()
+
+        self.cycle.on_readable(self.fd)
+        for _ in range(3):
+            for callback in loop.on_tick:
+                callback()
+
+        loop.remove_reader.assert_called_once_with(self.fd)
+        loop.add_reader.assert_not_called()
+        self.read.assert_not_called()
+
+        self.can_consume.return_value = True
+        for callback in loop.on_tick:
+            callback()
+
+        loop.add_reader.assert_called_once_with(
+            self.fd, self.connection.transport.on_readable, self.fd,
+        )
+        assert self.channel._in_poll is self.pending
+
+    def test_pause_preserves_other_channel_and_listen(self):
+        other = self.connection.channel()
+        other.qos.can_consume = Mock(return_value=True)
+        self.cycle._register(other, other.client, 'BRPOP')
+        other_fd = other.client.connection._sock.fileno()
+        self.cycle._register(
+            self.channel, self.channel.subclient, 'LISTEN',
+        )
+        listen_fd = self.channel.subclient.connection._sock.fileno()
+
+        self.cycle.on_readable(self.fd)
+
+        assert self.cycle.fds == {
+            other_fd: (other, 'BRPOP'),
+            listen_fd: (self.channel, 'LISTEN'),
+        }
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    @pytest.mark.parametrize('reuse_fd', [False, True])
+    def test_disconnect_clears_pause_before_reconnect(
+        self, use_hub, reuse_fd,
+    ):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        assert self.channel._in_poll is None
+
+        replacement = Client._sconnection._socket()
+        if reuse_fd:
+            replacement._fileno = self.fd
+        self.pending._sock = replacement
+        self.can_consume.return_value = True
+        self.cycle.on_poll_start()
+
+        assert self.cycle.fds == {
+            replacement.fileno(): (self.channel, 'BRPOP'),
+        }
+        assert self.cycle._chan_to_sock[self.ident] is replacement
+        assert self.channel._in_poll is self.pending
+        assert len(replacement.data) == 1
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    def test_late_disconnect_preserves_replacement_with_same_fd(self, use_hub):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+
+    def test_poll_start_preserves_replacement_before_disconnect_callback(self):
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            self.cycle.on_poll_start()
+            self.cycle.on_readable(self.fd)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+        self.cycle.poller.register.assert_not_called()
+        start.assert_not_called()
+        self.read.assert_called_once_with()
+
+    @pytest.mark.parametrize('operation', ['discard', 'disconnect'])
+    def test_removing_paused_channel_preserves_another(self, operation):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other.queue_declare('other-paused-brpop')
+        other.basic_consume(
+            'other-paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='other-paused-consumer',
+        )
+        self.cycle._register_BRPOP(other)
+        other.qos.can_consume = Mock(return_value=False)
+        other_connection = other.client.connection
+        other_socket = other_connection._sock
+        other_fd = other_socket.fileno()
+        self.cycle.on_readable(other_fd)
+        other_pause = self.cycle._paused_brpop[other_fd]
+
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.pending._sock = None
+            self.channel._on_connection_disconnect(self.pending)
+
+        assert self.cycle._paused_brpop == {other_fd: other_pause}
+        assert self.cycle._fd_to_chan == {other_fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert not self.cycle.fds
+        assert other._in_poll is other_connection
+        assert other_connection._sock is other_socket
+
+    def test_late_disconnect_preserves_fd_reused_by_another_channel(self):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other_socket = other.client.connection._sock
+        other_socket._fileno = self.fd
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert other.client.connection._sock is other_socket
+
+    @pytest.mark.parametrize('operation', ['close', 'discard'])
+    def test_poller_removal_cannot_resume_paused_channel(self, operation):
+        self.cycle.on_readable(self.fd)
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.cycle.close()
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        self.cycle.on_poll_start()
+
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        self.cycle.poller.register.assert_not_called()
+
+    def test_channel_close_drains_pending_reply_and_removes_pause(self):
+        self.cycle.on_readable(self.fd)
+        with patch.object(self.channel, '_brpop_read',
+                          side_effect=Empty) as read:
+            self.channel.close()
+
+        read.assert_called_once_with()
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+
+    def test_health_check_preserves_readable_paused_connection(self):
+        self.cycle.on_readable(self.fd)
+        self.channel._brpop_sent_at = 0
+        with patch('kombu.transport.redis.monotonic', return_value=1000), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=True), \
+                patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.maybe_check_brpop_health()
+
+        disconnect.assert_not_called()
+        assert self.channel._in_poll is self.pending
+        assert self.fd not in self.cycle.fds
+
+
 class test_Redis:
 
     def setup_method(self):
@@ -2832,6 +3502,29 @@ class test_MultiChannelPoller:
 
     def setup_method(self):
         self.Poller = redis.MultiChannelPoller
+
+    def test_maybe_refresh_binding_expiry(self):
+        p = self.Poller()
+        chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
+        chan1.connection_errors = chan2.connection_errors = (KeyError,)
+        chan1.maybe_refresh_binding_expiry.side_effect = KeyError('down')
+        p._channels = [chan1, chan2]
+
+        p.maybe_refresh_binding_expiry()
+
+        chan2.maybe_refresh_binding_expiry.assert_called_once_with()
+
+    def test_maybe_refresh_binding_expiry_survives_redis_errors(self):
+        p = self.Poller()
+        chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
+        chan1.connection_errors = chan2.connection_errors = (KeyError,)
+        chan1.ResponseError = chan2.ResponseError = ValueError
+        chan1.maybe_refresh_binding_expiry.side_effect = ValueError('OOM')
+        p._channels = [chan1, chan2]
+
+        p.maybe_refresh_binding_expiry()
+
+        chan2.maybe_refresh_binding_expiry.assert_called_once_with()
 
     def test_on_poll_start(self):
         p = self.Poller()
@@ -3191,8 +3884,11 @@ class test_MultiChannelPoller:
 
     def test_handle_event(self):
         p = self.Poller()
+        p.poller = Mock()
         chan = Mock(name='chan')
-        p._fd_to_chan[13] = chan, 'BRPOP'
+        chan.client.connection._sock.fileno.return_value = 13
+        chan._in_poll = chan.client.connection
+        p._register(chan, chan.client, 'BRPOP')
         chan.handlers = {'BRPOP': Mock(name='BRPOP')}
 
         chan.qos.can_consume.return_value = False
@@ -3200,6 +3896,7 @@ class test_MultiChannelPoller:
         chan.handlers['BRPOP'].assert_not_called()
 
         chan.qos.can_consume.return_value = True
+        p.on_poll_start()
         p.handle_event(13, redis.READ)
         chan.handlers['BRPOP'].assert_called_with()
 
@@ -3418,6 +4115,27 @@ class test_MultiChannelPoller:
         with pytest.raises(redis.Empty):
             p.get(Mock())
 
+        p._register_BRPOP.assert_not_called()
+
+    def test_get_runs_after_read_callbacks(self):
+        p, channel = self.create_get()
+        callback = Mock()
+        p.after_read.add(callback)
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        callback.assert_called_once_with()
+        assert not p.after_read
+
+    def test_get_refreshes_binding_expiry_while_qos_disallows(self):
+        p, channel = self.create_get(queues=['a_queue'])
+        channel.qos.can_consume.return_value = False
+
+        with pytest.raises(redis.Empty):
+            p.get(Mock())
+
+        channel.maybe_refresh_binding_expiry.assert_called_once_with()
         p._register_BRPOP.assert_not_called()
 
     def test_get_listen(self):

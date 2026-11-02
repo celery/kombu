@@ -114,7 +114,7 @@ from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
 from importlib.metadata import version
 from queue import Empty
-from time import monotonic, time
+from time import monotonic, sleep, time
 
 from packaging.version import Version
 from vine import promise
@@ -166,6 +166,48 @@ SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
 #: tokens onto the long-lived BRPOP and pub/sub connections.  See
 #: :meth:`Channel.maybe_reauth` for why this is needed.
 DEFAULT_REAUTH_CHECK_INTERVAL = 10
+
+#: A binding table is swept once no consumer has refreshed it for this many
+#: times its queue's x-expires, and never under MIN_BINDING_TTL, so a consumer
+#: whose event loop stalls briefly does not lose its bindings.
+BINDING_EXPIRES_FACTOR = 2
+
+#: A binding table's lifetime in ms is never below this, so a consumer that
+#: can't run kombu for a while, such as a long task on Celery's solo pool,
+#: keeps its routing.
+MIN_BINDING_TTL = 60 * 60 * 1000
+
+#: Seconds between sweeps of overdue binding tables by each channel.
+BINDING_SWEEP_INTERVAL = 60
+
+#: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
+#: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
+#: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
+#: them.
+REFRESH_BINDING = """
+redis.call('SADD', KEYS[1], ARGV[1])
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+"""
+
+#: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
+#: has passed. ARGV[1] and ARGV[2] are the table and permanent-set keys
+#: without the exchange name. A table whose permanent set still lists a queue
+#: without x-expires is kept, and only its deadline is dropped.
+SWEEP_BINDINGS = """
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local overdue = redis.call(
+    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[3]))
+for _, exchange in ipairs(overdue) do
+    if redis.call('EXISTS', ARGV[2] .. exchange) == 0 then
+        redis.call('DEL', ARGV[1] .. exchange)
+    end
+    redis.call('ZREM', KEYS[1], exchange)
+end
+return #overdue
+"""
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -572,6 +614,8 @@ class MultiChannelPoller:
         self._fd_to_chan = {}
         # channel -> socket map
         self._chan_to_sock = {}
+        # Paused BRPOP replies retain their connection and registration.
+        self._paused_brpop = {}
         # poll implementation (epoll/kqueue/select)
         self.poller = poll()
         # one-shot callbacks called after reading from socket.
@@ -586,18 +630,70 @@ class MultiChannelPoller:
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
+        self._paused_brpop.clear()
 
     def add(self, channel):
         self._channels.add(channel)
 
     def discard(self, channel):
         self._channels.discard(channel)
+        for fd, (chan, _, _, _) in list(self._paused_brpop.items()):
+            if chan is channel:
+                self._discard_paused_brpop(fd)
 
     def _on_connection_disconnect(self, connection):
+        self._discard_paused_connection(connection)
         try:
             self.poller.unregister(connection._sock)
         except (AttributeError, TypeError, ValueError):
             pass
+
+    def _unregister_from_poll(self, fileno):
+        self.poller.unregister(fileno)
+
+    def _pause_brpop(self, channel, fileno):
+        if fileno not in self._paused_brpop:
+            connection = channel._in_poll
+            self._unregister_from_poll(fileno)
+            self._paused_brpop[fileno] = (
+                channel, channel.client, connection, connection._sock,
+            )
+
+    def _discard_paused_brpop(self, fileno):
+        channel, client, _, sock = self._paused_brpop.pop(fileno)
+        ident = channel, client, 'BRPOP'
+        # A reconnect may already have replaced this registration, possibly
+        # reusing the same fd. Never remove the new socket's registration.
+        if self._chan_to_sock.get(ident) is sock:
+            del self._chan_to_sock[ident]
+            if self._fd_to_chan.get(fileno) == (channel, 'BRPOP'):
+                del self._fd_to_chan[fileno]
+
+    def _discard_paused_connection(self, connection):
+        for fd, (_, _, conn, _) in list(self._paused_brpop.items()):
+            if conn is connection:
+                self._discard_paused_brpop(fd)
+
+    def _update_brpop_polling(self):
+        for fd, (channel, redis_client, connection, sock) in list(
+                self._paused_brpop.items()):
+            ident = channel, redis_client, 'BRPOP'
+            if (channel._in_poll is not connection or
+                    connection._sock is not sock or
+                    self._chan_to_sock.get(ident) is not sock or
+                    self._fd_to_chan.get(fd) != (channel, 'BRPOP')):
+                self._discard_paused_brpop(fd)
+            elif channel.qos.can_consume():
+                self.poller.register(sock, self.eventflags)
+                del self._paused_brpop[fd]
+
+        for fd, (channel, type) in list(self._fd_to_chan.items()):
+            if (type == 'BRPOP' and channel._in_poll and
+                    not channel.qos.can_consume()):
+                # A pending reply may contain a message already popped from
+                # Redis. Keep it intact until credit returns, but stop polling
+                # the readable socket so it cannot spin the event loop.
+                self._pause_brpop(channel, fd)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -639,6 +735,7 @@ class MultiChannelPoller:
             channel._subscribe()  # send SUBSCRIBE
 
     def on_poll_start(self):
+        self._update_brpop_polling()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
                 if channel.qos.can_consume():
@@ -671,6 +768,19 @@ class MultiChannelPoller:
                         'will retry on next cycle', exc_info=True
                     )
                     return
+
+    def maybe_refresh_binding_expiry(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_refresh_binding_expiry()
+            except channel.connection_errors:
+                logger.debug('maybe_refresh_binding_expiry: connection '
+                             'error, will retry', exc_info=True)
+            except channel.ResponseError:
+                # Such as scripts refused on a full noeviction server, where
+                # BRPOP still works, so consuming goes on.
+                logger.warning('maybe_refresh_binding_expiry: Redis error, '
+                               'will retry', exc_info=True)
 
     def maybe_check_subclient_health(self):
         for channel in self._channels:
@@ -742,6 +852,8 @@ class MultiChannelPoller:
                 return
 
     def on_readable(self, fileno):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
@@ -749,13 +861,17 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
-        elif type == 'BRPOP' and not chan._in_poll:
-            # Nothing is expected without a pending BRPOP: the server closed
-            # the idle connection. Drop it so the poll stops waking up for it;
-            # _register_BRPOP reconnects once the QoS can consume again.
-            chan.client.connection.disconnect()
+        elif type == 'BRPOP':
+            if chan._in_poll:
+                self._pause_brpop(chan, fileno)
+            else:
+                # Nothing is expected without a pending BRPOP: the server
+                # closed the idle connection. Reconnect once credit returns.
+                chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
@@ -769,14 +885,18 @@ class MultiChannelPoller:
     def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
-            for channel in self._channels:
-                if channel.active_queues:           # BRPOP mode?
-                    if channel.qos.can_consume():
-                        self._register_BRPOP(channel)
-                if channel.active_fanout_queues:    # LISTEN mode?
-                    self._register_LISTEN(channel)
+            # Without an event loop there is no timer, so refresh here,
+            # before can_consume() can skip BRPOP below.
+            self.maybe_refresh_binding_expiry()
+            self.on_poll_start()
 
-            events = self.poller.poll(timeout)
+            if self._paused_brpop and not self.fds:
+                # select() cannot wait on empty sets on Windows. Also recheck
+                # credit periodically when drain_events has no timeout.
+                sleep(min(timeout, 1) if timeout is not None else 1)
+                events = []
+            else:
+                events = self.poller.poll(timeout)
             if events:
                 for fileno, event in events:
                     ret = self.handle_event(fileno, event)
@@ -802,7 +922,8 @@ class MultiChannelPoller:
 
     @property
     def fds(self):
-        return self._fd_to_chan
+        return {fd: chan for fd, chan in self._fd_to_chan.items()
+                if fd not in self._paused_brpop}
 
 
 def _batch_publish_retry_safe(connection_kwargs):
@@ -922,6 +1043,8 @@ class Channel(virtual.Channel):
     _closing = False
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
+    keyprefix_binding_deadlines = '_kombu.binding_deadlines'
+    keyprefix_binding_permanent = '_kombu.binding_permanent.%s'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
@@ -1054,6 +1177,8 @@ class Channel(virtual.Channel):
         self._sentinel_manager = None
         self._async_sentinel_manager = None
         self._expires = {}
+        self._binding_expiry_refreshed_at = float('-inf')
+        self._bindings_swept_at = float('-inf')
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -1151,6 +1276,10 @@ class Channel(virtual.Channel):
                 (pipe.lpush if leftmost else pipe.rpush)(
                     self._q_for_pri(queue, pri), dumps(payload),
                 )
+        except self.connection_errors:
+            # Abort the transaction: it would otherwise remove the message
+            # from the unacked hash without requeueing it.
+            raise
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
 
@@ -1606,11 +1735,88 @@ class Channel(virtual.Channel):
             self._fanout_queues[queue] = (
                 exchange, routing_key.replace('#', '*'),
             )
+        key = self.keyprefix_queue % (exchange,)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire() as client:
-            client.sadd(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            if queue in self._expires:
+                self._refresh_binding(
+                    keys=[key, self._script_binding_deadlines],
+                    args=[member, exchange, self._binding_ttl(queue)],
+                    client=client)
+            else:
+                with client.pipeline() as pipe:
+                    pipe.sadd(key, member)
+                    # The sweep keeps the table while this set has members.
+                    pipe.sadd(self.keyprefix_binding_permanent % (exchange,),
+                              member)
+                    pipe.execute()
+
+    @cached_property
+    def _refresh_binding(self):
+        return self._create_client().register_script(REFRESH_BINDING)
+
+    @cached_property
+    def _sweep_bindings(self):
+        return self._create_client().register_script(SWEEP_BINDINGS)
+
+    @property
+    def _script_binding_deadlines(self):
+        # The prefixed client prefixes only the first key of an EVALSHA.
+        return self.global_keyprefix + self.keyprefix_binding_deadlines
+
+    def _binding_ttl(self, queue):
+        return max(self._expires[queue] * BINDING_EXPIRES_FACTOR,
+                   MIN_BINDING_TTL)
+
+    def sweep_bindings(self, limit=100):
+        """Delete binding tables that no consumer refreshed in time.
+
+        Returns the number of tables removed from the deadline set.
+        """
+        prefixes = [self.global_keyprefix + keyprefix % ('',) for keyprefix in
+                    (self.keyprefix_queue, self.keyprefix_binding_permanent)]
+        with self.conn_or_acquire() as client:
+            return self._sweep_bindings(
+                keys=[self.keyprefix_binding_deadlines],
+                args=[*prefixes, limit], client=client)
+
+    def maybe_refresh_binding_expiry(self):
+        """Keep the binding tables of consumed, expiring queues alive.
+
+        Also sweeps overdue tables at most every BINDING_SWEEP_INTERVAL
+        seconds, so a channel consuming an expiring queue cleans up after
+        stopped ones. A channel without one runs no script.
+        """
+        queues = [q for q in self._active_queues if q in self._expires]
+        if not queues:
+            return
+        now = monotonic()
+        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
+        # Refresh first, so a sweep never deletes this channel's own tables.
+        if now - self._binding_expiry_refreshed_at >= refresh_every:
+            self._refresh_bindings(queues)
+            self._binding_expiry_refreshed_at = now
+        if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
+            self.sweep_bindings()
+            self._bindings_swept_at = now
+
+    def _refresh_bindings(self, queues):
+        with self.conn_or_acquire() as client:
+            with client.pipeline() as pipe:
+                for queue in queues:
+                    for exchange, routing_key, args in \
+                            self.state.queue_bindings(queue):
+                        # Passing the member re-creates a wiped table.
+                        _, pattern, _ = self.typeof(exchange).prepare_bind(
+                            queue, exchange, routing_key, args)
+                        self._refresh_binding(
+                            keys=[self.keyprefix_queue % (exchange,),
+                                  self._script_binding_deadlines],
+                            args=[self.sep.join(
+                                [routing_key or '', pattern or '', queue]),
+                                exchange, self._binding_ttl(queue)],
+                            client=pipe)
+                pipe.execute()
 
     def _maybe_update_queues_expire(self, client, queue):
         """Update expiration on queue keys.
@@ -1646,11 +1852,10 @@ class Channel(virtual.Channel):
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire(client=kwargs.get('client')) as client:
-            client.srem(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            client.srem(self.keyprefix_queue % (exchange,), member)
+            client.srem(self.keyprefix_binding_permanent % (exchange,), member)
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
                     pipe = pipe.delete(self._q_for_pri(queue, pri))
@@ -1973,8 +2178,10 @@ class Transport(virtual.Transport):
         cycle_poll_start = cycle.on_poll_start
         add_reader = loop.add_reader
         on_readable = self.on_readable
+        cycle._unregister_from_poll = loop.remove_reader
 
         def _on_disconnect(connection):
+            cycle._discard_paused_connection(connection)
             # redis-py clears connection._sock before calling us. Use existing
             # registrations, without evaluating cached client/subclient properties.
             disconnected = set()
@@ -2000,7 +2207,8 @@ class Transport(virtual.Transport):
         # an extra entry in hub.timer._queue; they all fire against the
         # same cycle and can crash the event loop during reconnect.
         for attr in ('_restore_messages_tref', '_subclient_health_tref',
-                     '_brpop_health_tref', '_reauth_tref'):
+                     '_brpop_health_tref', '_reauth_tref',
+                     '_binding_expiry_tref'):
             old_tref = getattr(cycle, attr, None)
             if old_tref is not None:
                 old_tref.cancel()
@@ -2032,6 +2240,9 @@ class Transport(virtual.Transport):
         cycle._reauth_tref = loop.call_repeatedly(
             reauth_check_interval,
             cycle.maybe_reauth
+        )
+        cycle._binding_expiry_tref = loop.call_repeatedly(
+            1, cycle.maybe_refresh_binding_expiry
         )
 
     def on_readable(self, fileno):

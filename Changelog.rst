@@ -5,25 +5,67 @@
 ================
 
 
-Unreleased
-===
+.. _version-5.7.0rc1:
 
-- Fix emergency state dumps to write protocol-0 pickle data when serialization
-  succeeds. Failed virtual-transport message restoration now dumps serializable
-  message dictionaries, including bodies, properties, and headers, instead of
-  ``Message`` objects whose text representation omitted the body. Read a
-  successful dump using ``pickle.load``; only unpickle files you trust.
-  Message bodies use the transport's encoding (base64 by default for virtual
-  transports); use ``channel.message_to_python(entry)`` to reconstruct a message.
-  On Python 3, the helper's default file previously always contained the
-  ``pformat`` fallback, so consumers reading dumps as text must account for
-  the format change. Custom ``dump`` callables still receive files opened in
-  text mode. Custom ``open_file`` callbacks returning text streams,
-  including codec wrappers, retain the text fallback. Failed serialization
-  discards partial output where ``seek`` and ``truncate`` are supported;
-  otherwise it tries to append the fallback after any partial output on a
-  best-effort basis. (#2659)
-=======
+5.7.0rc1
+========
+:release-date: 18 October, 2026
+:release-by: Asif Saif Uddin
+
+
+What's Changed
+~~~~~~~~~~~~~~
+
+Redis
+-----
+
+- Forward ``disconnect()`` keyword arguments and discard closed idle
+  ``BRPOP`` connections (#2761)
+- Discard ``BRPOP`` connections whose replies are overdue (#2757)
+- Expire binding tables for expiring queues (#2732)
+
+SQLAlchemy
+----------
+
+- Use ``BIGINT`` IDs on MSSQL to prevent sequence overflow (#2728)
+- Count only pending messages when purging a queue (#2733)
+
+Fixes
+-----
+
+- Fix binary emergency state dumps (#2659)
+- Handle missing Pyro4 in ``driver_version`` and skip tests when Pyro4
+  is not installed (#2725)
+
+Packaging
+---------
+
+- Add ``py.typed`` marker for PEP 561 compliance (#2677)
+- Update the minimum ``amqp`` requirement to ``5.4.1`` (#2734)
+
+Documentation
+-------------
+
+- Fix reStructuredText markup for starred arguments and the SQS link (#2749)
+- Simplify line continuation in the py-amqp documentation (#2731)
+
+Dependencies
+------------
+
+- Update ``azure-identity`` to 1.26.0 (#2722)
+- Update ``azure-storage-queue`` to 12.18.0 (#2726)
+- Update ``azure-servicebus`` to 7.15.0 (#2751)
+- Update ``boto3`` minimum requirement to 1.43.112 (#2752, #2764)
+- Update ``google-cloud-monitoring`` to 2.32.0 (#2729)
+- Update ``google-cloud-pubsub`` to 2.42.0 (#2730)
+- Update ``protobuf`` to 7.36.2 (#2702)
+- Update ``pytest-rerunfailures`` to 16.7 (#2758)
+- Update ``tox`` to 4.64.9 (#2727, #2735)
+- Update GitHub CodeQL Action to 4.38.3 (#2750)
+- Update pre-commit hooks (#2721)
+
+
+
 .. _version-5.7.0b1:
 
 5.7.0b1
