@@ -601,7 +601,12 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
             f.write(dumps({"body": "x"}))
         broken = mock_open()
         broken.return_value.read.side_effect = OSError("read failed")
-        with patch("builtins.open", broken):
+        # The failed read leaves the moved file behind, so keep it out of
+        # the shared temp dir, where it would make the next run fail.
+        with patch("builtins.open", broken), patch(
+            "kombu.transport.filesystem.tempfile.gettempdir",
+            return_value=self.data_folder_out,
+        ):
             with pytest.raises(ChannelError) as excinfo:
                 self.channel._get("q")
         assert isinstance(excinfo.value.__cause__, OSError)
