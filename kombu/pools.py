@@ -64,13 +64,17 @@ class ProducerPool(Resource):
             try:
                 p.revive(conn)
             except BaseException:
+                p.__connection__ = None
+                p.channel = None
                 conn.release()
                 raise
         return p
 
     def release(self, resource):
-        if resource.__connection__:
-            resource.__connection__.release()
+        connection = resource.__connection__
+        resource.__connection__ = None
+        if connection:
+            connection.release()
         resource.channel = None
         super().release(resource)
 
