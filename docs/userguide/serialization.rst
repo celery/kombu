@@ -122,8 +122,8 @@ use one of the following options.
             >>> producer.publish(message, routing_key=rkey,
             ...                  serializer='pickle')
 
-Note that a `Consumer` do not need the serialization method specified.
-They can auto-detect the serialization method as the
+Note that a `Consumer` does not need the serialization method specified.
+It can auto-detect the serialization method as the
 content-type is sent as a message header.
 
 .. _sending-raw-data:
