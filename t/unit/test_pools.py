@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import ExitStack
 from unittest.mock import Mock
 
 import pytest
@@ -95,6 +96,30 @@ class test_ProducerPool:
         first = self.pool._resource.get_nowait()
         producer = first()
         assert isinstance(producer, Producer)
+
+    @pytest.mark.parametrize('limit', [1, 2])
+    @pytest.mark.parametrize('in_use', [False, True])
+    def test_resize_respects_limit(self, limit, in_use):
+        connections = Connection('memory://').Pool(limit=4)
+        pool = self.Pool(connections, limit=1)
+        with ExitStack() as stack:
+            if in_use:
+                stack.enter_context(pool.acquire())
+            pool.resize(limit)
+            for _ in range(limit - int(in_use)):
+                stack.enter_context(pool.acquire())
+            with pytest.raises(pool.LimitExceeded):
+                with pool.acquire():
+                    pass
+
+    def test_setup_preserves_available_producer(self):
+        connections = Connection('memory://').Pool(limit=2)
+        pool = self.Pool(connections, limit=1)
+        with pool.acquire() as producer:
+            pass
+        pool.setup()
+        with pool.acquire() as reused:
+            assert reused is producer
 
     def test_prepare(self):
         connection = self.connections.acquire.return_value = Mock()
