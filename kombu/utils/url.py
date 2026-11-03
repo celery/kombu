@@ -94,7 +94,11 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
             else:
                 parts.extend([':', safequote(password)])
         parts.append('@')
-    parts.append(safequote(host) if host else '')
+    if host and ':' in host:
+        # IPv6 literal: must be enclosed in brackets, not percent-encoded.
+        parts.append(host if host.startswith('[') else f'[{host}]')
+    else:
+        parts.append(safequote(host) if host else '')
     if port:
         parts.extend([':', port])
     parts.extend(['/', path])
