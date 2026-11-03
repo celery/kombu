@@ -685,6 +685,15 @@ class test_mongodb_transport(BaseMongoDBChannelCase):
          'mongodb2.example.com:27017/dbname?replicaSet=test_rs'),
         ('mongodb://mongodb1.example.com,mongodb2.example.com',
          'mongodb://mongodb1.example.com,mongodb2.example.com'),
+        ('mongodb://user:pa,ss@localhost/dbname',
+         'mongodb://user:**@localhost/dbname'),
+        ('mongodb://user:pa,ss@mongodb1.example.com:27317,'
+         'mongodb2.example.com:27017/dbname?replicaSet=test_rs',
+         'mongodb://user:**@mongodb1.example.com:27317,'
+         'mongodb2.example.com:27017/dbname?replicaSet=test_rs'),
+        ('mongodb://user:pass@localhost/dbname'
+         '?readPreferenceTags=dc:ny,rack:1',
+         'mongodb://user:**@localhost/dbname'),
     ])
     def test_as_uri(self, url, expected):
         assert _create_mock_connection(url).as_uri() == expected

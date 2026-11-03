@@ -550,8 +550,15 @@ class Transport(virtual.Transport):
         if ',' not in uri:
             return maybe_sanitize_url(uri, mask)
 
+        # Find the host list like pymongo does: it ends at the first '?' or
+        # '/' and starts after the userinfo, as passwords can contain commas.
+        scheme, sep, rest = uri.partition('://')
+        userinfo, at, hosts = (
+            rest.partition('?')[0].partition('/')[0].rpartition('@'))
+        if ',' not in hosts:
+            return maybe_sanitize_url(uri, mask)
+
         # Only the first host can carry credentials. It has no path of its
         # own, so drop the trailing slash added when sanitizing it.
-        uri1, remainder = uri.split(',', 1)
-        uri1 = maybe_sanitize_url(uri1, mask).rstrip('/')
-        return ','.join([uri1, remainder])
+        uri1 = scheme + sep + userinfo + at + hosts.split(',', 1)[0]
+        return maybe_sanitize_url(uri1, mask).rstrip('/') + uri[len(uri1):]
