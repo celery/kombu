@@ -37,6 +37,8 @@ from __future__ import annotations
 import sys
 from queue import Empty, Queue
 
+from Pyro5.compatibility import Pyro4 as pyro
+
 from kombu.exceptions import reraise
 from kombu.log import get_logger
 from kombu.utils.objects import cached_property
@@ -44,9 +46,9 @@ from kombu.utils.objects import cached_property
 from . import virtual
 
 try:
-    import Pyro4 as pyro
-    from Pyro4.errors import NamingError
-    from Pyro4.util import SerializerBase
+    import Pyro5.api as pyro
+    from Pyro5.errors import NamingError
+    from Pyro5.serializers import SerializerBase
 except ImportError:          # pragma: no cover
     pyro = NamingError = SerializerBase = None
 
