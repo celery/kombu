@@ -7,7 +7,7 @@ import tempfile
 from pathlib import PurePosixPath, PureWindowsPath
 from queue import Empty
 from typing import Generator
-from unittest.mock import call, mock_open, patch
+from unittest.mock import mock_open, patch
 
 import pytest
 
@@ -120,6 +120,52 @@ class test_FilesystemTransport(WithJanitorMixin):
                 self.c.drain_events()
 
             assert len(_received) == 10
+
+    @pytest.mark.parametrize('queue', ['test_queue', 'test.queue'])
+    @pytest.mark.parametrize('store_processed', [False, True])
+    def test_message_is_not_visible_until_write_completes(
+        self, queue, store_processed, tmp_path,
+    ):
+        producer_channel = self.p.default_channel
+        consumer_channel = self.c.default_channel
+        consumer_channel.store_processed = store_processed
+        consumer_channel.processed_folder = str(tmp_path)
+        payload = {'body': 'message'}
+
+        def consume_during_write(value):
+            with pytest.raises(Empty):
+                consumer_channel._get(queue)
+            assert consumer_channel._size(queue) == 0
+            assert consumer_channel._purge(queue) == 0
+            return dumps(value)
+
+        with patch('kombu.transport.filesystem.dumps', consume_during_write):
+            producer_channel._put(queue, payload)
+
+        assert consumer_channel._size(queue) == 1
+        assert consumer_channel._get(queue) == payload
+        assert consumer_channel._size(queue) == 0
+        assert os.listdir(self.data_folder_in) == []
+        assert len(os.listdir(tmp_path)) == int(store_processed)
+
+    def test_failed_message_write_leaves_no_message(self):
+        broken = mock_open()
+        broken.return_value.write.side_effect = OSError('write failed')
+        with patch('kombu.transport.filesystem.open', broken, create=True):
+            with pytest.raises(ChannelError) as excinfo:
+                self.p.default_channel._put('q', {'body': 'message'})
+
+        assert isinstance(excinfo.value.__cause__, OSError)
+        assert os.listdir(self.data_folder_in) == []
+
+    def test_failed_message_rename_leaves_no_message(self):
+        with patch('kombu.transport.filesystem.os.replace',
+                   side_effect=OSError('rename failed')):
+            with pytest.raises(ChannelError) as excinfo:
+                self.p.default_channel._put('q', {'body': 'message'})
+
+        assert isinstance(excinfo.value.__cause__, OSError)
+        assert os.listdir(self.data_folder_in) == []
 
     def test_produce_consume(self):
         producer_channel = self._add_channel(self.p.channel())
@@ -383,12 +429,8 @@ class test_FilesystemLock(WithJanitorMixin):
             "kombu.transport.filesystem.unlock"
         ) as unlock_m:
             producer.publish({"foo": 1})
-            assert unlock_m.call_count == 2
-            assert lock_m.call_count == 2
-            exchange_file_obj = unlock_m.call_args_list[0][0][0]
-            msg_file_obj = unlock_m.call_args_list[1][0][0]
-            assert lock_m.call_args_list == [call(exchange_file_obj, LOCK_SH),
-                                             call(msg_file_obj, LOCK_EX)]
+            assert unlock_m.call_count == 1
+            lock_m.assert_called_once_with(unlock_m.call_args[0][0], LOCK_SH)
 
 
 @t.skip.if_win32
