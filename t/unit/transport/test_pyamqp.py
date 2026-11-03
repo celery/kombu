@@ -132,6 +132,25 @@ class test_Transport:
         conn2 = self.transport.establish_connection()
         assert conn2.host == 'example.com:5672'
 
+    def test_transport_options_passed_to_amqp_connection(self):
+        # transport_options reach the underlying amqp Connection constructor
+        # (e.g. confirm_publish, which makes broker-side publish rejections
+        # raise instead of being silently dropped).
+        captured = {}
+
+        class Conn:
+
+            def __init__(self, **kwargs):
+                captured.update(kwargs)
+
+            def connect(self):
+                pass
+
+        self.transport.Connection = Conn
+        self.transport.client.transport_options = {'confirm_publish': True}
+        self.transport.establish_connection()
+        assert captured['confirm_publish'] is True
+
     def test_close_connection(self):
         connection = Mock()
         connection.client = Mock()

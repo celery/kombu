@@ -64,6 +64,7 @@ Transport Options
 from __future__ import annotations
 
 import string
+from functools import partial
 from queue import Empty
 from typing import Any
 
@@ -102,17 +103,29 @@ from . import virtual
 
 logger = get_logger(__name__)
 
-_TRANSIENT_ERRORS = tuple(
+# The connection, session or link is gone. Nothing the sender was holding can
+# still be used, and a send over it fails before the message reaches the
+# broker, so resending is safe.
+_CONNECTION_LOST_ERRORS = tuple(
     filter(
         None,
         (
             ServiceBusConnectionError,
-            ServiceBusCommunicationError,
-            OperationTimeoutError,
-            ServiceBusServerBusyError,
             AMQPConnectionError,
             AMQPSessionError,
             AMQPLinkError,
+        ),
+    )
+)
+
+_TRANSIENT_ERRORS = tuple(
+    filter(
+        None,
+        (
+            *_CONNECTION_LOST_ERRORS,
+            ServiceBusCommunicationError,
+            OperationTimeoutError,
+            ServiceBusServerBusyError,
         ),
     )
 )
@@ -231,6 +244,23 @@ class Channel(virtual.Channel):
             queue_obj = self._add_queue_to_cache(queue, sender=sender)
         return queue_obj
 
+    def _reset_cached_sender(self, queue: str) -> None:
+        """Close and drop a cached sender so the next call creates a fresh one.
+
+        A sender outlives the AMQP connection it was built on, and the broker
+        closes connections on its own schedule. Once the connection is gone
+        the sender can only ever fail, so it must be discarded rather than
+        reused.
+        """
+        obj = self._queue_cache.get(queue, None)
+        if obj is None or obj.sender is None:
+            return
+        try:
+            obj.sender.close()
+        except Exception:
+            pass
+        obj.sender = None
+
     @staticmethod
     def _receiver_cache_key(
         queue: str,
@@ -308,10 +338,16 @@ class Channel(virtual.Channel):
     def _create_auto_lock_renewer(self) -> AutoLockRenewer:
         return AutoLockRenewer(
             max_lock_renewal_duration=self.max_lock_renewal_duration,
-            on_lock_renew_failure=self._on_lock_renew_failure,
         )
 
-    def _on_lock_renew_failure(self, renewable, error):
+    def _register_message_for_renewal(self, receiver, message):
+        self.connection._renewer.register(
+            receiver,
+            message,
+            on_lock_renew_failure=partial(self._on_lock_renew_failure, receiver),
+        )
+
+    def _on_lock_renew_failure(self, receiver, renewable, error):
         if renewable._lock_expired or renewable._settled:
             return
 
@@ -326,10 +362,7 @@ class Channel(virtual.Channel):
             "Lock renewal failed (retry %d/3), re-registering: %s", retries + 1, error
         )
         try:
-            receiver = getattr(
-                renewable, "_kombu_renewal_receiver", renewable._receiver
-            )
-            self.connection._renewer.register(receiver, renewable)
+            self._register_message_for_renewal(receiver, renewable)
         except Exception:
             logger.exception("Failed to re-register for lock renewal")
 
@@ -376,8 +409,38 @@ class Channel(virtual.Channel):
         queue = self.entity_name(self.queue_name_prefix + queue)
         msg = ServiceBusMessage(dumps(message))
 
-        queue_obj = self._get_asb_sender(queue)
-        queue_obj.sender.send_messages(msg)
+        try:
+            queue_obj = self._get_asb_sender(queue)
+            queue_obj.sender.send_messages(msg)
+        except _CONNECTION_LOST_ERRORS:
+            # The broker force-closes idle connections
+            # (amqp:connection:forced). The sender we hold is bound to the
+            # connection that just went away, so publishing through it again
+            # can only fail; drop it and publish over a fresh connection.
+            # The send failed before the message was handed to the broker, so
+            # this resend cannot duplicate it. Exactly one attempt: a second
+            # failure means the namespace itself is unhealthy, and the next
+            # _put() starts over from a clean sender.
+            logger.warning(
+                "Connection lost sending to %r, reconnecting sender",
+                queue,
+                exc_info=True,
+            )
+            self._reset_cached_sender(queue)
+            self._get_asb_sender(queue).sender.send_messages(msg)
+        except _TRANSIENT_ERRORS:
+            # A timeout, a communication error or throttling leaves it unknown
+            # whether the broker accepted the message, and resending would
+            # publish a second copy of it. Drop the sender so the next publish
+            # gets a healthy one, then re-raise: at-least-once delivery and
+            # the backoff belong to the caller.
+            logger.warning(
+                "Transient error sending to %r, resetting sender",
+                queue,
+                exc_info=True,
+            )
+            self._reset_cached_sender(queue)
+            raise
 
     def _get(self, queue: str, timeout: float | int | None = None) -> dict[str, Any]:
         """Try to retrieve a single message off ``queue``."""
@@ -435,8 +498,7 @@ class Channel(virtual.Channel):
         if self.connection._renewer is None:
             self.connection._renewer = self._create_auto_lock_renewer()
         renewal_obj = self._get_renewal_receiver(queue)
-        message._kombu_renewal_receiver = renewal_obj.receiver
-        self.connection._renewer.register(renewal_obj.receiver, message)
+        self._register_message_for_renewal(renewal_obj.receiver, message)
 
     def basic_ack(self, delivery_tag: str, multiple: bool = False) -> None:
         try:

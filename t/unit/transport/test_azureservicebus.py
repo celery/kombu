@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import json
+import pickle
 import random
+import threading
 from collections import namedtuple
 from queue import Empty
 from unittest.mock import MagicMock, patch
@@ -726,20 +728,39 @@ def test_register_for_renewal_creates_renewer_and_renewal_receiver(
     # Renewer created on first call.
     mock_renewer_cls.assert_called_once_with(
         max_lock_renewal_duration=channel.max_lock_renewal_duration,
-        on_lock_renew_failure=channel._on_lock_renew_failure,
     )
     renewer = mock_renewer_cls.return_value
     assert channel.connection._renewer is renewer
 
     # Renewal receiver was created (cached as queue_a::_renewal).
     renewal_receiver = channel.queue_service.get_queue_receiver.return_value
-    assert msg_a._kombu_renewal_receiver is renewal_receiver
-    renewer.register.assert_called_once_with(renewal_receiver, msg_a)
+    renewer.register.assert_called_once()
+    assert renewer.register.call_args.args == (renewal_receiver, msg_a)
+    callback = renewer.register.call_args.kwargs["on_lock_renew_failure"]
+    assert callback.func == channel._on_lock_renew_failure
+    assert callback.args == (renewal_receiver,)
 
     # Second call reuses the same renewer.
     channel._register_for_renewal("queue_a", msg_b)
     assert mock_renewer_cls.call_count == 1
     assert renewer.register.call_count == 2
+
+
+def test_register_for_renewal_keeps_message_pickleable(mock_queue: MockQueue):
+    channel = mock_queue.channel
+    channel.connection._renewer = MagicMock()
+    renewal_receiver = threading.Lock()
+    channel._get_renewal_receiver = MagicMock(
+        return_value=azureservicebus.SendReceive(receiver=renewal_receiver)
+    )
+    message = object.__new__(azure.servicebus.ServiceBusReceivedMessage)
+    message._receiver = threading.Lock()
+    message._uamqp_message = None
+
+    channel._register_for_renewal("queue_a", message)
+
+    assert not hasattr(message, "_kombu_renewal_receiver")
+    pickle.dumps(message)
 
 
 def test_get_renewal_receiver_caches_per_queue(mock_queue: MockQueue):
@@ -840,37 +861,17 @@ def test_on_lock_renew_failure_reregisters(mock_queue: MockQueue):
     msg._lock_expired = False
     msg._settled = False
     msg._kombu_renew_retries = 0
-    msg._kombu_renewal_receiver = renewal_receiver
 
-    channel._on_lock_renew_failure(msg, Exception("transient"))
+    channel._on_lock_renew_failure(
+        renewal_receiver, msg, Exception("transient")
+    )
 
     assert msg._kombu_renew_retries == 1
     assert msg.auto_renew_error is None
-    renewer.register.assert_called_once_with(renewal_receiver, msg)
-
-
-def test_on_lock_renew_failure_falls_back_to_original_receiver(
-    mock_queue: MockQueue,
-):
-    """Falls back to renewable._receiver if _kombu_renewal_receiver unset."""
-    channel = mock_queue.channel
-    renewer = MagicMock()
-    channel.connection._renewer = renewer
-
-    msg = MagicMock(
-        spec=[
-            "_lock_expired",
-            "_settled",
-            "_receiver",
-            "auto_renew_error",
-        ]
-    )
-    msg._lock_expired = False
-    msg._settled = False
-
-    channel._on_lock_renew_failure(msg, Exception("transient"))
-
-    renewer.register.assert_called_once_with(msg._receiver, msg)
+    assert renewer.register.call_args.args == (renewal_receiver, msg)
+    callback = renewer.register.call_args.kwargs["on_lock_renew_failure"]
+    assert callback.func == channel._on_lock_renew_failure
+    assert callback.args == (renewal_receiver,)
 
 
 def test_on_lock_renew_failure_gives_up_after_max_retries(mock_queue: MockQueue):
@@ -884,7 +885,9 @@ def test_on_lock_renew_failure_gives_up_after_max_retries(mock_queue: MockQueue)
     msg._settled = False
     msg._kombu_renew_retries = 3  # already retried 3 times
 
-    channel._on_lock_renew_failure(msg, Exception("persistent"))
+    channel._on_lock_renew_failure(
+        MagicMock(name="renewal_receiver"), msg, Exception("persistent")
+    )
 
     # retries=3, >= 3 → give up without re-registering
     renewer.register.assert_not_called()
@@ -901,7 +904,9 @@ def test_on_lock_renew_failure_skips_expired_lock(mock_queue: MockQueue):
     msg._lock_expired = True
     msg._settled = False
 
-    channel._on_lock_renew_failure(msg, Exception("expired"))
+    channel._on_lock_renew_failure(
+        MagicMock(name="renewal_receiver"), msg, Exception("expired")
+    )
 
     renewer.register.assert_not_called()
 
@@ -1091,3 +1096,312 @@ def test_transient_errors_do_not_affect_transport_connection_errors():
         == VirtualTransport.connection_errors
     )
     assert azureservicebus.Transport.channel_errors == VirtualTransport.channel_errors
+
+
+def test_put_reconnects_sender_on_connection_lost(mock_queue: MockQueue):
+    """A force-closed connection must not poison the cached sender.
+
+    The broker closes idle connections with amqp:connection:forced. Sending
+    through the sender bound to that connection keeps failing forever unless
+    it is dropped, which is what leaves workers unable to recover.
+    """
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed. Error condition: "
+        "amqp:connection:forced."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+    # the message reached the broker through the replacement sender
+    assert len(asb_queue.send_calls) == 1
+
+
+def test_put_reconnects_sender_on_raw_amqp_error(mock_queue: MockQueue):
+    """The private SDK's force-close error is treated the same way."""
+    from azure.servicebus._pyamqp.error import AMQPConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = AMQPConnectionError(
+        condition=b"amqp:connection:forced", description=b"Connection was already closed."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(azureservicebus.ServiceBusConnectionError(
+            message="Connection was already closed."), id="servicebus-connection"),
+        pytest.param(azureservicebus.AMQPConnectionError(
+            condition=b"amqp:connection:forced",
+            description=b"Connection was already closed."), id="amqp-connection"),
+        pytest.param(azureservicebus.AMQPSessionError(
+            condition=b"amqp:session:forced",
+            description=b"Session was closed by the broker."), id="amqp-session"),
+        pytest.param(azureservicebus.AMQPLinkError(
+            condition=b"amqp:link:forced",
+            description=b"Link was detached by the broker."), id="amqp-link"),
+    ],
+)
+def test_put_resends_once_on_connection_lost(mock_queue: MockQueue, error):
+    """Every connection-lost error is republished exactly once.
+
+    The send failed before the broker took the message, so a second attempt
+    over a fresh sender cannot duplicate it.
+    """
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    senders = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = error
+    senders.append(dead_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    dead_sender.send_messages.assert_called_once()
+    dead_sender.close.assert_called_once()
+    assert len(senders) == 2
+    assert len(asb_queue.send_calls) == 1
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        pytest.param(azureservicebus.OperationTimeoutError(
+            message="Send operation timed out"), id="timeout"),
+        pytest.param(azureservicebus.ServiceBusCommunicationError(
+            message="Connection lost while sending"), id="communication"),
+        pytest.param(azureservicebus.ServiceBusServerBusyError(
+            message="The namespace is throttling"), id="server-busy"),
+    ],
+)
+def test_put_resets_sender_without_resending_on_ambiguous_error(
+    mock_queue: MockQueue, error
+):
+    """A send that may have reached the broker is never repeated here.
+
+    The broker may have accepted the message and only the acknowledgement got
+    lost, so resending would queue a duplicate task. The sender is still
+    dropped, so the next publish gets a healthy one, and the error goes back
+    to the caller, which owns at-least-once delivery and the backoff.
+    """
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    senders = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    slow_sender = MagicMock(name="slow_sender")
+    slow_sender.send_messages.side_effect = error
+    senders.append(slow_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=slow_sender
+    )
+
+    with pytest.raises(type(error)):
+        channel._put(mock_queue.queue_name, "first message")
+
+    slow_sender.close.assert_called_once()
+    assert channel._queue_cache[queue_name].sender is not slow_sender
+    # one send attempt, no replacement sender, nothing published
+    slow_sender.send_messages.assert_called_once()
+    assert len(senders) == 1
+    assert asb_queue.send_calls == []
+
+
+def test_put_reconnects_only_once_per_publish(mock_queue: MockQueue):
+    """A connection loss on the resend propagates instead of looping."""
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    error = azureservicebus.ServiceBusConnectionError(
+        message="Connection was already closed.")
+    senders = []
+
+    def get_sender():
+        sender = MagicMock(name=f"dead_sender_{len(senders)}")
+        sender.send_messages.side_effect = error
+        senders.append(sender)
+        return sender
+
+    asb_queue.get_sender = get_sender
+
+    with pytest.raises(azureservicebus.ServiceBusConnectionError):
+        channel._put(mock_queue.queue_name, "first message")
+
+    assert len(senders) == 2
+    assert asb_queue.send_calls == []
+
+
+def test_transient_error_split_is_complete():
+    """Every ambiguous error stays out of the resend group, and vice versa."""
+    ambiguous = {
+        azureservicebus.ServiceBusCommunicationError,
+        azureservicebus.OperationTimeoutError,
+        azureservicebus.ServiceBusServerBusyError,
+    }
+    resend = {
+        azureservicebus.ServiceBusConnectionError,
+        azureservicebus.AMQPConnectionError,
+        azureservicebus.AMQPSessionError,
+        azureservicebus.AMQPLinkError,
+    }
+
+    assert set(azureservicebus._TRANSIENT_ERRORS) == ambiguous | resend
+    assert set(azureservicebus._CONNECTION_LOST_ERRORS) == resend
+    assert not set(azureservicebus._CONNECTION_LOST_ERRORS) & ambiguous
+
+
+def test_put_reraises_non_transient_error(mock_queue: MockQueue):
+    """Only transient errors are retried; a broken serializer still raises."""
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    failing_sender = MagicMock(name="failing_sender")
+    failing_sender.send_messages.side_effect = ValueError("bad message")
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=failing_sender
+    )
+
+    with pytest.raises(ValueError):
+        channel._put(mock_queue.queue_name, "first message")
+
+    assert channel._queue_cache[queue_name].sender is failing_sender
+
+
+def test_put_survives_sender_close_failure(mock_queue: MockQueue):
+    """A sender that errors while closing must not mask the reconnect."""
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+    dead_sender.close.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    channel._put(mock_queue.queue_name, "first message")
+
+    assert channel._queue_cache[queue_name].sender is not dead_sender
+
+
+def test_reset_cached_sender_without_cached_sender(mock_queue: MockQueue):
+    """Resetting an unknown queue is a no-op, not an error."""
+    channel = mock_queue.channel
+
+    channel._reset_cached_sender("never-cached-queue")
+
+    assert "never-cached-queue" not in channel._queue_cache
+
+
+def test_put_reuses_healthy_sender(mock_queue: MockQueue):
+    """The common path must not churn senders on every publish."""
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+    asb_queue = mock_queue.asb.queues[queue_name]
+
+    created = []
+    original_get_sender = asb_queue.get_sender
+
+    def get_sender():
+        sender = original_get_sender()
+        created.append(sender)
+        return sender
+
+    asb_queue.get_sender = get_sender
+
+    channel._put(mock_queue.queue_name, "first message")
+    channel._put(mock_queue.queue_name, "second message")
+
+    assert len(created) == 1
+    assert len(asb_queue.send_calls) == 2
+
+
+def test_publish_survives_force_closed_connection(mock_queue: MockQueue):
+    """End-to-end through the producer: publish must succeed, not raise."""
+    from azure.servicebus.exceptions import ServiceBusConnectionError
+
+    channel = mock_queue.channel
+    queue_name = channel.entity_name(channel.queue_name_prefix + mock_queue.queue_name)
+
+    asb_queue = mock_queue.asb.queues[queue_name]
+    original_get_sender = asb_queue.get_sender
+    senders = []
+
+    def get_sender():
+        sender = original_get_sender()
+        senders.append(sender)
+        return sender
+
+    dead_sender = MagicMock(name="dead_sender")
+    dead_sender.send_messages.side_effect = ServiceBusConnectionError(
+        message="Connection was already closed."
+    )
+    senders.append(dead_sender)
+    asb_queue.get_sender = get_sender
+
+    channel._queue_cache[queue_name] = azureservicebus.SendReceive(
+        receiver=None, sender=dead_sender
+    )
+
+    mock_queue.producer.publish("payload after forced close")
+
+    assert len(senders) == 2
+    assert len(asb_queue.send_calls) == 1
+    assert channel._get(mock_queue.queue_name) is not None

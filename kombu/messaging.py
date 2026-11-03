@@ -320,7 +320,7 @@ class Producer:
                 for message to publish.
             confirm_timeout (float): Set confirm timeout to wait maximum timeout second
                 for message to confirm publishing if the channel is set to confirm publish mode.
-            **properties (Any): Additional message properties, see AMQP spec.
+            ``**properties`` (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
 

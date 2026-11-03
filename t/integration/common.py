@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import socket
+import sys
+import threading
 from contextlib import closing
-from time import sleep
+from time import monotonic, sleep
+from urllib.parse import urlparse
+from uuid import uuid4
 
 import pytest
 
 import kombu
+from kombu.asynchronous.hub import Hub
 
 
 class BasicFunctionality:
@@ -58,6 +63,20 @@ class BasicFunctionality:
         chan = connection.default_channel
         assert chan
         assert connection.connection
+
+    def test_autoretry_default_channel(self, connection):
+        calls = []
+
+        def operation(value, channel):
+            calls.append(channel)
+            return value
+
+        with connection as conn:
+            result, channel = conn.autoretry(operation, max_retries=0)('result')
+            assert result == 'result'
+            assert channel is conn.default_channel
+            assert calls == [channel]
+            assert conn.connected
 
     def test_publish_consume(self, connection):
         test_queue = kombu.Queue('test', routing_key='test')
@@ -528,6 +547,54 @@ class BaseMessage:
                 message2.ack()
 
 
+class BaseEventLoop:
+
+    def test_ack_from_another_thread(self, connection):
+        name = f'test_ack_from_another_thread_{uuid4().hex}'
+        test_queue = kombu.Queue(name, routing_key=name)
+        acked = []
+        hub = Hub()
+
+        def ack(message):
+            message.ack()
+            acked.append(message.payload)
+
+        def callback(body, message):
+            threading.Timer(0.1, hub.call_soon, (ack, message)).start()
+
+        with connection as conn:
+            with conn.channel() as channel:
+                producer = kombu.Producer(channel)
+                for body in range(2):
+                    producer.publish(
+                        body,
+                        exchange=test_queue.exchange,
+                        routing_key=test_queue.routing_key,
+                        declare=[test_queue],
+                    )
+            consumer = kombu.Consumer(
+                conn, [test_queue], callbacks=[callback], prefetch_count=1
+            )
+            with consumer:
+                try:
+                    conn.register_with_event_loop(hub)
+                    deadline = monotonic() + 1
+                    while len(acked) < 2 and monotonic() < deadline:
+                        hub.run_once()
+                    assert acked == [0, 1]
+                finally:
+                    hub.close()
+                    test_queue(consumer.channel).delete()
+
+
+#: Scheme of an alternate URL that must never be resolved as a transport.
+#: ``resolve_transport()`` hands any name containing ``.`` or ``:`` straight
+#: to ``symbol_by_name()``, which imports it from ``sys.path``, so the name
+#: below is deliberately importable-looking and deliberately absent from
+#: ``sys.modules`` (Issue #2641).
+BAIT_TRANSPORT = 'tbait2641.evil'
+
+
 class BaseFailover(BasicFunctionality):
 
     def test_connect(self, failover_connection):
@@ -543,3 +610,84 @@ class BaseFailover(BasicFunctionality):
         super().test_simple_buffer_publish_consume(
             failover_connection
         )
+
+    def test_failover_switches_to_alternate_url(self, failover_connection):
+        """Connecting past a dead first URL must land on the alternate.
+
+        The alternate does not go through ``Connection.__init__``: it is
+        re-parsed by ``switch()``, which takes ``transport_cls`` straight
+        from the URL scheme.  This is the only integration path where a
+        URL-derived transport name is resolved after construction, so it
+        needs to keep working now that the name is validated there.
+        """
+        conn = failover_connection
+        assert len(conn.alt) > 1, 'fixture must supply an alternate URL'
+        dead, live = urlparse(conn.alt[0]), urlparse(conn.alt[-1])
+        assert dead.port != live.port, 'first URL must be the dead one'
+        assert conn.port == dead.port
+
+        assert conn.connect()
+        assert conn.connected
+        # failover happened: the dead URL was abandoned for the alternate
+        assert conn.port == live.port
+        # ...and the alternate's scheme survived the URL-derived check
+        assert conn.transport_cls == live.scheme
+        conn.close()
+
+    def test_failover_rejects_dotted_alternate(self, failover_connection):
+        """An alternate that names an import path must never reach switch().
+
+        Only ``alt[0]`` is checked by the branches in ``__init__``; every
+        other alternate is handed to ``switch()`` on the first failover.
+        Such a URL has to be rejected up front, so that a broker outage --
+        and not the URL author -- can never decide which module is
+        imported.
+        """
+        live_url = failover_connection.alt[-1]
+        alternates = [
+            f'{BAIT_TRANSPORT}://localhost',
+            f'{BAIT_TRANSPORT}+amqp://localhost',
+        ]
+        for alternate in alternates:
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection(f'{live_url};{alternate}')
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection([live_url, alternate])
+            with pytest.raises(ValueError, match='Invalid transport scheme'):
+                kombu.Connection(live_url, alternates=[alternate])
+        assert BAIT_TRANSPORT.split('.')[0] not in sys.modules
+
+    def test_failover_to_dotted_alternate_keeps_transport(
+            self, failover_connection):
+        """A rejected failover must not leave the transport half-switched.
+
+        ``switch()`` closes the connection before it validates, so the
+        live parameters have to survive the rejection and the connection
+        has to be able to come back on them.
+        """
+        conn = failover_connection
+        assert conn.connect()
+        live = (conn.transport_cls, conn.hostname, conn.port)
+
+        with pytest.raises(ValueError, match='Invalid transport scheme'):
+            conn.switch(f'{BAIT_TRANSPORT}://localhost')
+
+        assert (conn.transport_cls, conn.hostname, conn.port) == live
+        assert BAIT_TRANSPORT.split('.')[0] not in sys.modules
+        assert conn.connect()
+        assert conn.connected
+        conn.close()
+
+    def test_failover_to_alias_alternate_is_allowed(self, failover_connection):
+        """The check must not get in the way of an ordinary failover URL."""
+        conn = failover_connection
+        live_url = conn.alt[-1]
+        live = urlparse(live_url)
+
+        conn.switch(live_url)
+
+        assert conn.transport_cls == live.scheme
+        assert conn.port == live.port
+        assert conn.connect()
+        assert conn.connected
+        conn.close()

@@ -104,7 +104,9 @@ class Message(virtual.Message):
 class QoS(virtual.QoS):
     """Quality of Service guarantees."""
 
-    _not_yet_acked = {}
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._not_yet_acked = {}
 
     def can_consume(self):
         """Return true if the channel can be consumed from.

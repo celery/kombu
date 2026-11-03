@@ -65,6 +65,29 @@ hostname from broker URL. This is useful when failover is used to fill
             'server_hostname': None
         }
     )
+
+Publisher confirms
+==================
+AMQP ``basic.publish`` is asynchronous: the method returns before the broker
+has processed the message. When the broker rejects the publish afterwards
+(e.g. ``precondition_failed`` for a message larger than the configured
+``max_message_size``), it closes the channel asynchronously, and nothing on
+the publishing side raises — the message is lost without any error visible
+to the caller.
+
+Passing ``confirm_publish=True`` in ``transport_options`` enables publisher
+confirms on every channel of this connection: each publish then waits for
+the broker's ``basic.ack``/``basic.nack``, and a broker-side rejection is
+raised as an exception (carrying the broker's ``reply_code`` and
+``reply_text``) instead of being silently dropped::
+
+    conn = Connect('amqp://broker.example.com', transport_options={
+        'confirm_publish': True,
+    })
+
+.. warning::
+   Confirming each publish adds a round-trip per message. Producers that
+   prioritize throughput should measure the cost before enabling it.
 """
 
 

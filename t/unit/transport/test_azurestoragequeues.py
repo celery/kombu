@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from azure.identity import DefaultAzureCredential, ManagedIdentityCredential
@@ -83,3 +83,31 @@ def test_queue_service_works_for_managed_identity_credentials():
             channel._url
             == "https://STORAGE_ACCOUNT_NAME.queue.core.windows.net/"
         )
+
+
+def test_queue_name_cache_is_not_shared_across_connections():
+    # Account A already has an `orders` queue; account B does not. A
+    # Connection to B must still create `orders` in B instead of trusting
+    # A's queue listing and sending to a queue that doesn't exist there.
+    url_a = 'azurestoragequeues://key@https://account-a.queue.core.windows.net/'
+    url_b = 'azurestoragequeues://key@https://account-b.queue.core.windows.net/'
+    services = {}
+
+    def service_for(account_url, credential):
+        service = services[account_url] = MagicMock(name=account_url)
+        if 'account-a' in account_url:
+            service.list_queues.return_value = [{'name': 'orders'}]
+        else:
+            service.list_queues.return_value = []
+        return service
+
+    with patch(
+        'kombu.transport.azurestoragequeues.QueueServiceClient',
+        side_effect=service_for,
+    ):
+        Connection(url_a, transport=azurestoragequeues.Transport).channel()
+        channel_b = Connection(url_b, transport=azurestoragequeues.Transport).channel()
+        channel_b._put('orders', {'body': 'hello'})
+
+    service_b = services['https://account-b.queue.core.windows.net/']
+    service_b.create_queue.assert_called_once_with('orders')
