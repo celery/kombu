@@ -9,6 +9,7 @@ from queue import Empty, LifoQueue
 from . import exceptions
 from .utils.compat import register_after_fork
 from .utils.functional import lazy
+from .utils.time import current_publication_deadline
 
 
 def _after_fork_cleanup_resource(resource):
@@ -70,11 +71,17 @@ class Resource:
         """
         if self._closed:
             raise RuntimeError('Acquire on closed pool')
+        deadline = current_publication_deadline()
+        if deadline is not None:
+            deadline.check()
         if self.limit:
             while 1:
                 try:
-                    R = self._resource.get(block=block, timeout=timeout)
+                    wait = deadline.remaining(timeout) if deadline else timeout
+                    R = self._resource.get(block=block, timeout=wait)
                 except Empty:
+                    if deadline is not None:
+                        deadline.check()
                     self._add_when_empty()
                 else:
                     try:

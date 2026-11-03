@@ -62,11 +62,12 @@ class test_ProducerPool:
 
     def test_release_releases_connection(self):
         p = Mock()
-        p.__connection__ = Mock()
+        connection = p.__connection__ = Mock()
         self.pool.release(p)
-        p.__connection__.release.assert_called_with()
-        p.__connection__ = None
+        connection.release.assert_called_once_with()
+        assert p.__connection__ is None
         self.pool.release(p)
+        connection.release.assert_called_once_with()
 
     def test_init(self):
         assert self.pool.connections is self.connections
@@ -121,10 +122,51 @@ class test_ProducerPool:
     def test_release(self):
         p = Mock()
         p.channel = Mock()
-        p.__connection__ = Mock()
+        connection = p.__connection__ = Mock()
         self.pool.release(p)
-        p.__connection__.release.assert_called_with()
+        connection.release.assert_called_once_with()
+        assert p.__connection__ is None
         assert p.channel is None
+
+
+@pytest.mark.parametrize('phase', ['before_binding', 'after_binding'])
+def test_cached_producer_prepare_failure_releases_connection_once(phase):
+    failure = [None]
+
+    class FailingProducer(Producer):
+        def revive(self, connection):
+            if failure[0] == 'before_binding':
+                raise RuntimeError('revive failed')
+            super().revive(connection)
+            if failure[0] == 'after_binding':
+                raise RuntimeError('revive failed')
+
+    connections = Connection('memory://').Pool(limit=1)
+    producers = pools.ProducerPool(connections, limit=1,
+                                   Producer=FailingProducer)
+    try:
+        with producers.acquire() as producer:
+            connection = producer.__connection__
+        failure[0] = phase
+        with pytest.raises(RuntimeError, match='revive failed'):
+            producers.acquire()
+        assert not connections._dirty
+        assert connections._resource.qsize() == 1
+        assert not producers._dirty
+        assert producers._resource.qsize() == 1
+        with connections.acquire() as held:
+            assert held is connection
+            with pytest.raises(connections.LimitExceeded):
+                connections.acquire()
+        failure[0] = None
+        with producers.acquire() as recovered:
+            assert recovered is producer
+            assert recovered.__connection__ is connection
+            assert recovered._channel is not None
+        assert connections._resource.qsize() == 1
+    finally:
+        producers.force_close_all()
+        connections.force_close_all()
 
 
 class test_PoolGroup:
