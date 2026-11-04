@@ -77,7 +77,7 @@ class Entry:
 
     def __repr__(self):
         return '<TimerEntry: {}(*{!r}, **{!r})'.format(
-            self.fun.__name__, self.args, self.kwargs)
+            getattr(self.fun, '__name__', self.fun), self.args, self.kwargs)
 
     # must not use hash() to order entries
     def __lt__(self, other):
