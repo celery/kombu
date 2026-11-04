@@ -183,12 +183,17 @@ BINDING_SWEEP_INTERVAL = 60
 #: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
 #: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
 #: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
-#: them.
+#: them. The deadline is compared in Lua rather than with ZADD GT, which needs
+#: Redis 6.2.
 REFRESH_BINDING = """
 redis.call('SADD', KEYS[1], ARGV[1])
 local now = redis.call('TIME')
 local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
-redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+local deadline = ms + tonumber(ARGV[3])
+local current = redis.call('ZSCORE', KEYS[2], ARGV[2])
+if not current or tonumber(current) < deadline then
+    redis.call('ZADD', KEYS[2], deadline, ARGV[2])
+end
 """
 
 #: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
