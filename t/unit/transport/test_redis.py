@@ -1676,6 +1676,35 @@ class test_Channel:
         exists.return_value = False
         assert not self.channel._has_queue('foo')
 
+    @pytest.mark.parametrize('prefix', ['', 'prefix_'])
+    @pytest.mark.parametrize('existing_priority', [None, *redis.PRIORITY_STEPS])
+    def test_has_queue_with_global_keyprefix(self, prefix, existing_priority):
+        client = redis.PrefixedStrictRedis(global_keyprefix=prefix)
+        self.channel._create_client = Mock(return_value=client)
+        commands = []
+        existing_keys = set()
+        if existing_priority is not None:
+            existing_keys.add(
+                prefix + self.channel._q_for_pri('foo', existing_priority)
+            )
+
+        def execute(pipe):
+            assert pipe.transaction
+            commands.extend(args for args, _ in pipe.command_stack)
+            return [int(args[1] in existing_keys)
+                    for args, _ in pipe.command_stack]
+
+        with patch('redis.client.Pipeline.execute', autospec=True,
+                   side_effect=execute):
+            assert self.channel._has_queue('foo') == (
+                existing_priority is not None
+            )
+
+        assert commands == [
+            ('EXISTS', prefix + self.channel._q_for_pri('foo', pri))
+            for pri in self.channel.priority_steps
+        ]
+
     def test_close_when_closed(self):
         self.channel.closed = True
         self.channel.close()
@@ -4814,6 +4843,29 @@ class test_GlobalKeyPrefixMixin:
     global_keyprefix = "prefix_"
     mixin = GlobalKeyPrefixMixin()
     mixin.global_keyprefix = global_keyprefix
+
+    @pytest.mark.parametrize('prefix', ['', 'prefix_'])
+    @pytest.mark.parametrize('keys', [('queue',), ('queue', 'other_queue')])
+    def test_prefix_exists_args(self, prefix, keys):
+        mixin = self.GlobalKeyPrefixMixin()
+        mixin.global_keyprefix = prefix
+
+        assert mixin._prefix_args(('EXISTS', *keys)) == [
+            'EXISTS', *(prefix + key for key in keys)
+        ]
+
+    @pytest.mark.parametrize('prefix', ['', 'prefix_'])
+    @pytest.mark.parametrize('keys', [('queue',), ('queue', 'other_queue')])
+    @patch('redis.Redis.execute_command')
+    def test_exists_with_global_keyprefix(self, execute_command, prefix, keys):
+        client = redis.PrefixedStrictRedis(global_keyprefix=prefix)
+
+        client.exists(*keys)
+
+        execute_command.assert_called_once()
+        assert execute_command.call_args.args == (
+            'EXISTS', *(prefix + key for key in keys)
+        )
 
     def test_prefix_simple_args(self):
         for command in self.mixin.PREFIXED_SIMPLE_COMMANDS:
