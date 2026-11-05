@@ -224,6 +224,42 @@ class test_FilesystemTransport(WithJanitorMixin):
             suffix(consumer_channel).purge()
             assert dotted(consumer_channel).get()
 
+    def test_store_processed_creates_missing_processed_folder(self):
+        processed_folder = os.path.join(self.data_folder_in, 'processed')
+        channel = self._add_channel(Connection(
+            transport='filesystem',
+            transport_options={
+                'data_folder_in': self.data_folder_in,
+                'data_folder_out': self.data_folder_in,
+                'control_folder': self.control_folder,
+                'store_processed': True,
+                'processed_folder': processed_folder,
+            }).channel())
+        channel._put('q', {'n': 1})
+        channel._put('q', {'n': 2})
+
+        assert {channel._get('q')['n'], channel._get('q')['n']} == {1, 2}
+        assert os.path.isdir(processed_folder)
+        assert len(os.listdir(processed_folder)) == 2
+
+    def test_store_processed_folder_is_a_file_raises_channel_error(self):
+        processed_file = os.path.join(self.data_folder_in, 'processed')
+        with open(processed_file, 'w'):
+            pass
+        channel = self._add_channel(Connection(
+            transport='filesystem',
+            transport_options={
+                'data_folder_in': self.data_folder_in,
+                'data_folder_out': self.data_folder_in,
+                'control_folder': self.control_folder,
+                'store_processed': True,
+                'processed_folder': processed_file,
+            }).channel())
+        channel._put('q', {'n': 1})
+
+        with pytest.raises(ChannelError):
+            channel._get('q')
+
 
 @t.skip.if_win32
 class test_FilesystemFanout(WithJanitorMixin):
