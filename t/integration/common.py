@@ -84,8 +84,8 @@ class BasicFunctionality:
         def callback(body, message):
             assert body == {'hello': 'world'}
             assert message.content_type == 'application/x-python-serialize'
-            message.delivery_info['routing_key'] == 'test'
-            message.delivery_info['exchange'] == ''
+            assert message.delivery_info.get('routing_key') == 'test'
+            assert message.delivery_info.get('exchange') == ''
             message.ack()
             assert message.payload == body
 
@@ -153,8 +153,6 @@ class BaseExchangeTypes:
         message.ack()
         assert body == {'hello': 'world'}
         assert message.content_type == 'application/x-python-serialize'
-        message.delivery_info['routing_key'] == 'test'
-        message.delivery_info['exchange'] == ''
         assert message.payload == body
 
     def _create_consumer(self, connection, queue):
