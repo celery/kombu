@@ -332,6 +332,7 @@ class GlobalKeyPrefixMixin:
         "DEL": {"args_start": 0, "args_end": None},
         "BRPOP": {"args_start": 0, "args_end": -1},
         "EVALSHA": {"args_start": 2, "args_end": 3},
+        "EXISTS": {"args_start": 0, "args_end": None},
         "WATCH": {"args_start": 0, "args_end": None},
     }
 
