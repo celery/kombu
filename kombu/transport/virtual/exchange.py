@@ -101,9 +101,7 @@ class TopicExchange(ExchangeType):
     def deliver(self, message, exchange, routing_key, **kwargs):
         _lookup = self.channel._lookup
         _put = self.channel._put
-        deadletter = self.channel.deadletter_queue
-        for queue in [q for q in _lookup(exchange, routing_key)
-                      if q and q != deadletter]:
+        for queue in [q for q in _lookup(exchange, routing_key) if q]:
             _put(queue, message, **kwargs)
 
     def prepare_bind(self, queue, exchange, routing_key, arguments):
