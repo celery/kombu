@@ -42,6 +42,37 @@ Transport Options
   ``modify_ack_deadline`` request.  Pub/Sub rejects requests larger than
   512 KiB; this count-based batch size keeps requests under that limit for
   typical ack_id lengths.  Defaults to 1000.
+* ``confirm_publish``: (bool) Wait for Pub/Sub to acknowledge each publish
+  before returning, and raise if it fails. See below. Defaults to False.
+
+Publisher confirms
+==================
+The Pub/Sub client publishes in the background: ``publish()`` queues the
+message for a batch thread and returns a future, so by default a publish
+returns before the message has been sent. A publish that fails after the
+client's retries are exhausted is then lost without any exception on the
+publishing side, and so is a batch that is still queued when the process
+exits.
+
+Passing ``confirm_publish=True`` in ``transport_options`` makes every
+publish wait on that future: it returns once Pub/Sub has acknowledged the
+message, and a failure is raised as the client's exception (a
+:class:`~google.api_core.exceptions.GoogleAPICallError`, or
+:class:`concurrent.futures.TimeoutError` when the wait times out)::
+
+    conn = Connection('gcpubsub://projects/project-name', transport_options={
+        'confirm_publish': True,
+    })
+
+The wait is bounded by ``confirm_timeout`` when the producer passes one
+(``Producer.publish(..., confirm_timeout=5)``), and otherwise by the
+client's retry deadline, ``retry_timeout_seconds``. A message whose wait
+timed out may still be delivered later.
+
+.. warning::
+   Confirming each publish adds a round-trip per message, plus up to the
+   client's batch latency (10 ms by default). Producers that prioritize
+   throughput should measure the cost before enabling it.
 """
 
 from __future__ import annotations
@@ -180,6 +211,7 @@ class Channel(virtual.Channel):
     default_retry_timeout_seconds = 300
     default_bulk_max_messages = 32
     default_enable_exactly_once_delivery = False
+    default_confirm_publish = False
 
     _min_ack_deadline = 10
     _fanout_exchanges = set()
@@ -398,12 +430,13 @@ class Channel(virtual.Channel):
             routing_key,
         )
         encoded_message = dumps(message)
-        self.publisher.publish(
+        future = self.publisher.publish(
             qdesc.topic_path,
             encoded_message.encode("utf-8"),
             routing_key=routing_key,
             retry=Retry(deadline=self.retry_timeout_seconds),
         )
+        self._maybe_confirm_publish(future, kwargs.get('confirm_timeout'))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Put a message onto fanout exchange."""
@@ -415,11 +448,22 @@ class Channel(virtual.Channel):
             topic_path,
         )
         encoded_message = dumps(message)
-        self.publisher.publish(
+        future = self.publisher.publish(
             topic_path,
             encoded_message.encode("utf-8"),
             retry=Retry(deadline=self.retry_timeout_seconds),
         )
+        self._maybe_confirm_publish(future, kwargs.get('confirm_timeout'))
+
+    def _maybe_confirm_publish(self, future, confirm_timeout=None):
+        """Wait for Pub/Sub to acknowledge a publish, if confirms are on.
+
+        Raises the publish's exception if it failed, or
+        :class:`concurrent.futures.TimeoutError` if it is not acknowledged within
+        ``confirm_timeout`` seconds.
+        """
+        if self.confirm_publish:
+            future.result(timeout=confirm_timeout)
 
     def _get(self, queue: str, timeout: float = None):
         """Retrieves a single message from a queue."""
@@ -708,6 +752,12 @@ class Channel(virtual.Channel):
     def retry_timeout_seconds(self):
         return self.transport_options.get(
             'retry_timeout_seconds', self.default_retry_timeout_seconds
+        )
+
+    @cached_property
+    def confirm_publish(self):
+        return self.transport_options.get(
+            'confirm_publish', self.default_confirm_publish
         )
 
     @cached_property
