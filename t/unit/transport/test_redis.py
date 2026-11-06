@@ -4,6 +4,7 @@ import base64
 import copy
 import importlib
 import socket
+import subprocess
 import sys
 import types
 from collections import defaultdict
@@ -4883,3 +4884,15 @@ def test_transport_imports_when_redis_parent_module_was_evicted():
         sys.modules['redis'] = saved_redis
         sys.modules['kombu.transport.redis'] = saved_transport
         kombu.transport.redis = saved_transport
+
+
+def test_import_without_packaging():
+    # packaging is only in the redis extra; the transport must not need it.
+    code = (
+        "import sys\n"
+        "sys.modules['packaging'] = None\n"
+        "sys.modules['packaging.version'] = None\n"
+        "import kombu.transport.redis as r\n"
+        "assert r.redis is not None\n"
+    )
+    subprocess.run([sys.executable, '-c', code], check=True)

@@ -112,11 +112,9 @@ import socket
 from bisect import bisect
 from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
-from importlib.metadata import version
 from queue import Empty
 from time import monotonic, sleep, time
 
-from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import (BatchPublishError, InconsistencyError,
@@ -137,7 +135,7 @@ from . import virtual
 try:
     import redis
     from redis import client, exceptions
-    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = redis.VERSION >= (5, 3, 0)
 except ImportError:  # pragma: no cover
     redis = None
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
