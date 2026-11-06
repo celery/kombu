@@ -71,8 +71,9 @@ class Channel(virtual.Channel):
 
     def _purge(self, queue):
         q = self._queue_for(queue)
-        size = q.qsize()
-        q.queue.clear()
+        with q.mutex:
+            size = len(q.queue)
+            q.queue.clear()
         return size
 
     def close(self):
