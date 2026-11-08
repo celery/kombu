@@ -188,6 +188,32 @@
     is set to a value without a ``{db}`` placeholder, because old and new
     workers then already share the same topic.
 
+    Recording unacknowledged messages
+    ---------------------------------
+    .. versionchanged:: 5.8.0
+
+    A consumer takes a message from its queue and records it in ``unacked``
+    in the same step, with a Lua script. A consumer killed right after taking
+    a message no longer loses it: the message stays in ``unacked`` until the
+    ``visibility_timeout`` restores it. Earlier versions took the message with
+    ``BRPOP`` and recorded it with a second command, and a kill between the
+    two lost the message. A consumer that loses its connection before it
+    reads the reply also leaves the message in ``unacked``. ``basic_get``
+    records the message the same way, and consumers and ``basic_get`` calls
+    with ``no_ack`` record nothing.
+
+    A consumer whose queues are empty waits on a wake list per queue, the key
+    ``<queue>\x06\x16wake`` (with ``global_keyprefix`` in front, if set).
+    Publishing, batch publishing and restoring a message push a token to that
+    list, which holds at most one token, and deleting or purging the queue
+    removes it. The wake list expires with a queue that has ``x-expires``.
+
+    Upgrade publishers first. A consumer of this version still receives
+    messages from an older publisher, which pushes no token, but only once its
+    wait on the wake list times out, after up to ``brpop_timeout`` (1 second,
+    or the ``polling_interval`` transport option). Older consumers ignore the
+    wake lists.
+
     Queue arguments
     ---------------
     The following queue argument is supported. Pass it per-queue via
