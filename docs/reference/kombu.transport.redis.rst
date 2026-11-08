@@ -190,7 +190,7 @@
 
     Recording unacknowledged messages
     ---------------------------------
-    .. versionchanged:: 5.8.0
+    .. versionchanged:: 5.7.1
 
     A consumer takes a message from its queue and records it in ``unacked``
     in the same step, with a Lua script. A consumer killed right after taking
