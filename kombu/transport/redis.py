@@ -135,7 +135,7 @@ from . import virtual
 try:
     import redis
     from redis import client, exceptions
-    _REDIS_GET_CONNECTION_WITHOUT_ARGS = redis.VERSION >= (5, 3, 0)
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = redis.VERSION[:2] >= (5, 3)
 except ImportError:  # pragma: no cover
     redis = None
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
