@@ -190,6 +190,11 @@ class Client:
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
 
+    def ltrim(self, key, start, end):
+        # Only LTRIM 0 0 is used: keep one item.
+        while self.queues[key].qsize() > 1:
+            self.queues[key].get_nowait()
+
     def parse_response(self, connection, type, **options):
         cmd, queues = self.connection._sock.data.pop()
         queues = list(queues)
@@ -226,7 +231,7 @@ class Client:
     def __contains__(self, k):
         return k in self._called
 
-    def pipeline(self):
+    def pipeline(self, transaction=True):
         return Pipeline(self)
 
     def encode(self, value):
@@ -393,18 +398,22 @@ class test_Channel:
         try:
             assert channel.retry_on_timeout is True
             assert producer.supports_batch_publish is False
-            with producer.batch():
-                producer.publish(
-                    'message',
-                    exchange='',
-                    routing_key='batch-retry-on-timeout',
-                )
+            with patch.object(redis, 'PublishBatch') as batch:
+                with producer.batch():
+                    producer.publish(
+                        'message',
+                        exchange='',
+                        routing_key='batch-retry-on-timeout',
+                    )
         finally:
             connection.close()
 
-        client.lpush.assert_called_once()
-        client.pipeline.assert_not_called()
-        pipeline.execute.assert_not_called()
+        # Published on its own, in a pipeline of its own.
+        batch.assert_not_called()
+        client.pipeline.assert_called_once_with(transaction=False)
+        assert pipeline.lpush.call_args_list[0] == call(
+            'batch-retry-on-timeout', ANY)
+        pipeline.execute.assert_called_once_with()
 
     def test_publish_batch_falls_back_for_socket_url_timeout_retry(self):
         with patch('kombu.transport.redis.Channel._create_client'):
@@ -448,7 +457,10 @@ class test_Channel:
             producer.publish('message', exchange='', routing_key='batch-queue')
 
         client.pipeline.assert_called_once_with(transaction=False)
-        pipeline.lpush.assert_called_once()
+        wake = self.channel._wake_key('batch-queue')
+        assert pipeline.lpush.call_args_list == [
+            call('batch-queue', ANY), call(wake, 1)]
+        pipeline.ltrim.assert_called_once_with(wake, 0, 0)
         pipeline.execute.assert_called_once_with()
 
     def test_publish_batch_preserves_direct_routing_priority_and_order(self):
@@ -480,6 +492,8 @@ class test_Channel:
             method_call
             for method_call in pipeline.method_calls
             if method_call[0] == 'lpush'
+            and method_call.args[0] != (
+                self.channel._wake_key('batch-direct-queue'))
         ]
         assert [method_call.args[0] for method_call in lpush_calls] == [
             f'batch-direct-queue{self.channel.sep}6',
@@ -515,8 +529,10 @@ class test_Channel:
                 routing_key='events.created',
             )
 
-        pipeline.lpush.assert_called_once()
-        assert pipeline.lpush.call_args.args[0] == 'batch-topic-matching'
+        assert pipeline.lpush.call_args_list == [
+            call('batch-topic-matching', ANY),
+            call(self.channel._wake_key('batch-topic-matching'), 1),
+        ]
 
     def test_publish_batch_preserves_fanout_topic(self):
         exchange = Exchange('batch-fanout', type='fanout')
@@ -541,7 +557,8 @@ class test_Channel:
         _, pipeline = self._recording_batch_client()
         producer = Producer(self.channel, serializer='json')
 
-        with producer.batch(max_size=2):
+        # Three commands per message: the message, a wake token, LTRIM.
+        with producer.batch(max_size=6):
             for index in range(3):
                 producer.publish(
                     {'index': index},
@@ -558,7 +575,7 @@ class test_Channel:
         _, pipeline = self._recording_batch_client()
         producer = Producer(self.channel, serializer='json')
 
-        with producer.batch(max_size=3):
+        with producer.batch(max_size=4):
             producer.publish(
                 {'event': 'first'},
                 exchange='',
@@ -579,6 +596,7 @@ class test_Channel:
             index
             for index, method_call in enumerate(pipeline.method_calls)
             if method_call[0] == 'lpush'
+            and not method_call.args[0].endswith('wake')
         ]
         assert len(execute_indexes) == 2
         assert lpush_indexes[0] < execute_indexes[0] < lpush_indexes[1]
@@ -597,8 +615,11 @@ class test_Channel:
                 routing_key=queue.name,
             )
 
-        pipeline.lpush.assert_called_once()
-        assert pipeline.pexpire.call_count == len(self.channel.priority_steps)
+        assert pipeline.lpush.call_args_list[0] == call(queue.name, ANY)
+        assert pipeline.pexpire.call_count == len(
+            self.channel.priority_steps) + 1
+        pipeline.pexpire.assert_any_call(
+            self.channel._wake_key(queue.name), 5000)
         client.pipeline.assert_called_once_with(transaction=False)
 
     def test_publish_batch_flush_failure_is_not_retried_and_cleans_up(self):
@@ -629,7 +650,10 @@ class test_Channel:
             exchange='',
             routing_key='batch-after-failure',
         )
-        client.lpush.assert_called_once()
+        # Published on its own, in a pipeline of its own.
+        assert len(client.pipeline.call_args_list) == 2
+        assert pipeline.lpush.call_args_list[-2] == call(
+            'batch-after-failure', ANY)
 
     def test_publish_batch_auto_flush_failure_ignores_publish_retry(self):
         _, pipeline = self._recording_batch_client()
@@ -1672,23 +1696,23 @@ class test_Channel:
         c().publish.assert_called_with('/{db}.exchange', dumps(body))
 
     def test_put_priority(self):
-        client = self.channel._create_client = Mock(name='client')
+        _, pipeline = self._recording_batch_client()
         msg1 = {'properties': {'priority': 3}}
 
         self.channel._put('george', msg1)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 3), dumps(msg1),
         )
 
         msg2 = {'properties': {'priority': 313}}
         self.channel._put('george', msg2)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 9), dumps(msg2),
         )
 
         msg3 = {'properties': {}}
         self.channel._put('george', msg3)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 0), dumps(msg3),
         )
 

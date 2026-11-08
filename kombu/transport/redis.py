@@ -409,6 +409,7 @@ class GlobalKeyPrefixMixin:
         "HSET",
         "LLEN",
         "LPUSH",
+        "LTRIM",
         "PUBLISH",
         "RPUSH",
         "RPOP",
@@ -1382,6 +1383,8 @@ class Channel(virtual.Channel):
                 (pipe.lpush if leftmost else pipe.rpush)(
                     self._q_for_pri(queue, pri), dumps(payload),
                 )
+                pipe.lpush(self._wake_key(queue), 1).ltrim(
+                    self._wake_key(queue), 0, 0)
         except self.connection_errors:
             # Abort the transaction: it would otherwise remove the message
             # from the unacked hash without requeueing it.
@@ -1872,8 +1875,13 @@ class Channel(virtual.Channel):
         key = self._q_for_pri(queue, pri)
         publish_batch = kwargs.pop('_publish_batch', None)
 
+        # A token in the queue's wake list wakes an idle consumer.
+        wake = self._wake_key(queue)
+
         if publish_batch is not None:
             publish_batch.add('lpush', key, dumps(message))
+            publish_batch.add('lpush', wake, 1)
+            publish_batch.add('ltrim', wake, 0, 0)
             if self._expires and queue in self._expires:
                 for p in self.priority_steps:
                     publish_batch.add(
@@ -1881,17 +1889,20 @@ class Channel(virtual.Channel):
                         self._q_for_pri(queue, p),
                         self._expires[queue],
                     )
+                publish_batch.add('pexpire', wake, self._expires[queue])
             return
 
+        expiring = bool(self._expires and queue in self._expires)
         with self.conn_or_acquire() as client:
-            if self._expires and queue in self._expires:
-                with client.pipeline() as pipe:
-                    pipe.lpush(key, dumps(message))
+            # A transaction only where main had one: to expire the queue.
+            with client.pipeline(transaction=expiring) as pipe:
+                pipe.lpush(key, dumps(message))
+                pipe.lpush(wake, 1).ltrim(wake, 0, 0)
+                if expiring:
                     for p in self.priority_steps:
                         pipe.pexpire(self._q_for_pri(queue, p), self._expires[queue])
-                    pipe.execute()
-            else:
-                client.lpush(key, dumps(message))
+                    pipe.pexpire(wake, self._expires[queue])
+                pipe.execute()
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
@@ -2049,6 +2060,7 @@ class Channel(virtual.Channel):
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
                     pipe = pipe.delete(self._q_for_pri(queue, pri))
+                pipe.delete(self._wake_key(queue))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
@@ -2071,11 +2083,12 @@ class Channel(virtual.Channel):
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
+                pipe.delete(self._wake_key(queue))
                 for pri in self.priority_steps:
                     priq = self._q_for_pri(queue, pri)
                     pipe = pipe.llen(priq).delete(priq)
                 sizes = pipe.execute()
-                return sum(sizes[::2])
+                return sum(sizes[1::2])
 
     def close(self):
         self._closing = True
