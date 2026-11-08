@@ -3540,6 +3540,44 @@ class test_MultiChannelPoller:
         assert poller._fd_to_chan == {14: (other, 'BRPOP')}
         poller.poller.unregister.assert_any_call(13)
 
+    @pytest.mark.parametrize('error', [
+        KeyError, AttributeError, TypeError, ValueError,
+    ])
+    def test_sync_disconnect_ignores_stale_poller_registration(self, error):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        poller.poller.unregister.side_effect = error('stale registration')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_sync_disconnect_propagates_unexpected_poller_error(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        error = OSError(errno.EIO, 'Unexpected poller failure')
+        poller.poller.unregister.side_effect = error
+
+        with pytest.raises(OSError) as exc:
+            poller._on_connection_disconnect(client.connection)
+
+        assert exc.value is error
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
     def test_register_brpop_polls_socket_replaced_while_sending(self):
         poller = self.Poller()
         poller.poller = Mock()
