@@ -135,7 +135,41 @@ class Client:
             self.sets[key].add(member1)
 
     def register_script(self, script):
+        if script == redis.POP_UNACKED:
+            return Mock(side_effect=self.pop_unacked, sha='pop-unacked')
         return lambda keys=(), args=(), client=None: 0
+
+    def pop_unacked(self, keys=(), args=(), client=None):
+        # Python stand-in for the POP_UNACKED script.
+        nqueues = len(args) - 1
+        unacked, index, *lists = keys[:len(keys) - nqueues]
+        wakes = keys[len(keys) - nqueues:]
+        for i, key in enumerate(lists):
+            item = self.rpop(key)
+            if item is None:
+                continue
+            q = i % nqueues
+            empty = 0
+            if any(self.llen(k) for k in lists[q::nqueues]):
+                if not self.llen(wakes[q]):
+                    self.lpush(wakes[q], '1')
+            elif not any(self.llen(k) for k in lists):
+                empty = 1
+            tag = ''
+            if args[1 + q] == '1':
+                try:
+                    props = loads(item)['properties']
+                    tag, info = props['delivery_tag'], props['delivery_info']
+                except (ValueError, TypeError, KeyError):
+                    pass
+                else:
+                    self.zadd(index, {tag: float(args[0])})
+                    self.hset(unacked, tag, dumps(
+                        [loads(item), info['exchange'], info['routing_key']]))
+            return [q + 1, item, tag, empty]
+
+    def script_load(self, script):
+        return 'pop-unacked'
 
     def smembers(self, key):
         return self.sets.get(key, set())
@@ -167,6 +201,12 @@ class Client:
             if item:
                 return item
             raise Empty()
+        if type == 'BLPOP':
+            timeout = queues.pop()
+            return self.brpop(queues, timeout)
+        if type == 'EVALSHA':
+            _, numkeys, *rest = queues
+            return self.pop_unacked(rest[:numkeys], rest[numkeys:])
 
     def brpop(self, keys, timeout=None):
         for key in keys:
@@ -284,6 +324,7 @@ class Channel(redis.Channel):
     def _new_queue(self, queue, **kwargs):
         for pri in self.priority_steps:
             self.client._new_queue(self._q_for_pri(queue, pri))
+        self.client._new_queue(self._wake_key(queue))
 
     def pipeline(self):
         return Pipeline(Client())
@@ -1600,7 +1641,12 @@ class test_Channel:
         c.parse_response = Mock()
         self.channel._poll_error('BRPOP')
 
-        c.parse_response.assert_called_with(c.connection, 'BRPOP')
+        c.parse_response.assert_called_with(c.connection, 'EVALSHA')
+
+        self.channel._wait_for_wake = True
+        self.channel._poll_error('BRPOP')
+
+        c.parse_response.assert_called_with(c.connection, 'BLPOP')
 
         c.parse_response.side_effect = KeyError('foo')
         with pytest.raises(KeyError):
@@ -2566,27 +2612,57 @@ class test_Channel:
         channel.client.connection = Mock()
         return [channel._q_for_pri('q', pri) for pri in channel.priority_steps]
 
-    def test_brpop_start_sends_keys_and_timeout(self):
+    def test_brpop_start_pops_with_the_script(self):
         channel = self.channel
         keys = self._brpop_queue(channel)
+
+        with patch('kombu.transport.redis.time', return_value=42.0):
+            channel._brpop_start(timeout=5)
+
+        channel.client.connection.send_command.assert_called_once_with(
+            'EVALSHA', 'pop-unacked', 7, 'unacked', 'unacked_index', *keys,
+            channel._wake_key('q'), 42.0, '1')
+
+    def test_brpop_start_waits_on_the_wake_lists_after_an_empty_pop(self):
+        channel = self.channel
+        self._brpop_queue(channel)
+        channel._wait_for_wake = True
 
         channel._brpop_start(timeout=5)
 
         channel.client.connection.send_command.assert_called_once_with(
-            'BRPOP', *keys, 5)
+            'BLPOP', channel._wake_key('q'), 5)
 
     def test_brpop_start_prefixes_keys(self):
         channel = self.channel
         keys = self._brpop_queue(channel)
         channel.global_keyprefix = 'foo_'
-        channel.client._prefix_args = Mock(return_value=['BRPOP', 'foo_q', 1])
+        channel.client._prefix_args = Mock(return_value=['EVALSHA', 'x'])
+
+        with patch('kombu.transport.redis.time', return_value=42.0):
+            channel._brpop_start()
+
+        # The client prefixes only the first key of a script call.
+        channel.client._prefix_args.assert_called_once_with(
+            ['EVALSHA', 'pop-unacked', 7, 'unacked', 'foo_unacked_index',
+             *(f'foo_{key}' for key in keys),
+             f"foo_{channel._wake_key('q')}", 42.0, '1'])
+        channel.client.connection.send_command.assert_called_once_with(
+            'EVALSHA', 'x')
+
+    def test_brpop_start_prefixes_wake_keys(self):
+        channel = self.channel
+        self._brpop_queue(channel)
+        channel.global_keyprefix = 'foo_'
+        channel._wait_for_wake = True
+        channel.client._prefix_args = Mock(return_value=['BLPOP', 'x', 1])
 
         channel._brpop_start()
 
         channel.client._prefix_args.assert_called_once_with(
-            ['BRPOP', *keys, channel.brpop_timeout])
+            ['BLPOP', channel._wake_key('q'), channel.brpop_timeout])
         channel.client.connection.send_command.assert_called_once_with(
-            'BRPOP', 'foo_q', 1)
+            'BLPOP', 'x', 1)
 
     @pytest.mark.parametrize('expires,ttl', [
         (500, 3_600_000), (2_000_000, 4_000_000)])
@@ -3461,7 +3537,9 @@ class test_Redis:
     def test_close_in_poll(self):
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
-        conn1._sock.data = [('BRPOP', ('test_Redis',))]
+        keys, args = c._pop_unacked_args(['test_Redis'], [True])
+        conn1._sock.data = [('EVALSHA', ('pop-unacked', len(keys), *keys, *args))]
+        c._pop_queues = ['test_Redis']
         c._in_poll = True
         c.close()
         assert conn1.disconnected

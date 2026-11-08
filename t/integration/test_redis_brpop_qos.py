@@ -63,9 +63,25 @@ def run_until(hub, predicate):
     assert predicate()
 
 
-def pending_reply(consuming, hub=None, message=True):
+def pending_reply(consuming, hub=None, message='token'):
+    """Leave a reply pending: 'nil', 'token' or 'popped'.
+
+    After a pop that empties the queue, the consumer waits on the wake list.
+    Its reply carries no message: the token the first publish left ('nil'),
+    or the token of a message published since ('token'), which stays in its
+    queue. A 'popped' reply comes from a pop while messages are left: it
+    holds a message the script already recorded in unacked.
+    """
     connection, queue, consumer, received = consuming
     channel = consumer.channel
+    producer = Producer(connection)
+    if message == 'token':
+        producer.publish(2, routing_key=queue.name, serializer='json')
+    elif message == 'popped':
+        producer.publish(2, routing_key=queue.name, serializer='json')
+        producer.publish(3, routing_key=queue.name, serializer='json')
+        connection.drain_events(timeout=5)
+        received.pop(0).ack()
     if hub is not None:
         connection.register_with_event_loop(hub)
         tick(hub)
@@ -74,8 +90,6 @@ def pending_reply(consuming, hub=None, message=True):
     pending = channel._in_poll
     assert pending is not None
     sock = pending._sock
-    if message:
-        Producer(connection).publish(2, routing_key=queue.name, serializer='json')
     consumer.qos(prefetch_count=1)
     # Wait without consuming the reply into redis-py's parser. Check its
     # decoded result after resuming, independently of RESP2/RESP3 framing.
@@ -96,16 +110,24 @@ def assert_paused(connection, consumer, sock, hub=None):
         assert fd not in hub.readers
 
 
-@pytest.mark.parametrize('message', [False, True], ids=['nil', 'message'])
+@pytest.mark.parametrize('message', ['nil', 'token', 'popped'])
 def test_hub_pauses_pending_brpop_until_ack(consuming, message):
     connection, queue, consumer, received = consuming
     channel = consumer.channel
+    first = 2 if message == 'popped' else 1
     hub = Hub()
     try:
         pending, sock = pending_reply(consuming, hub, message)
         with patch.object(channel, '_brpop_start', wraps=channel._brpop_start) as start:
             tick(hub)
             assert_paused(connection, consumer, sock, hub)
+            # A popped message is already recorded in unacked; a token
+            # leaves it in its queue. (Not channel.client: it would read
+            # the pending reply.)
+            client = channel._create_client()
+            assert client.hlen(channel.unacked_key) == (
+                2 if message == 'popped' else 1)
+            assert client.llen(queue.name) == (message == 'token')
             timers = []
             timer = hub.call_repeatedly(0.01, lambda: timers.append(True))
             try:
@@ -113,16 +135,19 @@ def test_hub_pauses_pending_brpop_until_ack(consuming, message):
                 # on_tick must not put the readable, suspended fd back.
                 assert_paused(connection, consumer, sock, hub)
                 assert channel._in_poll is pending
-                assert [item.payload for item in received] == [1]
+                assert [item.payload for item in received] == [first]
+                start.assert_not_called()
                 received[0].ack()
                 run_until(hub, lambda: channel._in_poll is None)
             finally:
                 timer.cancel()
-            start.assert_not_called()
+            # Only the pop that follows a wait, after its reply was read.
+            assert start.call_count == (message != 'popped')
         assert channel.client.connection._sock is sock
         assert sock.fileno() in hub.readers
-        assert [item.payload for item in received] == ([1, 2] if message else [1])
-        if message:
+        assert [item.payload for item in received] == (
+            [first] if message == 'nil' else [first, first + 1])
+        if message != 'nil':
             received[1].ack()
         assert channel.client.hlen(channel.unacked_key) == 0
         assert channel.client.zcard(channel.unacked_index_key) == 0
@@ -133,18 +158,20 @@ def test_hub_pauses_pending_brpop_until_ack(consuming, message):
 def test_drain_events_resumes_pending_brpop_without_resending(consuming):
     connection, queue, consumer, received = consuming
     channel = consumer.channel
-    pending, sock = pending_reply(consuming)
+    pending, sock = pending_reply(consuming, message='popped')
     with patch.object(channel, '_brpop_start', wraps=channel._brpop_start) as start:
         with pytest.raises(socket.timeout):
             connection.drain_events(timeout=0.01)
         assert_paused(connection, consumer, sock)
+        # The paused message is already recorded in unacked.
+        assert channel._create_client().hlen(channel.unacked_key) == 2
         assert channel._in_poll is pending
-        assert [item.payload for item in received] == [1]
+        assert [item.payload for item in received] == [2]
         received[0].ack()
         connection.drain_events(timeout=5)
         start.assert_not_called()
     assert channel.client.connection._sock is sock
-    assert [item.payload for item in received] == [1, 2]
+    assert [item.payload for item in received] == [2, 3]
     received[1].ack()
     assert channel.client.hlen(channel.unacked_key) == 0
     assert channel.client.zcard(channel.unacked_index_key) == 0
