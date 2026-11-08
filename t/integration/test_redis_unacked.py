@@ -32,7 +32,7 @@ from hypothesis.stateful import (RuleBasedStateMachine, initialize, invariant,
 
 import kombu
 from kombu.asynchronous.hub import Hub
-from kombu.transport.redis import Transport
+from kombu.transport.redis import POP_UNACKED, Transport
 from kombu.utils.json import dumps, loads
 
 pytestmark = pytest.mark.env('redis')
@@ -142,6 +142,48 @@ def test_consumer_killed_right_after_the_pop(setup, path, published):
             drain(conn, lambda: received, 15)
     assert [m.payload for m in received] == [{'n': 1}]
     assert received[0].headers['redelivered'] is True
+
+
+@pytest.mark.parametrize('case', ['paused', 'restored', 'popped again'])
+def test_reply_without_credit_is_delivered_once(setup, case):
+    received = []
+    with setup.connect() as other, setup.connect() as conn:
+        channel = conn.default_channel
+        with conn.Consumer(setup.queue, callbacks=[
+                lambda body, message: (received.append(body),
+                                       message.ack())]):
+            producer = kombu.Producer(conn)
+            for n in range(2):
+                producer.publish({'n': n}, routing_key=setup.name)
+            setup.redis.script_load(POP_UNACKED)
+            cycle = conn.transport.cycle
+            cycle.on_poll_start()  # The pop, sent with credit.
+            sock = channel.client.connection._sock
+            assert select.select([sock], [], [], 5)[0]
+            assert setup.redis.hlen(setup.unacked) == 1
+            if case != 'paused':
+                # The visibility timeout passes before the reply is read.
+                setup.restore_all(channel)
+            if case == 'popped again':
+                # Another consumer takes it, and records the same tag.
+                taken = other.default_channel.basic_get(setup.name)
+                assert taken.payload == {'n': 0}
+            # The credit goes: the message goes back, not to the consumer,
+            # unless it's someone else's again.
+            with patch.object(channel.qos, 'can_consume', return_value=False):
+                with pytest.raises(Empty):
+                    cycle.on_readable(sock.fileno())
+            assert received == []
+            assert setup.redis.hlen(setup.unacked) == (case == 'popped again')
+            assert setup.redis.llen(f'{setup.prefix}{setup.name}') == (
+                1 if case == 'popped again' else 2)
+            if case == 'popped again':
+                taken.ack()
+                received.append(taken.payload)
+            drain(conn, lambda: len(received) == 2)
+    # Each once, in order.
+    assert received == [{'n': 0}, {'n': 1}]
+    assert not setup.redis.hlen(setup.unacked)
 
 
 #: A consumer in its own process, which prints ``waiting`` once it waits.
@@ -389,16 +431,19 @@ class Consumer:
         self.conn = machine.connect()
         self.channel = channel = self.conn.default_channel
         self.held = []
+        self.blocked = False
         channel.basic_qos(0, 2, False)
         for name in ACK_QUEUES:
             channel.basic_consume(
-                machine.queue_name(name), False, self.held.append, name)
+                machine.queue_name(name), False,
+                lambda message: machine.delivered(self, message), name)
         channel.basic_consume(
             machine.queue_name(NO_ACK_QUEUE), True, machine.acked_on_receipt,
             NO_ACK_QUEUE)
-        # The connection the poller would use for the blocking pop.
-        self.conn.transport.cycle._client_registered(
-            channel, channel.client, 'BRPOP')
+        # The connection the poller uses for the blocking pop.
+        self.cycle = self.conn.transport.cycle
+        self.cycle._client_registered(channel, channel.client, 'BRPOP')
+        self.cycle._register(channel, channel.client, 'BRPOP')
         self.client_id = channel.client.client_id()
 
     def settle(self, client):
@@ -414,14 +459,15 @@ class Consumer:
         raise AssertionError('the pop neither replied nor blocked')
 
     def read(self, wait, machine):
-        """Read the reply, if it came and there's credit, as the poller
-        does."""
+        """Handle the reply as the poller does, if it came."""
         sock = self.channel.client.connection._sock
-        if (self.channel.qos.can_consume()
+        # Pause or resume the reply as the poller does on each poll.
+        self.cycle._update_brpop_polling()
+        if (sock.fileno() not in self.cycle._paused_brpop
                 and select.select([sock], [], [], wait)[0]):
             held, before = len(self.held), len(self.held) + len(machine.acked)
             try:
-                self.channel._brpop_read()
+                self.cycle.on_readable(sock.fileno())
             except Empty:
                 pass
             if self.channel._in_poll:
@@ -430,7 +476,15 @@ class Consumer:
                 self.settle(machine.redis)
             # One message per reply at most, and only with credit.
             assert len(self.held) + len(machine.acked) - before <= 1
-            assert len(self.held) == held or held < 2
+            assert len(self.held) == held or (held < 2 and not self.blocked)
+
+    def block(self, blocked):
+        """Take away the credit, as Celery's disable_prefetch can."""
+        self.blocked = blocked
+        if blocked:
+            self.channel.qos.can_consume = lambda: False
+        else:
+            self.channel.qos.__dict__.pop('can_consume', None)
 
     def kill(self, client):
         # Whatever the process held, in memory or unread on its socket, is
@@ -459,6 +513,8 @@ class UnackedMachine(RuleBasedStateMachine):
         self.redis = redis.Redis(HOST, PORT)
         self.published = {}
         self.acked = set()
+        self.deliveries = Counter()
+        self.redeliverable = set()
         self.exchange = kombu.Exchange(self.name, 'direct')
         self.publisher = self.connect()
         self.producer = kombu.Producer(self.publisher)
@@ -478,6 +534,16 @@ class UnackedMachine(RuleBasedStateMachine):
     def acked_on_receipt(self, message):
         assert message.headers['id'] not in self.acked, 'no_ack twice'
         self.acked.add(message.headers['id'])
+
+    def delivered(self, consumer, message):
+        mid = message.headers['id']
+        # Again only after the consumer that had it was lost, or it was
+        # requeued.
+        assert not self.deliveries[mid] or mid in self.redeliverable, (
+            f'message {mid} delivered twice')
+        self.deliveries[mid] += 1
+        self.redeliverable.discard(mid)
+        consumer.held.append(message)
 
     @rule(queue=st.sampled_from([*ACK_QUEUES, NO_ACK_QUEUE]),
           priority=st.sampled_from([0, 3, 9]), token=st.booleans())
@@ -524,10 +590,17 @@ class UnackedMachine(RuleBasedStateMachine):
         """``basic_get``, which doesn't wait for credit."""
         consumer = self.consumers[c]
         message = consumer.channel.basic_get(self.queue_name(queue), no_ack)
-        if message and no_ack:
-            self.acked.add(message.headers['id'])
-        elif message:
-            consumer.held.append(message)
+        if message:
+            self.delivered(consumer, message)
+            if no_ack:
+                consumer.held.pop()
+                self.acked.add(message.headers['id'])
+
+    @rule(c=CONSUMERS, blocked=st.booleans())
+    def credit(self, c, blocked):
+        """Take away or give back the credit, also with a reply on its
+        way."""
+        self.consumers[c].block(blocked)
 
     @rule(c=CONSUMERS)
     def time_out(self, c):
@@ -551,6 +624,8 @@ class UnackedMachine(RuleBasedStateMachine):
 
     @rule(c=CONSUMERS)
     def kill(self, c):
+        self.redeliverable.update(
+            m.headers['id'] for m in self.consumers[c].held)
         self.consumers[c].kill(self.redis)
         self.consumers[c] = Consumer(self)
 
@@ -566,18 +641,19 @@ class UnackedMachine(RuleBasedStateMachine):
                 message.reject(requeue=how == 'requeue')
             if how != 'requeue':
                 self.acked.add(message.headers['id'])
+            else:
+                self.redeliverable.add(message.headers['id'])
 
     @rule()
-    def restore_visible(self):
-        """Restore the messages of killed consumers, as their visibility
-        timeout passes."""
+    def visibility_timeout_passes(self):
+        """Time passes beyond the visibility timeout, also for the replies
+        on their way or paused, then restore_visible runs. Messages that
+        consumers hold are left out: a task longer than the timeout runs
+        again, as on main."""
         for consumer in self.consumers:
-            # Replies already sent belong to live consumers, also the one
-            # to a pop sent after a wake-up.
-            while consumer.channel._in_poll and consumer.settle(self.redis):
-                if not consumer.channel.qos.can_consume():
-                    return  # A paused reply: no timeout has passed yet.
-                consumer.read(0, self)
+            if consumer.channel._brpop_sent_at is not None:
+                consumer.channel._brpop_sent_at -= (
+                    consumer.channel.visibility_timeout + 1)
         held = {m.delivery_tag for c in self.consumers for m in c.held}
         index = f'{self.prefix}{self.name}_unacked_index'
         for tag in self.redis.zrange(index, 0, -1):
@@ -722,7 +798,8 @@ def popping():
 @settings(max_examples=EXAMPLES * 6, deadline=None, database=None,
           suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_pop_script_records_what_qos_append_would(popping, raw):
-    (_, item, tag, _), stored, index = popping(raw)
+    (_, item, tag, _, position), stored, index = popping(raw)
+    assert position == 1
     assert item == raw
     try:
         message = loads(raw)

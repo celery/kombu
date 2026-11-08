@@ -90,6 +90,7 @@ class ResponseError(Exception):
 class Client:
     queues = {}
     sets = defaultdict(set)
+    scores = defaultdict(dict)
     hashes = defaultdict(dict)
     shard_hint = None
 
@@ -127,6 +128,7 @@ class Client:
             (mapping,) = args
             for item in mapping:
                 self.sets[key].add(item)
+                self.scores[key][item] = float(mapping[item])
         elif len(args) == 1:
             self.sets[key].update(args[0])
         else:
@@ -137,7 +139,24 @@ class Client:
     def register_script(self, script):
         if script == redis.POP_UNACKED:
             return Mock(side_effect=self.pop_unacked, sha='pop-unacked')
+        if script == redis.PUT_BACK:
+            return Mock(side_effect=self.put_back)
         return lambda keys=(), args=(), client=None: 0
+
+    def put_back(self, keys=(), args=(), client=None):
+        # Python stand-in for the PUT_BACK script.
+        unacked, index, key, wake = keys
+        tag, item, score = args
+        if tag:
+            if (tag not in self.sets[index] or
+                    self.scores[index].get(tag) != float(score)):
+                return 0
+            self.hdel(unacked, tag)
+            self.sets[index].discard(tag)
+        self.queues[key].queue.appendleft(item)  # The end RPOP takes from.
+        self.lpush(wake, '1')
+        self.ltrim(wake, 0, 0)
+        return 1
 
     def pop_unacked(self, keys=(), args=(), client=None):
         # Python stand-in for the POP_UNACKED script.
@@ -166,7 +185,7 @@ class Client:
                     self.zadd(index, {tag: float(args[0])})
                     self.hset(unacked, tag, dumps(
                         [loads(item), info['exchange'], info['routing_key']]))
-            return [q + 1, item, tag, empty]
+            return [q + 1, item, tag, empty, i + 1]
 
     def script_load(self, script):
         return 'pop-unacked'
@@ -1826,6 +1845,61 @@ class test_Channel:
         assert channel._wait_for_wake
         channel.qos._delivered.clear()
 
+    @pytest.mark.parametrize('case', ['credit gone', 'restored',
+                                      'popped again', 'no_ack', 'overdue'])
+    def test_reply_without_credit_puts_the_message_back(self, case):
+        # Held until credit returns, or past the visibility timeout, a
+        # recorded message could also be put back by a restore, and be
+        # delivered twice.
+        name = f'put-back-{case}'
+        channel, callback = self._consume(name, no_ack=case == 'no_ack')
+        self._publish(channel, name, 'first')
+        self._publish(channel, name, 'second')
+        channel._brpop_start()
+        client = channel.client
+        unacked = client.hashes[channel.unacked_key]
+        wake = client.queues[channel._wake_key(name)]
+
+        def pop(*args, pop=client.pop_unacked):
+            reply = pop(*args)
+            wake.queue.clear()
+            if case in ('restored', 'popped again'):
+                # A restore puts it back before the reply is read.
+                client.hdel(channel.unacked_key, reply[2])
+                client.sets[channel.unacked_index_key].discard(reply[2])
+                client.queues[name].queue.appendleft(reply[1])
+            if case == 'popped again':
+                # Another consumer pops it, and records the same tag.
+                pop(keys=args[0], args=[args[1][0] + 1, *args[1][1:]])
+                wake.queue.clear()
+            return reply
+
+        client.pop_unacked = pop
+        if case == 'overdue':
+            channel._brpop_sent_at -= channel.visibility_timeout
+
+        with patch.object(channel.qos, 'can_consume',
+                          return_value=case == 'overdue'):
+            with pytest.raises(Empty):
+                channel._brpop_read()
+
+        callback.assert_not_called()
+        if case == 'popped again':
+            # The other consumer's record stays, and the message isn't
+            # queued again.
+            assert len(unacked) == 1
+            assert client.queues[name].qsize() == 1
+            assert not wake.qsize()
+            return
+        assert not unacked
+        # Back where it was, once: the next pop gets it.
+        assert client.queues[name].qsize() == 2
+        assert wake.qsize() == (case != 'restored')
+        channel._brpop_start()
+        assert channel._brpop_read()
+        assert callback.call_args[0][0].body in ('first', b'first')
+        channel.qos._delivered.clear()
+
     @pytest.mark.parametrize('closing', [True, False])
     def test_woken_consumer_pops_only_with_credit(self, closing):
         channel, callback = self._consume(f'woken-{closing}')
@@ -3322,6 +3396,8 @@ class test_PausedBRPOP:
         self.cycle = self.connection.transport.cycle
         self.cycle.poller = Mock()
         self.cycle.poller.poll.return_value = []
+        # A pending wait: a pop's reply is put back instead (below).
+        self.channel._wait_for_wake = True
         self.cycle._register_BRPOP(self.channel)
         self.client = self.channel.client
         self.pending = self.client.connection
@@ -3367,6 +3443,16 @@ class test_PausedBRPOP:
         assert self.sock.data == commands
         self.read.assert_not_called()
         disconnect.assert_not_called()
+
+    def test_pop_reply_without_credit_is_read_not_paused(self):
+        self.channel._wait_for_wake = False
+        self.cycle._update_brpop_polling()
+        assert self.fd not in self.cycle._paused_brpop
+
+        self.cycle.on_readable(self.fd)
+
+        self.read.assert_called_once_with()
+        assert self.fd not in self.cycle._paused_brpop
 
     def test_pause_is_idempotent_for_stale_read_events(self):
         self.cycle.on_readable(self.fd)
@@ -3584,6 +3670,7 @@ class test_PausedBRPOP:
             'other-paused-brpop', no_ack=False, callback=Mock(),
             consumer_tag='other-paused-consumer',
         )
+        other._wait_for_wake = True
         self.cycle._register_BRPOP(other)
         other.qos.can_consume = Mock(return_value=False)
         other_connection = other.client.connection

@@ -218,7 +218,8 @@ return #overdue
 #: unrecorded. The last #ARGV - 1 keys are the queues' wake lists: while a
 #: queue has messages left, its wake list keeps a token, so another idle
 #: consumer wakes up. Returns ``{queue index (1-based), message, delivery tag
-#: recorded or '', 1 if every queue is now empty else 0}``, or nil.
+#: recorded or '', 1 if every queue is now empty else 0, list index}``, or
+#: nil.
 POP_UNACKED = """
 -- Encodes s as Python's json.dumps does, if s is printable ASCII.
 local function encode(s)
@@ -298,9 +299,30 @@ for i = 1, nlists do
                     exchange .. ', ' .. routing_key .. ']')
             end
         end
-        return {q, item, tag, empty}
+        return {q, item, tag, empty, i}
     end
 end
+"""
+
+#: Puts message ARGV[2] back at the end of list KEYS[3] that RPOP takes from,
+#: and pushes a token to wake list KEYS[4]. If the pop script recorded it
+#: under tag ARGV[1] in the unacked hash KEYS[1], it drops that record first,
+#: and does nothing if the record is gone, or is another delivery's: its
+#: score in the index KEYS[2] is no longer ARGV[3], the pop's. A restore
+#: already put the message back then, and it may have been popped again.
+PUT_BACK = """
+if ARGV[1] ~= '' then
+    local score = redis.call('ZSCORE', KEYS[2], ARGV[1])
+    if not score or tonumber(score) ~= tonumber(ARGV[3]) then
+        return 0
+    end
+    redis.call('HDEL', KEYS[1], ARGV[1])
+    redis.call('ZREM', KEYS[2], ARGV[1])
+end
+redis.call('RPUSH', KEYS[3], ARGV[2])
+redis.call('LPUSH', KEYS[4], '1')
+redis.call('LTRIM', KEYS[4], 0, 0)
+return 1
 """
 
 PRIORITY_STEPS = [0, 3, 6, 9]
@@ -798,10 +820,12 @@ class MultiChannelPoller:
 
         for fd, (channel, type) in list(self._fd_to_chan.items()):
             if (type == 'BRPOP' and channel._in_poll and
+                    channel._wait_for_wake and
                     not channel.qos.can_consume()):
-                # A pending reply may contain a message already popped from
-                # Redis. Keep it intact until credit returns, but stop polling
-                # the readable socket so it cannot spin the event loop.
+                # A pending wait holds at most a wake-up token. Keep it
+                # intact until credit returns, but stop polling the readable
+                # socket so it cannot spin the event loop. A pop's reply is
+                # read instead, to put its message back.
                 self._pause_brpop(channel, fd)
 
     def _register(self, channel, client, type):
@@ -968,7 +992,10 @@ class MultiChannelPoller:
             logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
             return
         chan, type = chan_type
-        if chan.qos.can_consume():
+        if chan.qos.can_consume() or (
+                type == 'BRPOP' and chan._in_poll and
+                not chan._wait_for_wake):
+            # Without credit, a pop's reply puts its message back.
             chan.handlers[type]()
         elif type == 'BRPOP':
             if chan._in_poll:
@@ -1174,6 +1201,8 @@ class Channel(virtual.Channel):
     sep = '\x06\x16'
     _in_poll = False
     _brpop_sent_at = None
+    #: The index score the pop in flight records its message with.
+    _pop_score = None
     #: Set once a pop finds every queue empty: the next command then waits
     #: on the queues' wake lists instead.
     _wait_for_wake = False
@@ -1627,6 +1656,7 @@ class Channel(virtual.Channel):
                 for queue in queues])
             command_args = ['EVALSHA', self._pop_unacked.sha, len(keys),
                             *keys, *args]
+            self._pop_score = args[0]
         self._in_poll = self.client.connection
         self._brpop_sent_at = monotonic()
 
@@ -1652,10 +1682,18 @@ class Channel(virtual.Channel):
                 self.client.script_load(POP_UNACKED)
                 raise Empty()
             if reply and not waited:
-                index, item, tag, empty = reply
+                index, item, tag, empty, position = reply
+                dest = self._pop_queues[int(index) - 1]
+                if (not self.qos.can_consume() or monotonic() -
+                        self._brpop_sent_at >= self.visibility_timeout):
+                    # The credit went while the reply was on its way, or
+                    # the reply is as old as the visibility timeout, so a
+                    # restore may have put the message back already: put
+                    # it back rather than deliver it, unless that happened.
+                    self._put_back(dest, int(position), item, tag)
+                    raise Empty()
                 # Every queue is empty: wait for a token next.
                 self._wait_for_wake = bool(int(empty))
-                dest = self._pop_queues[int(index) - 1]
                 self._queue_cycle.rotate(dest)
                 self._deliver_popped(self._load_popped(item, tag), dest,
                                      bytes_to_str(tag))
@@ -1676,6 +1714,20 @@ class Channel(virtual.Channel):
                 # the reply rather than sleep ``polling_interval`` first.
                 raise _CommandSent()
         raise Empty()
+
+    def _put_back(self, queue, position, item, tag):
+        pri = self.priority_steps[(position - 1) // len(self._pop_queues)]
+        # The prefixed client prefixes only the first key of an EVALSHA.
+        keys = [self.unacked_key, *(self.global_keyprefix + key for key in [
+            self.unacked_index_key, self._q_for_pri(queue, pri),
+            self._wake_key(queue)])]
+        with self.conn_or_acquire() as client:
+            self._put_back_script(keys=keys, args=[tag, item, self._pop_score],
+                                  client=client)
+
+    @cached_property
+    def _put_back_script(self):
+        return self._create_client().register_script(PUT_BACK)
 
     def _load_popped(self, item, tag):
         try:
@@ -1886,7 +1938,7 @@ class Channel(virtual.Channel):
             self._maybe_update_queues_expire(client, queue)
         if not reply:
             raise Empty()
-        _, item, tag, _ = reply
+        _, item, tag, _, _ = reply
         return self._load_popped(item, tag), bytes_to_str(tag)
 
     @cached_property
