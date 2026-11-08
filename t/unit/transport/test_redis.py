@@ -1653,6 +1653,164 @@ class test_Channel:
 
         c.connection.disconnect.assert_called_with()
 
+    def _consume(self, name, no_ack=False):
+        channel = self.channel
+        channel.exchange_declare(name)
+        channel.queue_declare(name)
+        channel.queue_bind(name, name, name)
+        callback = Mock(name='callback')
+        channel.basic_consume(name, no_ack, callback, name)
+        channel.client.hashes[channel.unacked_key].clear()
+        return channel, callback
+
+    def _publish(self, channel, name, body='task'):
+        channel.basic_publish(channel.prepare_message(body), name, name)
+
+    @pytest.mark.parametrize('killed', [True, False])
+    def test_popped_message_is_recorded_once_before_delivery(self, killed):
+        # A consumer killed right after Redis hands it a message leaves the
+        # message in ``unacked``, where the visibility timeout restores it
+        # (#305).  ``_deliver`` raising stands in for the kill.
+        channel, callback = self._consume(f'recorded-{killed}')
+        self._publish(channel, f'recorded-{killed}')
+        channel.qos.pipe_or_acquire = Mock(name='pipe_or_acquire')
+        if killed:
+            channel.connection._deliver = Mock(side_effect=SystemExit)
+
+        channel._brpop_start()
+        try:
+            channel._brpop_read()
+        except SystemExit:
+            assert killed
+
+        (tag, raw), = channel.client.hashes[channel.unacked_key].items()
+        payload, exchange, routing_key = loads(raw)
+        assert payload['properties']['delivery_tag'] == tag
+        assert routing_key == f'recorded-{killed}'
+        # The QoS doesn't write it again.
+        channel.qos.pipe_or_acquire.assert_not_called()
+        assert (tag in channel.qos._delivered) is not killed
+        assert channel.qos._recorded == set()
+        channel.qos._delivered.clear()
+
+    def test_basic_get_records_the_message_unless_no_ack(self):
+        channel, _ = self._consume('basic-get')
+        self._publish(channel, 'basic-get', 'one')
+        self._publish(channel, 'basic-get', 'two')
+        channel.qos.pipe_or_acquire = Mock(name='pipe_or_acquire')
+
+        message = channel.basic_get('basic-get', no_ack=False)
+        unacked = channel.client.hashes[channel.unacked_key]
+        assert list(unacked) == [message.delivery_tag]
+        assert message.delivery_tag in channel.qos._delivered
+        channel.qos.pipe_or_acquire.assert_not_called()
+
+        unacked.clear()
+        message = channel.basic_get('basic-get', no_ack=True)
+        assert message is not None
+        assert message.delivery_tag not in channel.qos._delivered
+        assert not unacked
+        channel.qos._delivered.clear()
+
+    def test_restore_pushes_a_wake_token(self):
+        # Every restore (reject with requeue, recover, the visibility
+        # timeout, shutdown) goes through ``_do_restore_message``.
+        channel, _ = self._consume('wake-restore')
+        payload = channel.prepare_message('task')
+        pipe = Mock(name='pipe')
+
+        channel._do_restore_message(
+            payload, 'wake-restore', 'wake-restore', pipe)
+
+        wake = channel._wake_key('wake-restore')
+        pipe.rpush.assert_called_once_with('wake-restore', ANY)
+        pipe.lpush.assert_called_once_with(wake, 1)
+        pipe.lpush.return_value.ltrim.assert_called_once_with(wake, 0, 0)
+
+    @pytest.mark.parametrize('remove', ['queue_delete', 'queue_purge'])
+    def test_queue_removal_removes_the_wake_list(self, remove):
+        name = f'wake-{remove}'
+        channel, _ = self._consume(name)
+        self._publish(channel, name)
+        assert channel._wake_key(name) in channel.client.queues
+
+        getattr(channel, remove)(name)
+
+        assert channel._wake_key(name) not in channel.client.queues
+
+    @pytest.mark.parametrize('token', [True, False])
+    def test_idle_consumer_waits_on_the_wake_lists(self, token):
+        name = f'idle-{token}'
+        channel, callback = self._consume(name)
+        channel.client.connection.send_command = Mock(
+            wraps=channel.client.connection.send_command)
+        send = channel.client.connection.send_command
+
+        channel._brpop_start()
+        with pytest.raises(Empty):
+            channel._brpop_read()
+        self._publish(channel, name)
+        if not token:
+            # A publisher without the wake list pushes no token: the wait
+            # times out instead.
+            channel.client.queues[channel._wake_key(name)].get_nowait()
+        channel._brpop_start(timeout=5)
+        assert send.call_args == call('BLPOP', channel._wake_key(name), 5)
+
+        # The pop follows in the same read.
+        assert channel._brpop_read()
+
+        assert send.call_args[0][0] == 'EVALSHA'
+        callback.assert_called_once()
+        # The script found the queue empty after this pop: wait next.
+        assert channel._wait_for_wake
+        channel.qos._delivered.clear()
+
+    @pytest.mark.parametrize('closing', [True, False])
+    def test_woken_consumer_pops_only_with_credit(self, closing):
+        channel, callback = self._consume(f'woken-{closing}')
+        channel._wait_for_wake = True
+        channel._brpop_start()
+        channel._closing = closing
+        channel.client.connection.send_command = Mock()
+
+        with patch.object(channel.qos, 'can_consume', return_value=closing):
+            with pytest.raises(Empty):
+                channel._brpop_read()
+
+        channel.client.connection.send_command.assert_not_called()
+        callback.assert_not_called()
+        assert not channel._wait_for_wake
+        assert channel._in_poll is None
+
+    @pytest.mark.parametrize('tag', [b'tag', b''])
+    def test_message_that_does_not_load_drops_its_record(self, tag):
+        channel = self.channel
+        remove = channel.qos._remove_from_indices = Mock(name='remove')
+
+        with pytest.raises(ValueError):
+            channel._load_popped(b'{"properties": {}} not json', tag)
+
+        if tag:
+            remove.assert_called_once_with('tag')
+            remove.return_value.execute.assert_called_once_with()
+        else:
+            remove.assert_not_called()
+
+    def test_noscript_loads_the_script_again(self):
+        channel, _ = self._consume('noscript')
+        channel.client.script_load = Mock(name='script_load')
+        channel._brpop_start()
+        channel.client.parse_response = Mock(
+            side_effect=redis.exceptions.NoScriptError('NOSCRIPT'))
+
+        with pytest.raises(Empty):
+            channel._brpop_read()
+
+        channel.client.script_load.assert_called_once_with(redis.POP_UNACKED)
+        assert not channel._wait_for_wake
+        assert channel._in_poll is None
+
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
         c.parse_response.return_value = None
@@ -1715,6 +1873,22 @@ class test_Channel:
         assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 0), dumps(msg3),
         )
+
+    @pytest.mark.parametrize('expires', [None, 5000])
+    def test_put_uses_a_transaction_only_to_expire_the_queue(self, expires):
+        client, pipeline = self._recording_batch_client()
+        if expires:
+            self.channel._expires['george'] = expires
+
+        self.channel._put('george', {'properties': {}})
+
+        client.pipeline.assert_called_once_with(transaction=bool(expires))
+        wake = self.channel._wake_key('george')
+        assert pipeline.lpush.call_args_list == [
+            call('george', ANY), call(wake, 1)]
+        pipeline.lpush.return_value.ltrim.assert_called_once_with(wake, 0, 0)
+        assert pipeline.pexpire.call_count == (5 if expires else 0)
+        pipeline.execute.assert_called_once_with()
 
     def test_delete(self):
         x = self.channel
@@ -2657,36 +2831,25 @@ class test_Channel:
         channel.client.connection.send_command.assert_called_once_with(
             'BLPOP', channel._wake_key('q'), 5)
 
-    def test_brpop_start_prefixes_keys(self):
+    @pytest.mark.parametrize('wait', [False, True])
+    def test_brpop_start_prefixes_keys(self, wait):
         channel = self.channel
         keys = self._brpop_queue(channel)
         channel.global_keyprefix = 'foo_'
-        channel.client._prefix_args = Mock(return_value=['EVALSHA', 'x'])
+        channel._wait_for_wake = wait
+        channel.client._prefix_args = Mock(return_value=['CMD', 'x'])
 
         with patch('kombu.transport.redis.time', return_value=42.0):
             channel._brpop_start()
 
         # The client prefixes only the first key of a script call.
         channel.client._prefix_args.assert_called_once_with(
-            ['EVALSHA', 'pop-unacked', 7, 'unacked', 'foo_unacked_index',
-             *(f'foo_{key}' for key in keys),
-             f"foo_{channel._wake_key('q')}", 42.0, '1'])
+            ['BLPOP', channel._wake_key('q'), channel.brpop_timeout] if wait
+            else ['EVALSHA', 'pop-unacked', 7, 'unacked', 'foo_unacked_index',
+                  *(f'foo_{key}' for key in keys),
+                  f"foo_{channel._wake_key('q')}", 42.0, '1'])
         channel.client.connection.send_command.assert_called_once_with(
-            'EVALSHA', 'x')
-
-    def test_brpop_start_prefixes_wake_keys(self):
-        channel = self.channel
-        self._brpop_queue(channel)
-        channel.global_keyprefix = 'foo_'
-        channel._wait_for_wake = True
-        channel.client._prefix_args = Mock(return_value=['BLPOP', 'x', 1])
-
-        channel._brpop_start()
-
-        channel.client._prefix_args.assert_called_once_with(
-            ['BLPOP', channel._wake_key('q'), channel.brpop_timeout])
-        channel.client.connection.send_command.assert_called_once_with(
-            'BLPOP', 'x', 1)
+            'CMD', 'x')
 
     @pytest.mark.parametrize('expires,ttl', [
         (500, 3_600_000), (2_000_000, 4_000_000)])
