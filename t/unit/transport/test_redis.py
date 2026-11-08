@@ -1902,7 +1902,8 @@ class test_Channel:
         assert wake.qsize() == (case != 'restored')
         channel._brpop_start()
         assert channel._brpop_read()
-        assert callback.call_args[0][0].body in ('first', b'first')
+        body = callback.call_args[0][0].body
+        assert (body.decode() if isinstance(body, bytes) else body) == 'first'
         channel.qos._delivered.clear()
 
     @pytest.mark.parametrize('closing', [True, False])
