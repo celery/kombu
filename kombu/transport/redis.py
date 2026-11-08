@@ -594,13 +594,15 @@ class QoS(virtual.QoS):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._vrestore_count = 0
-        #: Tags the pop script already recorded in ``unacked``.
-        self._recorded = set()
+        #: Tags of messages the pop script recorded in ``unacked``: to
+        #: None, or to the other tag it recorded the message under.
+        self._recorded = {}
 
-    def append(self, message, delivery_tag):
+    def append(self, message, delivery_tag, replaces=None):
         if delivery_tag in self._recorded:
-            self._recorded.discard(delivery_tag)
-            return self.append_recorded(message, delivery_tag)
+            replaces = self._recorded.pop(delivery_tag)
+            if replaces is None:
+                return self.append_recorded(message, delivery_tag)
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         # TODO: Remove this once we solely on Redis-py 3.0.0+
@@ -613,8 +615,12 @@ class QoS(virtual.QoS):
         with self.pipe_or_acquire() as pipe:
             pipe.zadd(self.unacked_index_key, *zadd_args) \
                 .hset(self.unacked_key, delivery_tag,
-                      dumps([message._raw, EX, RK])) \
-                .execute()
+                      dumps([message._raw, EX, RK]))
+            if replaces:
+                # In the same transaction, drop the record the pop script
+                # wrote under another tag.
+                self._remove_from_indices(replaces, pipe)
+            pipe.execute()
             super().append(message, delivery_tag)
 
     def append_recorded(self, message, delivery_tag):
@@ -1741,18 +1747,17 @@ class Channel(virtual.Channel):
 
     def _deliver_popped(self, payload, queue, tag):
         """Deliver a message the script recorded under ``tag``, if any."""
-        if not self._recorded_as(payload, tag):
-            self.connection._deliver(payload, queue)
-            if tag:
-                # The QoS recorded it under the message's tag: now drop
-                # the script's record.
-                self._drop_record(tag)
-            return
-        self.qos._recorded.add(tag)
+        if not tag:
+            return self.connection._deliver(payload, queue)
+        own = payload['properties']['delivery_tag']
+        # The QoS records it again under its own tag, if the script read
+        # another one.
+        self.qos._recorded[own] = None if self._recorded_as(
+            payload, tag) else tag
         try:
             self.connection._deliver(payload, queue)
         finally:
-            self.qos._recorded.discard(tag)
+            self.qos._recorded.pop(own, None)
 
     def _recorded_as(self, payload, tag):
         """Whether the script recorded the message under kombu's tag."""
@@ -1921,9 +1926,7 @@ class Channel(virtual.Channel):
         if self._recorded_as(payload, tag):
             self.qos.append_recorded(message, message.delivery_tag)
         elif not no_ack:
-            self.qos.append(message, message.delivery_tag)
-            if tag:
-                self._drop_record(tag)
+            self.qos.append(message, message.delivery_tag, replaces=tag)
         return message
 
     def _get(self, queue):

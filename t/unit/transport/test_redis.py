@@ -1709,7 +1709,7 @@ class test_Channel:
         # The QoS doesn't write it again.
         channel.qos.pipe_or_acquire.assert_not_called()
         assert (tag in channel.qos._delivered) is not killed
-        assert channel.qos._recorded == set()
+        assert not channel.qos._recorded
         channel.qos._delivered.clear()
 
     def test_basic_get_records_the_message_unless_no_ack(self):
@@ -1739,7 +1739,7 @@ class test_Channel:
             with pytest.raises(KeyError):
                 channel.basic_get('get-fails', no_ack=False)
 
-        assert channel.qos._recorded == set()
+        assert not channel.qos._recorded
         # The record stays for the visibility timeout.
         assert len(channel.client.hashes[channel.unacked_key]) == 1
 
@@ -1760,6 +1760,8 @@ class test_Channel:
         if path == 'killed':
             channel.connection._deliver = Mock(side_effect=SystemExit)
         unacked = channel.client.hashes[channel.unacked_key]
+        remove = channel.qos._remove_from_indices = Mock(
+            wraps=channel.qos._remove_from_indices)
         with patch('kombu.transport.redis.warning') as warning:
             if path == 'basic_get':
                 channel.basic_get(f'odd-tag-{path}', no_ack=False)
@@ -1771,15 +1773,18 @@ class test_Channel:
                     pass
 
         warning.assert_called_once()
-        assert channel.qos._recorded == set()
+        assert not channel.qos._recorded
         if path == 'killed':
             # Killed before the QoS recorded it: the script's record stays.
             assert list(unacked) != ['kombu-tag']
             assert len(unacked) == 1
         else:
-            # Recorded under kombu's tag first, then the script's dropped.
+            # Recorded under kombu's tag, and the script's record dropped
+            # in the same transaction.
             assert list(unacked) == ['kombu-tag']
             assert 'kombu-tag' in channel.qos._delivered
+            (_, pipe), = (c.args for c in remove.call_args_list)
+            assert pipe is not None
         channel.qos._delivered.clear()
 
     def test_restore_pushes_a_wake_token(self):
