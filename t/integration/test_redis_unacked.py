@@ -737,7 +737,7 @@ def json_values(floats):
 @st.composite
 def messages(draw):
     """A message as kombu writes it, or in some other layout, or not one."""
-    kind = draw(st.sampled_from(['kombu', 'kombu', 'other layout',
+    kind = draw(st.sampled_from(['kombu', 'kombu', 'other layout', 'cut',
                                  'json', 'bytes']))
     if kind == 'bytes':
         return draw(st.binary(max_size=64))
@@ -770,6 +770,14 @@ def messages(draw):
         keys = draw(st.one_of(st.just([*message, *extra]),
                               st.permutations([*message, *extra])))
         message = {k: {**message, **extra}[k] for k in keys}
+    if kind == 'cut':
+        # Not JSON, or JSON with a space after it, ending like kombu's.
+        raw = dumps(message).encode()
+        if draw(st.booleans()):
+            # The last properties key glued to the value before it.
+            at = raw.rindex(b'"properties": {')
+            return raw[:at - 2] + raw[at:]
+        return raw[:-1] + draw(st.sampled_from([b'', b' ', b'x', b'} ']))
     return dumps(message).encode()
 
 
