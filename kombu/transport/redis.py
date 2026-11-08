@@ -578,7 +578,7 @@ class QoS(virtual.QoS):
     def append(self, message, delivery_tag):
         if delivery_tag in self._recorded:
             self._recorded.discard(delivery_tag)
-            return super().append(message, delivery_tag)
+            return self.append_recorded(message, delivery_tag)
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         # TODO: Remove this once we solely on Redis-py 3.0.0+
@@ -594,6 +594,10 @@ class QoS(virtual.QoS):
                       dumps([message._raw, EX, RK])) \
                 .execute()
             super().append(message, delivery_tag)
+
+    def append_recorded(self, message, delivery_tag):
+        """Track a message the pop script already recorded in unacked."""
+        super().append(message, delivery_tag)
 
     def restore_unacked(self, client=None):
         with self.channel.conn_or_acquire(client) as client:
@@ -1841,15 +1845,21 @@ class Channel(virtual.Channel):
     def basic_get(self, queue, no_ack=False, **kwargs):
         """Get message by direct access (synchronous)."""
         try:
-            payload = self._get(queue, record=not no_ack)
+            payload, tag = self._pop(queue, record=not no_ack)
         except Empty:
             return None
         message = self.Message(payload, channel=self)
-        if not no_ack:
+        if tag:
+            self.qos.append_recorded(message, message.delivery_tag)
+        elif not no_ack:
             self.qos.append(message, message.delivery_tag)
         return message
 
-    def _get(self, queue, record=False):
+    def _get(self, queue):
+        return self._pop(queue)[0]
+
+    def _pop(self, queue, record=False):
+        """Pop a message: the payload, and the tag the script recorded."""
         keys, args = self._pop_unacked_args(
             [queue], [record and self.ack_emulation])
         with self.conn_or_acquire() as client:
@@ -1858,10 +1868,7 @@ class Channel(virtual.Channel):
         if not reply:
             raise Empty()
         _, item, tag, _ = reply
-        payload = self._load_popped(item, tag)
-        if tag:
-            self.qos._recorded.add(payload['properties']['delivery_tag'])
-        return payload
+        return self._load_popped(item, tag), bytes_to_str(tag)
 
     @cached_property
     def _pop_unacked(self):

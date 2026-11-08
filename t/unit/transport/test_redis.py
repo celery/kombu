@@ -1712,6 +1712,18 @@ class test_Channel:
         assert not unacked
         channel.qos._delivered.clear()
 
+    def test_basic_get_keeps_no_state_when_the_message_fails(self):
+        channel, _ = self._consume('get-fails')
+        self._publish(channel, 'get-fails')
+
+        with patch.object(channel, 'Message', side_effect=KeyError('x')):
+            with pytest.raises(KeyError):
+                channel.basic_get('get-fails', no_ack=False)
+
+        assert channel.qos._recorded == set()
+        # The record stays for the visibility timeout.
+        assert len(channel.client.hashes[channel.unacked_key]) == 1
+
     def test_restore_pushes_a_wake_token(self):
         # Every restore (reject with requeue, recover, the visibility
         # timeout, shutdown) goes through ``_do_restore_message``.

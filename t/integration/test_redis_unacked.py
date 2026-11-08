@@ -414,9 +414,12 @@ class Consumer:
         raise AssertionError('the pop neither replied nor blocked')
 
     def read(self, wait, machine):
+        """Read the reply, if it came and there's credit, as the poller
+        does."""
         sock = self.channel.client.connection._sock
-        if select.select([sock], [], [], wait)[0]:
-            before = len(self.held) + len(machine.acked)
+        if (self.channel.qos.can_consume()
+                and select.select([sock], [], [], wait)[0]):
+            held, before = len(self.held), len(self.held) + len(machine.acked)
             try:
                 self.channel._brpop_read()
             except Empty:
@@ -425,8 +428,9 @@ class Consumer:
                 # A pop sent after a wake-up: let Redis run it, so runs
                 # are repeatable.
                 self.settle(machine.redis)
-            # One message per reply at most.
+            # One message per reply at most, and only with credit.
             assert len(self.held) + len(machine.acked) - before <= 1
+            assert len(self.held) == held or held < 2
 
     def kill(self, client):
         # Whatever the process held, in memory or unread on its socket, is
@@ -501,6 +505,16 @@ class UnackedMachine(RuleBasedStateMachine):
         if self.consumers[c].channel._in_poll:
             self.consumers[c].read(0.05, self)
 
+    @rule(c=CONSUMERS, queue=st.sampled_from(ACK_QUEUES), no_ack=st.booleans())
+    def get(self, c, queue, no_ack):
+        """``basic_get``, which doesn't wait for credit."""
+        consumer = self.consumers[c]
+        message = consumer.channel.basic_get(self.queue_name(queue), no_ack)
+        if message and no_ack:
+            self.acked.add(message.headers['id'])
+        elif message:
+            consumer.held.append(message)
+
     @rule(c=CONSUMERS)
     def time_out(self, c):
         """End a blocking pop, as its timeout would."""
@@ -547,6 +561,8 @@ class UnackedMachine(RuleBasedStateMachine):
             # Replies already sent belong to live consumers, also the one
             # to a pop sent after a wake-up.
             while consumer.channel._in_poll and consumer.settle(self.redis):
+                if not consumer.channel.qos.can_consume():
+                    return  # A paused reply: no timeout has passed yet.
                 consumer.read(0, self)
         held = {m.delivery_tag for c in self.consumers for m in c.held}
         index = f'{self.prefix}{self.name}_unacked_index'
@@ -585,7 +601,6 @@ class UnackedMachine(RuleBasedStateMachine):
     def consumers_keep_to_prefetch_and_hold_no_extra_state(self):
         for consumer in self.consumers:
             qos = consumer.channel.qos
-            assert len(consumer.held) <= 2
             assert len(qos._delivered) - len(qos._dirty) == len(
                 consumer.held)
             assert not getattr(qos, '_recorded', ())
