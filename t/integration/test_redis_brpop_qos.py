@@ -138,19 +138,22 @@ def test_hub_pauses_pending_brpop_until_ack(consuming, message):
                 assert [item.payload for item in received] == [first]
                 start.assert_not_called()
                 received[0].ack()
-                run_until(hub, lambda: channel._in_poll is None)
+                # The pending reply is read first: a popped message is
+                # delivered, and a token is followed by its pop.
+                run_until(hub, lambda: len(received) == 2 if message != 'nil'
+                          else start.called)
             finally:
                 timer.cancel()
-            # Only the pop that follows a wait, after its reply was read.
-            assert start.call_count == (message != 'popped')
+            assert start.called == (message != 'popped')
         assert channel.client.connection._sock is sock
         assert sock.fileno() in hub.readers
         assert [item.payload for item in received] == (
             [first] if message == 'nil' else [first, first + 1])
         if message != 'nil':
             received[1].ack()
-        assert channel.client.hlen(channel.unacked_key) == 0
-        assert channel.client.zcard(channel.unacked_index_key) == 0
+        client = channel._create_client()  # The next command is in flight.
+        assert client.hlen(channel.unacked_key) == 0
+        assert client.zcard(channel.unacked_index_key) == 0
     finally:
         hub.close()
 

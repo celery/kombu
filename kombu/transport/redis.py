@@ -363,6 +363,10 @@ def get_redis_ConnectionError():
     return exceptions.ConnectionError
 
 
+class _CommandSent(Empty):
+    """A reply delivered nothing, and the channel sent its next command."""
+
+
 class MutexHeld(Exception):
     """Raised when another party holds the lock."""
 
@@ -997,13 +1001,10 @@ class MultiChannelPoller:
                 sleep(min(timeout, 1) if timeout is not None else 1)
                 events = []
             else:
-                events = self.poller.poll(timeout)
-            if events:
-                for fileno, event in events:
-                    ret = self.handle_event(fileno, event)
-                    if ret:
-                        return
-            else:
+                events = self._poll_and_handle(timeout)
+                if events is None:
+                    return
+            if not events:
                 # drain_events() consumers have no event loop timer to
                 # catch a half-open BRPOP connection.
                 self.maybe_check_brpop_health()
@@ -1020,6 +1021,25 @@ class MultiChannelPoller:
                     break
                 else:
                     fun()
+
+    def _poll_and_handle(self, timeout):
+        """Handle the events of one poll; None once a handler returned.
+
+        A handler that sent its next command gets its reply waited for,
+        within what's left of ``timeout``.
+        """
+        deadline = None if timeout is None else monotonic() + timeout
+        while True:
+            events = self.poller.poll(timeout)
+            try:
+                for fileno, event in events:
+                    if self.handle_event(fileno, event):
+                        return None
+            except _CommandSent:
+                if deadline is not None:
+                    timeout = max(deadline - monotonic(), 0)
+                continue
+            return events
 
     @property
     def fds(self):
@@ -1642,14 +1662,15 @@ class Channel(virtual.Channel):
             # consumed and no new BRPOP has been issued yet): this is the
             # safe moment to flush any pending streaming re-auth token.
             self._flush_brpop_reauth()
-        # Popped nothing: wait on the wake lists next. Woken by a token or by
-        # the timeout: pop next, and now, so drain_events() doesn't sleep
-        # ``polling_interval`` first.
+        # Delivered nothing: send the next command now, the wait on the wake
+        # lists after an empty pop, or the pop after a wait.
         self._wait_for_wake = not waited
-        if waited and not self._closing and self.qos.can_consume():
+        if not self._closing and self.qos.can_consume():
             self._brpop_start()
-            if self._in_poll:
-                return self._brpop_read(**options)
+            if self._in_poll and (reply or not waited):
+                # Not after a wait that timed out: drain_events() waits for
+                # the reply rather than sleep ``polling_interval`` first.
+                raise _CommandSent()
         raise Empty()
 
     def _load_popped(self, item, tag):

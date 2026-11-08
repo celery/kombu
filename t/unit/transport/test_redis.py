@@ -1745,22 +1745,31 @@ class test_Channel:
         channel.client.connection.send_command = Mock(
             wraps=channel.client.connection.send_command)
         send = channel.client.connection.send_command
+        parse = channel.client.parse_response = Mock(
+            wraps=channel.client.parse_response)
 
         channel._brpop_start()
-        with pytest.raises(Empty):
+        # An empty pop: the wait is sent right away.
+        with pytest.raises(redis._CommandSent):
             channel._brpop_read()
+        assert send.call_args == call('BLPOP', channel._wake_key(name), 1)
         self._publish(channel, name)
         if not token:
             # A publisher without the wake list pushes no token: the wait
             # times out instead.
             channel.client.queues[channel._wake_key(name)].get_nowait()
-        channel._brpop_start(timeout=5)
-        assert send.call_args == call('BLPOP', channel._wake_key(name), 5)
+        parse.reset_mock()
 
-        # The pop follows in the same read.
+        # Woken: the pop is sent right away, but its reply read only on
+        # the next call, so the event loop never blocks on it.
+        with pytest.raises(Empty) as exc_info:
+            channel._brpop_read()
+        assert (exc_info.type is redis._CommandSent) is token
+        parse.assert_called_once()
+        assert send.call_args[0][0] == 'EVALSHA'
+        callback.assert_not_called()
         assert channel._brpop_read()
 
-        assert send.call_args[0][0] == 'EVALSHA'
         callback.assert_called_once()
         # The script found the queue empty after this pop: wait next.
         assert channel._wait_for_wake
@@ -4411,6 +4420,19 @@ class test_MultiChannelPoller:
             p.get(Mock())
 
         p._register_LISTEN.assert_called_with(channel)
+
+    def test_get_waits_for_the_reply_to_a_command_a_handler_sent(self):
+        p = self.Poller()
+        p.poller = Mock(name='poller')
+        p.poller.poll.side_effect = [[(1, eventio.READ)], [(1, eventio.READ)]]
+        p.handle_event = Mock(name='handle_event', side_effect=[
+            redis._CommandSent(), (True, p)])
+
+        with patch('kombu.transport.redis.monotonic', side_effect=[10, 12]):
+            p.get(Mock(), timeout=5)
+
+        assert p.poller.poll.call_args_list == [call(5), call(3)]
+        assert p.handle_event.call_count == 2
 
     def test_get_receives_ERR(self):
         p, channel = self.create_get(events=[(1, eventio.ERR)])

@@ -402,14 +402,15 @@ class Consumer:
         self.client_id = channel.client.client_id()
 
     def settle(self, client):
-        """Wait until Redis ran the pop sent: it replied, or it blocks."""
+        """Wait until Redis ran the pop sent. Return whether it replied:
+        if not, it blocks."""
         sock = self.channel.client.connection._sock
         for _ in range(500):
             if select.select([sock], [], [], 0.01)[0]:
-                return
+                return True
             info = client.client_list(client_id=[self.client_id])
             if info and 'b' in info[0]['flags']:
-                return
+                return False
         raise AssertionError('the pop neither replied nor blocked')
 
     def read(self, wait, machine):
@@ -420,6 +421,10 @@ class Consumer:
                 self.channel._brpop_read()
             except Empty:
                 pass
+            if self.channel._in_poll:
+                # A pop sent after a wake-up: let Redis run it, so runs
+                # are repeatable.
+                self.settle(machine.redis)
             # One message per reply at most.
             assert len(self.held) + len(machine.acked) - before <= 1
 
@@ -539,9 +544,10 @@ class UnackedMachine(RuleBasedStateMachine):
         """Restore the messages of killed consumers, as their visibility
         timeout passes."""
         for consumer in self.consumers:
-            # Replies already sent belong to live consumers.
-            if consumer.channel._in_poll:
-                consumer.read(0.2, self)
+            # Replies already sent belong to live consumers, also the one
+            # to a pop sent after a wake-up.
+            while consumer.channel._in_poll and consumer.settle(self.redis):
+                consumer.read(0, self)
         held = {m.delivery_tag for c in self.consumers for m in c.held}
         index = f'{self.prefix}{self.name}_unacked_index'
         for tag in self.redis.zrange(index, 0, -1):
