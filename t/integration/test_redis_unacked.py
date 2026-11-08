@@ -505,6 +505,20 @@ class UnackedMachine(RuleBasedStateMachine):
         if self.consumers[c].channel._in_poll:
             self.consumers[c].read(0.05, self)
 
+    @rule(c=CONSUMERS)
+    def poll_reading_another_tag(self, c):
+        """Poll, with the script and kombu reading different tags."""
+        channel = self.consumers[c].channel
+        load = channel._load_popped
+
+        def other_tag(item, tag):
+            payload = load(item, tag)
+            payload['properties']['delivery_tag'] = uuid4().hex
+            return payload
+
+        with patch.object(channel, '_load_popped', other_tag):
+            self.poll(c)
+
     @rule(c=CONSUMERS, queue=st.sampled_from(ACK_QUEUES), no_ack=st.booleans())
     def get(self, c, queue, no_ack):
         """``basic_get``, which doesn't wait for credit."""

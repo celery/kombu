@@ -1724,6 +1724,45 @@ class test_Channel:
         # The record stays for the visibility timeout.
         assert len(channel.client.hashes[channel.unacked_key]) == 1
 
+    @pytest.mark.parametrize('path', ['consume', 'basic_get', 'killed'])
+    def test_tag_the_script_read_differently_is_recorded_again(self, path):
+        # If the script ever read another tag than kombu does, an ack would
+        # leave the script's record behind, to be restored forever.
+        channel, callback = self._consume(f'odd-tag-{path}')
+        self._publish(channel, f'odd-tag-{path}')
+        load = channel._load_popped
+
+        def other_tag(item, tag):
+            payload = load(item, tag)
+            payload['properties']['delivery_tag'] = 'kombu-tag'
+            return payload
+
+        channel._load_popped = other_tag
+        if path == 'killed':
+            channel.connection._deliver = Mock(side_effect=SystemExit)
+        unacked = channel.client.hashes[channel.unacked_key]
+        with patch('kombu.transport.redis.warning') as warning:
+            if path == 'basic_get':
+                channel.basic_get(f'odd-tag-{path}', no_ack=False)
+            else:
+                channel._brpop_start()
+                try:
+                    channel._brpop_read()
+                except SystemExit:
+                    pass
+
+        warning.assert_called_once()
+        assert channel.qos._recorded == set()
+        if path == 'killed':
+            # Killed before the QoS recorded it: the script's record stays.
+            assert list(unacked) != ['kombu-tag']
+            assert len(unacked) == 1
+        else:
+            # Recorded under kombu's tag first, then the script's dropped.
+            assert list(unacked) == ['kombu-tag']
+            assert 'kombu-tag' in channel.qos._delivered
+        channel.qos._delivered.clear()
+
     def test_restore_pushes_a_wake_token(self):
         # Every restore (reject with requeue, recover, the visibility
         # timeout, shutdown) goes through ``_do_restore_message``.

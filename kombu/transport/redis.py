@@ -1658,7 +1658,7 @@ class Channel(virtual.Channel):
                 dest = self._pop_queues[int(index) - 1]
                 self._queue_cycle.rotate(dest)
                 self._deliver_popped(self._load_popped(item, tag), dest,
-                                     bool(tag))
+                                     bytes_to_str(tag))
                 return True
         finally:
             self._in_poll = None
@@ -1684,18 +1684,35 @@ class Channel(virtual.Channel):
             # Not JSON after all: drop the record, as a message that can't
             # be loaded is dropped without one.
             if tag:
-                self.qos._remove_from_indices(bytes_to_str(tag)).execute()
+                self._drop_record(bytes_to_str(tag))
             raise
 
-    def _deliver_popped(self, payload, queue, recorded):
-        if not recorded:
-            return self.connection._deliver(payload, queue)
-        tag = payload['properties']['delivery_tag']
+    def _deliver_popped(self, payload, queue, tag):
+        """Deliver a message the script recorded under ``tag``, if any."""
+        if not self._recorded_as(payload, tag):
+            self.connection._deliver(payload, queue)
+            if tag:
+                # The QoS recorded it under the message's tag: now drop
+                # the script's record.
+                self._drop_record(tag)
+            return
         self.qos._recorded.add(tag)
         try:
             self.connection._deliver(payload, queue)
         finally:
             self.qos._recorded.discard(tag)
+
+    def _recorded_as(self, payload, tag):
+        """Whether the script recorded the message under kombu's tag."""
+        own = payload.get('properties', {}).get('delivery_tag')
+        if not tag or tag == own:
+            return bool(tag)
+        warning('Redis pop script recorded delivery tag %r for a message '
+                'with tag %r: recording it under %r instead.', tag, own, own)
+        return False
+
+    def _drop_record(self, tag):
+        self.qos._remove_from_indices(tag).execute()
 
     def _poll_error(self, type, **options):
         if type == 'LISTEN':
@@ -1849,10 +1866,12 @@ class Channel(virtual.Channel):
         except Empty:
             return None
         message = self.Message(payload, channel=self)
-        if tag:
+        if self._recorded_as(payload, tag):
             self.qos.append_recorded(message, message.delivery_tag)
         elif not no_ack:
             self.qos.append(message, message.delivery_tag)
+            if tag:
+                self._drop_record(tag)
         return message
 
     def _get(self, queue):
