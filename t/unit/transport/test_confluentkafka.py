@@ -50,10 +50,9 @@ class test_QoS:
         qos.ack('tag-1')
 
         assert channel._get_consumer.return_value.commit.call_args_list == [
-            (( ), {'offsets': [TopicPartition('orders', 0, 5)]}),
-            (( ), {'offsets': [TopicPartition('orders', 0, 7)]}),
+            ((), {'offsets': [TopicPartition('orders', 0, 5)]}),
+            ((), {'offsets': [TopicPartition('orders', 0, 7)]}),
         ]
-
 
     def test_ack_only_commits_offset_for_message_partition(self):
         channel = Mock()
