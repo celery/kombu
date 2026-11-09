@@ -1700,6 +1700,49 @@ class test_Channel:
         self.channel.close()
         connection.disconnect.assert_called_with()
 
+    def test_close_when_in_poll_read_fails(self):
+        chan = self.channel
+        chan._in_poll = True
+
+        def _brpop_read(**options):
+            chan._in_poll = None
+            raise chan.connection_errors[0]('connection lost')
+        chan._brpop_read = _brpop_read
+        cycle = chan.connection.cycle
+
+        chan.close()
+
+        assert chan.closed
+        assert chan not in cycle._channels
+
+    def test_close_after_collect_while_server_is_down(self):
+        # celery/celery#11054: after a connection error the worker calls
+        # collect() and then close().  Deleting the fanout bindings failed
+        # while the server was down, which left the channel open, so the
+        # close() after the server came back restored unacked messages
+        # through the transport collect() had detached.
+        chan = self.channel
+        chan._fanout_queues = {'foo': ('foo', '')}
+        chan.auto_delete_queues = ['foo']
+        chan.client
+        server_down = True
+
+        def queue_delete(queue, client=None):
+            if server_down:
+                raise chan.connection_errors[0]('connection lost')
+        chan.queue_delete = queue_delete
+        transport = chan.connection
+        restored_with = []
+        chan.qos.restore_unacked_once = Mock(
+            side_effect=lambda: restored_with.append(transport.client))
+
+        self.connection.collect()
+        server_down = False
+        self.connection.close()
+
+        assert chan.closed
+        assert restored_with == [self.connection]
+
     def test_invalid_database_raises_ValueError(self):
 
         with pytest.raises(ValueError):

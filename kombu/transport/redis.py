@@ -1886,11 +1886,15 @@ class Channel(virtual.Channel):
                 return sum(sizes[::2])
 
     def close(self):
+        # The drain and the fanout cleanup need the server.  If it is gone,
+        # skip them and still close: a channel left open is closed again
+        # later, possibly after Connection.collect() detached the transport
+        # it needs (celery/celery#11054).
         self._closing = True
         if self._in_poll:
             try:
                 self._brpop_read()
-            except Empty:
+            except (Empty,) + self.connection_errors:
                 pass
         if not self.closed:
             # remove from channel poller.
@@ -1899,9 +1903,12 @@ class Channel(virtual.Channel):
             # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
             if client is not None:
-                for queue in self._fanout_queues:
-                    if queue in self.auto_delete_queues:
-                        self.queue_delete(queue, client=client)
+                try:
+                    for queue in self._fanout_queues:
+                        if queue in self.auto_delete_queues:
+                            self.queue_delete(queue, client=client)
+                except self.connection_errors:
+                    pass
             self._disconnect_pools()
             self._close_clients()
         super().close()
