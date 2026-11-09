@@ -53,3 +53,16 @@ class test_QoS:
             (( ), {'offsets': [TopicPartition('orders', 0, 5)]}),
             (( ), {'offsets': [TopicPartition('orders', 0, 7)]}),
         ]
+
+
+    def test_ack_only_commits_offset_for_message_partition(self):
+        channel = Mock()
+        qos = QoS(channel, prefetch_count=2)
+        qos.append(Mock(topic='orders', partition=0, offset=5), 'tag-1')
+        qos.append(Mock(topic='orders', partition=1, offset=10), 'tag-2')
+
+        qos.ack('tag-1')
+
+        channel._get_consumer.return_value.commit.assert_called_once_with(
+            offsets=[TopicPartition('orders', 0, 6)]
+        )
