@@ -224,6 +224,24 @@ class test_FilesystemTransport(WithJanitorMixin):
             suffix(consumer_channel).purge()
             assert dotted(consumer_channel).get()
 
+    @pytest.mark.parametrize('clock', [
+        # all messages published within the same millisecond
+        [1.0] * 10,
+        # the millisecond counter gains a digit: 9999 -> 10000
+        [9.995 + i / 1000 for i in range(10)],
+    ])
+    def test_messages_are_consumed_in_publish_order(self, clock):
+        producer_channel = self._add_channel(self.p.channel())
+        consumer_channel = self._add_channel(self.c.channel())
+        with patch('kombu.transport.filesystem.monotonic',
+                   side_effect=clock):
+            for i in range(10):
+                producer_channel._put(self.q.name, {'foo': i})
+
+        received = [consumer_channel._get(self.q.name)['foo']
+                    for _ in range(10)]
+        assert received == list(range(10))
+
 
 @t.skip.if_win32
 class test_FilesystemFanout(WithJanitorMixin):
