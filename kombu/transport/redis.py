@@ -105,6 +105,7 @@ Queue Arguments
 
 from __future__ import annotations
 
+import errno
 import functools
 import inspect
 import numbers
@@ -641,6 +642,24 @@ class MultiChannelPoller:
 
     def _on_connection_disconnect(self, connection):
         self._discard_paused_connection(connection)
+        disconnected = set()
+        for key in list(self._chan_to_sock):
+            channel, client, type = key
+            if client.connection is connection:
+                del self._chan_to_sock[key]
+                disconnected.add((channel, type))
+        for fd, channel_and_type in list(self._fd_to_chan.items()):
+            if channel_and_type in disconnected:
+                del self._fd_to_chan[fd]
+                try:
+                    self.poller.unregister(fd)
+                except (KeyError, AttributeError, TypeError, ValueError):
+                    pass
+                except OSError as exc:
+                    if exc.errno != errno.EBADF:
+                        raise
+        if disconnected:
+            return
         try:
             self.poller.unregister(connection._sock)
         except (AttributeError, TypeError, ValueError):
@@ -722,7 +741,11 @@ class MultiChannelPoller:
             channel._in_poll = False
             self._register(*ident)
         if not channel._in_poll:  # send BRPOP
+            sock = channel.client.connection._sock
             channel._brpop_start()
+            if channel.client.connection._sock is not sock:
+                # A health-check retry can replace the socket while sending.
+                self._register(*ident)
 
     def _register_LISTEN(self, channel):
         """Enable LISTEN mode for channel."""
@@ -1462,14 +1485,13 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
-        self._in_poll = self.client.connection
-        self._brpop_sent_at = monotonic()
-
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
             command_args = self.client._prefix_args(command_args)
 
         self.client.connection.send_command(*command_args)
+        self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
     def _brpop_read(self, **options):
         try:
