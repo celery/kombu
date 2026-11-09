@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from unittest.mock import Mock
 
-from confluent_kafka import TopicPartition
-
 import pytest
 
 pytest.importorskip('confluent_kafka')
+from confluent_kafka import TopicPartition  # noqa: E402
 
 from kombu.transport.confluentkafka import QoS  # noqa: E402
 
