@@ -98,6 +98,8 @@ class Message(virtual.Message):
 
     def __init__(self, payload, channel=None, **kwargs):
         self.topic = payload.get('topic')
+        self.partition = payload.get('partition')
+        self.offset = payload.get('offset')
         super().__init__(payload, channel=channel, **kwargs)
 
 
@@ -134,7 +136,16 @@ class QoS(virtual.QoS):
             return
         message = self._not_yet_acked.pop(delivery_tag)
         consumer = self.channel._get_consumer(message.topic)
-        consumer.commit()
+
+        commit_offset = message.offset + 1
+        for unacked in self._not_yet_acked.values():
+            if (unacked.topic == message.topic and
+                    unacked.partition == message.partition):
+                commit_offset = min(commit_offset, unacked.offset)
+
+        consumer.commit(
+            offsets=[TopicPartition(message.topic, message.partition, commit_offset)]
+        )
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery tag.
@@ -236,7 +247,12 @@ class Channel(virtual.Channel):
             logger.error(error)
             raise Empty()
 
-        return {**loads(message.value()), 'topic': message.topic()}
+        return {
+            **loads(message.value()),
+            'topic': message.topic(),
+            'partition': message.partition(),
+            'offset': message.offset(),
+        }
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue/topic."""
