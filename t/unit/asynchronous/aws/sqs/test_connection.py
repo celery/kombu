@@ -286,6 +286,41 @@ class test_AsyncSQSConnection(AWSCase):
             operation, expect_params, queue_url
         )
 
+    @pytest.mark.parametrize('wait_time,expected', [
+        (None, 20.0),
+        (0, 20.0),
+        (5, 20.0),
+        (20, 30.0),
+    ])
+    def test_make_request__long_poll_outlasts_http_timeout(self, wait_time, expected):
+        self.x.sqs_connection = Mock()
+        self.x.sqs_connection._request_signer = Mock()
+        self.x.sqs_connection.meta.service_model.protocol = 'json'
+        self.x._create_json_request = Mock(return_value=self.MockRequest())
+        conns = []
+        real_get_http_connection = self.x.get_http_connection
+
+        def get_http_connection(*args):
+            conn = real_get_http_connection(*args)
+            conn.getresponse = Mock()
+            conns.append(conn)
+            return conn
+
+        self.x.get_http_connection = get_http_connection
+        params = {'MaxNumberOfMessages': 10}
+        if wait_time is not None:
+            params['WaitTimeSeconds'] = wait_time
+
+        self.x.make_request(
+            'ReceiveMessage', params, f'{SQS_URL}123456789012/celery-test', 'POST',
+        )
+
+        assert len(conns) == 1
+        request = conns[0].getrequest()
+        assert request.request_timeout == expected
+        if wait_time:
+            assert request.request_timeout > wait_time
+
     def test_create_queue(self):
         self.x.create_queue('foo', callback=self.callback)
         self.x.get_object.assert_called_with(
