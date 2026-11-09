@@ -135,6 +135,23 @@ class test_BaseClient:
     def test_close(self):
         BaseClient(Mock(name='hub')).close()
 
+    def test_subclass_close_without_args_survives_hub_close(self):
+        # BaseClient is public API: a subclass may override close() with
+        # its original no-argument signature.
+        closed = []
+
+        class Client(BaseClient):
+            def close(self):
+                closed.append(self)
+
+        c = Client(self.hub)
+        self.hub._current_http_client = c
+        self.hub.reset()
+        assert closed == [c]
+        assert not hasattr(self.hub, '_current_http_client')
+        self.hub.close()
+        assert closed == [c]
+
     def test_as_context(self):
         c = BaseClient(Mock(name='hub'))
         c.close = Mock(name='close')

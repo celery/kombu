@@ -86,6 +86,8 @@ def readme():
 setup(
     name='kombu',
     packages=setuptools.find_packages(exclude=['t', 't.*']),
+    package_data={'kombu': ['py.typed']},
+    zip_safe=False,
     version=meta['version'],
     description=meta['doc'],
     long_description=long_description,
