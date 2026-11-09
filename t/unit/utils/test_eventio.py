@@ -2,6 +2,9 @@
 from __future__ import annotations
 
 import errno
+import select
+import socket
+import threading
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -101,3 +104,46 @@ class test__epoll:
     def test_close(self, ep):
         ep.close()
         ep._epoll.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _poll
+# ---------------------------------------------------------------------------
+
+class test__poll:
+
+    @pytest.fixture()
+    def p(self):
+        with patch.object(eventio, 'xpoll', create=True) as mock_cls:
+            mock_cls.return_value = MagicMock(name='select.poll-instance')
+            mock_cls.return_value.poll.return_value = []
+            yield eventio._poll()
+
+    @pytest.mark.parametrize('timeout, expected', [
+        (None, None),  # block until an event, like select.poll itself
+        (0, 0),
+        (1.5, 1500),
+        (0.0001, 1),
+        (-1, 0),
+    ])
+    def test_poll_timeout_is_passed_in_milliseconds(self, p, timeout,
+                                                    expected):
+        p.poll(timeout)
+        p._poller.poll.assert_called_once_with(expected)
+
+    @pytest.mark.skipif(not hasattr(select, 'poll'),
+                        reason='select.poll is not available')
+    def test_poll_none_timeout_waits_for_an_event(self):
+        r, w = socket.socketpair()
+        p = eventio._poll()
+        p.register(r, READ)
+        timer = threading.Timer(0.1, w.send, (b'x',))
+        timer.start()
+        try:
+            assert p.poll(None) == [(r.fileno(), READ)]
+        finally:
+            timer.cancel()
+            timer.join()
+            p.close()
+            r.close()
+            w.close()
