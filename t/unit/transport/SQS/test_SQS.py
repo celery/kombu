@@ -864,6 +864,13 @@ class test_Channel:
         )
         assert result == 0
 
+    def test_on_messages_ready_returns_zero_after_http_error(self):
+        """Handle the empty list returned by async HTTP timeout handling."""
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, []
+        )
+        assert result == 0
+
     @pytest.fixture
     def release_through_mock(self):
         """Release through the mocked sqs() client, not a new boto client."""

@@ -136,12 +136,15 @@ class AsyncConnection:
         self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
-    def get_http_connection(self):
-        return AsyncHTTPSConnection(http_client=self._httpclient)
+    def get_http_connection(self, timeout=None):
+        if timeout is None:
+            return AsyncHTTPSConnection(http_client=self._httpclient)
+        return AsyncHTTPSConnection(timeout=timeout, http_client=self._httpclient)
 
-    def _mexe(self, request, sender=None, callback=None):
+    def _mexe(self, request, sender=None, callback=None, timeout=None):
         callback = callback or promise()
-        conn = self.get_http_connection()
+        conn = (self.get_http_connection() if timeout is None
+                else self.get_http_connection(timeout))
 
         if callable(sender):
             sender(conn, request.method, request.path, request.body,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import deque
 from functools import partial
 from io import BytesIO
+from math import ceil
 from time import time
 
 from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
@@ -210,6 +211,13 @@ class CurlClient(BaseClient):
     def _setup_request(self, curl, request, buffer, headers, _pycurl=pycurl):
         setopt = curl.setopt
         setopt(_pycurl.URL, bytes_to_str(request.url))
+
+        # Reset both timeouts on every request because curl handles are reused.
+        # Zero (or None) restores libcurl's 300-second connect timeout and
+        # disables the overall request timeout, respectively. A positive
+        # request timeout also limits the connection phase.
+        setopt(_pycurl.CONNECTTIMEOUT_MS, ceil((request.connect_timeout or 0) * 1000))
+        setopt(_pycurl.TIMEOUT_MS, ceil((request.request_timeout or 0) * 1000))
 
         # see tornado curl client
         request.headers.setdefault('Expect', '')

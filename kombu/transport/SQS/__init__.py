@@ -871,6 +871,9 @@ class Channel(virtual.Channel):
         )
 
     def _on_messages_ready(self, queue, qname, messages):
+        # Async HTTP timeout and server-error responses are an empty list.
+        if not messages:
+            return 0
         msgs = messages.get('Messages')
         if not msgs:
             return 0
