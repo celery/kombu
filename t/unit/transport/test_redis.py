@@ -2560,6 +2560,47 @@ class test_Channel:
         assert getattr(channel, name) is register.return_value
         register.assert_called_once_with(getattr(redis, script))
 
+    @staticmethod
+    def _run_refresh_binding(zset, ttl, now=(1000, 0)):
+        # Runs REFRESH_BINDING against a stub of the Redis 6.0 commands it
+        # uses. ZADD on 6.0 takes no GT/LT flags.
+        lupa = pytest.importorskip('lupa')
+        runtime = lupa.LuaRuntime()
+
+        def call(command, *args):
+            if command == 'SADD':
+                return 1
+            if command == 'TIME':
+                return runtime.table(str(now[0]), str(now[1]))
+            if command == 'ZSCORE':
+                score = zset.get(args[1])
+                return False if score is None else str(score)
+            if command == 'ZADD':
+                if len(args) != 3:
+                    raise RuntimeError('ERR syntax error')
+                zset[args[2]] = int(args[1])
+                return 1
+            raise AssertionError(command)
+
+        script = runtime.eval(
+            'function(call, KEYS, ARGV) redis = {call = call}\n'
+            + redis.REFRESH_BINDING + '\nend')
+        script(call, runtime.table('table', 'deadlines'),
+               runtime.table('q', 'ex', str(ttl)))
+
+    def test_refresh_binding_runs_on_redis_6_0(self):
+        zset = {}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': 1_005_000}
+
+    @pytest.mark.parametrize('current,expected', [
+        (1_000_500, 1_005_000), (2_000_000, 2_000_000)])
+    def test_refresh_binding_only_raises_the_deadline(self, current,
+                                                      expected):
+        zset = {'ex': current}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': expected}
+
     def _brpop_queue(self, channel):
         channel._active_queues = ['q']
         channel._queue_cycle.update(['q'])
