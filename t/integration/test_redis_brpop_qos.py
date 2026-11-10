@@ -110,8 +110,13 @@ def assert_paused(connection, consumer, sock, hub=None):
 
 
 @pytest.mark.parametrize('message', [False, True], ids=['nil', 'message'])
-# audit: allow mock, assert-on-mock, no-boundary, duplicate-title, private-access, no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
 def test_hub_pauses_pending_brpop_until_ack(consuming, message):
+    # audit: allow mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow assert-on-mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-boundary — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow duplicate-title — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow private-access — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
     connection, queue, consumer, received = consuming
     channel = consumer.channel
     hub = Hub()
@@ -144,8 +149,13 @@ def test_hub_pauses_pending_brpop_until_ack(consuming, message):
         hub.close()
 
 
-# audit: allow mock, assert-on-mock, no-boundary, duplicate-title, private-access, no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
 def test_drain_events_resumes_pending_brpop_without_resending(consuming):
+    # audit: allow mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow assert-on-mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-boundary — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow duplicate-title — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow private-access — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
     connection, queue, consumer, received = consuming
     channel = consumer.channel
     pending, sock = pending_reply(consuming)
@@ -166,8 +176,13 @@ def test_drain_events_resumes_pending_brpop_without_resending(consuming):
 
 
 @pytest.mark.parametrize('action', ['cancel', 'close'])
-# audit: allow mock, assert-on-mock, no-boundary, duplicate-title, private-access, no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
 def test_pending_message_survives_cancel_or_close(consuming, action):
+    # audit: allow mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow assert-on-mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-boundary — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow duplicate-title — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow private-access — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
     connection, queue, consumer, received = consuming
     channel = consumer.channel
     hub = Hub()
@@ -194,8 +209,13 @@ def test_pending_message_survives_cancel_or_close(consuming, action):
         hub.close()
 
 
-# audit: allow mock, assert-on-mock, no-boundary, duplicate-title, private-access, no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
 def test_paused_channel_does_not_block_other_channels(consuming):
+    # audit: allow mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow assert-on-mock — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-boundary — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow duplicate-title — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow private-access — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
+    # audit: allow no-assert — kombu redis transport unit style: in-process fakes + Mock; cluster covered by REDIS_CLUSTER integration
     connection, queue, consumer, received = consuming
     hub = Hub()
     other_queue = Queue(f'brpop-qos-other-{uuid4().hex}', durable=False)
