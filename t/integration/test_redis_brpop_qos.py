@@ -12,21 +12,34 @@ import pytest
 from kombu import Connection, Consumer, Producer, Queue
 from kombu.asynchronous.hub import Hub
 
-pytestmark = pytest.mark.env('redis')
+REDIS_CLUSTER = os.environ.get(
+    'REDIS_CLUSTER', '').lower() in ('1', 'true', 'yes')
+REDIS_SCHEME = 'rediscluster' if REDIS_CLUSTER else 'redis'
+
+pytestmark = [
+    pytest.mark.env('redis'),
+    pytest.mark.skipif(
+        REDIS_CLUSTER,
+        reason='BRPOP QoS pause/resume assumes standalone _in_poll connection',
+    ),
+]
 
 
 @pytest.fixture
 def consuming():
     name = f'brpop-qos-{uuid4().hex}'
+    # Ack-emulation keys must share a hash slot on Redis Cluster.
+    hash_tag = f'{{{name}}}'
     connection = Connection(
-        f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:"
+        f"{REDIS_SCHEME}://{os.environ.get('REDIS_HOST', 'localhost')}:"
         f"{os.environ.get('REDIS_6379_TCP', '6379')}",
         transport_options={
             'polling_interval': 1,
             'socket_timeout': 5,
-            'unacked_key': f'{name}-unacked',
-            'unacked_index_key': f'{name}-unacked-index',
-            'unacked_mutex_key': f'{name}-unacked-mutex',
+            'unacked_key': f'{hash_tag}-unacked',
+            'unacked_index_key': f'{hash_tag}-unacked-index',
+            'unacked_mutex_key': f'{hash_tag}-unacked-mutex',
+            **({'hash_tag': hash_tag} if REDIS_CLUSTER else {}),
         },
     )
     queue = Queue(name, durable=False)
