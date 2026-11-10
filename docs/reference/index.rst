@@ -47,6 +47,7 @@ Kombu Transports
     kombu.transport.qpid
     kombu.transport.memory
     kombu.transport.redis
+    kombu.transport.rediscluster
     kombu.transport.mongodb
     kombu.transport.consul
     kombu.transport.etcd

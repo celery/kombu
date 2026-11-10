@@ -5,6 +5,23 @@
 ================
 
 
+.. _version-5.8.0:
+
+5.8.0
+========
+:release-date: TBA
+:release-by: TBA
+
+
+What's Changed
+~~~~~~~~~~~~~~
+
+- Add Redis Cluster transport (``rediscluster://`` / ``redisclusters://``),
+  with TLS URL support, master→replica ``UNBLOCKED`` recovery, and CI that
+  re-runs the Redis integration suite against a single-node cluster
+  (supersedes #2204).
+
+
 .. _version-5.7.0:
 
 5.7.0
