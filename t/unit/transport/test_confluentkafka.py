@@ -8,7 +8,7 @@ pytest.importorskip('confluent_kafka')
 from confluent_kafka import TopicPartition  # noqa: E402
 
 from kombu.transport.confluentkafka import Channel, QoS  # noqa: E402
-from kombu.utils.json import dumps
+from kombu.utils.json import dumps  # noqa: E402
 
 
 class test_QoS:
