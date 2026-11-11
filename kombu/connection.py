@@ -334,7 +334,7 @@ class Connection:
         self.virtual_host = virtual_host or self.virtual_host
         self.port = port or self.port
         self.insist = insist
-        self.connect_timeout = connect_timeout
+        self.connect_timeout = connect_timeout and float(connect_timeout)
         self.ssl = ssl
         self.transport_cls = transport
         self.heartbeat = heartbeat and float(heartbeat)

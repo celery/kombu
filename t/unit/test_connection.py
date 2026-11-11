@@ -871,6 +871,12 @@ class test_Connection:
         conn = Connection('example.com;example.com;')
         assert conn.as_uri() == 'amqp://guest:**@example.com:5672//'
 
+    def test_connect_timeout_from_url_query(self):
+        conn = Connection('memory://localhost/?connect_timeout=3')
+        assert conn.connect_timeout == 3.0
+        with conn:
+            assert conn.default_channel
+
     def test_connection_respect_its_timeout(self):
         invalid_port = 1222
         with Connection(
