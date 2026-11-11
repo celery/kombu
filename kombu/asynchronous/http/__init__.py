@@ -10,7 +10,11 @@ __all__ = ('Client', 'Headers', 'Response', 'Request', 'BaseClient', 'get_client
 def Client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
     """Create new HTTP client."""
     from .curl import CurlClient
-    return CurlClient(hub, **kwargs)
+    if CurlClient.Curl is not None:
+        return CurlClient(hub, **kwargs)
+
+    from .urllib3_client import Urllib3Client
+    return Urllib3Client(hub, **kwargs)
 
 
 def get_client(hub: Hub | None = None, **kwargs: int) -> BaseClient:
