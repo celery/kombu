@@ -98,6 +98,8 @@ class Message(virtual.Message):
 
     def __init__(self, payload, channel=None, **kwargs):
         self.topic = payload.get('topic')
+        self.partition = payload.get('partition')
+        self.offset = payload.get('offset')
         super().__init__(payload, channel=channel, **kwargs)
 
 
@@ -107,6 +109,7 @@ class QoS(virtual.QoS):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._not_yet_acked = {}
+        self._acked_offsets = {}
 
     def can_consume(self):
         """Return true if the channel can be consumed from.
@@ -134,7 +137,33 @@ class QoS(virtual.QoS):
             return
         message = self._not_yet_acked.pop(delivery_tag)
         consumer = self.channel._get_consumer(message.topic)
-        consumer.commit()
+
+        partition_key = (message.topic, message.partition)
+        acknowledged = self._acked_offsets.setdefault(partition_key, set())
+        acknowledged.add(message.offset)
+
+        # Keep out-of-order acknowledgements until every earlier message is acked.
+        commit_offset = max(acknowledged) + 1
+        for unacked in self._not_yet_acked.values():
+            if (unacked.topic == message.topic and
+                    unacked.partition == message.partition):
+                commit_offset = min(commit_offset, unacked.offset)
+
+        consumer.commit(
+            offsets=[
+                TopicPartition(
+                    message.topic, message.partition, commit_offset
+                )
+            ]
+        )
+
+        # Forget acknowledgements only after the commit has moved past them.
+        acknowledged.difference_update(
+            offset for offset in tuple(acknowledged)
+            if offset < commit_offset
+        )
+        if not acknowledged:
+            del self._acked_offsets[partition_key]
 
     def reject(self, delivery_tag, requeue=False):
         """Reject a message by delivery tag.
@@ -236,7 +265,12 @@ class Channel(virtual.Channel):
             logger.error(error)
             raise Empty()
 
-        return {**loads(message.value()), 'topic': message.topic()}
+        return {
+            **loads(message.value()),
+            'topic': message.topic(),
+            'partition': message.partition(),
+            'offset': message.offset(),
+        }
 
     def _delete(self, queue, *args, **kwargs):
         """Delete a queue/topic."""
