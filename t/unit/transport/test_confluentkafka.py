@@ -7,10 +7,41 @@ import pytest
 pytest.importorskip('confluent_kafka')
 from confluent_kafka import TopicPartition  # noqa: E402
 
-from kombu.transport.confluentkafka import QoS  # noqa: E402
+from kombu.transport.confluentkafka import Channel, QoS  # noqa: E402
+from kombu.utils.json import dumps
 
 
 class test_QoS:
+
+    def test_get_preserves_kafka_message_metadata(self):
+        channel = Channel.__new__(Channel)
+        channel.connection = Mock()
+        channel.connection.client.transport_options = {'wait_time_seconds': 0}
+
+        consumer = Mock()
+        record = Mock()
+        record.error.return_value = None
+        record.value.return_value = dumps({
+            'body': None,
+            'properties': {'delivery_tag': 'tag-1'},
+        })
+        record.topic.return_value = 'orders'
+        record.partition.return_value = 2
+        record.offset.return_value = 42
+        consumer.poll.return_value = record
+        channel._kafka_consumers = {'orders': consumer}
+
+        payload = channel._get('orders')
+
+        assert payload['topic'] == 'orders'
+        assert payload['partition'] == 2
+        assert payload['offset'] == 42
+
+        message = channel.Message(payload, channel=channel)
+
+        assert message.topic == 'orders'
+        assert message.partition == 2
+        assert message.offset == 42
 
     def test_unacked_messages_are_tracked_per_channel(self):
         busy = QoS(Mock(), prefetch_count=1)
