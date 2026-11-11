@@ -90,6 +90,7 @@ class ResponseError(Exception):
 class Client:
     queues = {}
     sets = defaultdict(set)
+    scores = defaultdict(dict)
     hashes = defaultdict(dict)
     shard_hint = None
 
@@ -127,6 +128,7 @@ class Client:
             (mapping,) = args
             for item in mapping:
                 self.sets[key].add(item)
+                self.scores[key][item] = float(mapping[item])
         elif len(args) == 1:
             self.sets[key].update(args[0])
         else:
@@ -135,7 +137,58 @@ class Client:
             self.sets[key].add(member1)
 
     def register_script(self, script):
+        if script == redis.POP_UNACKED:
+            return Mock(side_effect=self.pop_unacked, sha='pop-unacked')
+        if script == redis.PUT_BACK:
+            return Mock(side_effect=self.put_back)
         return lambda keys=(), args=(), client=None: 0
+
+    def put_back(self, keys=(), args=(), client=None):
+        # Python stand-in for the PUT_BACK script.
+        unacked, index, key, wake = keys
+        tag, item, score = args
+        if tag:
+            if (tag not in self.sets[index] or
+                    self.scores[index].get(tag) != float(score)):
+                return 0
+            self.hdel(unacked, tag)
+            self.sets[index].discard(tag)
+        self.queues[key].queue.appendleft(item)  # The end RPOP takes from.
+        self.lpush(wake, '1')
+        self.ltrim(wake, 0, 0)
+        return 1
+
+    def pop_unacked(self, keys=(), args=(), client=None):
+        # Python stand-in for the POP_UNACKED script.
+        nqueues = len(args) - 1
+        unacked, index, *lists = keys[:len(keys) - nqueues]
+        wakes = keys[len(keys) - nqueues:]
+        for i, key in enumerate(lists):
+            item = self.rpop(key)
+            if item is None:
+                continue
+            q = i % nqueues
+            empty = 0
+            if any(self.llen(k) for k in lists[q::nqueues]):
+                if not self.llen(wakes[q]):
+                    self.lpush(wakes[q], '1')
+            elif not any(self.llen(k) for k in lists):
+                empty = 1
+            tag = ''
+            if args[1 + q] == '1':
+                try:
+                    props = loads(item)['properties']
+                    tag, info = props['delivery_tag'], props['delivery_info']
+                except (ValueError, TypeError, KeyError):
+                    pass
+                else:
+                    self.zadd(index, {tag: float(args[0])})
+                    self.hset(unacked, tag, dumps(
+                        [loads(item), info['exchange'], info['routing_key']]))
+            return [q + 1, item, tag, empty, i + 1]
+
+    def script_load(self, script):
+        return 'pop-unacked'
 
     def smembers(self, key):
         return self.sets.get(key, set())
@@ -156,6 +209,11 @@ class Client:
     def lpush(self, key, value):
         self.queues[key].put_nowait(value)
 
+    def ltrim(self, key, start, end):
+        # Only LTRIM 0 0 is used: keep one item.
+        while self.queues[key].qsize() > 1:
+            self.queues[key].get_nowait()
+
     def parse_response(self, connection, type, **options):
         cmd, queues = self.connection._sock.data.pop()
         queues = list(queues)
@@ -167,6 +225,12 @@ class Client:
             if item:
                 return item
             raise Empty()
+        if type == 'BLPOP':
+            timeout = queues.pop()
+            return self.brpop(queues, timeout)
+        if type == 'EVALSHA':
+            _, numkeys, *rest = queues
+            return self.pop_unacked(rest[:numkeys], rest[numkeys:])
 
     def brpop(self, keys, timeout=None):
         for key in keys:
@@ -186,7 +250,7 @@ class Client:
     def __contains__(self, k):
         return k in self._called
 
-    def pipeline(self):
+    def pipeline(self, transaction=True):
         return Pipeline(self)
 
     def encode(self, value):
@@ -284,6 +348,7 @@ class Channel(redis.Channel):
     def _new_queue(self, queue, **kwargs):
         for pri in self.priority_steps:
             self.client._new_queue(self._q_for_pri(queue, pri))
+        self.client._new_queue(self._wake_key(queue))
 
     def pipeline(self):
         return Pipeline(Client())
@@ -352,18 +417,22 @@ class test_Channel:
         try:
             assert channel.retry_on_timeout is True
             assert producer.supports_batch_publish is False
-            with producer.batch():
-                producer.publish(
-                    'message',
-                    exchange='',
-                    routing_key='batch-retry-on-timeout',
-                )
+            with patch.object(redis, 'PublishBatch') as batch:
+                with producer.batch():
+                    producer.publish(
+                        'message',
+                        exchange='',
+                        routing_key='batch-retry-on-timeout',
+                    )
         finally:
             connection.close()
 
-        client.lpush.assert_called_once()
-        client.pipeline.assert_not_called()
-        pipeline.execute.assert_not_called()
+        # Published on its own, in a pipeline of its own.
+        batch.assert_not_called()
+        client.pipeline.assert_called_once_with(transaction=False)
+        assert pipeline.lpush.call_args_list[0] == call(
+            'batch-retry-on-timeout', ANY)
+        pipeline.execute.assert_called_once_with()
 
     def test_publish_batch_falls_back_for_socket_url_timeout_retry(self):
         with patch('kombu.transport.redis.Channel._create_client'):
@@ -407,7 +476,10 @@ class test_Channel:
             producer.publish('message', exchange='', routing_key='batch-queue')
 
         client.pipeline.assert_called_once_with(transaction=False)
-        pipeline.lpush.assert_called_once()
+        wake = self.channel._wake_key('batch-queue')
+        assert pipeline.lpush.call_args_list == [
+            call('batch-queue', ANY), call(wake, 1)]
+        pipeline.ltrim.assert_called_once_with(wake, 0, 0)
         pipeline.execute.assert_called_once_with()
 
     def test_publish_batch_preserves_direct_routing_priority_and_order(self):
@@ -439,6 +511,8 @@ class test_Channel:
             method_call
             for method_call in pipeline.method_calls
             if method_call[0] == 'lpush'
+            and method_call.args[0] != (
+                self.channel._wake_key('batch-direct-queue'))
         ]
         assert [method_call.args[0] for method_call in lpush_calls] == [
             f'batch-direct-queue{self.channel.sep}6',
@@ -474,8 +548,10 @@ class test_Channel:
                 routing_key='events.created',
             )
 
-        pipeline.lpush.assert_called_once()
-        assert pipeline.lpush.call_args.args[0] == 'batch-topic-matching'
+        assert pipeline.lpush.call_args_list == [
+            call('batch-topic-matching', ANY),
+            call(self.channel._wake_key('batch-topic-matching'), 1),
+        ]
 
     def test_publish_batch_preserves_fanout_topic(self):
         exchange = Exchange('batch-fanout', type='fanout')
@@ -500,7 +576,8 @@ class test_Channel:
         _, pipeline = self._recording_batch_client()
         producer = Producer(self.channel, serializer='json')
 
-        with producer.batch(max_size=2):
+        # Three commands per message: the message, a wake token, LTRIM.
+        with producer.batch(max_size=6):
             for index in range(3):
                 producer.publish(
                     {'index': index},
@@ -517,7 +594,7 @@ class test_Channel:
         _, pipeline = self._recording_batch_client()
         producer = Producer(self.channel, serializer='json')
 
-        with producer.batch(max_size=3):
+        with producer.batch(max_size=4):
             producer.publish(
                 {'event': 'first'},
                 exchange='',
@@ -538,6 +615,7 @@ class test_Channel:
             index
             for index, method_call in enumerate(pipeline.method_calls)
             if method_call[0] == 'lpush'
+            and not method_call.args[0].endswith('wake')
         ]
         assert len(execute_indexes) == 2
         assert lpush_indexes[0] < execute_indexes[0] < lpush_indexes[1]
@@ -556,8 +634,11 @@ class test_Channel:
                 routing_key=queue.name,
             )
 
-        pipeline.lpush.assert_called_once()
-        assert pipeline.pexpire.call_count == len(self.channel.priority_steps)
+        assert pipeline.lpush.call_args_list[0] == call(queue.name, ANY)
+        assert pipeline.pexpire.call_count == len(
+            self.channel.priority_steps) + 1
+        pipeline.pexpire.assert_any_call(
+            self.channel._wake_key(queue.name), 5000)
         client.pipeline.assert_called_once_with(transaction=False)
 
     def test_publish_batch_flush_failure_is_not_retried_and_cleans_up(self):
@@ -588,7 +669,10 @@ class test_Channel:
             exchange='',
             routing_key='batch-after-failure',
         )
-        client.lpush.assert_called_once()
+        # Published on its own, in a pipeline of its own.
+        assert len(client.pipeline.call_args_list) == 2
+        assert pipeline.lpush.call_args_list[-2] == call(
+            'batch-after-failure', ANY)
 
     def test_publish_batch_auto_flush_failure_ignores_publish_retry(self):
         _, pipeline = self._recording_batch_client()
@@ -1588,6 +1672,285 @@ class test_Channel:
 
         c.connection.disconnect.assert_called_with()
 
+    def _consume(self, name, no_ack=False):
+        channel = self.channel
+        channel.exchange_declare(name)
+        channel.queue_declare(name)
+        channel.queue_bind(name, name, name)
+        callback = Mock(name='callback')
+        channel.basic_consume(name, no_ack, callback, name)
+        channel.client.hashes[channel.unacked_key].clear()
+        return channel, callback
+
+    def _publish(self, channel, name, body='task'):
+        channel.basic_publish(channel.prepare_message(body), name, name)
+
+    @pytest.mark.parametrize('killed', [True, False])
+    def test_popped_message_is_recorded_once_before_delivery(self, killed):
+        # A consumer killed right after Redis hands it a message leaves the
+        # message in ``unacked``, where the visibility timeout restores it
+        # (#305).  ``_deliver`` raising stands in for the kill.
+        channel, callback = self._consume(f'recorded-{killed}')
+        self._publish(channel, f'recorded-{killed}')
+        channel.qos.pipe_or_acquire = Mock(name='pipe_or_acquire')
+        if killed:
+            channel.connection._deliver = Mock(side_effect=SystemExit)
+
+        channel._brpop_start()
+        try:
+            channel._brpop_read()
+        except SystemExit:
+            assert killed
+
+        (tag, raw), = channel.client.hashes[channel.unacked_key].items()
+        payload, exchange, routing_key = loads(raw)
+        assert payload['properties']['delivery_tag'] == tag
+        assert routing_key == f'recorded-{killed}'
+        # The QoS doesn't write it again.
+        channel.qos.pipe_or_acquire.assert_not_called()
+        assert (tag in channel.qos._delivered) is not killed
+        assert not channel.qos._recorded
+        channel.qos._delivered.clear()
+
+    def test_basic_get_records_the_message_unless_no_ack(self):
+        channel, _ = self._consume('basic-get')
+        self._publish(channel, 'basic-get', 'one')
+        self._publish(channel, 'basic-get', 'two')
+        channel.qos.pipe_or_acquire = Mock(name='pipe_or_acquire')
+
+        message = channel.basic_get('basic-get', no_ack=False)
+        unacked = channel.client.hashes[channel.unacked_key]
+        assert list(unacked) == [message.delivery_tag]
+        assert message.delivery_tag in channel.qos._delivered
+        channel.qos.pipe_or_acquire.assert_not_called()
+
+        unacked.clear()
+        message = channel.basic_get('basic-get', no_ack=True)
+        assert message is not None
+        assert message.delivery_tag not in channel.qos._delivered
+        assert not unacked
+        channel.qos._delivered.clear()
+
+    def test_basic_get_keeps_no_state_when_the_message_fails(self):
+        channel, _ = self._consume('get-fails')
+        self._publish(channel, 'get-fails')
+
+        with patch.object(channel, 'Message', side_effect=KeyError('x')):
+            with pytest.raises(KeyError):
+                channel.basic_get('get-fails', no_ack=False)
+
+        assert not channel.qos._recorded
+        # The record stays for the visibility timeout.
+        assert len(channel.client.hashes[channel.unacked_key]) == 1
+
+    @pytest.mark.parametrize('path', ['consume', 'basic_get', 'killed'])
+    def test_tag_the_script_read_differently_is_recorded_again(self, path):
+        # If the script ever read another tag than kombu does, an ack would
+        # leave the script's record behind, to be restored forever.
+        channel, callback = self._consume(f'odd-tag-{path}')
+        self._publish(channel, f'odd-tag-{path}')
+        load = channel._load_popped
+
+        def other_tag(item, tag):
+            payload = load(item, tag)
+            payload['properties']['delivery_tag'] = 'kombu-tag'
+            return payload
+
+        channel._load_popped = other_tag
+        if path == 'killed':
+            channel.connection._deliver = Mock(side_effect=SystemExit)
+        unacked = channel.client.hashes[channel.unacked_key]
+        remove = channel.qos._remove_from_indices = Mock(
+            wraps=channel.qos._remove_from_indices)
+        with patch('kombu.transport.redis.warning') as warning:
+            if path == 'basic_get':
+                channel.basic_get(f'odd-tag-{path}', no_ack=False)
+            else:
+                channel._brpop_start()
+                try:
+                    channel._brpop_read()
+                except SystemExit:
+                    pass
+
+        warning.assert_called_once()
+        assert not channel.qos._recorded
+        if path == 'killed':
+            # Killed before the QoS recorded it: the script's record stays.
+            assert list(unacked) != ['kombu-tag']
+            assert len(unacked) == 1
+        else:
+            # Recorded under kombu's tag, and the script's record dropped
+            # in the same transaction.
+            assert list(unacked) == ['kombu-tag']
+            assert 'kombu-tag' in channel.qos._delivered
+            (_, pipe), = (c.args for c in remove.call_args_list)
+            assert pipe is not None
+        channel.qos._delivered.clear()
+
+    def test_restore_pushes_a_wake_token(self):
+        # Every restore (reject with requeue, recover, the visibility
+        # timeout, shutdown) goes through ``_do_restore_message``.
+        channel, _ = self._consume('wake-restore')
+        payload = channel.prepare_message('task')
+        pipe = Mock(name='pipe')
+
+        channel._do_restore_message(
+            payload, 'wake-restore', 'wake-restore', pipe)
+
+        wake = channel._wake_key('wake-restore')
+        pipe.rpush.assert_called_once_with('wake-restore', ANY)
+        pipe.lpush.assert_called_once_with(wake, 1)
+        pipe.lpush.return_value.ltrim.assert_called_once_with(wake, 0, 0)
+
+    @pytest.mark.parametrize('remove', ['queue_delete', 'queue_purge'])
+    def test_queue_removal_removes_the_wake_list(self, remove):
+        name = f'wake-{remove}'
+        channel, _ = self._consume(name)
+        self._publish(channel, name)
+        assert channel._wake_key(name) in channel.client.queues
+
+        getattr(channel, remove)(name)
+
+        assert channel._wake_key(name) not in channel.client.queues
+
+    @pytest.mark.parametrize('token', [True, False])
+    def test_idle_consumer_waits_on_the_wake_lists(self, token):
+        name = f'idle-{token}'
+        channel, callback = self._consume(name)
+        channel.client.connection.send_command = Mock(
+            wraps=channel.client.connection.send_command)
+        send = channel.client.connection.send_command
+        parse = channel.client.parse_response = Mock(
+            wraps=channel.client.parse_response)
+
+        channel._brpop_start()
+        # An empty pop: the wait is sent right away.
+        with pytest.raises(redis._CommandSent):
+            channel._brpop_read()
+        assert send.call_args == call('BLPOP', channel._wake_key(name), 1)
+        self._publish(channel, name)
+        if not token:
+            # A publisher without the wake list pushes no token: the wait
+            # times out instead.
+            channel.client.queues[channel._wake_key(name)].get_nowait()
+        parse.reset_mock()
+
+        # Woken: the pop is sent right away, but its reply read only on
+        # the next call, so the event loop never blocks on it.
+        with pytest.raises(Empty) as exc_info:
+            channel._brpop_read()
+        assert (exc_info.type is redis._CommandSent) is token
+        parse.assert_called_once()
+        assert send.call_args[0][0] == 'EVALSHA'
+        callback.assert_not_called()
+        assert channel._brpop_read()
+
+        callback.assert_called_once()
+        # The script found the queue empty after this pop: wait next.
+        assert channel._wait_for_wake
+        channel.qos._delivered.clear()
+
+    @pytest.mark.parametrize('case', ['credit gone', 'restored',
+                                      'popped again', 'no_ack', 'overdue'])
+    def test_reply_without_credit_puts_the_message_back(self, case):
+        # Held until credit returns, or past the visibility timeout, a
+        # recorded message could also be put back by a restore, and be
+        # delivered twice.
+        name = f'put-back-{case}'
+        channel, callback = self._consume(name, no_ack=case == 'no_ack')
+        self._publish(channel, name, 'first')
+        self._publish(channel, name, 'second')
+        channel._brpop_start()
+        client = channel.client
+        unacked = client.hashes[channel.unacked_key]
+        wake = client.queues[channel._wake_key(name)]
+
+        def pop(*args, pop=client.pop_unacked):
+            reply = pop(*args)
+            wake.queue.clear()
+            if case in ('restored', 'popped again'):
+                # A restore puts it back before the reply is read.
+                client.hdel(channel.unacked_key, reply[2])
+                client.sets[channel.unacked_index_key].discard(reply[2])
+                client.queues[name].queue.appendleft(reply[1])
+            if case == 'popped again':
+                # Another consumer pops it, and records the same tag.
+                pop(keys=args[0], args=[args[1][0] + 1, *args[1][1:]])
+                wake.queue.clear()
+            return reply
+
+        client.pop_unacked = pop
+        if case == 'overdue':
+            channel._brpop_sent_at -= channel.visibility_timeout
+
+        with patch.object(channel.qos, 'can_consume',
+                          return_value=case == 'overdue'):
+            with pytest.raises(Empty):
+                channel._brpop_read()
+
+        callback.assert_not_called()
+        if case == 'popped again':
+            # The other consumer's record stays, and the message isn't
+            # queued again.
+            assert len(unacked) == 1
+            assert client.queues[name].qsize() == 1
+            assert not wake.qsize()
+            return
+        assert not unacked
+        # Back where it was, once: the next pop gets it.
+        assert client.queues[name].qsize() == 2
+        assert wake.qsize() == (case != 'restored')
+        channel._brpop_start()
+        assert channel._brpop_read()
+        body = callback.call_args[0][0].body
+        assert (body.decode() if isinstance(body, bytes) else body) == 'first'
+        channel.qos._delivered.clear()
+
+    @pytest.mark.parametrize('closing', [True, False])
+    def test_woken_consumer_pops_only_with_credit(self, closing):
+        channel, callback = self._consume(f'woken-{closing}')
+        channel._wait_for_wake = True
+        channel._brpop_start()
+        channel._closing = closing
+        channel.client.connection.send_command = Mock()
+
+        with patch.object(channel.qos, 'can_consume', return_value=closing):
+            with pytest.raises(Empty):
+                channel._brpop_read()
+
+        channel.client.connection.send_command.assert_not_called()
+        callback.assert_not_called()
+        assert not channel._wait_for_wake
+        assert channel._in_poll is None
+
+    @pytest.mark.parametrize('tag', [b'tag', b''])
+    def test_message_that_does_not_load_drops_its_record(self, tag):
+        channel = self.channel
+        remove = channel.qos._remove_from_indices = Mock(name='remove')
+
+        with pytest.raises(ValueError):
+            channel._load_popped(b'{"properties": {}} not json', tag)
+
+        if tag:
+            remove.assert_called_once_with('tag')
+            remove.return_value.execute.assert_called_once_with()
+        else:
+            remove.assert_not_called()
+
+    def test_noscript_loads_the_script_again(self):
+        channel, _ = self._consume('noscript')
+        channel.client.script_load = Mock(name='script_load')
+        channel._brpop_start()
+        channel.client.parse_response = Mock(
+            side_effect=redis.exceptions.NoScriptError('NOSCRIPT'))
+
+        with pytest.raises(Empty):
+            channel._brpop_read()
+
+        channel.client.script_load.assert_called_once_with(redis.POP_UNACKED)
+        assert not channel._wait_for_wake
+        assert channel._in_poll is None
+
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
         c.parse_response.return_value = None
@@ -1600,7 +1963,12 @@ class test_Channel:
         c.parse_response = Mock()
         self.channel._poll_error('BRPOP')
 
-        c.parse_response.assert_called_with(c.connection, 'BRPOP')
+        c.parse_response.assert_called_with(c.connection, 'EVALSHA')
+
+        self.channel._wait_for_wake = True
+        self.channel._poll_error('BRPOP')
+
+        c.parse_response.assert_called_with(c.connection, 'BLPOP')
 
         c.parse_response.side_effect = KeyError('foo')
         with pytest.raises(KeyError):
@@ -1626,25 +1994,41 @@ class test_Channel:
         c().publish.assert_called_with('/{db}.exchange', dumps(body))
 
     def test_put_priority(self):
-        client = self.channel._create_client = Mock(name='client')
+        _, pipeline = self._recording_batch_client()
         msg1 = {'properties': {'priority': 3}}
 
         self.channel._put('george', msg1)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 3), dumps(msg1),
         )
 
         msg2 = {'properties': {'priority': 313}}
         self.channel._put('george', msg2)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 9), dumps(msg2),
         )
 
         msg3 = {'properties': {}}
         self.channel._put('george', msg3)
-        client().lpush.assert_called_with(
+        assert pipeline.lpush.call_args_list[-2] == call(
             self.channel._q_for_pri('george', 0), dumps(msg3),
         )
+
+    @pytest.mark.parametrize('expires', [None, 5000])
+    def test_put_uses_a_transaction_only_to_expire_the_queue(self, expires):
+        client, pipeline = self._recording_batch_client()
+        if expires:
+            self.channel._expires['george'] = expires
+
+        self.channel._put('george', {'properties': {}})
+
+        client.pipeline.assert_called_once_with(transaction=bool(expires))
+        wake = self.channel._wake_key('george')
+        assert pipeline.lpush.call_args_list == [
+            call('george', ANY), call(wake, 1)]
+        pipeline.lpush.return_value.ltrim.assert_called_once_with(wake, 0, 0)
+        assert pipeline.pexpire.call_count == (5 if expires else 0)
+        pipeline.execute.assert_called_once_with()
 
     def test_delete(self):
         x = self.channel
@@ -2566,27 +2950,46 @@ class test_Channel:
         channel.client.connection = Mock()
         return [channel._q_for_pri('q', pri) for pri in channel.priority_steps]
 
-    def test_brpop_start_sends_keys_and_timeout(self):
+    def test_brpop_start_pops_with_the_script(self):
         channel = self.channel
         keys = self._brpop_queue(channel)
+
+        with patch('kombu.transport.redis.time', return_value=42.0):
+            channel._brpop_start(timeout=5)
+
+        channel.client.connection.send_command.assert_called_once_with(
+            'EVALSHA', 'pop-unacked', 7, 'unacked', 'unacked_index', *keys,
+            channel._wake_key('q'), 42.0, '1')
+
+    def test_brpop_start_waits_on_the_wake_lists_after_an_empty_pop(self):
+        channel = self.channel
+        self._brpop_queue(channel)
+        channel._wait_for_wake = True
 
         channel._brpop_start(timeout=5)
 
         channel.client.connection.send_command.assert_called_once_with(
-            'BRPOP', *keys, 5)
+            'BLPOP', channel._wake_key('q'), 5)
 
-    def test_brpop_start_prefixes_keys(self):
+    @pytest.mark.parametrize('wait', [False, True])
+    def test_brpop_start_prefixes_keys(self, wait):
         channel = self.channel
         keys = self._brpop_queue(channel)
         channel.global_keyprefix = 'foo_'
-        channel.client._prefix_args = Mock(return_value=['BRPOP', 'foo_q', 1])
+        channel._wait_for_wake = wait
+        channel.client._prefix_args = Mock(return_value=['CMD', 'x'])
 
-        channel._brpop_start()
+        with patch('kombu.transport.redis.time', return_value=42.0):
+            channel._brpop_start()
 
+        # The client prefixes only the first key of a script call.
         channel.client._prefix_args.assert_called_once_with(
-            ['BRPOP', *keys, channel.brpop_timeout])
+            ['BLPOP', channel._wake_key('q'), channel.brpop_timeout] if wait
+            else ['EVALSHA', 'pop-unacked', 7, 'unacked', 'foo_unacked_index',
+                  *(f'foo_{key}' for key in keys),
+                  f"foo_{channel._wake_key('q')}", 42.0, '1'])
         channel.client.connection.send_command.assert_called_once_with(
-            'BRPOP', 'foo_q', 1)
+            'CMD', 'x')
 
     @pytest.mark.parametrize('expires,ttl', [
         (500, 3_600_000), (2_000_000, 4_000_000)])
@@ -2999,6 +3402,8 @@ class test_PausedBRPOP:
         self.cycle = self.connection.transport.cycle
         self.cycle.poller = Mock()
         self.cycle.poller.poll.return_value = []
+        # A pending wait: a pop's reply is put back instead (below).
+        self.channel._wait_for_wake = True
         self.cycle._register_BRPOP(self.channel)
         self.client = self.channel.client
         self.pending = self.client.connection
@@ -3044,6 +3449,16 @@ class test_PausedBRPOP:
         assert self.sock.data == commands
         self.read.assert_not_called()
         disconnect.assert_not_called()
+
+    def test_pop_reply_without_credit_is_read_not_paused(self):
+        self.channel._wait_for_wake = False
+        self.cycle._update_brpop_polling()
+        assert self.fd not in self.cycle._paused_brpop
+
+        self.cycle.on_readable(self.fd)
+
+        self.read.assert_called_once_with()
+        assert self.fd not in self.cycle._paused_brpop
 
     def test_pause_is_idempotent_for_stale_read_events(self):
         self.cycle.on_readable(self.fd)
@@ -3261,6 +3676,7 @@ class test_PausedBRPOP:
             'other-paused-brpop', no_ack=False, callback=Mock(),
             consumer_tag='other-paused-consumer',
         )
+        other._wait_for_wake = True
         self.cycle._register_BRPOP(other)
         other.qos.can_consume = Mock(return_value=False)
         other_connection = other.client.connection
@@ -3461,7 +3877,9 @@ class test_Redis:
     def test_close_in_poll(self):
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
-        conn1._sock.data = [('BRPOP', ('test_Redis',))]
+        keys, args = c._pop_unacked_args(['test_Redis'], [True])
+        conn1._sock.data = [('EVALSHA', ('pop-unacked', len(keys), *keys, *args))]
+        c._pop_queues = ['test_Redis']
         c._in_poll = True
         c.close()
         assert conn1.disconnected
@@ -4146,6 +4564,19 @@ class test_MultiChannelPoller:
             p.get(Mock())
 
         p._register_LISTEN.assert_called_with(channel)
+
+    def test_get_waits_for_the_reply_to_a_command_a_handler_sent(self):
+        p = self.Poller()
+        p.poller = Mock(name='poller')
+        p.poller.poll.side_effect = [[(1, eventio.READ)], [(1, eventio.READ)]]
+        p.handle_event = Mock(name='handle_event', side_effect=[
+            redis._CommandSent(), (True, p)])
+
+        with patch('kombu.transport.redis.monotonic', side_effect=[10, 12]):
+            p.get(Mock(), timeout=5)
+
+        assert p.poller.poll.call_args_list == [call(5), call(3)]
+        assert p.handle_event.call_count == 2
 
     def test_get_receives_ERR(self):
         p, channel = self.create_get(events=[(1, eventio.ERR)])

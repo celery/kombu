@@ -4,6 +4,7 @@ import os
 import select
 import socket
 import threading
+from queue import Empty
 from time import monotonic, sleep
 from unittest.mock import patch
 from uuid import uuid4
@@ -112,7 +113,10 @@ def test_event_loop_consumes_after_connection_reconnect(connection, mode):
                                 tick()
                             for fd, _ in hub.poller.poll(0.1):
                                 callback, args = hub.readers[fd]
-                                callback(*args)
+                                try:
+                                    callback(*args)
+                                except Empty:
+                                    pass  # As the hub does.
                         assert received == list(range(sequence + 1))
                         if mode == 'BRPOP':
                             assert 'subclient' not in consumer.channel.__dict__
