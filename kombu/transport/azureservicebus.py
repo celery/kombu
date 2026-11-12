@@ -67,6 +67,7 @@ import string
 from functools import partial
 from queue import Empty
 from typing import Any
+from urllib.parse import unquote
 
 import azure.core.exceptions
 import azure.servicebus.exceptions
@@ -749,7 +750,7 @@ class Transport(virtual.Transport):
         else:
             # > 'rootpolicy', 'some/key'
             policy, sas_key = credential.split(":", 1)
-            credential = f"{policy}:{sas_key}"
+            credential = f"{policy}:{unquote(sas_key)}"
 
         return namespace, credential
 
