@@ -33,6 +33,9 @@ def test_parse_url():
     (('https', 'e.com', 80, 'u', 'p'), 'https://u:p@e.com:80/'),
     (('https', 'e.com', 80, None, 'p'), 'https://:p@e.com:80/'),
     (('https', 'e.com', 80, None, 'p', '/foo'), 'https://:p@e.com:80//foo'),
+    (('amqp', '::1', 5672), 'amqp://[::1]:5672/'),
+    (('amqp', '[::1]', 5672), 'amqp://[::1]:5672/'),
+    (('amqp', 'fe80::1', 5672, 'u', 'p'), 'amqp://u:p@[fe80::1]:5672/'),
 ])
 def test_as_url(urltuple, expected):
     assert as_url(*urltuple) == expected
@@ -41,6 +44,7 @@ def test_as_url(urltuple, expected):
 @pytest.mark.parametrize('url,expected', [
     ('foo', 'foo'),
     ('http://u:p@e.com//foo', 'http://u:**@e.com//foo'),
+    ('amqp://u:p@[::1]:5672//', 'amqp://u:**@[::1]:5672//'),
 ])
 def test_maybe_sanitize_url(url, expected):
     assert maybe_sanitize_url(url) == expected
