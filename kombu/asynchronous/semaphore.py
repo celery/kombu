@@ -92,7 +92,6 @@ class LaxBoundedSemaphore:
     def grow(self, n: int = 1) -> None:
         """Change the size of the semaphore to accept more users."""
         self.initial_value += n
-        self.value += n
         for _ in range(n):
             self.release()
 
