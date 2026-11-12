@@ -333,9 +333,9 @@ This software is licensed under the `New BSD License`. See the `LICENSE`
 file in the top distribution directory for the full license text.
 
 
-.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/ci.yaml/badge.svg
+.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/python-package.yml/badge.svg
     :alt: Build status
-    :target: https://github.com/celery/kombu/actions/workflows/ci.yml
+    :target: https://github.com/celery/kombu/actions/workflows/python-package.yml
 
 .. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=main
     :target: https://codecov.io/github/celery/kombu?branch=main
