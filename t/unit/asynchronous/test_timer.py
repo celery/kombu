@@ -154,3 +154,18 @@ class test_Timer:
         tref = Mock()
         t.cancel(tref)
         tref.cancel.assert_called_with()
+
+
+class test_import_without_tzdata:
+
+    def test_import_without_tzdata(self, tmp_path):
+        import os
+        import subprocess
+        import sys
+        env = dict(os.environ)
+        env['PYTHONTZPATH'] = str(tmp_path)
+        result = subprocess.run(
+            [sys.executable, '-c', 'import kombu.asynchronous'],
+            env=env, capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
