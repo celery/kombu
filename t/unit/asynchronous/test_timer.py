@@ -169,4 +169,3 @@ class test_import_without_tzdata:
             env=env, capture_output=True, text=True,
         )
         assert result.returncode == 0, result.stderr
-
