@@ -155,6 +155,7 @@ class test_Timer:
         t.cancel(tref)
         tref.cancel.assert_called_with()
 
+
 class test_import_without_tzdata:
 
     def test_import_without_tzdata(self, tmp_path):
