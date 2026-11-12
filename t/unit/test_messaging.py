@@ -11,6 +11,7 @@ import pytest
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError, OperationalError
+from kombu.transport import memory
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
@@ -723,6 +724,29 @@ class test_Producer:
         p = Producer(chan, on_return=on_return)
         assert on_return in chan.events['basic_return']
         assert p.on_return
+
+    def test_publish_after_reconnect_during_declare(self):
+        conn = Connection('memory://')
+        queue = Queue('reconnect_during_declare', Exchange('x'), routing_key='rk')
+        declare = memory.Channel.queue_declare
+        dropped = []
+
+        def drop_once(channel, *args, **kwargs):
+            if not dropped:
+                dropped.append(channel)
+                raise amqp.ConnectionError('connection dropped')
+            return declare(channel, *args, **kwargs)
+
+        with patch.object(memory.Channel, 'queue_declare', drop_once):
+            conn.Producer().publish(
+                {'hello': 'world'}, exchange=queue.exchange,
+                routing_key='rk', declare=[queue], retry=True,
+                retry_policy={'max_retries': 3, 'interval_start': 0},
+            )
+
+        assert dropped
+        message = conn.channel().basic_get(queue.name)
+        assert message.payload == {'hello': 'world'}
 
 
 class test_Consumer:
