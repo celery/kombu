@@ -32,6 +32,68 @@ Transport Options
 Transport Options are passed to constructor of underlying py-amqp
 :class:`~kombu.connection.Connection` class.
 
+RabbitMQ resource alarms
+========================
+With a py-amqp version supporting ``blocked_connection_timeout``, pass it in
+``transport_options`` to bound waits after ``Connection.Blocked`` is received::
+
+    conn = Connection('amqp://broker.example.com', transport_options={
+        'blocked_connection_timeout': 10,
+    })
+
+The blocked deadline is disabled by default. On expiry py-amqp discards the
+connection and raises a recoverable connection error. Kombu applies the normal
+retry policy and wraps a propagated connection error as ``OperationalError``.
+Each new connection has its own blocked deadline; this is not a total retry
+budget. A timed-out message may still be delivered, so retries can duplicate it.
+
+The deadline starts when the synchronous client processes the broker's blocked
+notification. Use ``publication_timeout`` to cover library-controlled waits
+before that notification, including declarations and the total retry budget.
+Older py-amqp versions may ignore the
+unsupported option; consult :class:`amqp.connection.Connection` for availability.
+
+Publication wait budget
+=======================
+With py-amqp ``operation_timeout`` support, an explicit budget covers the
+synchronous publication path::
+
+    producer = conn.Producer()
+    producer.publish({'hello': 'world'}, publication_timeout=5, retry=True)
+
+The default is ``None`` (disabled). A non-negative finite number starts one
+monotonic deadline before publication work. Values above
+``threading.TIMEOUT_MAX`` are rejected. Zero expires immediately. Nested
+calls inherit the earlier deadline; retries, failover and new connections do not
+reset it. The budget bounds library-controlled writer locks, TCP connections,
+TLS and AMQP handshakes, declarations/bindings, all socket reads and writes, and
+confirmation waits. Existing shorter timeouts still take effect.
+
+To include acquisition and cleanup of your own pooled producer, scope the
+budget around the pool context::
+
+    from kombu.utils.time import publication_timeout
+    from kombu.pools import producers
+
+    with publication_timeout(5):
+        with producers[conn].acquire(block=True) as producer:
+            producer.publish({'hello': 'world'}, retry=True)
+
+``PublicationTimeout`` derives from ``OperationalError`` and terminates the
+current publication even with broad ``retry_errors``. Incomplete I/O causes
+connection disposal without waiting for an AMQP close or TLS shutdown. A timeout
+before acquiring a writer lock preserves the active writer's connection.
+
+Synchronous DNS, serialization, credential callbacks and application callbacks
+are cooperative: the deadline is checked when they return, rather than
+interrupting them. They and scheduling delays can exceed the budget. Work in
+another execution context, earlier pool acquisition and later caller-owned
+cleanup are outside a per-call budget. Deferred batches and arbitrary unbound
+``ChannelPromise`` objects are rejected when enabled. Unsupported transports or
+older py-amqp implementations fail explicitly on opt-in; disabled behavior is
+unchanged. A timeout may follow successful delivery, so retrying can duplicate
+messages.
+
 Using TLS
 =========
 Transport over TLS can be enabled by ``ssl`` parameter of
@@ -93,8 +155,11 @@ raised as an exception (carrying the broker's ``reply_code`` and
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import amqp
 
+from kombu.exceptions import PublicationTimeout
 from kombu.utils.amq_manager import get_manager
 from kombu.utils.text import version_string_as_tuple
 
@@ -158,6 +223,23 @@ class Transport(base.Transport):
     """AMQP Transport."""
 
     Connection = Connection
+    operation_timeout_errors = ((amqp.OperationTimeout,)
+                                if hasattr(amqp, 'OperationTimeout') else ())
+
+    @contextmanager
+    def having_deadline(self, deadline):
+        if not hasattr(amqp, 'operation_timeout'):
+            exc = NotImplementedError(
+                'publication_timeout requires py-amqp operation_timeout support')
+            # No protocol I/O occurred; the pooled connection is still usable.
+            exc.connection_usable = True
+            raise exc
+        try:
+            with amqp.operation_timeout(deadline=deadline):
+                yield
+        except self.operation_timeout_errors as exc:
+            raise PublicationTimeout(
+                str(exc), connection_usable=exc.connection_usable) from exc
 
     default_port = DEFAULT_PORT
     default_ssl_port = DEFAULT_SSL_PORT
@@ -195,7 +277,12 @@ class Transport(base.Transport):
 
     def _collect(self, connection):
         if connection is not None:
-            connection.collect()
+            from kombu.utils.time import current_publication_deadline
+
+            if current_publication_deadline() is not None:
+                connection.collect(force=True)
+            else:
+                connection.collect()
 
     def establish_connection(self):
         """Establish connection to the AMQP broker."""

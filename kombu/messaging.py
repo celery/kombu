@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import wraps
 from itertools import count
 from threading import local
 from typing import TYPE_CHECKING
@@ -13,6 +14,8 @@ from .entity import Exchange, Queue, maybe_delivery_mode
 from .exceptions import ContentDisallowed
 from .serialization import dumps, prepare_accept_content
 from .utils.functional import ChannelPromise, maybe_list
+from .utils.time import current_publication_deadline
+from .utils.time import publication_timeout as publication_timeout_context
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -20,6 +23,29 @@ if TYPE_CHECKING:
 __all__ = ('Exchange', 'Queue', 'Producer', 'Consumer')
 
 DEFAULT_BATCH_SIZE = 1000
+
+
+def _with_publication_timeout(fun):
+    @wraps(fun)
+    def wrapped(self, *args, publication_timeout=None, **kwargs):
+        if (publication_timeout is None and
+                current_publication_deadline() is None):
+            return fun(self, *args, **kwargs)
+        with publication_timeout_context(publication_timeout):
+            if getattr(self._batch_local, 'current', None) is not None:
+                raise NotImplementedError(
+                    'publication_timeout cannot be used with deferred batches')
+            if self.__connection__ is None and isinstance(self._channel, ChannelPromise):
+                raise NotImplementedError(
+                    'publication_timeout requires a Connection or concrete channel; '
+                    'an arbitrary ChannelPromise cannot be resolved safely')
+            connection = self.connection
+            if connection is None:
+                raise NotImplementedError(
+                    'publication_timeout requires a producer bound to a Kombu Connection')
+            with connection._publication_timeout():
+                return fun(self, *args, **kwargs)
+    return wrapped
 
 
 class _ProducerBatchState:
@@ -281,12 +307,13 @@ class Producer:
             delivery_mode or self.exchange.delivery_mode,
         )
 
+    @_with_publication_timeout
     def publish(self, body, routing_key=None, delivery_mode=None,
                 mandatory=False, immediate=False, priority=0,
                 content_type=None, content_encoding=None, serializer=None,
                 headers=None, compression=None, exchange=None, retry=False,
                 retry_policy=None, declare=None, expiration=None, timeout=None,
-                confirm_timeout=None,
+                confirm_timeout=None, *, publication_timeout=None,
                 **properties):
         """Publish message to the specified exchange.
 
@@ -320,6 +347,10 @@ class Producer:
                 for message to publish.
             confirm_timeout (float): Set confirm timeout to wait maximum timeout second
                 for message to confirm publishing if the channel is set to confirm publish mode.
+            publication_timeout (float): Optional shared time budget for pool,
+                connection, declaration, write, confirmation and retry waits.
+                Supported by synchronous pyamqp. DNS and user callbacks are
+                checked before/after; they cannot be interrupted by this budget.
             ``**properties`` (Any): Additional message properties, see AMQP spec.
         """
         _publish = self._publish
@@ -427,7 +458,8 @@ class Producer:
     ) -> None:
         # In case the connection is part of a pool it needs to be
         # replaced in case of an exception
-        if self.__connection__ is not None and exc_type is not None:
+        if (self.__connection__ is not None and exc_type is not None and
+                not getattr(exc_val, 'connection_usable', False)):
             if isinstance(self.__connection__, PooledConnection):
                 self.__connection__._pool.replace(self.__connection__)
 
