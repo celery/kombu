@@ -224,6 +224,28 @@ The full transport options reference lives in the
 :mod:`kombu.transport.pyamqp` module documentation.
 
 
+Detecting publish failures on Google Cloud Pub/Sub
+==================================================
+
+The Pub/Sub client sends messages from a background batch thread, so by
+default a publish returns before the message has been sent, and a publish
+that fails afterwards is lost without any exception on the publishing side.
+The ``gcpubsub`` transport takes the same ``confirm_publish`` option: every
+publish then waits until Pub/Sub has acknowledged the message, and raises
+the client's exception if it failed, or a timeout once ``confirm_timeout``
+has passed:
+
+.. code-block:: pycon
+
+    >>> conn = Connection('gcpubsub://projects/project-name', transport_options={
+    ...     'confirm_publish': True,
+    ... })
+    >>> producer = conn.Producer()
+    >>> producer.publish({'hello': 'world'}, routing_key='tasks', confirm_timeout=10)
+
+See the :mod:`kombu.transport.gcpubsub` module documentation for details.
+
+
 Reference
 =========
 
