@@ -249,6 +249,60 @@ class test_AsyncAWSQueryConnection(AWSCase):
         params = parse_qs(parsed.query)
         assert 'Action' not in params
 
+    def test_get_list(self):
+        with self.mock_make_request() as callback:
+            self.x.get_list(
+                'ListQueues', {'param': 'value'}, 'markers', 'path',
+                callback=callback,
+            )
+            on_list_ready = self.assert_make_request_called()
+            self.x.make_request.assert_called_once_with(
+                'ListQueues', {'param': 'value'}, 'path', 'POST',
+                callback=on_list_ready, protocol_params=None,
+            )
+
+    def test_get_list__on_success(self):
+        with self.mock_make_request() as callback:
+            self.x.get_list('ListQueues', {}, 'markers', callback=callback)
+            on_list_ready = self.assert_make_request_called()
+            mocked_response = self.Response(200, '')
+            mocked_response.response = Mock(
+                name='raw_response', status_code=200, headers={},
+                content=b'{"QueueUrls": ["https://sqs.foo.com/bar"]}',
+            )
+            on_list_ready(mocked_response)
+            callback.assert_called_once_with({
+                'QueueUrls': ['https://sqs.foo.com/bar'],
+                'ResponseMetadata': {
+                    'HTTPStatusCode': 200,
+                    'HTTPHeaders': {},
+                },
+            })
+
+    @pytest.mark.parametrize('error_status_code', [
+        AsyncAWSQueryConnection.STATUS_CODE_REQUEST_TIMEOUT,
+        AsyncAWSQueryConnection.STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR,
+        AsyncAWSQueryConnection.STATUS_CODE_INTERNAL_ERROR,
+        AsyncAWSQueryConnection.STATUS_CODE_BAD_GATEWAY,
+        AsyncAWSQueryConnection.STATUS_CODE_SERVICE_UNAVAILABLE_ERROR,
+        AsyncAWSQueryConnection.STATUS_CODE_GATEWAY_TIMEOUT
+    ])
+    def test_get_list__on_error_response(self, error_status_code):
+        with self.mock_make_request() as callback:
+            self.x.get_list('ListQueues', {}, 'markers', callback=callback)
+            on_list_ready = self.assert_make_request_called()
+            on_list_ready(self.Response(error_status_code, 'error'))
+            callback.assert_called_once_with([])
+
+    def test_get_list__on_client_error(self):
+        with self.mock_make_request() as callback:
+            self.x.get_list('ListQueues', {}, 'markers', callback=callback)
+            on_list_ready = self.assert_make_request_called()
+            mocked_response = self.Response(400, 'error body')
+            mocked_response.reason = 'Bad Request'
+            with pytest.raises(Exception):
+                on_list_ready(mocked_response)
+
     @pytest.mark.parametrize('error_status_code', [
         AsyncAWSQueryConnection.STATUS_CODE_REQUEST_TIMEOUT,
         AsyncAWSQueryConnection.STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR,
