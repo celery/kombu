@@ -98,6 +98,24 @@ class test_Mailbox:
         de.side_effect = socket.timeout
         mailbox._collect(ticket, limit=1, channel=channel)
 
+    def test_reply__collect_ignores_other_tickets_towards_limit(self):
+        mailbox = pidbox.Mailbox('test_reply__collect_late')(self.connection)
+        exchange = mailbox.reply_exchange.name
+        channel = self.connection.channel()
+        mailbox.reply_queue(channel).declare()
+
+        old_ticket = uuid()
+        current_ticket = uuid()
+
+        # A late reply from an earlier call is in the queue
+        mailbox._publish_reply({'old': 'reply'}, exchange, mailbox.oid, old_ticket)
+        # The expected reply for the current call arrives
+        mailbox._publish_reply({'current': 'reply'}, exchange, mailbox.oid, current_ticket)
+
+        reply = mailbox._collect(current_ticket, limit=1, channel=channel)
+        assert reply == [{'current': 'reply'}]
+        assert list(mailbox.unclaimed[old_ticket]) == [{'old': 'reply'}]
+
     def test_reply__collect_uses_default_channel(self):
         class ConsumerCalled(Exception):
             pass
