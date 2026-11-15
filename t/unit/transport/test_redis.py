@@ -1624,6 +1624,34 @@ class test_Channel:
 
         c.connection.disconnect.assert_called_with()
 
+    def test_brpop_read_unblocked_by_a_role_change(self):
+        # Redis ends a blocking pop with this reply when the node becomes
+        # a replica.  The consumer has to reconnect, as for a lost
+        # connection.
+        c = self.channel.client = Mock()
+        unblocked = ResponseError(
+            'UNBLOCKED force unblock from blocking operation, '
+            'instance state changed (master -> replica?)')
+        c.parse_response.side_effect = unblocked
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError) as exc:
+            self.channel._brpop_read()
+
+        assert exc.value.__cause__ is unblocked
+        assert 'UNBLOCKED' in str(exc.value)
+        assert isinstance(
+            exc.value, redis.get_redis_error_classes().connection_errors)
+        c.connection.disconnect.assert_called_once_with()
+
+    def test_brpop_read_other_response_errors_are_channel_errors(self):
+        c = self.channel.client = Mock()
+        c.parse_response.side_effect = ResponseError('WRONGTYPE')
+
+        with pytest.raises(ResponseError):
+            self.channel._brpop_read()
+
+        c.connection.disconnect.assert_not_called()
+
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
         c.parse_response.return_value = None
@@ -2176,6 +2204,23 @@ class test_Channel:
                 exceptions.DataError = DataError
             if InvalidData is not None:
                 exceptions.InvalidData = InvalidData
+
+    def test_a_read_only_reply_is_a_connection_error(self):
+        # After a failover that keeps the old primary running, every write
+        # on a connection to it gets this reply.
+        from redis import exceptions
+
+        from kombu.transport.redis import get_redis_error_classes
+
+        errors = get_redis_error_classes()
+        assert exceptions.ReadOnlyError in errors.connection_errors
+        assert isinstance(
+            exceptions.ReadOnlyError("You can't write against a read only "
+                                     "replica."),
+            errors.connection_errors)
+        # other replies stay channel errors
+        assert exceptions.ResponseError not in errors.connection_errors
+        assert exceptions.ResponseError in errors.channel_errors
 
     def test_empty_queues_key(self):
         channel = self.channel

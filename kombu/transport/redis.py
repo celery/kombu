@@ -251,6 +251,10 @@ def get_redis_error_classes():
             exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError,
+            # The node became a replica (a failover that keeps it running):
+            # no write works on this connection any more, so the consumer
+            # has to reconnect, as it does when the node is down.
+            exceptions.ReadOnlyError,
             # A stale fd can still fire on_readable for a channel that was
             # already dropped after a broker restart (#2582): the poller
             # guard from #2561 makes the common path a debug log, but any
@@ -1547,6 +1551,14 @@ class Channel(virtual.Channel):
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
                 raise
+            except self.ResponseError as exc:
+                if not str(exc).startswith('UNBLOCKED'):
+                    raise
+                # The server ended the blocking pop because the node became
+                # a replica.  Same as a lost connection: see ReadOnlyError
+                # in get_redis_error_classes().
+                self.client.connection.disconnect()
+                raise exceptions.ConnectionError(str(exc)) from exc
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
