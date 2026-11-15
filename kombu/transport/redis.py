@@ -109,6 +109,7 @@ import errno
 import functools
 import inspect
 import numbers
+import os
 import socket
 from bisect import bisect
 from collections import OrderedDict, namedtuple
@@ -130,6 +131,7 @@ from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
+from kombu.utils.uuid import uuid
 
 from . import virtual
 
@@ -272,16 +274,56 @@ class MutexHeld(Exception):
     """Raised when another party holds the lock."""
 
 
+_restore_lock_tokens = {}
+
+
+def _restore_lock_token():
+    """Return what this process stores in the restore lock (see Mutex).
+
+    One token per process, kept for its lifetime: a consumer that lost its
+    connection in the sweep comes back on a new channel, and has to find
+    its own lock.  A forked child gets a token of its own.
+    """
+    pid = os.getpid()
+    try:
+        return _restore_lock_tokens[pid]
+    except KeyError:
+        _restore_lock_tokens.clear()
+        token = _restore_lock_tokens[pid] = uuid()
+        return token
+
+
+def _take_over_own_lock(client, lock, token):
+    """Take over a lock that still holds ``token``, and reset its expiry.
+
+    The check and the new expiry are one script on the server, so a lock
+    that another client took in the meantime is left alone.
+    """
+    lock.local.token = client.get_encoder().encode(token)
+    try:
+        return lock.reacquire()
+    except exceptions.LockNotOwnedError:
+        lock.local.token = None
+        return False
+
+
 @contextmanager
-def Mutex(client, name, expire):
+def Mutex(client, name, expire, token=None):
     """Acquire redis lock in non blocking way.
 
     Raise MutexHeld if not successful.
+
+    ``token`` is the value stored in the lock. A caller that passes the
+    same token every time gets back a lock it could not release, for
+    example because the connection was lost in the block: without that,
+    nobody enters until the lock expires.
     """
     lock = client.lock(name, timeout=expire)
     lock_acquired = False
     try:
-        lock_acquired = lock.acquire(blocking=False)
+        lock_acquired = lock.acquire(blocking=False, token=token)
+        if not lock_acquired and token is not None:
+            lock_acquired = _take_over_own_lock(client, lock, token)
         if lock_acquired:
             yield
         else:
@@ -529,7 +571,8 @@ class QoS(virtual.QoS):
             ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
-                           self.unacked_mutex_expire):
+                           self.unacked_mutex_expire,
+                           token=_restore_lock_token()):
                     # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
                     # not implemented by every Redis-compatible server
                     # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented

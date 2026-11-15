@@ -1261,6 +1261,30 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_stores_the_process_token_in_the_lock(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.return_value = []
+
+        with patch('kombu.transport.redis.Mutex') as Mutex:
+            redis.QoS(self.channel).restore_visible()
+            # a consumer that reconnected has a new channel and a new QoS
+            redis.QoS(self.channel).restore_visible()
+
+        tokens = [c.kwargs['token'] for c in Mutex.call_args_list]
+        assert tokens == [redis._restore_lock_token()] * 2
+        assert tokens[0]
+
+    def test_restore_lock_token_is_per_process(self):
+        token = redis._restore_lock_token()
+        assert redis._restore_lock_token() == token
+
+        with patch('kombu.transport.redis.os.getpid', return_value=-1):
+            child = redis._restore_lock_token()
+            assert child != token
+            assert redis._restore_lock_token() == child
+        assert list(redis._restore_lock_tokens) == [-1]
+
     def test_qos_restore_visible_interval_throttles(self):
         client = self.channel._create_client = Mock(name='client')
         client = client()
@@ -4298,7 +4322,7 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -4311,7 +4335,7 @@ class test_Mutex:
             with redis.Mutex(client, 'foo1', 100):
                 held = True
             assert not held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -4324,6 +4348,73 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
+
+    def test_without_a_token_a_held_lock_is_never_taken_over(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100):
+                pass
+
+        lock.reacquire.assert_not_called()
+        lock.release.assert_not_called()
+
+    def test_token_is_stored_in_the_lock(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            pass
+
+        lock.acquire.assert_called_once_with(blocking=False, token='mine')
+        lock.reacquire.assert_not_called()
+        lock.release.assert_called_once_with()
+
+    def test_takes_over_a_lock_that_holds_its_token(self):
+        # The lock was left by this caller: its release failed.
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.return_value = True
+
+        held = False
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            held = True
+
+        assert held
+        client.get_encoder.return_value.encode.assert_called_once_with('mine')
+        assert lock.local.token is client.get_encoder().encode.return_value
+        lock.reacquire.assert_called_once_with()
+        lock.release.assert_called_once_with()
+
+    def test_lock_with_another_token_is_held(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.side_effect = (
+            redis.redis.exceptions.LockNotOwnedError())
+
+        held = False
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                held = True
+
+        assert not held
+        assert lock.local.token is None
+        lock.release.assert_not_called()
+
+    def test_lock_stays_when_the_release_fails(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+        lock.release.side_effect = redis.redis.exceptions.ConnectionError()
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                pass
 
 
 class test_RedisSentinel:
