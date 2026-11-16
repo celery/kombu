@@ -4,6 +4,7 @@ import base64
 import copy
 import importlib
 import socket
+import subprocess
 import sys
 import types
 from collections import defaultdict
@@ -4881,5 +4882,32 @@ def test_transport_imports_when_redis_parent_module_was_evicted():
         assert importlib.import_module('kombu.transport.redis').Transport
     finally:
         sys.modules['redis'] = saved_redis
+        sys.modules['kombu.transport.redis'] = saved_transport
+        kombu.transport.redis = saved_transport
+
+
+def test_import_without_packaging():
+    # packaging is only in the redis extra; the transport must not need it.
+    code = (
+        "import sys\n"
+        "sys.modules['packaging'] = None\n"
+        "sys.modules['packaging.version'] = None\n"
+        "import kombu.transport.redis as r\n"
+        "assert r.redis is not None\n"
+    )
+    subprocess.run([sys.executable, '-c', code], check=True)
+
+
+def test_transport_imports_with_prerelease_redis_version():
+    import redis as real_redis
+
+    import kombu.transport
+
+    saved_transport = sys.modules.pop('kombu.transport.redis')
+    try:
+        with patch.object(real_redis, 'VERSION', (5, 3, '0b5')):
+            mod = importlib.import_module('kombu.transport.redis')
+            assert mod._REDIS_GET_CONNECTION_WITHOUT_ARGS is True
+    finally:
         sys.modules['kombu.transport.redis'] = saved_transport
         kombu.transport.redis = saved_transport

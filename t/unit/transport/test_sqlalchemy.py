@@ -96,6 +96,42 @@ class test_SqlAlchemy:
         )
         return conn, db_path
 
+    def test_purge_raises_when_commit_fails(self, tmp_path):
+        from sqlalchemy.exc import OperationalError as SAOperationalError
+
+        conn, db_path = self._locked_db_connection(tmp_path)
+        try:
+            channel = conn.channel()
+            channel._new_queue('locked')
+            for i in range(3):
+                channel._put('locked', f'DATA_{i}')
+            # A read transaction on another connection does not block the
+            # DELETE, but it blocks the COMMIT of the purge.
+            reader = sqlite3.connect(str(db_path), isolation_level=None)
+            try:
+                reader.execute('BEGIN')
+                reader.execute('SELECT count(*) FROM kombu_message').fetchall()
+                with pytest.raises(SAOperationalError, match='locked'):
+                    channel._purge('locked')
+            finally:
+                reader.close()
+            # The purge was rolled back, so the messages are still there.
+            assert channel._size('locked') == 3
+        finally:
+            conn.release()
+
+    def test_purge_returns_count_when_commit_succeeds(self, tmp_path):
+        conn, _ = self._locked_db_connection(tmp_path)
+        try:
+            channel = conn.channel()
+            channel._new_queue('open')
+            for i in range(3):
+                channel._put('open', f'DATA_{i}')
+            assert channel._purge('open') == 3
+            assert channel._size('open') == 0
+        finally:
+            conn.release()
+
     def test_put_raises_when_commit_fails(self, tmp_path):
         from sqlalchemy.exc import OperationalError as SAOperationalError
 
