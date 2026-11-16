@@ -377,6 +377,54 @@ class test_Producer:
                 declaration_count + 1)
             assert received.get(no_ack=True).payload == {'n': 2}
 
+    @pytest.mark.parametrize('binding', ['connection', 'channel'])
+    @pytest.mark.parametrize('operation', ['publish', 'maybe_declare'])
+    def test_declaration_reconnect_on_another_connection(
+            self, binding, operation):
+        with Connection('memory://') as connection, Connection('memory://') as other:
+            p = Producer(connection if binding == 'connection'
+                         else connection.default_channel)
+            original_channel = p.channel
+            first_other_channel = other.default_channel
+            queue = Queue('foreign-declare-reconnect',
+                          channel=first_other_channel)
+            revived = []
+
+            def on_revive(channel):
+                revived.append((channel, p.channel))
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            queue_declare = queue.declare
+            calls = []
+
+            def fail_once(*args, **kwargs):
+                calls.append(kwargs['channel'])
+                if len(calls) == 1:
+                    raise RecoverableConnectionError('declaration disconnected')
+                return queue_declare(*args, **kwargs)
+
+            with patch.object(queue, 'declare', side_effect=fail_once) as declare:
+                if operation == 'publish':
+                    p.publish('hello', routing_key=queue.name,
+                              declare=[queue], retry=True,
+                              retry_policy=policy)
+                else:
+                    p.maybe_declare(queue, retry=True, **policy)
+
+            assert other.default_channel is not first_other_channel
+            assert first_other_channel.connection is None
+            assert queue.channel is other.default_channel
+            assert p.channel is original_channel
+            assert p.connection is connection
+            assert p.channel.connection.client is connection
+            assert revived == [(other.default_channel, original_channel)]
+            assert declare.call_count == 2
+            received = queue(original_channel)
+            if operation == 'publish':
+                assert received.get(no_ack=True).payload == 'hello'
+            assert received.get(no_ack=True) is None
+            received.delete()
+
     def test_declaration_reconnect_callback_error(self):
         connection, state = self._declaration_retry_connection()
         error = RuntimeError('caller revival failed')

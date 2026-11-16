@@ -226,10 +226,12 @@ class Producer:
         """Declare exchange if not already declared during this session."""
         if entity:
             if retry:
+                connection = self.connection
                 on_revive = retry_policy.get('on_revive')
 
                 def revive(channel):
-                    self.revive(channel)
+                    if channel.connection.client is connection:
+                        self.revive(channel)
                     if on_revive:
                         on_revive(channel)
 
