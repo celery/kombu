@@ -341,7 +341,7 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
 def _query_object_encode(items):
     params = {}
     _query_object_encode_part(params, '', items)
-    return {k: v for k, v in params.items()}
+    return {**params}
 
 
 def _query_object_encode_part(params, prefix, part):
