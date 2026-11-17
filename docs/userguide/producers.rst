@@ -173,12 +173,12 @@ bound how long a pipeline network operation may block.
 The standard Redis, Redis TLS, and Redis Sentinel transports share this batch
 implementation. Standard Redis is covered by integration tests. TLS and
 Sentinel use the same channel implementation but are not covered by
-real-service batch integration tests. Redis Cluster is not currently an
-upstream Kombu transport and is not supported or tested by this API. Redis
-publishing also remains immediate when the underlying connection pool enables
-automatic retries, including ``retry_on_timeout`` or a custom retry policy,
-because replaying a pipeline after an ambiguous failure can publish duplicate
-messages.
+real-service batch integration tests. The Redis Cluster transport
+(``rediscluster://`` / ``redisclusters://``) is a separate implementation and
+is not covered by this batch publish API. Redis publishing also remains
+immediate when the underlying connection pool enables automatic retries,
+including ``retry_on_timeout`` or a custom retry policy, because replaying a
+pipeline after an ambiguous failure can publish duplicate messages.
 
 Serialization
 =============

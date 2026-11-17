@@ -86,6 +86,7 @@ jobs:
               toxenv: [
                   'py-amqp',
                   'py-redis',
+                  'py-redis-cluster',
                   'py-mongodb',
                   'py-kafka',
                   'py-sqs',
