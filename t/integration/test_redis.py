@@ -232,6 +232,44 @@ def test_failed_health_check_raises_connection_error():
 
 
 @pytest.mark.env('redis')
+def test_restore_lock_left_by_a_lost_connection(connection, redis_client):
+    """A consumer whose connection drops inside the restore sweep leaves the
+    lock set. Consumers in other processes skip their sweep, as they do
+    while a sweep runs. The consumer that left the lock gets it back, on
+    the new channel it has after it reconnected."""
+    from kombu.transport.redis import _restore_lock_token
+
+    name = f'unacked_mutex_{uuid4().hex}'
+    channel = connection.channel()
+    channel.unacked_mutex_key = name
+    key = channel.global_keyprefix + name
+    try:
+        with patch('redis.lock.Lock.release',
+                   side_effect=redis.ConnectionError()):
+            with pytest.raises(redis.ConnectionError):
+                channel.qos.restore_visible()
+        assert redis_client.get(key) == _restore_lock_token()
+        redis_client.pexpire(key, 5000)
+
+        other = connection.channel()
+        other.unacked_mutex_key = name
+        with patch('kombu.transport.redis._restore_lock_token',
+                   return_value='another process'), \
+                patch.object(other.qos, 'restore_by_tag') as restore:
+            other.qos.restore_visible()
+        restore.assert_not_called()
+        assert redis_client.get(key) == _restore_lock_token()
+        assert 0 < redis_client.pttl(key) <= 5000
+
+        reconnected = connection.channel()
+        reconnected.unacked_mutex_key = name
+        reconnected.qos.restore_visible()
+        assert not redis_client.exists(key)
+    finally:
+        redis_client.delete(key)
+
+
+@pytest.mark.env('redis')
 @pytest.mark.flaky(reruns=5, reruns_delay=2)
 class test_RedisBasicFunctionality(BasicFunctionality):
     def test_failed_connection__ConnectionError(self, invalid_connection):
