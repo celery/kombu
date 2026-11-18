@@ -47,6 +47,42 @@ def connection(request):
     )
 
 
+@pytest.mark.env('redis')
+@pytest.mark.parametrize('binding', ['connection', 'channel'])
+def test_publish_after_declare_reconnects(connection, binding):
+    name = f'declare-reconnect-{uuid4().hex}'
+    exchange = kombu.Exchange(name, type='direct')
+    queue = kombu.Queue(name, exchange=exchange, routing_key=name)
+    queue_declare = Channel.queue_declare
+    calls = []
+
+    def fail_once(channel, *args, **kwargs):
+        calls.append(channel)
+        if len(calls) == 1:
+            raise redis.exceptions.ConnectionError('connection lost')
+        return queue_declare(channel, *args, **kwargs)
+
+    with connection as conn:
+        conn.connect()
+        producer = kombu.Producer(
+            conn if binding == 'connection' else conn.channel())
+        try:
+            with patch.object(Channel, 'queue_declare', fail_once):
+                producer.publish(
+                    {'n': 1}, exchange=exchange, routing_key=name,
+                    declare=[queue], retry=True,
+                    retry_policy={'max_retries': 3, 'interval_start': 0},
+                )
+            assert len(calls) == 2
+            bound = queue(conn.default_channel)
+            message = bound.get(no_ack=True)
+            assert message is not None
+            assert message.payload == {'n': 1}
+            assert bound.get(no_ack=True) is None
+        finally:
+            queue(conn.default_channel).delete()
+
+
 @pytest.fixture()
 def redis_client(connection):
     """Direct Redis client for verification."""
@@ -64,6 +100,45 @@ def redis_client(connection):
 @pytest.fixture()
 def invalid_connection():
     return kombu.Connection('redis://localhost:12345')
+
+
+@pytest.mark.env('redis')
+def test_sync_consumer_receives_after_brpop_health_retry(
+        connection, redis_client):
+    connection.transport_options.update(
+        health_check_interval=1, retry_on_timeout=True)
+    name = f'health-reconnect-{uuid4().hex}'
+    queue = kombu.Queue(name)
+    received = []
+
+    def on_message(body, message):
+        received.append(body)
+        message.ack()
+
+    with connection, connection.clone() as publisher:
+        try:
+            for sequence in range(3):
+                with kombu.Consumer(connection, queues=[queue],
+                                    callbacks=[on_message]) as consumer:
+                    kombu.Producer(publisher).publish(
+                        sequence, routing_key=name, declare=[queue],
+                        serializer='json')
+                    if sequence:
+                        pending = consumer.channel.client.connection
+                        host, port = pending._sock.getsockname()[:2]
+                        client = next(item for item in redis_client.client_list()
+                                      if item['addr'] == f'{host}:{port}')
+                        assert redis_client.execute_command(
+                            'CLIENT', 'KILL', 'ID', client['id']) == 1
+                        # Force the same health-check retry as an idle timeout,
+                        # without sleeping or changing shared server settings.
+                        pending.next_health_check = 0
+                    connection.drain_events(timeout=5)
+                assert received == list(range(sequence + 1))
+                key = connection.transport_options.get('global_keyprefix', '')
+                assert redis_client.llen(key + name) == 0
+        finally:
+            queue(connection.default_channel).delete()
 
 
 @pytest.mark.env('redis')
