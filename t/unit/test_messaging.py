@@ -6,13 +6,32 @@ import threading
 from collections import defaultdict
 from unittest.mock import ANY, Mock, patch
 
+import amqp
 import pytest
+from amqp.exceptions import RecoverableConnectionError
 
 from kombu import Connection, Consumer, Exchange, Producer, Queue
 from kombu.exceptions import MessageStateError, OperationalError
+from kombu.transport import memory, virtual
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
 from t.mocks import Transport
+
+
+class BaseErrorsTransport(Transport):
+    # Classifies errors like kombu.transport.base.Transport does (no
+    # recoverable/irrecoverable split). Declared here because other tests
+    # overwrite connection_errors and channel_errors on t.mocks.Transport.
+    connection_errors = (amqp.ConnectionError,)
+    channel_errors = (amqp.ChannelError,)
+
+
+class AMQPErrorsTransport(Transport):
+    # Classifies errors like the py-amqp transport does.
+    connection_errors = amqp.Connection.connection_errors
+    channel_errors = amqp.Connection.channel_errors
+    recoverable_connection_errors = amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
 
 
 class RecordingPublishBatch:
@@ -228,7 +247,8 @@ class test_Producer:
             "retry_errors": (OperationalError,)
         }
         p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
-        maybe_declare.assert_called_once_with(ANY, ANY, True, **expected_retry_policy)
+        maybe_declare.assert_called_once_with(
+            ANY, ANY, True, on_revive=ANY, **expected_retry_policy)
 
     @patch('kombu.common._imaybe_declare')
     def test_publish_maybe_declare_with_retry_policy_ensure_connection(self, _imaybe_declare):
@@ -242,7 +262,8 @@ class test_Producer:
             "retry_errors": (OperationalError,)
         }
         p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
-        _imaybe_declare.assert_called_once_with(ANY, ANY, **expected_retry_policy)
+        _imaybe_declare.assert_called_once_with(
+            ANY, ANY, on_revive=ANY, **expected_retry_policy)
 
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
@@ -275,6 +296,250 @@ class test_Producer:
         ex = Exchange('foo')
         p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
         p.maybe_declare.assert_called_with(ex, retry=False)
+
+    def _declaration_retry_connection(self):
+        state = {'failures': 1, 'events': [], 'prepared': []}
+
+        class ReconnectingChannel(memory.Channel):
+            queues = {}
+
+            def queue_declare(self, *args, **kwargs):
+                state['events'].append(('declare', self))
+                if state['failures']:
+                    state['failures'] -= 1
+                    raise RecoverableConnectionError('declaration disconnected')
+                return super().queue_declare(*args, **kwargs)
+
+            def prepare_message(self, *args, **kwargs):
+                state['events'].append(('prepare', self))
+                message = super().prepare_message(*args, **kwargs)
+                state['prepared'].append((self, message))
+                return message
+
+            def basic_publish(self, message, **kwargs):
+                # A real closed virtual channel is detached from its connection.
+                # Memory's normal _put does not inspect this, unlike SQS's _put.
+                assert self.connection.client is connection
+                assert state['prepared'][-1] == (self, message)
+                state['events'].append(('publish', self))
+                return super().basic_publish(message, **kwargs)
+
+        class ReconnectingTransport(memory.Transport):
+            Channel = ReconnectingChannel
+            global_state = virtual.BrokerState()
+
+        connection = Connection(transport=ReconnectingTransport)
+        return connection, state
+
+    @pytest.mark.parametrize('binding', ['connection', 'channel'])
+    @pytest.mark.parametrize('declaration_count', [1, 2])
+    def test_publish_after_declaration_reconnect(self, binding,
+                                                 declaration_count):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection if binding == 'connection'
+                         else connection.default_channel)
+            first = p.channel
+            revived = []
+
+            def on_revive(channel):
+                revived.append((channel, p.channel))
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            original_policy = policy.copy()
+            queues = [Queue(f'reconnect-{i}')
+                      for i in range(declaration_count)]
+            p.publish({'n': 1}, routing_key='reconnect-0', declare=queues,
+                      retry=True, retry_policy=policy)
+
+            second = p.channel
+            assert second is not first
+            assert first.connection is None
+            assert revived == [(second, second)]
+            assert policy == original_policy
+            assert policy['on_revive'] is on_revive
+            assert state['prepared'][0][0] is second
+            assert state['events'].index(('prepare', second)) > max(
+                i for i, (kind, _) in enumerate(state['events'])
+                if kind == 'declare')
+            assert sum(kind == 'declare' for kind, _ in state['events']) == (
+                declaration_count + 1)
+            received = Queue('reconnect-0')(second)
+            assert received.get(no_ack=True).payload == {'n': 1}
+            assert received.get(no_ack=True) is None
+
+            # A following publish uses the revived producer and cached declares.
+            p.publish({'n': 2}, routing_key='reconnect-0', declare=queues,
+                      retry=True, retry_policy=policy)
+            assert p.channel is second
+            assert revived == [(second, second)]
+            assert sum(kind == 'declare' for kind, _ in state['events']) == (
+                declaration_count + 1)
+            assert received.get(no_ack=True).payload == {'n': 2}
+
+    @pytest.mark.parametrize('binding', ['connection', 'channel'])
+    @pytest.mark.parametrize('operation', ['publish', 'maybe_declare'])
+    def test_declaration_reconnect_on_another_connection(
+            self, binding, operation):
+        with Connection('memory://') as connection, Connection('memory://') as other:
+            p = Producer(connection if binding == 'connection'
+                         else connection.default_channel)
+            original_channel = p.channel
+            first_other_channel = other.default_channel
+            queue = Queue('foreign-declare-reconnect',
+                          channel=first_other_channel)
+            revived = []
+
+            def on_revive(channel):
+                revived.append((channel, p.channel))
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            queue_declare = queue.declare
+            calls = []
+
+            def fail_once(*args, **kwargs):
+                calls.append(kwargs['channel'])
+                if len(calls) == 1:
+                    raise RecoverableConnectionError('declaration disconnected')
+                return queue_declare(*args, **kwargs)
+
+            with patch.object(queue, 'declare', side_effect=fail_once) as declare:
+                if operation == 'publish':
+                    p.publish('hello', routing_key=queue.name,
+                              declare=[queue], retry=True,
+                              retry_policy=policy)
+                else:
+                    p.maybe_declare(queue, retry=True, **policy)
+
+            assert other.default_channel is not first_other_channel
+            assert first_other_channel.connection is None
+            assert queue.channel is other.default_channel
+            assert p.channel is original_channel
+            assert p.connection is connection
+            assert p.channel.connection.client is connection
+            assert revived == [(other.default_channel, original_channel)]
+            assert declare.call_count == 2
+            received = queue(original_channel)
+            if operation == 'publish':
+                assert received.get(no_ack=True).payload == 'hello'
+            assert received.get(no_ack=True) is None
+            received.delete()
+
+    def test_declaration_reconnect_callback_error(self):
+        connection, state = self._declaration_retry_connection()
+        error = RuntimeError('caller revival failed')
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            callbacks = []
+
+            def on_revive(channel):
+                callbacks.append((channel, p.channel))
+                raise error
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            original_policy = policy.copy()
+            with pytest.raises(RuntimeError) as caught:
+                p.publish('hello', declare=[Queue('reconnect')], retry=True,
+                          retry_policy=policy)
+            assert caught.value is error
+            assert first.connection is None
+            assert p.channel is not first
+            assert callbacks == [(p.channel, p.channel)]
+            assert policy == original_policy
+            assert state['prepared'] == []
+
+    def test_declaration_reconnect_exhausted_before_prepare(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            callback = Mock()
+            with pytest.raises(OperationalError, match='declaration disconnected'):
+                p.publish('hello', declare=[Queue('reconnect')], retry=True,
+                          retry_policy={'max_retries': 0,
+                                        'on_revive': callback})
+            assert p.channel is first
+            callback.assert_not_called()
+            assert state['prepared'] == []
+
+    def test_declaration_reconnect_autogenerated_reply_to(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            reply = Queue('', channel=first, exclusive=True, auto_delete=True)
+            p.publish('hello', routing_key='reconnect', declare=[reply],
+                      reply_to=reply, retry=True,
+                      retry_policy={'max_retries': 1})
+            assert reply.name
+            assert reply.channel is p.channel
+            message = Queue('reconnect')(p.channel).get(no_ack=True)
+            assert message.payload == 'hello'
+            assert message.properties['reply_to'] == reply.name
+            assert state['prepared'][0][0] is p.channel
+
+    def test_declaration_reconnect_rejects_existing_batch_channel(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            session = RecordingPublishBatch(first, 10)
+            first.create_publish_batch = lambda **kwargs: session
+            with pytest.raises(RuntimeError, match='channel changed'):
+                with p.batch():
+                    p.publish('buffered')
+                    p.publish('after reconnect', declare=[Queue('reconnect')],
+                              retry=True, retry_policy={'max_retries': 1})
+            assert first.connection is None
+            assert p.channel is not first
+            assert len(session.published) == 1
+            assert session.discard_count == 1
+            assert session.close_count == 1
+            assert not any(kind == 'publish' for kind, _ in state['events'])
+
+    def _drop_connection_on_publish(self, channel, error):
+        # basic_publish fails with a connection error, and closing the
+        # channel detaches it from its connection, as transport channels do.
+        channel.basic_publish = Mock(side_effect=error)
+        channel.close = lambda: setattr(channel, 'connection', None)
+
+    @pytest.mark.parametrize('transport,error', [
+        (BaseErrorsTransport, amqp.ConnectionError('connection lost')),
+        (AMQPErrorsTransport, ConnectionResetError('connection reset')),
+    ])
+    def test_publish_retry_declares_exchange_on_new_channel(self, transport,
+                                                            error):
+        conn = Connection(transport=transport)
+        p = Producer(conn, exchange=Exchange('foo', 'direct'))
+        first = p.channel
+        self._drop_connection_on_publish(first, error)
+        errback = Mock()
+
+        p.publish('hello', routing_key='rk', retry=True,
+                  retry_policy={'max_retries': 3, 'errback': errback})
+
+        second = p.channel
+        assert second is not first
+        assert 'exchange_declare' in second
+        assert 'basic_publish' in second
+        assert errback.call_count == 1
+
+    def test_publish_retry_default_exchange_after_reconnect(self):
+        conn = Connection(transport=BaseErrorsTransport)
+        p = Producer(conn)
+        first = p.channel
+        self._drop_connection_on_publish(
+            first, amqp.ConnectionError('connection lost'))
+        queue = Queue('bar', Exchange('foo', 'direct'), 'bar')
+
+        p.publish('hello', routing_key='bar', declare=[queue], retry=True,
+                  retry_policy={'max_retries': 3})
+
+        second = p.channel
+        assert second is not first
+        assert 'queue_declare' in second
+        assert 'basic_publish' in second
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()

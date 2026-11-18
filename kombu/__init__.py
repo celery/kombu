@@ -8,8 +8,9 @@ import sys
 from collections import namedtuple
 from typing import Any, cast
 
-__version__ = '5.6.2'
+__version__ = '5.7.0'
 __author__ = 'Ask Solem'
+__maintainer__ = 'Asif Saif Uddin'
 __contact__ = 'auvipy@gmail.com'
 __homepage__ = 'https://kombu.readthedocs.io'
 __docformat__ = 'restructuredtext en'
@@ -42,7 +43,7 @@ if STATICA_HACK:  # pragma: no cover
     from kombu.messaging import Consumer, Producer  # noqa
     from kombu.pools import connections, producers  # noqa
     from kombu.serialization import disable_insecure_serializers  # noqa
-    from kombu.serialization import enable_insecure_serializers  # noqa
+    from kombu.serialization import enable_insecure_serializers
     from kombu.utils.url import parse_url  # noqa
 
 # Lazy loading.

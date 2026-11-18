@@ -62,12 +62,13 @@ jobs:
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }} # Run even if tests fail
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
 
     - uses: codecov/codecov-action@v7
       with:
+        report_type: coverage
         fail_ci_if_error: false # optional (default = false)
         token: ${{ secrets.CODECOV_TOKEN }}
         verbose: true # optional (default = false)
