@@ -864,6 +864,23 @@ class test_Channel:
         )
         assert result == 0
 
+        # ReceiveMessage times out or returns 5xx (returns [])
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, []
+        )
+        assert result == 0
+
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, None
+        )
+        assert result == 0
+
+    def test_on_messages_ready_timeout_or_error_response(self):
+        """_on_messages_ready returns 0 without error when response is a list (e.g. timeout or 5xx)."""
+        assert self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, []
+        ) == 0
+
     @pytest.fixture
     def release_through_mock(self):
         """Release through the mocked sqs() client, not a new boto client."""
