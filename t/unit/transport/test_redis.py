@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import errno
 import importlib
 import socket
 import subprocess
@@ -1471,6 +1472,17 @@ class test_Channel:
             self.channel._brpop_start()
         assert self.channel._in_poll is self.channel.client.connection
         assert self.channel._brpop_sent_at == 42.0
+
+    def test_brpop_start_keeps_pending_command_after_health_retry(self):
+        self.channel._queue_cycle = Mock()
+        self.channel._queue_cycle.consume.return_value = ['queue']
+        connection = self.channel.client.connection
+        connection.send_command = Mock(side_effect=lambda *args: (
+            self.channel._on_connection_disconnect(connection)))
+
+        self.channel._brpop_start()
+
+        assert self.channel._in_poll is connection
 
     def test_brpop_health_drop_resets_in_poll(self):
         """Dropping a stale BRPOP connection lets the next tick resend it.
@@ -3503,6 +3515,95 @@ class test_MultiChannelPoller:
 
     def setup_method(self):
         self.Poller = redis.MultiChannelPoller
+
+    @pytest.mark.parametrize('command', ['BRPOP', 'LISTEN'])
+    @pytest.mark.parametrize('socket_state', ['cleared', 'closed'])
+    def test_sync_disconnect_clears_stored_registration(
+            self, command, socket_state):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel, other = Mock(), Mock()
+        client = channel.client
+        sock = client.connection._sock
+        sock.fileno.return_value = 13
+        poller._register(channel, client, command)
+        poller._fd_to_chan[14] = other, 'BRPOP'
+        if socket_state == 'cleared':
+            client.connection._sock = None
+        else:
+            sock.fileno.return_value = -1
+            poller.poller.unregister.side_effect = OSError(
+                errno.EBADF, 'Bad file descriptor')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert (channel, client, command) not in poller._chan_to_sock
+        assert poller._fd_to_chan == {14: (other, 'BRPOP')}
+        poller.poller.unregister.assert_any_call(13)
+
+    @pytest.mark.parametrize('error', [
+        KeyError, AttributeError, TypeError, ValueError,
+    ])
+    def test_sync_disconnect_ignores_stale_poller_registration(self, error):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        poller.poller.unregister.side_effect = error('stale registration')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_sync_disconnect_propagates_unexpected_poller_error(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        error = OSError(errno.EIO, 'Unexpected poller failure')
+        poller.poller.unregister.side_effect = error
+
+        with pytest.raises(OSError) as exc:
+            poller._on_connection_disconnect(client.connection)
+
+        assert exc.value is error
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_register_brpop_polls_socket_replaced_while_sending(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        channel._in_poll = None
+        connection = channel.client.connection
+        connection._sock.fileno.return_value = 13
+        replacement = Mock()
+        replacement.fileno.return_value = 14
+
+        def reconnect():
+            connection._sock = None
+            poller._on_connection_disconnect(connection)
+            connection._sock = replacement
+            channel._in_poll = connection
+
+        channel._brpop_start.side_effect = reconnect
+        poller._register_BRPOP(channel)
+
+        assert poller._fd_to_chan == {14: (channel, 'BRPOP')}
+        assert poller._chan_to_sock[
+            channel, channel.client, 'BRPOP'] is replacement
+        poller.poller.register.assert_called_with(
+            replacement, poller.eventflags)
+        assert channel._brpop_start.call_count == 1
 
     def test_maybe_refresh_binding_expiry(self):
         p = self.Poller()
