@@ -7,6 +7,7 @@ import importlib
 import socket
 import subprocess
 import sys
+import threading
 import types
 from collections import defaultdict
 from contextlib import contextmanager
@@ -1283,7 +1284,33 @@ class test_Channel:
             child = redis._restore_lock_token()
             assert child != token
             assert redis._restore_lock_token() == child
-        assert list(redis._restore_lock_tokens) == [-1]
+        assert redis._restore_lock_token() == token
+
+    def test_restore_lock_token_is_the_same_for_two_threads(self):
+        # Both threads miss the token and are making their own before
+        # either stores one.
+        barrier = threading.Barrier(2, timeout=5)
+        made = iter(['first', 'second'])
+
+        def uuid():
+            barrier.wait()
+            return next(made)
+
+        tokens = []
+        with patch.dict(redis._restore_lock_tokens, clear=True), \
+                patch('kombu.transport.redis.uuid', uuid):
+            threads = [
+                threading.Thread(
+                    target=lambda: tokens.append(redis._restore_lock_token()))
+                for _ in range(2)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(5)
+            assert len(tokens) == 2
+            assert tokens[0] == tokens[1]
+            assert redis._restore_lock_token() == tokens[0]
 
     def test_qos_restore_visible_interval_throttles(self):
         client = self.channel._create_client = Mock(name='client')

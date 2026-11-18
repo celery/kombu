@@ -101,6 +101,23 @@ Queue Arguments
   This is a per-queue argument and should be supplied via ``Queue(expires=...)``
   or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
   connection-level transport option.
+
+Replicas and failover
+=====================
+A node that answers a write with ``READONLY``, or ends a blocking read with
+``UNBLOCKED``, is handled as a lost connection: the consumer reconnects and
+tries again. This is what happens when the primary becomes a replica in a
+failover that keeps the old node running.
+
+A consumer whose URL points at a node that stays a replica (a reader
+endpoint, or a failover that was not reverted) therefore retries until the
+node accepts writes, where it used to stop with a channel error. Connecting
+to a replica works and the first write fails, so the wait between connection
+attempts does not apply: a Celery worker logs ``You can't write against a
+read only replica`` and reconnects several times a second.
+
+.. versionchanged:: 5.7.1
+    ``READONLY`` and ``UNBLOCKED`` replies are connection errors.
 """
 
 from __future__ import annotations
@@ -286,15 +303,15 @@ def _restore_lock_token():
 
     One token per process, kept for its lifetime: a consumer that lost its
     connection in the sweep comes back on a new channel, and has to find
-    its own lock.  A forked child gets a token of its own.
+    its own lock.  A forked child gets a token of its own, since the
+    tokens are kept by process id.
     """
     pid = os.getpid()
-    try:
-        return _restore_lock_tokens[pid]
-    except KeyError:
-        _restore_lock_tokens.clear()
-        token = _restore_lock_tokens[pid] = uuid()
-        return token
+    token = _restore_lock_tokens.get(pid)
+    if token is None:
+        # setdefault: two threads on their first sweep get the same token.
+        token = _restore_lock_tokens.setdefault(pid, uuid())
+    return token
 
 
 def _take_over_own_lock(client, lock, token):
@@ -1554,9 +1571,11 @@ class Channel(virtual.Channel):
             except self.ResponseError as exc:
                 if not str(exc).startswith('UNBLOCKED'):
                     raise
-                # The server ended the blocking pop because the node became
-                # a replica.  Same as a lost connection: see ReadOnlyError
-                # in get_redis_error_classes().
+                # The server ended the blocking pop: the node became a
+                # replica, or an operator sent CLIENT UNBLOCK <id> ERROR.
+                # Both are handled as a lost connection (see ReadOnlyError
+                # in get_redis_error_classes()), so don't narrow this to
+                # the replica message.
                 self.client.connection.disconnect()
                 raise exceptions.ConnectionError(str(exc)) from exc
             if dest__item:
