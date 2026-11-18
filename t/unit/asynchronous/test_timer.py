@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
 
 import pytest
@@ -156,16 +156,25 @@ class test_Timer:
         tref.cancel.assert_called_with()
 
 
-class test_import_without_tzdata:
+class test_without_tzdata:
 
-    def test_import_without_tzdata(self, tmp_path):
+    def test_import_with_no_time_zone_data(self, tmp_path):
+        # PYTHONTZPATH hides the system database; the tzdata package, when
+        # it is installed, has to be hidden as well.
         import os
         import subprocess
         import sys
-        env = dict(os.environ)
-        env['PYTHONTZPATH'] = str(tmp_path)
+        code = ("import sys; sys.modules['tzdata'] = None; "
+                "import kombu.asynchronous")
         result = subprocess.run(
-            [sys.executable, '-c', 'import kombu.asynchronous'],
-            env=env, capture_output=True, text=True,
+            [sys.executable, '-c', code],
+            env=dict(os.environ, PYTHONTZPATH=str(tmp_path)),
+            capture_output=True, text=True,
         )
         assert result.returncode == 0, result.stderr
+
+    def test_naive_datetime_is_read_as_utc(self):
+        aware = datetime.now(timezone.utc) + timedelta(hours=1)
+        naive = aware.replace(tzinfo=None)
+        assert to_timestamp(naive) == pytest.approx(
+            to_timestamp(aware), abs=1)
