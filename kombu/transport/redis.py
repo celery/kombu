@@ -101,13 +101,32 @@ Queue Arguments
   This is a per-queue argument and should be supplied via ``Queue(expires=...)``
   or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
   connection-level transport option.
+
+Replicas and failover
+=====================
+A node that answers a write with ``READONLY``, or ends a blocking read with
+``UNBLOCKED``, is handled as a lost connection: the consumer reconnects and
+tries again. This is what happens when the primary becomes a replica in a
+failover that keeps the old node running.
+
+A consumer whose URL points at a node that stays a replica (a reader
+endpoint, or a failover that was not reverted) therefore retries until the
+node accepts writes, where it used to stop with a channel error. Connecting
+to a replica works and the first write fails, so the wait between connection
+attempts does not apply: a Celery worker logs ``You can't write against a
+read only replica`` and reconnects several times a second.
+
+.. versionchanged:: 5.7.1
+    ``READONLY`` and ``UNBLOCKED`` replies are connection errors.
 """
 
 from __future__ import annotations
 
+import errno
 import functools
 import inspect
 import numbers
+import os
 import socket
 from bisect import bisect
 from collections import OrderedDict, namedtuple
@@ -129,6 +148,7 @@ from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
+from kombu.utils.uuid import uuid
 
 from . import virtual
 
@@ -253,6 +273,10 @@ def get_redis_error_classes():
             exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError,
+            # The node became a replica (a failover that keeps it running):
+            # no write works on this connection any more, so the consumer
+            # has to reconnect, as it does when the node is down.
+            exceptions.ReadOnlyError,
             # A stale fd can still fire on_readable for a channel that was
             # already dropped after a broker restart (#2582): the poller
             # guard from #2561 makes the common path a debug log, but any
@@ -276,16 +300,56 @@ class MutexHeld(Exception):
     """Raised when another party holds the lock."""
 
 
+_restore_lock_tokens = {}
+
+
+def _restore_lock_token():
+    """Return what this process stores in the restore lock (see Mutex).
+
+    One token per process, kept for its lifetime: a consumer that lost its
+    connection in the sweep comes back on a new channel, and has to find
+    its own lock.  A forked child gets a token of its own, since the
+    tokens are kept by process id.
+    """
+    pid = os.getpid()
+    token = _restore_lock_tokens.get(pid)
+    if token is None:
+        # setdefault: two threads on their first sweep get the same token.
+        token = _restore_lock_tokens.setdefault(pid, uuid())
+    return token
+
+
+def _take_over_own_lock(client, lock, token):
+    """Take over a lock that still holds ``token``, and reset its expiry.
+
+    The check and the new expiry are one script on the server, so a lock
+    that another client took in the meantime is left alone.
+    """
+    lock.local.token = client.get_encoder().encode(token)
+    try:
+        return lock.reacquire()
+    except exceptions.LockNotOwnedError:
+        lock.local.token = None
+        return False
+
+
 @contextmanager
-def Mutex(client, name, expire):
+def Mutex(client, name, expire, token=None):
     """Acquire redis lock in non blocking way.
 
     Raise MutexHeld if not successful.
+
+    ``token`` is the value stored in the lock. A caller that passes the
+    same token every time gets back a lock it could not release, for
+    example because the connection was lost in the block: without that,
+    nobody enters until the lock expires.
     """
     lock = client.lock(name, timeout=expire)
     lock_acquired = False
     try:
-        lock_acquired = lock.acquire(blocking=False)
+        lock_acquired = lock.acquire(blocking=False, token=token)
+        if not lock_acquired and token is not None:
+            lock_acquired = _take_over_own_lock(client, lock, token)
         if lock_acquired:
             yield
         else:
@@ -533,7 +597,8 @@ class QoS(virtual.QoS):
             ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
-                           self.unacked_mutex_expire):
+                           self.unacked_mutex_expire,
+                           token=_restore_lock_token()):
                     # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
                     # not implemented by every Redis-compatible server
                     # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
@@ -646,6 +711,24 @@ class MultiChannelPoller:
 
     def _on_connection_disconnect(self, connection):
         self._discard_paused_connection(connection)
+        disconnected = set()
+        for key in list(self._chan_to_sock):
+            channel, client, type = key
+            if client.connection is connection:
+                del self._chan_to_sock[key]
+                disconnected.add((channel, type))
+        for fd, channel_and_type in list(self._fd_to_chan.items()):
+            if channel_and_type in disconnected:
+                del self._fd_to_chan[fd]
+                try:
+                    self.poller.unregister(fd)
+                except (KeyError, AttributeError, TypeError, ValueError):
+                    pass
+                except OSError as exc:
+                    if exc.errno != errno.EBADF:
+                        raise
+        if disconnected:
+            return
         try:
             self.poller.unregister(connection._sock)
         except (AttributeError, TypeError, ValueError):
@@ -727,7 +810,11 @@ class MultiChannelPoller:
             channel._in_poll = False
             self._register(*ident)
         if not channel._in_poll:  # send BRPOP
+            sock = channel.client.connection._sock
             channel._brpop_start()
+            if channel.client.connection._sock is not sock:
+                # A health-check retry can replace the socket while sending.
+                self._register(*ident)
 
     def _register_LISTEN(self, channel):
         """Enable LISTEN mode for channel."""
@@ -1467,14 +1554,13 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
-        self._in_poll = self.client.connection
-        self._brpop_sent_at = monotonic()
-
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
             command_args = self.client._prefix_args(command_args)
 
         self.client.connection.send_command(*command_args)
+        self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
     def _brpop_read(self, **options):
         try:
@@ -1487,6 +1573,16 @@ class Channel(virtual.Channel):
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
                 raise
+            except self.ResponseError as exc:
+                if not str(exc).startswith('UNBLOCKED'):
+                    raise
+                # The server ended the blocking pop: the node became a
+                # replica, or an operator sent CLIENT UNBLOCK <id> ERROR.
+                # Both are handled as a lost connection (see ReadOnlyError
+                # in get_redis_error_classes()), so don't narrow this to
+                # the replica message.
+                self.client.connection.disconnect()
+                raise exceptions.ConnectionError(str(exc)) from exc
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
@@ -1891,11 +1987,15 @@ class Channel(virtual.Channel):
                 return sum(sizes[::2])
 
     def close(self):
+        # The drain and the fanout cleanup need the server.  If it is gone,
+        # skip them and still close: a channel left open is closed again
+        # later, possibly after Connection.collect() detached the transport
+        # it needs (celery/celery#11054).
         self._closing = True
         if self._in_poll:
             try:
                 self._brpop_read()
-            except Empty:
+            except (Empty,) + self.connection_errors:
                 pass
         if not self.closed:
             # remove from channel poller.
@@ -1904,9 +2004,12 @@ class Channel(virtual.Channel):
             # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
             if client is not None:
-                for queue in self._fanout_queues:
-                    if queue in self.auto_delete_queues:
-                        self.queue_delete(queue, client=client)
+                try:
+                    for queue in self._fanout_queues:
+                        if queue in self.auto_delete_queues:
+                            self.queue_delete(queue, client=client)
+                except self.connection_errors:
+                    pass
             self._disconnect_pools()
             self._close_clients()
         super().close()
