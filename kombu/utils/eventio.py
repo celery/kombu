@@ -211,7 +211,10 @@ class _poll:
     def poll(self, timeout, round=math.ceil,
              POLLIN=POLLIN, POLLOUT=POLLOUT, POLLERR=POLLERR,
              READ=READ, WRITE=WRITE, ERR=ERR, Integral=Integral):
-        timeout = 0 if timeout and timeout < 0 else round((timeout or 0) * 1e3)
+        # select.poll takes milliseconds, and None means block until an
+        # event arrives (as with the epoll and select pollers).
+        if timeout is not None:
+            timeout = 0 if timeout < 0 else round(timeout * 1e3)
         try:
             event_list = self._quick_poll(timeout)
         except (_selecterr, OSError) as exc:
