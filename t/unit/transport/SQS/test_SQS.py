@@ -2149,6 +2149,65 @@ class test_Channel:
         assert call_kwargs['MessageGroupId'] == 'tenant-456'
         assert call_kwargs['MessageDeduplicationId'] == 'unique-msg-789'
 
+    def test_fifo_put_reuses_deduplication_id_when_the_message_is_sent_again(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+        channel.sqs = Mock()
+        send_message = channel.sqs.return_value.send_message
+        message = channel.prepare_message('body')
+
+        channel._put('queue-3.fifo', message)
+        channel._put('queue-3.fifo', message)
+
+        first, second = (
+            sent.kwargs['MessageDeduplicationId']
+            for sent in send_message.call_args_list
+        )
+        assert first == second
+        assert message['properties']['MessageDeduplicationId'] == first
+
+    def test_fifo_deduplication_id_survives_a_retried_publish(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        sqs_client = Mock()
+        sqs_client.send_message.side_effect = [
+            ReadTimeoutError(endpoint_url='https://sqs.us-east-1'),
+            {'MessageId': '1'},
+        ]
+
+        with patch.object(SQS.Channel, 'sqs', return_value=sqs_client):
+            messaging.Producer(connection).publish(
+                'body', routing_key='queue-3.fifo', retry=True,
+                retry_policy={'max_retries': 1, 'interval_start': 0,
+                              'interval_step': 0, 'interval_max': 0},
+            )
+
+        first, second = (
+            sent.kwargs['MessageDeduplicationId']
+            for sent in sqs_client.send_message.call_args_list
+        )
+        assert first == second
+
+    def test_fifo_each_publish_gets_its_own_deduplication_id(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        sqs_client = Mock()
+
+        with patch.object(SQS.Channel, 'sqs', return_value=sqs_client):
+            producer = messaging.Producer(connection)
+            producer.publish('first', routing_key='queue-3.fifo')
+            producer.publish('second', routing_key='queue-3.fifo')
+
+        first, second = (
+            sent.kwargs['MessageDeduplicationId']
+            for sent in sqs_client.send_message.call_args_list
+        )
+        assert first != second
+
     def test_message_group_id_with_special_characters(self):
         """Test MessageGroupId with special characters"""
         connection = Connection(transport=SQS.Transport, transport_options={
@@ -2708,6 +2767,21 @@ class test_Channel:
                 },
             )
         ]
+
+    def test_put_fanout_fifo_reuses_deduplication_id_when_sent_again(
+        self, mock_fanout, channel_fixture: SQS.Channel
+    ):
+        message = {"body": "This is a value", "properties": {}}
+
+        channel_fixture._put_fanout("queue-1.fifo", message, "")
+        channel_fixture._put_fanout("queue-1.fifo", message, "")
+
+        first, second = (
+            sent.kwargs["request_params"]["MessageDeduplicationId"]
+            for sent in mock_fanout.publish.call_args_list
+        )
+        assert first == second
+        assert message["properties"]["MessageDeduplicationId"] == first
 
     def test_put_fanout_non_fifo_queue(self, mock_fanout, channel_fixture: SQS.Channel):
         # Arrange
