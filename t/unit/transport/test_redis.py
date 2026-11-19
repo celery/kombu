@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import base64
 import copy
+import errno
 import importlib
 import socket
 import subprocess
 import sys
+import threading
 import types
 from collections import defaultdict
 from contextlib import contextmanager
@@ -1260,6 +1262,56 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_stores_the_process_token_in_the_lock(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.return_value = []
+
+        with patch('kombu.transport.redis.Mutex') as Mutex:
+            redis.QoS(self.channel).restore_visible()
+            # a consumer that reconnected has a new channel and a new QoS
+            redis.QoS(self.channel).restore_visible()
+
+        tokens = [c.kwargs['token'] for c in Mutex.call_args_list]
+        assert tokens == [redis._restore_lock_token()] * 2
+        assert tokens[0]
+
+    def test_restore_lock_token_is_per_process(self):
+        token = redis._restore_lock_token()
+        assert redis._restore_lock_token() == token
+
+        with patch('kombu.transport.redis.os.getpid', return_value=-1):
+            child = redis._restore_lock_token()
+            assert child != token
+            assert redis._restore_lock_token() == child
+        assert redis._restore_lock_token() == token
+
+    def test_restore_lock_token_is_the_same_for_two_threads(self):
+        # Both threads miss the token and are making their own before
+        # either stores one.
+        barrier = threading.Barrier(2, timeout=5)
+        made = iter(['first', 'second'])
+
+        def uuid():
+            barrier.wait()
+            return next(made)
+
+        tokens = []
+        with patch.dict(redis._restore_lock_tokens, clear=True), \
+                patch('kombu.transport.redis.uuid', uuid):
+            threads = [
+                threading.Thread(
+                    target=lambda: tokens.append(redis._restore_lock_token()))
+                for _ in range(2)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(5)
+            assert len(tokens) == 2
+            assert tokens[0] == tokens[1]
+            assert redis._restore_lock_token() == tokens[0]
+
     def test_qos_restore_visible_interval_throttles(self):
         client = self.channel._create_client = Mock(name='client')
         client = client()
@@ -1472,6 +1524,17 @@ class test_Channel:
         assert self.channel._in_poll is self.channel.client.connection
         assert self.channel._brpop_sent_at == 42.0
 
+    def test_brpop_start_keeps_pending_command_after_health_retry(self):
+        self.channel._queue_cycle = Mock()
+        self.channel._queue_cycle.consume.return_value = ['queue']
+        connection = self.channel.client.connection
+        connection.send_command = Mock(side_effect=lambda *args: (
+            self.channel._on_connection_disconnect(connection)))
+
+        self.channel._brpop_start()
+
+        assert self.channel._in_poll is connection
+
     def test_brpop_health_drop_resets_in_poll(self):
         """Dropping a stale BRPOP connection lets the next tick resend it.
 
@@ -1587,6 +1650,34 @@ class test_Channel:
             self.channel._brpop_read()
 
         c.connection.disconnect.assert_called_with()
+
+    def test_brpop_read_unblocked_by_a_role_change(self):
+        # Redis ends a blocking pop with this reply when the node becomes
+        # a replica.  The consumer has to reconnect, as for a lost
+        # connection.
+        c = self.channel.client = Mock()
+        unblocked = ResponseError(
+            'UNBLOCKED force unblock from blocking operation, '
+            'instance state changed (master -> replica?)')
+        c.parse_response.side_effect = unblocked
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError) as exc:
+            self.channel._brpop_read()
+
+        assert exc.value.__cause__ is unblocked
+        assert 'UNBLOCKED' in str(exc.value)
+        assert isinstance(
+            exc.value, redis.get_redis_error_classes().connection_errors)
+        c.connection.disconnect.assert_called_once_with()
+
+    def test_brpop_read_other_response_errors_are_channel_errors(self):
+        c = self.channel.client = Mock()
+        c.parse_response.side_effect = ResponseError('WRONGTYPE')
+
+        with pytest.raises(ResponseError):
+            self.channel._brpop_read()
+
+        c.connection.disconnect.assert_not_called()
 
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
@@ -2140,6 +2231,23 @@ class test_Channel:
                 exceptions.DataError = DataError
             if InvalidData is not None:
                 exceptions.InvalidData = InvalidData
+
+    def test_a_read_only_reply_is_a_connection_error(self):
+        # After a failover that keeps the old primary running, every write
+        # on a connection to it gets this reply.
+        from redis import exceptions
+
+        from kombu.transport.redis import get_redis_error_classes
+
+        errors = get_redis_error_classes()
+        assert exceptions.ReadOnlyError in errors.connection_errors
+        assert isinstance(
+            exceptions.ReadOnlyError("You can't write against a read only "
+                                     "replica."),
+            errors.connection_errors)
+        # other replies stay channel errors
+        assert exceptions.ResponseError not in errors.connection_errors
+        assert exceptions.ResponseError in errors.channel_errors
 
     def test_empty_queues_key(self):
         channel = self.channel
@@ -3504,6 +3612,95 @@ class test_MultiChannelPoller:
     def setup_method(self):
         self.Poller = redis.MultiChannelPoller
 
+    @pytest.mark.parametrize('command', ['BRPOP', 'LISTEN'])
+    @pytest.mark.parametrize('socket_state', ['cleared', 'closed'])
+    def test_sync_disconnect_clears_stored_registration(
+            self, command, socket_state):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel, other = Mock(), Mock()
+        client = channel.client
+        sock = client.connection._sock
+        sock.fileno.return_value = 13
+        poller._register(channel, client, command)
+        poller._fd_to_chan[14] = other, 'BRPOP'
+        if socket_state == 'cleared':
+            client.connection._sock = None
+        else:
+            sock.fileno.return_value = -1
+            poller.poller.unregister.side_effect = OSError(
+                errno.EBADF, 'Bad file descriptor')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert (channel, client, command) not in poller._chan_to_sock
+        assert poller._fd_to_chan == {14: (other, 'BRPOP')}
+        poller.poller.unregister.assert_any_call(13)
+
+    @pytest.mark.parametrize('error', [
+        KeyError, AttributeError, TypeError, ValueError,
+    ])
+    def test_sync_disconnect_ignores_stale_poller_registration(self, error):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        poller.poller.unregister.side_effect = error('stale registration')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_sync_disconnect_propagates_unexpected_poller_error(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        error = OSError(errno.EIO, 'Unexpected poller failure')
+        poller.poller.unregister.side_effect = error
+
+        with pytest.raises(OSError) as exc:
+            poller._on_connection_disconnect(client.connection)
+
+        assert exc.value is error
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_register_brpop_polls_socket_replaced_while_sending(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        channel._in_poll = None
+        connection = channel.client.connection
+        connection._sock.fileno.return_value = 13
+        replacement = Mock()
+        replacement.fileno.return_value = 14
+
+        def reconnect():
+            connection._sock = None
+            poller._on_connection_disconnect(connection)
+            connection._sock = replacement
+            channel._in_poll = connection
+
+        channel._brpop_start.side_effect = reconnect
+        poller._register_BRPOP(channel)
+
+        assert poller._fd_to_chan == {14: (channel, 'BRPOP')}
+        assert poller._chan_to_sock[
+            channel, channel.client, 'BRPOP'] is replacement
+        poller.poller.register.assert_called_with(
+            replacement, poller.eventflags)
+        assert channel._brpop_start.call_count == 1
+
     def test_maybe_refresh_binding_expiry(self):
         p = self.Poller()
         chan1, chan2 = Mock(name='chan1'), Mock(name='chan2')
@@ -4197,7 +4394,7 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -4210,7 +4407,7 @@ class test_Mutex:
             with redis.Mutex(client, 'foo1', 100):
                 held = True
             assert not held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -4223,6 +4420,73 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
+
+    def test_without_a_token_a_held_lock_is_never_taken_over(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100):
+                pass
+
+        lock.reacquire.assert_not_called()
+        lock.release.assert_not_called()
+
+    def test_token_is_stored_in_the_lock(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            pass
+
+        lock.acquire.assert_called_once_with(blocking=False, token='mine')
+        lock.reacquire.assert_not_called()
+        lock.release.assert_called_once_with()
+
+    def test_takes_over_a_lock_that_holds_its_token(self):
+        # The lock was left by this caller: its release failed.
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.return_value = True
+
+        held = False
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            held = True
+
+        assert held
+        client.get_encoder.return_value.encode.assert_called_once_with('mine')
+        assert lock.local.token is client.get_encoder().encode.return_value
+        lock.reacquire.assert_called_once_with()
+        lock.release.assert_called_once_with()
+
+    def test_lock_with_another_token_is_held(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.side_effect = (
+            redis.redis.exceptions.LockNotOwnedError())
+
+        held = False
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                held = True
+
+        assert not held
+        assert lock.local.token is None
+        lock.release.assert_not_called()
+
+    def test_lock_stays_when_the_release_fails(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+        lock.release.side_effect = redis.redis.exceptions.ConnectionError()
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                pass
 
 
 class test_RedisSentinel:
