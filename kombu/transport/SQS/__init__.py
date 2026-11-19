@@ -89,8 +89,15 @@ Message Attributes
 https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html
 
 SQS supports sending message attributes along with the message body.
-To use this feature, you can pass a 'message_attributes' as keyword argument
-to `basic_publish` method.
+To use this feature, pass ``message_attributes`` to ``Producer.publish``
+(or to Celery's ``apply_async``); it is sent as the SQS ``MessageAttributes``
+and kept out of the message body:
+
+.. code-block:: python
+
+    producer.publish(body, routing_key='myqueue', message_attributes={
+        'tenant': {'DataType': 'String', 'StringValue': '42'},
+    })
 
 Other Features supported by this transport
 ==========================================
@@ -646,10 +653,13 @@ class Channel(virtual.Channel):
         q_url = self._new_queue(queue)
         kwargs = {'QueueUrl': q_url}
         if 'properties' in message:
-            if 'message_attributes' in message['properties']:
-                # we don't want to want to have the attribute in the body
-                kwargs['MessageAttributes'] = \
-                    message['properties'].pop('message_attributes')
+            properties = message['properties']
+            if 'message_attributes' in properties:
+                kwargs['MessageAttributes'] = properties['message_attributes']
+                message = {**message, 'properties': {
+                    key: value for key, value in properties.items()
+                    if key != 'message_attributes'
+                }}
             # Support SQS fair queue system.
             if 'MessageGroupId' in message['properties']:
                 kwargs['MessageGroupId'] = \
