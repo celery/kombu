@@ -191,6 +191,19 @@ class Channel(virtual.Channel):
         conn.start()
         return conn
 
+    def close(self):
+        """Close channel, then stop and close its Kazoo client."""
+        try:
+            super().close()
+        finally:
+            client = self._client
+            if client is not None:
+                try:
+                    client.stop()
+                finally:
+                    client.close()
+                    self._client = None
+
     @property
     def client(self):
         if self._client is None:
