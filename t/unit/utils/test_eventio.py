@@ -101,3 +101,65 @@ class test__epoll:
     def test_close(self, ep):
         ep.close()
         ep._epoll.close.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# _poll
+# ---------------------------------------------------------------------------
+
+class test__poll:
+
+    @pytest.fixture()
+    def mock_poll_cls(self):
+        with patch.object(eventio, 'xpoll', create=True) as mock_cls:
+            mock_cls.return_value = MagicMock(name='select.poll-instance')
+            yield mock_cls
+
+    @pytest.fixture()
+    def p(self, mock_poll_cls):
+        return eventio._poll()
+
+    def test_poll_none_timeout_passes_minus_one(self, p):
+        """poll(None) must block indefinitely, not return immediately.
+
+        Regression test: the timeout conversion used to turn None into 0,
+        so drain_events() busy-spun on platforms without epoll.
+        """
+        p._poller.poll.return_value = []
+        p.poll(None)
+        p._poller.poll.assert_called_once_with(-1)
+
+    def test_poll_timeout_is_converted_to_milliseconds(self, p):
+        p._poller.poll.return_value = []
+        p.poll(0.5)
+        p._poller.poll.assert_called_once_with(500)
+
+    def test_poll_zero_timeout_stays_zero(self, p):
+        p._poller.poll.return_value = []
+        p.poll(0)
+        p._poller.poll.assert_called_once_with(0)
+
+    def test_poll_negative_timeout_becomes_zero(self, p):
+        p._poller.poll.return_value = []
+        p.poll(-1)
+        p._poller.poll.assert_called_once_with(0)
+
+    def test_poll_none_timeout_blocks_until_event(self):
+        """End-to-end check with a real poller and a socketpair."""
+        import socket
+        import threading
+        import time
+
+        r, w = socket.socketpair()
+        try:
+            poller = eventio._poll()
+            fd = poller.register(r, READ)
+            threading.Timer(0.3, w.send, (b'x',)).start()
+            start = time.monotonic()
+            result = poller.poll(None)
+            elapsed = time.monotonic() - start
+            assert result == [(fd, READ)]
+            assert elapsed >= 0.25
+        finally:
+            r.close()
+            w.close()
