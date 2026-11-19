@@ -864,6 +864,28 @@ class test_Channel:
         )
         assert result == 0
 
+        # ReceiveMessage times out or returns 5xx (returns [])
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, []
+        )
+        assert result == 0
+
+        result = self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, None
+        )
+        assert result == 0
+
+    def test_on_messages_ready_after_receive_timeout(self):
+        # What _on_list_ready() returns for a ReceiveMessage that timed out (#2854).
+        from kombu.asynchronous.aws.connection import AsyncAWSQueryConnection
+        conn = AsyncAWSQueryConnection.__new__(AsyncAWSQueryConnection)
+        conn.sqs_connection = Mock()
+        messages = conn._on_list_ready(None, [], 'ReceiveMessage', Mock(status=599))
+        assert messages == []
+        assert self.channel._on_messages_ready(
+            self.queue_name, self.queue_name, messages
+        ) == 0
+
     @pytest.fixture
     def release_through_mock(self):
         """Release through the mocked sqs() client, not a new boto client."""
