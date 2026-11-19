@@ -1,129 +1,151 @@
-# This workflow will install Python dependencies, run tests and lint with a variety of Python versions
-# For more information see: https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Kombu
 
 on:
   push:
-    branches: [ 'main']
+    branches: ['main']
     paths:
-        - '**.py'
-        - '**.txt'
-        - '.github/workflows/python-package.yml'
-        - '**.toml'
-        - "tox.ini"
+      - '**.py'
+      - '**.txt'
+      - '**.toml'
+      - 'tox.ini'
+      - '.github/workflows/python-package.yml'
   pull_request:
-    branches: [ 'main' ]
+    branches: ['main']
     paths:
-        - '**.py'
-        - '**.txt'
-        - '**.toml'
-        - '.github/workflows/python-package.yml'
-        - "tox.ini"
+      - '**.py'
+      - '**.txt'
+      - '**.toml'
+      - 'tox.ini'
+      - '.github/workflows/python-package.yml'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-  contents: read # to fetch code (actions/checkout)
+  contents: read
 
 jobs:
-  Unit:
+  Lint:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    steps:
+      - uses: actions/checkout@v7
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev
+
+      - name: Set up uv & Python 3.13
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.13'
+          enable-cache: true
+          cache-dependency-glob: 'requirements/**/*.txt'
+
+      - name: Install tox and plugins
+        run: uv tool install tox --with tox-uv --with tox-gh --with tox-docker
+
+      - name: Run linters, typecheck, and docs checks
+        timeout-minutes: 30
+        run: tox -v -e flake8,apicheck,pydocstyle,mypy,linkcheck
+
+  Unit:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
-        os: ["blacksmith-4vcpu-ubuntu-2404"]
+        os: ['blacksmith-4vcpu-ubuntu-2404']
+        experimental: [false]
+        include:
+          - python-version: 'pypy-3.11'
+            os: 'blacksmith-4vcpu-ubuntu-2404'
+            experimental: true
 
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      TOX_PYTHON: ${{ matrix.python-version == 'pypy-3.11' && 'pypy3.11' || matrix.python-version }}
 
     steps:
-    - name: Install apt packages
-      if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
-      run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
-    - uses: actions/checkout@v7
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v7
-      with:
-        python-version: ${{ matrix.python-version }}
-        allow-prereleases: true
-        cache: 'pip'
-        cache-dependency-path: '**/setup.py'
+      - uses: actions/checkout@v7
 
-    - name: Install tox
-      run: python -m pip install --upgrade pip wheel tox tox-docker
-    - name: >
-        Run tox for
-        "${{ matrix.python-version }}-unit"
-      timeout-minutes: 60
-      run: >
-          tox --verbose --verbose -e
-          "${{ matrix.python-version }}-unit" -vv
+      - name: Install system dependencies
+        if: startsWith(matrix.os, 'blacksmith-4vcpu-ubuntu')
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev
 
-    - name: Upload test results to Codecov
-      if: ${{ !cancelled() }} # Run even if tests fail
-      uses: codecov/codecov-action@v7
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Set up uv & Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: 'requirements/**/*.txt'
 
-    - uses: codecov/codecov-action@v7
-      with:
-        report_type: coverage
-        fail_ci_if_error: false # optional (default = false)
-        token: ${{ secrets.CODECOV_TOKEN }}
-        verbose: true # optional (default = false)
+      - name: Install tox and plugins
+        run: uv tool install tox --with tox-uv --with tox-gh --with tox-docker
+
+      - name: Run ${{ env.TOX_PYTHON }}-unit
+        timeout-minutes: 60
+        run: tox -vv -e "${TOX_PYTHON}-unit"
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() && !matrix.experimental }}
+        uses: codecov/codecov-action@v7
+        with:
+          report_type: test_results
+          files: junit.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage to Codecov
+        if: ${{ !matrix.experimental }}
+        uses: codecov/codecov-action@v7
+        with:
+          report_type: coverage
+          files: coverage.xml
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   Integration:
-      needs:
-      - Unit
-      if: needs.Unit.result == 'success'
+    needs: [Unit]
+    if: needs.Unit.result == 'success'
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
+        toxenv: ['py-amqp', 'redis', 'mongodb', 'kafka', 'sqs', 'pgmq']
+        experimental: [false]
+        include:
+          - python-version: 'pypy-3.11'
+            toxenv: 'py-amqp'
+            experimental: true
+          - python-version: 'pypy-3.11'
+            toxenv: 'redis'
+            experimental: true
+          - python-version: 'pypy-3.11'
+            toxenv: 'mongodb'
+            experimental: true
 
-      runs-on: blacksmith-4vcpu-ubuntu-2404
-      strategy:
-          fail-fast: false
-          matrix:
-              python-version: ['3.11', '3.12', '3.13', '3.14', '3.15']
-              toxenv: [
-                  'py-amqp',
-                  'py-redis',
-                  'py-mongodb',
-                  'py-kafka',
-                  'py-sqs',
-                  'py-pgmq'
-              ]
-              experimental: [false]
-              include:
-                - python-version: pypy3.11
-                  toxenv: 'py-amqp'
-                  experimental: true
-                - python-version: pypy3.11
-                  toxenv: 'py-redis'
-                  experimental: true
-                - python-version: pypy3.11
-                  toxenv: 'py-mongodb'
-                  experimental: true
-                # - python-version: pypy3.10
-                #   toxenv: 'py-kafka'
-                #   experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      TOX_PYTHON: ${{ matrix.python-version == 'pypy-3.11' && 'pypy3.11' || matrix.python-version }}
 
-      steps:
-          -   name: Install apt packages
-              run: sudo apt-get update && sudo apt-get install libcurl4-openssl-dev libssl-dev
+    steps:
+      - uses: actions/checkout@v7
 
-          -   uses: actions/checkout@v7
-          -   name: Set up Python ${{ matrix.python-version }}
-              uses: actions/setup-python@v7
-              with:
-                  python-version: ${{ matrix.python-version }}
-                  allow-prereleases: true
-                  cache: 'pip'
-                  cache-dependency-path: '**/setup.py'
-          -   name: Install tox
-              run: python -m pip install --upgrade pip wheel tox tox-docker
-          -   name: >
-                  Run tox for
-                  "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}"
-              timeout-minutes: 60
-              run: >
-                  tox --verbose --verbose -e
-                  "${{ matrix.python-version }}-linux-integration-${{ matrix.toxenv }}" -vv
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev
+
+      - name: Set up uv & Python ${{ matrix.python-version }}
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: 'requirements/**/*.txt'
+
+      - name: Install tox and plugins
+        run: uv tool install tox --with tox-uv --with tox-gh --with tox-docker
+
+      - name: Run ${{ env.TOX_PYTHON }}-linux-integration-${{ matrix.toxenv }}
+        timeout-minutes: 60
+        run: tox -vv -e "${TOX_PYTHON}-linux-integration-${{ matrix.toxenv }}"
