@@ -661,11 +661,9 @@ class Channel(virtual.Channel):
             if queue.endswith('.fifo'):
                 if 'MessageGroupId' not in kwargs:
                     kwargs['MessageGroupId'] = 'default'
-                if 'MessageDeduplicationId' in message['properties']:
-                    kwargs['MessageDeduplicationId'] = \
-                        message['properties']['MessageDeduplicationId']
-                else:
-                    kwargs['MessageDeduplicationId'] = str(uuid.uuid4())
+                kwargs['MessageDeduplicationId'] = \
+                    message['properties'].setdefault(
+                        'MessageDeduplicationId', str(uuid.uuid4()))
                 if delay_seconds is not None:
                     # SQS rejects DelaySeconds on a FIFO queue outright, so it
                     # is dropped here -- loudly, rather than silently.
@@ -1514,7 +1512,7 @@ class Channel(virtual.Channel):
             request_params["MessageGroupId"] = properties.get(
                 "MessageGroupId", "default"
             )
-            request_params["MessageDeduplicationId"] = properties.get(
+            request_params["MessageDeduplicationId"] = properties.setdefault(
                 "MessageDeduplicationId", str(uuid.uuid4())
             )
 
