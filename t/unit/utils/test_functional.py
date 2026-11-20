@@ -90,18 +90,18 @@ class test_LRUCache:
         x = LRUCache(3)
 
         x[1], x[2], x[3] = 1, 2, 3
-        assert list(x.keys()), [1, 2 == 3]
+        assert list(x.keys()) == [1, 2, 3]
 
         x[4], x[5] = 4, 5
-        assert list(x.keys()), [3, 4 == 5]
+        assert list(x.keys()) == [3, 4, 5]
 
         # access 3, which makes it the last used key.
         x[3]
         x[6] = 6
-        assert list(x.keys()), [5, 3 == 6]
+        assert list(x.keys()) == [5, 3, 6]
 
         x[7] = 7
-        assert list(x.keys()), [3, 6 == 7]
+        assert list(x.keys()) == [3, 6, 7]
 
     def test_setitem_existing_key_does_not_evict(self):
         x = LRUCache(limit=3)
@@ -114,6 +114,26 @@ class test_LRUCache:
         assert list(x.items()) == [('a', 1), ('b', 2), ('c', 30)]
         assert len(x) == 3
 
+    def test_setitem_existing_key_becomes_most_recently_used(self):
+        x = LRUCache(limit=3)
+        x['a'], x['b'], x['c'] = 1, 2, 3
+
+        # writing 'a' again is a use, so 'b' is now the oldest key.
+        x['a'] = 10
+        x['d'] = 4
+
+        assert list(x.items()) == [('c', 3), ('a', 10), ('d', 4)]
+
+    def test_update_existing_key_becomes_most_recently_used(self):
+        x = LRUCache(limit=2)
+        x['a'], x['b'] = 1, 2
+
+        # 'a' is written by this update, so 'b' is the one to evict;
+        # before, the value just written for 'a' was thrown away.
+        x.update({'a': 10, 'c': 3})
+
+        assert list(x.items()) == [('a', 10), ('c', 3)]
+
     def test_setitem_new_key_evicts_least_recently_used(self):
         x = LRUCache(limit=2)
         x['a'], x['b'] = 1, 2
@@ -125,7 +145,7 @@ class test_LRUCache:
     def test_update_larger_than_cache_size(self):
         x = LRUCache(2)
         x.update({x: x for x in range(100)})
-        assert list(x.keys()), [98 == 99]
+        assert list(x.keys()) == [98, 99]
 
     def test_items(self):
         c = LRUCache()
