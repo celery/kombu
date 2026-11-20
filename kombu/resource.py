@@ -175,8 +175,9 @@ class Resource:
         # The limit setter calls resize(), so pool.limit = True is covered.
         if isinstance(limit, bool):
             raise TypeError("limit must be an int, not bool")
-        prev_limit = self._limit
-        if (self._dirty and 0 < limit < self._limit) and not ignore_errors:
+        prev_limit = self._limit or 0
+        new_limit = limit or 0
+        if (self._dirty and 0 < new_limit < prev_limit) and not ignore_errors:
             if not force:
                 raise RuntimeError(
                     "Can't shrink pool when in use: was={} now={}".format(
@@ -189,8 +190,8 @@ class Resource:
             except Exception:
                 pass
         self.setup()
-        if limit < prev_limit:
-            self._shrink_down(collect=limit > 0)
+        if new_limit < prev_limit:
+            self._shrink_down(collect=new_limit > 0)
 
     def _shrink_down(self, collect=True):
         resource = self._resource
@@ -198,7 +199,7 @@ class Resource:
         # do so.
         with getattr(resource, 'mutex', nullcontext()):
             # keep in mind the dirty resources are not shrinking
-            while len(resource.queue) and (len(resource.queue) + len(self._dirty)) > self.limit:
+            while len(resource.queue) and (len(resource.queue) + len(self._dirty)) > (self.limit or 0):
                 R = resource.queue.pop()
                 if collect:
                     self.collect_resource(R)
