@@ -139,9 +139,9 @@ def set_limit(limit, force=False, reset_after=False, ignore_errors=False):
     limit = limit or 0
     glimit = _limit[0] or 0
     if limit != glimit:
-        _limit[0] = limit
         for pool in _all_pools():
-            pool.resize(limit)
+            pool.resize(limit, force=force, ignore_errors=ignore_errors)
+        _limit[0] = limit
     return limit
 
 
