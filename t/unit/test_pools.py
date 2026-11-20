@@ -62,14 +62,58 @@ class test_ProducerPool:
 
     def test_release_releases_connection(self):
         p = Mock()
-        p.__connection__ = Mock()
+        connection = p.__connection__ = Mock()
         self.pool.release(p)
-        p.__connection__.release.assert_called_with()
-        p.__connection__ = None
+        connection.release.assert_called_once_with()
+        assert p.__connection__ is None
         self.pool.release(p)
+        connection.release.assert_called_once_with()
 
     def test_init(self):
         assert self.pool.connections is self.connections
+
+    def test_failed_revive_does_not_release_connection_twice(self, monkeypatch):
+        connections = Connection('memory://').Pool(limit=1)
+        pool = self.Pool(connections, limit=1)
+        producer = pool.acquire()
+        producer.release()
+        revive = producer.revive
+
+        def failed_revive(connection):
+            revive(connection)
+            raise OSError('revival failed')
+
+        monkeypatch.setattr(producer, 'revive', failed_revive)
+        with pytest.raises(OSError, match='revival failed'):
+            pool.acquire()
+
+        assert len(connections._resource.queue) == 1
+        assert not connections._dirty
+        with connections.acquire():
+            with pytest.raises(connections.LimitExceeded):
+                connections.acquire()
+
+        monkeypatch.setattr(producer, 'revive', revive)
+        with pool.acquire() as recovered:
+            recovered.publish({'message': 'recovered'})
+        assert len(connections._resource.queue) == 1
+
+    def test_failed_acquire_does_not_release_previous_connection(self, monkeypatch):
+        connections = Connection('memory://').Pool(limit=1)
+        pool = self.Pool(connections, limit=1)
+        producer = pool.acquire()
+        producer.release()
+
+        def failed_acquire():
+            raise OSError('connection acquisition failed')
+
+        monkeypatch.setattr(pool, '_acquire_connection', failed_acquire)
+        with connections.acquire() as borrowed:
+            with pytest.raises(OSError, match='connection acquisition failed'):
+                pool.acquire()
+            assert borrowed in connections._dirty
+            with pytest.raises(connections.LimitExceeded):
+                connections.acquire()
 
     def test_Producer(self):
         assert isinstance(self.pool.Producer(Mock()), Producer)
@@ -121,9 +165,10 @@ class test_ProducerPool:
     def test_release(self):
         p = Mock()
         p.channel = Mock()
-        p.__connection__ = Mock()
+        connection = p.__connection__ = Mock()
         self.pool.release(p)
-        p.__connection__.release.assert_called_with()
+        connection.release.assert_called_once_with()
+        assert p.__connection__ is None
         assert p.channel is None
 
 
