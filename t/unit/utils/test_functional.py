@@ -127,6 +127,17 @@ class test_LRUCache:
         x.update({x: x for x in range(100)})
         assert list(x.keys()), [98 == 99]
 
+    def test_copy(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        y = x.copy()
+        assert y.limit == 2
+        assert list(y.keys()) == ['a', 'b']
+        y['c'] = 3
+        assert list(y.keys()) == ['b', 'c']
+        assert list(x.keys()) == ['a', 'b']
+        assert y.popitem(last=False) == ('b', 2)
+
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)

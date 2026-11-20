@@ -72,6 +72,14 @@ class LRUCache(UserDict):
                 for _ in range(len(data) - limit):
                     data.popitem(last=False)
 
+    def copy(self):
+        # UserDict.copy() would leave a plain dict in ``data``, which
+        # then fails on popitem()/eviction. Keep the order and limit.
+        with self.mutex:
+            c = self.__class__(self.limit)
+            c.data.update(self.data)
+            return c
+
     def popitem(self, last=True):
         with self.mutex:
             return self.data.popitem(last)
