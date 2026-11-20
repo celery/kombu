@@ -104,7 +104,13 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
 def sanitize_url(url, mask='**'):
     # type: (str, str) -> str
     """Return copy of URL with password removed."""
-    return as_url(*_parse_url(url), sanitize=True, mask=mask)
+    parts = _parse_url(url)
+    # _parse_url decodes the path, so re-quote it: otherwise encoded
+    # delimiters (%3F, %23, %25) would be written back literally and
+    # change the meaning of the URL (see #2836).
+    path = quote(parts.path, safe='/') if parts.path else parts.path
+    return as_url(parts.scheme, parts.hostname, parts.port, parts.username,
+                  parts.password, path, sanitize=True, mask=mask)
 
 
 def maybe_sanitize_url(url, mask='**'):
