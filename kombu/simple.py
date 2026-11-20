@@ -100,6 +100,13 @@ class SimpleBase:
     def close(self):
         self.consumer.cancel()
 
+    def revive(self, channel):
+        """Revive after connection loss, re-binding to ``channel``."""
+        self.channel = maybe_channel(channel)
+        self.producer.revive(self.channel)
+        self.consumer.revive(self.channel)
+        self.queue = self.consumer.queues[0]
+
     def _receive(self, message_data, message):
         self.buffer.append(message)
 

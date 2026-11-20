@@ -126,6 +126,36 @@ class SimpleBase:
         q = self.Queue('test_nonzero')
         assert q
 
+    def test_revive(self):
+        q = self.Queue('test_revive', no_ack=True)
+        q.put({'hello': 'before'})
+        assert q.get(timeout=1).payload == {'hello': 'before'}
+
+        channel = self.connection.channel()
+        q.revive(channel)
+
+        assert q.channel is channel
+        assert q.producer.channel is channel
+        assert q.consumer.channel is channel
+        assert q.queue is q.consumer.queues[0]
+        assert q.queue.channel is channel
+        q.put({'hello': 'after'})
+        assert q.get(timeout=1).payload == {'hello': 'after'}
+
+    def test_ensure_revives(self):
+        q = self.Queue('test_ensure_revives', no_ack=True)
+        q.put({'hello': 'ensure'})
+        calls = []
+
+        def get(**kwargs):
+            if not calls:
+                calls.append(1)
+                raise self.connection.connection_errors[0]()
+            return q.get(**kwargs)
+
+        message = self.connection.ensure(q, get)(timeout=1)
+        assert message.payload == {'hello': 'ensure'}
+
 
 class test_SimpleQueue(SimpleBase):
 
