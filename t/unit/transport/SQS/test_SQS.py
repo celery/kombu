@@ -11,6 +11,8 @@ import logging
 import os
 import random
 import string
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from queue import Empty
 from unittest.mock import Mock, call, patch
@@ -1033,6 +1035,45 @@ class test_Channel:
         client = Mock(name='client')
 
         assert channel._new_release_client(client) is client
+
+    def test_sqs_client_created_once_under_concurrency(self):
+        # Tests GH issue: #2870
+        # Concurrent first access to Channel.sqs() must build exactly
+        # one boto client; the second caller reuses it instead of
+        # building (and dropping) a second one.
+        channel = self.channel
+        channel._sqs = None
+        created = []
+        # setup_method mocks Channel.sqs at class level; restore the
+        # real method for this test and put the mock back afterwards.
+        mocked_sqs = SQS.Channel.sqs
+        try:
+            SQS.Channel.sqs = SQS_Channel_sqs
+
+            def counting_new_sqs_client(self, *args, **kwargs):
+                # Widen the race window so both threads are inside
+                # new_sqs_client() before either one assigns _sqs.
+                # (A fake client: the real boto3 call would reach the
+                # instance-metadata service for credentials.)
+                time.sleep(0.2)
+                client = Mock(name='sqs-client')
+                created.append(client)
+                return client
+
+            with patch.object(
+                SQS.Channel, 'new_sqs_client', counting_new_sqs_client,
+            ):
+                threads = [
+                    threading.Thread(target=lambda: channel.sqs())
+                    for _ in range(2)
+                ]
+                [t.start() for t in threads]
+                [t.join() for t in threads]
+        finally:
+            SQS.Channel.sqs = mocked_sqs
+
+        assert len(created) == 1
+        assert channel._sqs is created[0]
 
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
