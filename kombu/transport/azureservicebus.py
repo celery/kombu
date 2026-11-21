@@ -64,6 +64,7 @@ Transport Options
 from __future__ import annotations
 
 import string
+import threading
 from functools import partial
 from queue import Empty
 from typing import Any
@@ -146,14 +147,38 @@ class SendReceive:
     ):
         self.receiver: ServiceBusReceiver = receiver
         self.sender: ServiceBusSender = sender
+        self._lock = threading.Lock()
+        self._closed = False
 
     def close(self) -> None:
-        if self.receiver:
-            self.receiver.close()
+        with self._lock:
+            self._closed = True
+            receiver, sender = self.receiver, self.sender
             self.receiver = None
-        if self.sender:
-            self.sender.close()
             self.sender = None
+        if receiver:
+            receiver.close()
+        if sender:
+            sender.close()
+
+    def store(
+        self,
+        receiver: ServiceBusReceiver | None = None,
+        sender: ServiceBusSender | None = None,
+    ) -> bool:
+        """Store a sender/receiver unless this container is closed.
+
+        Returns False when close() already ran: the caller replaces
+        this container instead of resurrecting a field close() nulled,
+        so a concurrent queue-cache store can neither leak the new
+        sender nor undo the close.
+        """
+        with self._lock:
+            if self._closed:
+                return False
+            self.sender = self.sender or sender
+            self.receiver = self.receiver or receiver
+            return True
 
 
 class Channel(virtual.Channel):
@@ -227,13 +252,14 @@ class Channel(virtual.Channel):
         receiver: ServiceBusReceiver | None = None,
         sender: ServiceBusSender | None = None,
     ) -> SendReceive:
-        if name in self._queue_cache:
-            obj = self._queue_cache[name]
-            obj.sender = obj.sender or sender
-            obj.receiver = obj.receiver or receiver
-        else:
-            obj = SendReceive(receiver, sender)
-            self._queue_cache[name] = obj
+        obj = self._queue_cache.get(name)
+        if obj is not None and obj.store(receiver=receiver, sender=sender):
+            return obj
+        # Either first use, or the cached container was closed
+        # concurrently: replace it with a fresh container so the store
+        # is not lost and close() stays in effect.
+        obj = SendReceive(receiver, sender)
+        self._queue_cache[name] = obj
         return obj
 
     def _get_asb_sender(self, queue: str) -> SendReceive:
