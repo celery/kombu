@@ -247,6 +247,7 @@ import binascii
 import re
 import socket
 import string
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
@@ -391,6 +392,9 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
+        # Created before super().__init__(): _update_queue_cache()
+        # below can call self.sqs(), which uses this lock.
+        self._lazy_client_lock = threading.Lock()
         super().__init__(*args, **kwargs)
         self._validate_predifined_queues()
 
@@ -1195,7 +1199,9 @@ class Channel(virtual.Channel):
         """
         # If an SNS class has not been initialised, then initialise it
         if not self._fanout:
-            self._fanout = SnsFanout(self)
+            with self._lazy_client_lock:
+                if not self._fanout:
+                    self._fanout = SnsFanout(self)
         return self._fanout
 
     def remove_stale_sns_subscriptions(self, exchange_name: str) -> None:

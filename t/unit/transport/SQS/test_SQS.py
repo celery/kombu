@@ -11,6 +11,8 @@ import logging
 import os
 import random
 import string
+import threading
+import time
 from datetime import datetime, timedelta, timezone
 from queue import Empty
 from unittest.mock import Mock, call, patch
@@ -1033,6 +1035,34 @@ class test_Channel:
         client = Mock(name='client')
 
         assert channel._new_release_client(client) is client
+
+    def test_fanout_created_once_under_concurrency(self):
+        # Tests GH issue: #2871
+        # Concurrent first access to Channel.fanout must build exactly
+        # one SnsFanout; the second caller reuses it instead of
+        # building (and dropping) a second one.
+        channel = self.channel
+        channel._fanout = None
+        created = []
+
+        def counting_fanout(channel_arg):
+            # Widen the race window so both threads are inside
+            # SnsFanout() before either one assigns _fanout.
+            time.sleep(0.2)
+            inst = Mock(name='sns-fanout')
+            created.append(inst)
+            return inst
+
+        with patch.object(SQS, 'SnsFanout', counting_fanout):
+            threads = [
+                threading.Thread(target=lambda: channel.fanout)
+                for _ in range(2)
+            ]
+            [t.start() for t in threads]
+            [t.join() for t in threads]
+
+        assert len(created) == 1
+        assert channel._fanout is created[0]
 
     def test_loop1_calls_call_soon_when_messages_found(self):
         """_loop1 schedules next poll immediately when messages were fetched."""
