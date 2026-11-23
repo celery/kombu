@@ -1,41 +1,27 @@
-# * coding: utf8 *
 """Amazon AWS Connection."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
+
+from email import message_from_bytes
+from email.mime.message import MIMEMessage
 
 from vine import promise, transform
 
-from kombu.asynchronous.aws.ext import AWSRequest, get_response
-
+from kombu.asynchronous.aws.ext import AWSRequest, get_cert_path, get_response
 from kombu.asynchronous.http import Headers, Request, get_client
-from kombu.five import items, python_2_unicode_compatible
 
-import io
 
-try:  # pragma: no cover
-    from email import message_from_bytes
-    from email.mime.message import MIMEMessage
+def message_from_headers(hdr):
+    bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
+    return message_from_bytes(bs.encode())
 
-    # py3
-    def message_from_headers(hdr):  # noqa
-        bs = "\r\n".join("{}: {}".format(*h) for h in hdr)
-        return message_from_bytes(bs.encode())
-
-except ImportError:  # pragma: no cover
-    from mimetools import Message as MIMEMessage  # noqa
-
-    # py2
-    def message_from_headers(hdr):  # noqa
-        return io.BytesIO(b'\r\n'.join(
-            b'{0}: {1}'.format(*h) for h in hdr
-        ))
 
 __all__ = (
     'AsyncHTTPSConnection', 'AsyncConnection',
 )
 
 
-@python_2_unicode_compatible
-class AsyncHTTPResponse(object):
+class AsyncHTTPResponse:
     """Async HTTP Response."""
 
     def __init__(self, response):
@@ -50,7 +36,7 @@ class AsyncHTTPResponse(object):
         return self.response.headers.get(name, default)
 
     def getheaders(self):
-        return list(items(self.response.headers))
+        return list(self.response.headers.items())
 
     @property
     def msg(self):
@@ -72,8 +58,7 @@ class AsyncHTTPResponse(object):
         return repr(self.response)
 
 
-@python_2_unicode_compatible
-class AsyncHTTPSConnection(object):
+class AsyncHTTPSConnection:
     """Async HTTP Connection."""
 
     Request = Request
@@ -101,13 +86,14 @@ class AsyncHTTPSConnection(object):
             else:
                 self.body = read()
         if headers is not None:
-            self.headers.extend(list(items(headers)))
+            self.headers.extend(list(headers.items()))
 
     def getrequest(self):
         headers = Headers(self.headers)
         return self.Request(self.path, method=self.method, headers=headers,
                             body=self.body, connect_timeout=self.timeout,
-                            request_timeout=self.timeout, validate_cert=False)
+                            request_timeout=self.timeout,
+                            validate_cert=True, ca_certs=get_cert_path(True))
 
     def getresponse(self, callback=None):
         request = self.getrequest()
@@ -140,22 +126,25 @@ class AsyncHTTPSConnection(object):
             self.body = data
 
     def __repr__(self):
-        return '<AsyncHTTPConnection: {0!r}>'.format(self.getrequest())
+        return f'<AsyncHTTPConnection: {self.getrequest()!r}>'
 
 
-class AsyncConnection(object):
+class AsyncConnection:
     """Async AWS Connection."""
 
-    def __init__(self, sqs_connection, http_client=None, **kwargs):  # noqa
+    def __init__(self, sqs_connection, http_client=None, **kwargs):
         self.sqs_connection = sqs_connection
         self._httpclient = http_client or get_client()
 
-    def get_http_connection(self):
-        return AsyncHTTPSConnection(http_client=self._httpclient)
+    def get_http_connection(self, timeout=None):
+        if timeout is None:
+            return AsyncHTTPSConnection(http_client=self._httpclient)
+        return AsyncHTTPSConnection(timeout=timeout, http_client=self._httpclient)
 
-    def _mexe(self, request, sender=None, callback=None):
+    def _mexe(self, request, sender=None, callback=None, timeout=None):
         callback = callback or promise()
-        conn = self.get_http_connection()
+        conn = (self.get_http_connection() if timeout is None
+                else self.get_http_connection(timeout))
 
         if callable(sender):
             sender(conn, request.method, request.path, request.body,
@@ -174,37 +163,42 @@ class AsyncAWSQueryConnection(AsyncConnection):
     STATUS_CODE_REQUEST_TIMEOUT = 408
     STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR = 599
     STATUS_CODE_INTERNAL_ERROR = 500
+    STATUS_CODE_BAD_GATEWAY = 502
     STATUS_CODE_SERVICE_UNAVAILABLE_ERROR = 503
+    STATUS_CODE_GATEWAY_TIMEOUT = 504
 
     STATUS_CODES_SERVER_ERRORS = (
         STATUS_CODE_INTERNAL_ERROR,
+        STATUS_CODE_BAD_GATEWAY,
         STATUS_CODE_SERVICE_UNAVAILABLE_ERROR
     )
 
     STATUS_CODES_TIMEOUT = (
         STATUS_CODE_REQUEST_TIMEOUT,
-        STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR
+        STATUS_CODE_NETWORK_CONNECT_TIMEOUT_ERROR,
+        STATUS_CODE_GATEWAY_TIMEOUT
     )
 
     def __init__(self, sqs_connection, http_client=None,
                  http_client_params=None, **kwargs):
         if not http_client_params:
             http_client_params = {}
-        AsyncConnection.__init__(self, sqs_connection, http_client,
-                                 **http_client_params)
+        super().__init__(sqs_connection, http_client,
+                         **http_client_params)
 
-    def make_request(self, operation, params_, path, verb, callback=None):  # noqa
+    def make_request(self, operation, params_, path, verb, callback=None, protocol_params=None):
         params = params_.copy()
+        params.update((protocol_params or {}).get('query', {}))
         if operation:
             params['Action'] = operation
-        signer = self.sqs_connection._request_signer  # noqa
+        signer = self.sqs_connection._request_signer
 
         # defaults for non-get
         signing_type = 'standard'
         param_payload = {'data': params}
         if verb.lower() == 'get':
             # query-based opts
-            signing_type = 'presignurl'
+            signing_type = 'presign-url'
             param_payload = {'params': params}
 
         request = AWSRequest(method=verb, url=path, **param_payload)
@@ -213,32 +207,36 @@ class AsyncAWSQueryConnection(AsyncConnection):
 
         return self._mexe(prepared_request, callback=callback)
 
-    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None):  # noqa
+    def get_list(self, operation, params, markers, path='/', parent=None, verb='POST', callback=None,
+                 protocol_params=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_list_ready, callback, parent or self, markers,
                 operation
             ),
+            protocol_params=protocol_params,
         )
 
-    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_object(self, operation, params, path='/', parent=None, verb='GET', callback=None, protocol_params=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_obj_ready, callback, parent or self, operation
             ),
+            protocol_params=protocol_params,
         )
 
-    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None):  # noqa
+    def get_status(self, operation, params, path='/', parent=None, verb='GET', callback=None, protocol_params=None):
         return self.make_request(
             operation, params, path, verb,
             callback=transform(
                 self._on_status_ready, callback, parent or self, operation
             ),
+            protocol_params=protocol_params,
         )
 
-    def _on_list_ready(self, parent, markers, operation, response):  # noqa
+    def _on_list_ready(self, parent, markers, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == self.STATUS_CODE_OK:
             _, parsed = get_response(
@@ -256,7 +254,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         else:
             raise self._for_status(response, response.read())
 
-    def _on_obj_ready(self, parent, operation, response):  # noqa
+    def _on_obj_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == self.STATUS_CODE_OK:
             _, parsed = get_response(
@@ -266,7 +264,7 @@ class AsyncAWSQueryConnection(AsyncConnection):
         else:
             raise self._for_status(response, response.read())
 
-    def _on_status_ready(self, parent, operation, response):  # noqa
+    def _on_status_ready(self, parent, operation, response):
         service_model = self.sqs_connection.meta.service_model
         if response.status == self.STATUS_CODE_OK:
             httpres, _ = get_response(

@@ -1,9 +1,9 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import sys
+from unittest.mock import Mock, patch
 
 import pytest
-import sys
-
-from case import Mock, patch
 
 from kombu.message import Message
 

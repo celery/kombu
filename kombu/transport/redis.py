@@ -1,48 +1,231 @@
-"""Redis transport."""
-from __future__ import absolute_import, unicode_literals
+"""Redis transport module for Kombu.
 
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports Queue TTL: Yes
+* Supports Message TTL: No
+
+Connection String
+=================
+Connection string has the following format:
+
+.. code-block::
+
+    redis://[USER:PASSWORD@]REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+    rediss://[USER:PASSWORD@]REDIS_ADDRESS[:PORT][/VIRTUALHOST]
+
+To use sentinel for dynamic Redis discovery,
+the connection string has following format:
+
+.. code-block::
+
+    sentinel://[USER:PASSWORD@]SENTINEL_ADDRESS[:PORT]
+
+Transport Options
+=================
+* ``sep``
+* ``ack_emulation``: (bool) If set to True transport will
+  simulate Acknowledge of AMQP protocol.
+* ``unacked_key``
+* ``unacked_index_key``
+* ``unacked_mutex_key``
+* ``unacked_mutex_expire``
+* ``visibility_timeout``
+* ``unacked_restore_limit``
+* ``unacked_restore_interval``: (int) Seconds between periodic
+  ``restore_visible`` sweeps in the async (event loop / prefork) path.
+  Defaults to ``10``. Lower this to recover abandoned messages faster when
+  using a low ``visibility_timeout``.
+* ``unacked_restore_throttle``: (int) Only run an actual Redis scan on every
+  Nth ``restore_visible`` call. Defaults to ``10``. The effective async sweep
+  period is roughly ``unacked_restore_interval * unacked_restore_throttle``
+  seconds, so set this to ``1`` to make ``unacked_restore_interval`` the sole
+  control.
+* ``fanout_prefix``
+* ``fanout_patterns``
+* ``global_keyprefix``: (str) The global key prefix to be prepended to all keys
+  used by Kombu
+* ``socket_timeout``: (float) Timeout in seconds for blocking socket
+  operations. Defaults to ``None`` (wait forever). Set it when the broker
+  can disappear without closing the TCP connection (failover, NAT or
+  firewall timeout): without it, a synchronous command such as a publish
+  waits forever on the dead connection, and the checks enabled by
+  ``health_check_interval`` never get a chance to run.
+* ``socket_connect_timeout``
+* ``socket_keepalive``
+* ``socket_keepalive_options``
+* ``queue_order_strategy``
+* ``max_connections``
+* ``health_check_interval``: (int) Passed to redis-py, and also the
+  interval in seconds of kombu's own checks of the long-lived pub/sub and
+  BRPOP connections. Defaults to ``25``; ``0`` disables them. A BRPOP
+  connection whose reply is overdue by more than
+  ``brpop_timeout + health_check_interval`` is dropped and reconnected, so a
+  consumer stuck on a half-open connection recovers within about
+  ``brpop_timeout + 2 * health_check_interval`` seconds (51 by default).
+  The BRPOP check runs with the event loop and with
+  :meth:`~kombu.Connection.drain_events`; the pub/sub check only with the
+  event loop. See ``socket_timeout``.
+
+  .. versionchanged:: 5.7.0
+     The BRPOP connection is checked too.
+* ``reauth_check_interval``: (int) How often, in seconds, to flush pending
+  streaming re-authentication tokens (emitted by a
+  ``redis.credentials.StreamingCredentialProvider`` such as the Entra ID /
+  IAM providers) onto the long-lived BRPOP and pub/sub connections held by
+  the transport. Defaults to ``10``. See :meth:`Channel.maybe_reauth`.
+* ``retry_on_timeout``
+* ``priority_steps``
+* ``client_name``: (str) The name to use when connecting to Redis server.
+* ``sentinel_fanout_compat``: (bool) Sentinel only.  When enabled the
+  channel also publishes to, and subscribes on, the legacy fanout topic
+  (literally ``/{db}.<exchange>``) used by kombu < 5.4.0, next to the
+  current ``/<db>.<exchange>`` topic.  Enable it on every upgraded
+  participant of fanout traffic (workers as well as Flower or any other
+  client sending control commands) while performing a rolling upgrade
+  from kombu < 5.4.0, so that mixed-version participants keep exchanging
+  broadcast messages, and remove it once everything has been upgraded.
+  Defaults to ``False``.
+
+  .. versionadded:: 5.7.0
+
+Queue Arguments
+===============
+* ``x-expires``: (int) Time in milliseconds for queues to expire if there's no activity.
+  The queue will be automatically deleted after this period of inactivity.
+  This is a per-queue argument and should be supplied via ``Queue(expires=...)``
+  or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
+  connection-level transport option.
+
+Replicas and failover
+=====================
+A node that answers a write with ``READONLY``, or ends a blocking read with
+``UNBLOCKED``, is handled as a lost connection: the consumer reconnects and
+tries again. This is what happens when the primary becomes a replica in a
+failover that keeps the old node running.
+
+A consumer whose URL points at a node that stays a replica (a reader
+endpoint, or a failover that was not reverted) therefore retries until the
+node accepts writes, where it used to stop with a channel error. Connecting
+to a replica works and the first write fails, so the wait between connection
+attempts does not apply: a Celery worker logs ``You can't write against a
+read only replica`` and reconnects several times a second.
+
+.. versionchanged:: 5.7.1
+    ``READONLY`` and ``UNBLOCKED`` replies are connection errors.
+"""
+
+from __future__ import annotations
+
+import errno
+import functools
+import inspect
 import numbers
+import os
 import socket
-import warnings
-
 from bisect import bisect
-from collections import namedtuple
-from contextlib import contextmanager
-from time import time
+from collections import OrderedDict, namedtuple
+from contextlib import ExitStack, contextmanager
+from queue import Empty
+from time import monotonic, sleep, time
+
 from vine import promise
 
-from kombu.exceptions import InconsistencyError, VersionMismatch
-from kombu.five import Empty, values, string_t
+from kombu.exceptions import (BatchPublishError, InconsistencyError,
+                              VersionMismatch)
 from kombu.log import get_logger
+from kombu.transport.base import to_rabbitmq_queue_arguments
+from kombu.utils import symbol_by_name
 from kombu.utils.compat import register_after_fork
-from kombu.utils.eventio import poll, READ, ERR
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.eventio import ERR, READ, poll
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
 from kombu.utils.uuid import uuid
-from kombu.utils.compat import _detect_environment
 
 from . import virtual
-from .virtual.base import UndeliverableWarning, UNDELIVERABLE_FMT
 
 try:
     import redis
+    from redis import client, exceptions
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = redis.VERSION[:2] >= (5, 3)
 except ImportError:  # pragma: no cover
-    redis = None     # noqa
+    redis = None
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
 
 try:
-    from redis import sentinel
+    from redis import CredentialProvider, sentinel
 except ImportError:  # pragma: no cover
-    sentinel = None  # noqa
+    sentinel = None
+    CredentialProvider = None
 
 
 logger = get_logger('kombu.transport.redis')
-crit, warn = logger.critical, logger.warn
+crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
 DEFAULT_DB = 0
+
+DEFAULT_HEALTH_CHECK_INTERVAL = 25
+
+#: Unanswered subclient PINGs tolerated before the pub/sub connection is
+#: treated as half-open and dropped.  Two full intervals must pass without
+#: a PONG, so a stalled event loop alone cannot trigger a reconnect.
+SUBCLIENT_MAX_MISSED_HEALTH_CHECKS = 2
+
+#: How often (in seconds) to flush pending streaming re-authentication
+#: tokens onto the long-lived BRPOP and pub/sub connections.  See
+#: :meth:`Channel.maybe_reauth` for why this is needed.
+DEFAULT_REAUTH_CHECK_INTERVAL = 10
+
+#: A binding table is swept once no consumer has refreshed it for this many
+#: times its queue's x-expires, and never under MIN_BINDING_TTL, so a consumer
+#: whose event loop stalls briefly does not lose its bindings.
+BINDING_EXPIRES_FACTOR = 2
+
+#: A binding table's lifetime in ms is never below this, so a consumer that
+#: can't run kombu for a while, such as a long task on Celery's solo pool,
+#: keeps its routing.
+MIN_BINDING_TTL = 60 * 60 * 1000
+
+#: Seconds between sweeps of overdue binding tables by each channel.
+BINDING_SWEEP_INTERVAL = 60
+
+#: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
+#: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
+#: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
+#: them.
+REFRESH_BINDING = """
+redis.call('SADD', KEYS[1], ARGV[1])
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+"""
+
+#: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
+#: has passed. ARGV[1] and ARGV[2] are the table and permanent-set keys
+#: without the exchange name. A table whose permanent set still lists a queue
+#: without x-expires is kept, and only its deadline is dropped.
+SWEEP_BINDINGS = """
+local now = redis.call('TIME')
+local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+local overdue = redis.call(
+    'ZRANGEBYSCORE', KEYS[1], '-inf', ms, 'LIMIT', 0, tonumber(ARGV[3]))
+for _, exchange in ipairs(overdue) do
+    if redis.call('EXISTS', ARGV[2] .. exchange) == 0 then
+        redis.call('DEL', ARGV[1] .. exchange)
+    end
+    redis.call('ZREM', KEYS[1], exchange)
+end
+return #overdue
+"""
 
 PRIORITY_STEPS = [0, 3, 6, 9]
 
@@ -50,10 +233,6 @@ error_classes_t = namedtuple('error_classes_t', (
     'connection_errors', 'channel_errors',
 ))
 
-NO_ROUTE_ERROR = """
-Cannot route message for exchange {0!r}: Table empty or key no longer exists.
-Probably the key ({1!r}) has been removed from the Redis database.
-"""
 
 # This implementation may seem overly complex, but I assure you there is
 # a good reason for doing it this way.
@@ -73,6 +252,7 @@ Probably the key ({1!r}) has been removed from the Redis database.
 def get_redis_error_classes():
     """Return tuple of redis error classes."""
     from redis import exceptions
+
     # This exception suddenly changed name between redis-py versions
     if hasattr(exceptions, 'InvalidData'):
         DataError = exceptions.InvalidData
@@ -85,8 +265,19 @@ def get_redis_error_classes():
             IOError,
             OSError,
             exceptions.ConnectionError,
+            exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
-            exceptions.TimeoutError)),
+            exceptions.TimeoutError,
+            # The node became a replica (a failover that keeps it running):
+            # no write works on this connection any more, so the consumer
+            # has to reconnect, as it does when the node is down.
+            exceptions.ReadOnlyError,
+            # A stale fd can still fire on_readable for a channel that was
+            # already dropped after a broker restart (#2582): the poller
+            # guard from #2561 makes the common path a debug log, but any
+            # KeyError that still escapes must be treated as a connection
+            # error so the consumer reconnects instead of dying.
+            KeyError)),
         (virtual.Transport.channel_errors + (
             DataError,
             exceptions.InvalidResponse,
@@ -104,35 +295,235 @@ class MutexHeld(Exception):
     """Raised when another party holds the lock."""
 
 
-@contextmanager
-def Mutex(client, name, expire):
-    """The Redis lock implementation (probably shaky)."""
-    lock_id = uuid()
-    i_won = client.setnx(name, lock_id)
+_restore_lock_tokens = {}
+
+
+def _restore_lock_token():
+    """Return what this process stores in the restore lock (see Mutex).
+
+    One token per process, kept for its lifetime: a consumer that lost its
+    connection in the sweep comes back on a new channel, and has to find
+    its own lock.  A forked child gets a token of its own, since the
+    tokens are kept by process id.
+    """
+    pid = os.getpid()
+    token = _restore_lock_tokens.get(pid)
+    if token is None:
+        # setdefault: two threads on their first sweep get the same token.
+        token = _restore_lock_tokens.setdefault(pid, uuid())
+    return token
+
+
+def _take_over_own_lock(client, lock, token):
+    """Take over a lock that still holds ``token``, and reset its expiry.
+
+    The check and the new expiry are one script on the server, so a lock
+    that another client took in the meantime is left alone.
+    """
+    lock.local.token = client.get_encoder().encode(token)
     try:
-        if i_won:
-            client.expire(name, expire)
+        return lock.reacquire()
+    except exceptions.LockNotOwnedError:
+        lock.local.token = None
+        return False
+
+
+@contextmanager
+def Mutex(client, name, expire, token=None):
+    """Acquire redis lock in non blocking way.
+
+    Raise MutexHeld if not successful.
+
+    ``token`` is the value stored in the lock. A caller that passes the
+    same token every time gets back a lock it could not release, for
+    example because the connection was lost in the block: without that,
+    nobody enters until the lock expires.
+    """
+    lock = client.lock(name, timeout=expire)
+    lock_acquired = False
+    try:
+        lock_acquired = lock.acquire(blocking=False, token=token)
+        if not lock_acquired and token is not None:
+            lock_acquired = _take_over_own_lock(client, lock, token)
+        if lock_acquired:
             yield
         else:
-            if not client.ttl(name):
-                client.expire(name, expire)
             raise MutexHeld()
     finally:
-        if i_won:
+        if lock_acquired:
             try:
-                with client.pipeline(True) as pipe:
-                    pipe.watch(name)
-                    if pipe.get(name) == lock_id:
-                        pipe.multi()
-                        pipe.delete(name)
-                        pipe.execute()
-                    pipe.unwatch()
-            except redis.WatchError:
+                lock.release()
+            except exceptions.LockNotOwnedError:
+                # when lock is expired
                 pass
 
 
 def _after_fork_cleanup_channel(channel):
     channel._after_fork()
+
+
+class GlobalKeyPrefixMixin:
+    """Mixin to provide common logic for global key prefixing.
+
+    Overriding all the methods used by Kombu with the same key prefixing logic
+    would be cumbersome and inefficient. Hence, we override the command
+    execution logic that is called by all commands.
+    """
+
+    PREFIXED_SIMPLE_COMMANDS = [
+        "HDEL",
+        "HGET",
+        "HLEN",
+        "HSET",
+        "LLEN",
+        "LPUSH",
+        "PUBLISH",
+        "RPUSH",
+        "RPOP",
+        "SADD",
+        "SREM",
+        "SET",
+        "SMEMBERS",
+        "ZADD",
+        "ZRANGE",
+        "ZREM",
+        "PEXPIRE",
+    ]
+
+    PREFIXED_COMPLEX_COMMANDS = {
+        "DEL": {"args_start": 0, "args_end": None},
+        "BRPOP": {"args_start": 0, "args_end": -1},
+        "EVALSHA": {"args_start": 2, "args_end": 3},
+        "WATCH": {"args_start": 0, "args_end": None},
+    }
+
+    def _prefix_args(self, args):
+        args = list(args)
+        command = args.pop(0)
+
+        if command in self.PREFIXED_SIMPLE_COMMANDS:
+            args[0] = self.global_keyprefix + str(args[0])
+        elif command in self.PREFIXED_COMPLEX_COMMANDS:
+            args_start = self.PREFIXED_COMPLEX_COMMANDS[command]["args_start"]
+            args_end = self.PREFIXED_COMPLEX_COMMANDS[command]["args_end"]
+
+            pre_args = args[:args_start] if args_start > 0 else []
+            post_args = []
+
+            if args_end is not None:
+                post_args = args[args_end:]
+
+            args = pre_args + [
+                self.global_keyprefix + str(arg)
+                for arg in args[args_start:args_end]
+            ] + post_args
+
+        return [command, *args]
+
+    def parse_response(self, connection, command_name, **options):
+        """Parse a response from the Redis server.
+
+        Method wraps ``redis.parse_response()`` to remove prefixes of keys
+        returned by redis command.
+        """
+        ret = super().parse_response(connection, command_name, **options)
+        if command_name == 'BRPOP' and ret:
+            key, value = ret
+            key = key[len(self.global_keyprefix):]
+            return key, value
+        return ret
+
+    def execute_command(self, *args, **kwargs):
+        return super().execute_command(*self._prefix_args(args), **kwargs)
+
+    def pipeline(self, transaction=True, shard_hint=None):
+        return PrefixedRedisPipeline(
+            self.connection_pool,
+            self.response_callbacks,
+            transaction,
+            shard_hint,
+            global_keyprefix=self.global_keyprefix,
+        )
+
+
+class PrefixedStrictRedis(GlobalKeyPrefixMixin, redis.Redis):
+    """Returns a ``StrictRedis`` client that prefixes the keys it uses."""
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        redis.Redis.__init__(self, *args, **kwargs)
+
+    def pubsub(self, **kwargs):
+        return PrefixedRedisPubSub(
+            self.connection_pool,
+            global_keyprefix=self.global_keyprefix,
+            **kwargs,
+        )
+
+
+class PrefixedRedisPipeline(GlobalKeyPrefixMixin, client.Pipeline):
+    """Custom Redis pipeline that takes global_keyprefix into consideration.
+
+    As the ``PrefixedStrictRedis`` client uses the `global_keyprefix` to prefix
+    the keys it uses, the pipeline called by the client must be able to prefix
+    the keys as well.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        client.Pipeline.__init__(self, *args, **kwargs)
+
+
+class PrefixedRedisPubSub(client.PubSub):
+    """Redis pubsub client that takes global_keyprefix into consideration."""
+
+    PUBSUB_COMMANDS = (
+        "SUBSCRIBE",
+        "UNSUBSCRIBE",
+        "PSUBSCRIBE",
+        "PUNSUBSCRIBE",
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.global_keyprefix = kwargs.pop('global_keyprefix', '')
+        super().__init__(*args, **kwargs)
+
+    def _prefix_args(self, args):
+        args = list(args)
+        command = args.pop(0)
+
+        if command in self.PUBSUB_COMMANDS:
+            args = [
+                self.global_keyprefix + str(arg)
+                for arg in args
+            ]
+
+        return [command, *args]
+
+    def parse_response(self, *args, **kwargs):
+        """Parse a response from the Redis server.
+
+        Method wraps ``PubSub.parse_response()`` to remove prefixes of keys
+        returned by redis command.
+        """
+        ret = super().parse_response(*args, **kwargs)
+        if ret is None:
+            return ret
+
+        # response formats
+        # SUBSCRIBE and UNSUBSCRIBE
+        #  -> [message type, channel, message]
+        # PSUBSCRIBE and PUNSUBSCRIBE
+        #  -> [message type, pattern, channel, message]
+        message_type, *channels, message = ret
+        return [
+            message_type,
+            *[channel[len(self.global_keyprefix):] for channel in channels],
+            message,
+        ]
+
+    def execute_command(self, *args, **kwargs):
+        return super().execute_command(*self._prefix_args(args), **kwargs)
 
 
 class QoS(virtual.QoS):
@@ -141,21 +532,25 @@ class QoS(virtual.QoS):
     restore_at_shutdown = True
 
     def __init__(self, *args, **kwargs):
-        super(QoS, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self._vrestore_count = 0
 
     def append(self, message, delivery_tag):
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
-        # Redis-py changed the format of zadd args in v3.0.0 to be like this
-        zadd_args = [{delivery_tag: time()}]
+        # TODO: Remove this once we solely on Redis-py 3.0.0+
+        if redis.VERSION[0] >= 3:
+            # Redis-py changed the format of zadd args in v3.0.0
+            zadd_args = [{delivery_tag: time()}]
+        else:
+            zadd_args = [time(), delivery_tag]
 
         with self.pipe_or_acquire() as pipe:
             pipe.zadd(self.unacked_index_key, *zadd_args) \
                 .hset(self.unacked_key, delivery_tag,
                       dumps([message._raw, EX, RK])) \
                 .execute()
-            super(QoS, self).append(message, delivery_tag)
+            super().append(message, delivery_tag)
 
     def restore_unacked(self, client=None):
         with self.channel.conn_or_acquire(client) as client:
@@ -165,12 +560,14 @@ class QoS(virtual.QoS):
 
     def ack(self, delivery_tag):
         self._remove_from_indices(delivery_tag).execute()
-        super(QoS, self).ack(delivery_tag)
+        super().ack(delivery_tag)
 
     def reject(self, delivery_tag, requeue=False):
         if requeue:
             self.restore_by_tag(delivery_tag, leftmost=True)
-        self.ack(delivery_tag)
+        else:
+            self._remove_from_indices(delivery_tag).execute()
+        super().ack(delivery_tag)
 
     @contextmanager
     def pipe_or_acquire(self, pipe=None, client=None):
@@ -187,32 +584,45 @@ class QoS(virtual.QoS):
 
     def restore_visible(self, start=0, num=10, interval=10):
         self._vrestore_count += 1
-        if (self._vrestore_count - 1) % interval:
+        # ``interval or 1`` avoids a ZeroDivisionError if the throttle is
+        # misconfigured to 0; 1 means "scan on every call".
+        if (self._vrestore_count - 1) % (interval or 1):
             return
         with self.channel.conn_or_acquire() as client:
             ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
-                           self.unacked_mutex_expire):
-                    env = _detect_environment()
-                    if env == 'gevent':
-                        ceil = time()
-                    visible = client.zrevrangebyscore(
+                           self.unacked_mutex_expire,
+                           token=_restore_lock_token()):
+                    # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
+                    # not implemented by every Redis-compatible server
+                    # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
+                    # replacement.  With ``REV`` the first bound is the
+                    # highest score, so ``(ceil, 0)`` keeps the same order
+                    # and returns the same rows as the old command.  The
+                    # ``byscore``/``offset``/``num`` arguments need redis-py
+                    # >= 4.0, which ``_get_client`` guarantees.
+                    visible = client.zrange(
                         self.unacked_index_key, ceil, 0,
-                        start=num and start, num=num, withscores=True)
+                        desc=True, byscore=True,
+                        offset=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
                 pass
 
     def restore_by_tag(self, tag, client=None, leftmost=False):
-        with self.channel.conn_or_acquire(client) as client:
-            with client.pipeline() as pipe:
-                p, _, _ = self._remove_from_indices(
-                    tag, pipe.hget(self.unacked_key, tag)).execute()
+
+        def restore_transaction(pipe):
+            p = pipe.hget(self.unacked_key, tag)
+            pipe.multi()
+            self._remove_from_indices(tag, pipe)
             if p:
                 M, EX, RK = loads(bytes_to_str(p))  # json is unicode
-                self.channel._do_restore_message(M, EX, RK, client, leftmost)
+                self.channel._do_restore_message(M, EX, RK, pipe, leftmost)
+
+        with self.channel.conn_or_acquire(client) as client:
+            client.transaction(restore_transaction, self.unacked_key)
 
     @cached_property
     def unacked_key(self):
@@ -235,7 +645,21 @@ class QoS(virtual.QoS):
         return self.channel.visibility_timeout
 
 
-class MultiChannelPoller(object):
+def _socket_readable(sock):
+    """Return whether ``sock`` has data to read, without consuming it.
+
+    ``Connection.can_read()`` would pull the pending reply into the parser
+    buffer, where the event loop no longer sees the socket as readable.
+    """
+    poller = poll()
+    try:
+        poller.register(sock, READ)
+        return bool(poller.poll(0))
+    finally:
+        poller.close()
+
+
+class MultiChannelPoller:
     """Async I/O poller for Redis transport."""
 
     eventflags = READ | ERR
@@ -253,13 +677,15 @@ class MultiChannelPoller(object):
         self._fd_to_chan = {}
         # channel -> socket map
         self._chan_to_sock = {}
+        # Paused BRPOP replies retain their connection and registration.
+        self._paused_brpop = {}
         # poll implementation (epoll/kqueue/select)
         self.poller = poll()
         # one-shot callbacks called after reading from socket.
         self.after_read = set()
 
     def close(self):
-        for fd in values(self._chan_to_sock):
+        for fd in self._chan_to_sock.values():
             try:
                 self.poller.unregister(fd)
             except (KeyError, ValueError):
@@ -267,18 +693,88 @@ class MultiChannelPoller(object):
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
+        self._paused_brpop.clear()
 
     def add(self, channel):
         self._channels.add(channel)
 
     def discard(self, channel):
         self._channels.discard(channel)
+        for fd, (chan, _, _, _) in list(self._paused_brpop.items()):
+            if chan is channel:
+                self._discard_paused_brpop(fd)
 
     def _on_connection_disconnect(self, connection):
+        self._discard_paused_connection(connection)
+        disconnected = set()
+        for key in list(self._chan_to_sock):
+            channel, client, type = key
+            if client.connection is connection:
+                del self._chan_to_sock[key]
+                disconnected.add((channel, type))
+        for fd, channel_and_type in list(self._fd_to_chan.items()):
+            if channel_and_type in disconnected:
+                del self._fd_to_chan[fd]
+                try:
+                    self.poller.unregister(fd)
+                except (KeyError, AttributeError, TypeError, ValueError):
+                    pass
+                except OSError as exc:
+                    if exc.errno != errno.EBADF:
+                        raise
+        if disconnected:
+            return
         try:
             self.poller.unregister(connection._sock)
-        except (AttributeError, TypeError):
+        except (AttributeError, TypeError, ValueError):
             pass
+
+    def _unregister_from_poll(self, fileno):
+        self.poller.unregister(fileno)
+
+    def _pause_brpop(self, channel, fileno):
+        if fileno not in self._paused_brpop:
+            connection = channel._in_poll
+            self._unregister_from_poll(fileno)
+            self._paused_brpop[fileno] = (
+                channel, channel.client, connection, connection._sock,
+            )
+
+    def _discard_paused_brpop(self, fileno):
+        channel, client, _, sock = self._paused_brpop.pop(fileno)
+        ident = channel, client, 'BRPOP'
+        # A reconnect may already have replaced this registration, possibly
+        # reusing the same fd. Never remove the new socket's registration.
+        if self._chan_to_sock.get(ident) is sock:
+            del self._chan_to_sock[ident]
+            if self._fd_to_chan.get(fileno) == (channel, 'BRPOP'):
+                del self._fd_to_chan[fileno]
+
+    def _discard_paused_connection(self, connection):
+        for fd, (_, _, conn, _) in list(self._paused_brpop.items()):
+            if conn is connection:
+                self._discard_paused_brpop(fd)
+
+    def _update_brpop_polling(self):
+        for fd, (channel, redis_client, connection, sock) in list(
+                self._paused_brpop.items()):
+            ident = channel, redis_client, 'BRPOP'
+            if (channel._in_poll is not connection or
+                    connection._sock is not sock or
+                    self._chan_to_sock.get(ident) is not sock or
+                    self._fd_to_chan.get(fd) != (channel, 'BRPOP')):
+                self._discard_paused_brpop(fd)
+            elif channel.qos.can_consume():
+                self.poller.register(sock, self.eventflags)
+                del self._paused_brpop[fd]
+
+        for fd, (channel, type) in list(self._fd_to_chan.items()):
+            if (type == 'BRPOP' and channel._in_poll and
+                    not channel.qos.can_consume()):
+                # A pending reply may contain a message already popped from
+                # Redis. Keep it intact until credit returns, but stop polling
+                # the readable socket so it cannot spin the event loop.
+                self._pause_brpop(channel, fd)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -295,7 +791,10 @@ class MultiChannelPoller(object):
 
     def _client_registered(self, channel, client, cmd):
         if getattr(client, 'connection', None) is None:
-            client.connection = client.connection_pool.get_connection('_')
+            if _REDIS_GET_CONNECTION_WITHOUT_ARGS:
+                client.connection = client.connection_pool.get_connection()
+            else:
+                client.connection = client.connection_pool.get_connection('_')
         return (client.connection._sock is not None and
                 (channel, client, cmd) in self._chan_to_sock)
 
@@ -306,7 +805,11 @@ class MultiChannelPoller(object):
             channel._in_poll = False
             self._register(*ident)
         if not channel._in_poll:  # send BRPOP
+            sock = channel.client.connection._sock
             channel._brpop_start()
+            if channel.client.connection._sock is not sock:
+                # A health-check retry can replace the socket while sending.
+                self._register(*ident)
 
     def _register_LISTEN(self, channel):
         """Enable LISTEN mode for channel."""
@@ -317,6 +820,7 @@ class MultiChannelPoller(object):
             channel._subscribe()  # send SUBSCRIBE
 
     def on_poll_start(self):
+        self._update_brpop_polling()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
                 if channel.qos.can_consume():
@@ -329,44 +833,164 @@ class MultiChannelPoller(object):
         for channel in self._channels:
             return channel.qos.restore_visible(
                 num=channel.unacked_restore_limit,
+                interval=channel.unacked_restore_throttle,
             )
 
     def maybe_restore_messages(self):
         for channel in self._channels:
             if channel.active_queues:
                 # only need to do this once, as they are not local to channel.
-                return channel.qos.restore_visible(
-                    num=channel.unacked_restore_limit,
+                try:
+                    return channel.qos.restore_visible(
+                        num=channel.unacked_restore_limit,
+                        interval=channel.unacked_restore_throttle,
+                    )
+                except channel.connection_errors:
+                    # Connection is broken; skip this cycle and retry next tick.
+                    # The main polling loop handles reconnection independently.
+                    logger.debug(
+                        'maybe_restore_messages: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
+
+    def maybe_refresh_binding_expiry(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_refresh_binding_expiry()
+            except channel.connection_errors:
+                logger.debug('maybe_refresh_binding_expiry: connection '
+                             'error, will retry', exc_info=True)
+            except channel.ResponseError:
+                # Such as scripts refused on a full noeviction server, where
+                # BRPOP still works, so consuming goes on.
+                logger.warning('maybe_refresh_binding_expiry: Redis error, '
+                               'will retry', exc_info=True)
+
+    def maybe_check_subclient_health(self):
+        for channel in self._channels:
+            # only if subclient property is cached
+            client = channel.__dict__.get('subclient')
+            if client is not None \
+                    and callable(getattr(client, 'check_health', None)):
+                try:
+                    missed = getattr(
+                        client, 'health_check_response_counter', None)
+                    if isinstance(missed, int) and \
+                            missed >= SUBCLIENT_MAX_MISSED_HEALTH_CHECKS:
+                        # check_health() only *sends* PING; a half-open
+                        # socket accepts the write and the missing PONG is
+                        # never an error, so count unanswered pings and
+                        # drop the connection to force a resubscribe.
+                        warning(
+                            'Redis pub/sub connection missed %d health '
+                            'check responses; dropping stale connection',
+                            missed)
+                        client.health_check_response_counter = 0
+                        connection = client.connection
+                        if connection is not None:
+                            connection.disconnect()
+                        continue
+                    client.check_health()
+                except channel.connection_errors:
+                    logger.debug(
+                        'maybe_check_subclient_health: connection error, '
+                        'will retry on next cycle', exc_info=True
+                    )
+                    return
+
+    def maybe_check_brpop_health(self):
+        now = monotonic()
+        for channel in self._channels:
+            connection = channel._in_poll
+            if not connection or channel._brpop_sent_at is None \
+                    or not channel.brpop_timeout \
+                    or not channel.health_check_interval:
+                continue
+            # BRPOP is sent with a server-side timeout, so a live server
+            # always replies within ``brpop_timeout``.  A half-open socket
+            # never becomes readable and no socket timeout applies to the
+            # event loop, so drop the connection once the reply is overdue.
+            waited = now - channel._brpop_sent_at
+            if waited < channel.brpop_timeout + channel.health_check_interval:
+                continue
+            sock = getattr(connection, '_sock', None)
+            if sock is None or _socket_readable(sock):
+                continue
+            warning(
+                'Redis BRPOP got no reply for %.0f seconds; '
+                'dropping stale connection', waited)
+            connection.disconnect()
+
+    def maybe_reauth(self):
+        for channel in self._channels:
+            try:
+                channel.maybe_reauth()
+            except channel.connection_errors:
+                # Connection is broken; skip this cycle and retry next tick.
+                # Stop iterating to avoid repeated exceptions/log spam when
+                # the broker is down (channels share the broken connection).
+                logger.debug(
+                    'maybe_reauth: connection error, '
+                    'will retry on next cycle', exc_info=True
                 )
+                return
 
     def on_readable(self, fileno):
-        chan, type = self._fd_to_chan[fileno]
+        if fileno in self._paused_brpop:
+            return
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
+            return
+        chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
+        elif type == 'BRPOP':
+            if chan._in_poll:
+                self._pause_brpop(chan, fileno)
+            else:
+                # Nothing is expected without a pending BRPOP: the server
+                # closed the idle connection. Reconnect once credit returns.
+                chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
+        if fileno in self._paused_brpop:
+            return
+        chan_type = self._fd_to_chan.get(fileno)
+        if chan_type is None:
+            logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
+            return
         if event & READ:
             return self.on_readable(fileno), self
         elif event & ERR:
-            chan, type = self._fd_to_chan[fileno]
+            chan, type = chan_type
             chan._poll_error(type)
 
     def get(self, callback, timeout=None):
         self._in_protected_read = True
         try:
-            for channel in self._channels:
-                if channel.active_queues:           # BRPOP mode?
-                    if channel.qos.can_consume():
-                        self._register_BRPOP(channel)
-                if channel.active_fanout_queues:    # LISTEN mode?
-                    self._register_LISTEN(channel)
+            # Without an event loop there is no timer, so refresh here,
+            # before can_consume() can skip BRPOP below.
+            self.maybe_refresh_binding_expiry()
+            self.on_poll_start()
 
-            events = self.poller.poll(timeout)
+            if self._paused_brpop and not self.fds:
+                # select() cannot wait on empty sets on Windows. Also recheck
+                # credit periodically when drain_events has no timeout.
+                sleep(min(timeout, 1) if timeout is not None else 1)
+                events = []
+            else:
+                events = self.poller.poll(timeout)
             if events:
                 for fileno, event in events:
                     ret = self.handle_event(fileno, event)
                     if ret:
                         return
+            else:
+                # drain_events() consumers have no event loop timer to
+                # catch a half-open BRPOP connection.
+                self.maybe_check_brpop_health()
             # - no new data, so try to restore messages.
             # - reset active redis commands.
             self.maybe_restore_messages()
@@ -383,7 +1007,115 @@ class MultiChannelPoller(object):
 
     @property
     def fds(self):
-        return self._fd_to_chan
+        return {fd: chan for fd, chan in self._fd_to_chan.items()
+                if fd not in self._paused_brpop}
+
+
+def _batch_publish_retry_safe(connection_kwargs):
+    """Return whether Redis will execute a pipeline without retrying it."""
+    return not (
+        connection_kwargs.get('retry_on_timeout')
+        or connection_kwargs.get('retry_on_error')
+        or connection_kwargs.get('retry') is not None
+    )
+
+
+class PublishBatch:
+    """Buffer Redis publish commands in a non-transactional pipeline."""
+
+    def __init__(self, channel, max_size):
+        self.channel = channel
+        self.max_size = max_size
+        self._buffered = 0
+        self._collecting = None
+        self._failed = None
+        self._aborted = False
+        self._closed = False
+        self._stack = ExitStack()
+        try:
+            client = self._stack.enter_context(channel.conn_or_acquire())
+            self.pipeline = self._stack.enter_context(
+                client.pipeline(transaction=False),
+            )
+        except BaseException:
+            self._stack.close()
+            raise
+
+    def publish(self, message, **kwargs):
+        """Route one prepared message and buffer its final Redis commands."""
+        self._check_usable()
+        commands = []
+        self._collecting = commands
+        try:
+            result = self.channel.basic_publish(
+                message,
+                _publish_batch=self,
+                **kwargs,
+            )
+        finally:
+            self._collecting = None
+
+        if commands:
+            if self._buffered and self._buffered + len(commands) > self.max_size:
+                self.flush()
+            try:
+                for name, args in commands:
+                    getattr(self.pipeline, name)(*args)
+            except BaseException as exc:
+                self._failed = exc
+                self._buffered = 0
+                self.pipeline.reset()
+                raise
+            self._buffered += len(commands)
+            if self._buffered >= self.max_size:
+                self.flush()
+        return result
+
+    def add(self, name, *args):
+        """Add one final Redis command for the message being routed."""
+        if self._collecting is None:
+            raise RuntimeError('Redis publish command added outside publication')
+        self._collecting.append((name, args))
+
+    def flush(self):
+        """Execute all pending Redis commands once, without automatic retry."""
+        self._check_usable()
+        if not self._buffered:
+            return
+        try:
+            self.pipeline.execute()
+        except BaseException as exc:
+            self._failed = exc
+            self._buffered = 0
+            self.pipeline.reset()
+            if isinstance(exc, Exception):
+                raise BatchPublishError(
+                    'Redis publish batch failed; delivery is uncertain',
+                ) from exc
+            raise
+        self._buffered = 0
+
+    def discard(self):
+        """Discard commands that have not already been executed."""
+        self._aborted = True
+        self._buffered = 0
+        self.pipeline.reset()
+
+    def close(self):
+        """Reset the pipeline and release its resources."""
+        if not self._closed:
+            self._closed = True
+            self._stack.close()
+
+    def _check_usable(self):
+        if self._closed:
+            raise RuntimeError('Redis publish batch is closed')
+        if self._aborted:
+            raise RuntimeError('Redis publish batch is aborted')
+        if self._failed is not None:
+            raise BatchPublishError(
+                'Redis publish batch cannot be reused after a previous failure',
+            ) from self._failed
 
 
 class Channel(virtual.Channel):
@@ -396,9 +1128,12 @@ class Channel(virtual.Channel):
     _closing = False
     supports_fanout = True
     keyprefix_queue = '_kombu.binding.%s'
+    keyprefix_binding_deadlines = '_kombu.binding_deadlines'
+    keyprefix_binding_permanent = '_kombu.binding_permanent.%s'
     keyprefix_fanout = '/{db}.'
     sep = '\x06\x16'
     _in_poll = False
+    _brpop_sent_at = None
     _in_listen = False
     _fanout_queues = {}
     ack_emulation = True
@@ -407,13 +1142,34 @@ class Channel(virtual.Channel):
     unacked_mutex_key = 'unacked_mutex'
     unacked_mutex_expire = 300  # 5 minutes
     unacked_restore_limit = None
+    #: Seconds between periodic ``restore_visible`` sweeps in the async
+    #: (event loop / prefork) path.  Lower this to recover abandoned messages
+    #: faster when using a low ``visibility_timeout``.
+    unacked_restore_interval = 10
+    #: Only run an actual Redis scan on every Nth ``restore_visible`` call.
+    #: Protects the synchronous poll path (restore is attempted on every empty
+    #: poll) from hitting Redis too often.  Set to 1 to scan on every call.
+    #: Effective async sweep period is roughly
+    #: ``unacked_restore_interval * unacked_restore_throttle`` seconds.
+    unacked_restore_throttle = 10
     visibility_timeout = 3600   # 1 hour
     priority_steps = PRIORITY_STEPS
     socket_timeout = None
     socket_connect_timeout = None
     socket_keepalive = None
     socket_keepalive_options = None
+    retry_on_timeout = None
     max_connections = 10
+    health_check_interval = DEFAULT_HEALTH_CHECK_INTERVAL
+    client_name = None
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether pipelines can run without ambiguous write replay."""
+        return (
+            not self.retry_on_timeout
+            and _batch_publish_retry_safe(self.pool.connection_kwargs)
+        )
     #: Transport option to disable fanout keyprefix.
     #: Can also be string, in which case it changes the default
     #: prefix ('/{db}.') into to something else.  The prefix must
@@ -429,6 +1185,11 @@ class Channel(virtual.Channel):
     #: Enabled by default since Kombu 4.x.
     #: Disable for backwards compatibility with Kombu 3.x.
     fanout_patterns = True
+
+    #: The global key prefix will be prepended to all keys used
+    #: by Kombu, which can be useful when a redis database is shared
+    #: by different users. By default, no prefix is prepended.
+    global_keyprefix = ''
 
     #: Order in which we consume from queues.
     #:
@@ -469,26 +1230,40 @@ class Channel(virtual.Channel):
          'unacked_mutex_expire',
          'visibility_timeout',
          'unacked_restore_limit',
+         'unacked_restore_interval',
+         'unacked_restore_throttle',
          'fanout_prefix',
          'fanout_patterns',
+         'global_keyprefix',
          'socket_timeout',
          'socket_connect_timeout',
          'socket_keepalive',
          'socket_keepalive_options',
          'queue_order_strategy',
          'max_connections',
-         'priority_steps')  # <-- do not add comma here!
+         'health_check_interval',
+         'retry_on_timeout',
+         'priority_steps',
+         'client_name')  # <-- do not add comma here!
     )
 
     connection_class = redis.Connection if redis else None
+    connection_class_ssl = redis.SSLConnection if redis else None
 
     def __init__(self, *args, **kwargs):
-        super_ = super(Channel, self)
-        super_.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
-
+        self._registered = False
+        #: redis.Sentinel instance(s) created by :meth:`_sentinel_managed_pool`,
+        #: kept so their per-sentinel-node connections can be closed again in
+        #: :meth:`_disconnect_pools` (celery/kombu#1108).
+        self._sentinel_manager = None
+        self._async_sentinel_manager = None
+        self._expires = {}
+        self._binding_expiry_refreshed_at = float('-inf')
+        self._bindings_swept_at = float('-inf')
         self._queue_cycle = cycle_by_name(self.queue_order_strategy)()
         self.Client = self._get_client()
         self.ResponseError = self._get_response_error()
@@ -496,9 +1271,10 @@ class Channel(virtual.Channel):
         self.auto_delete_queues = set()
         self._fanout_to_queue = {}
         self.handlers = {'BRPOP': self._brpop_read, 'LISTEN': self._receive}
+        self.brpop_timeout = self.connection.brpop_timeout
 
         if self.fanout_prefix:
-            if isinstance(self.fanout_prefix, string_t):
+            if isinstance(self.fanout_prefix, str):
                 self.keyprefix_fanout = self.fanout_prefix
         else:
             # previous versions did not set a fanout, so cannot enable
@@ -513,6 +1289,9 @@ class Channel(virtual.Channel):
             raise
 
         self.connection.cycle.add(self)  # add to channel poller.
+        # and set to true after successfully added channel to the poll.
+        self._registered = True
+
         # copy errors, in case channel closed but threads still
         # are still waiting for data.
         self.connection_errors = self.connection.connection_errors
@@ -535,6 +1314,31 @@ class Channel(virtual.Channel):
         if async_pool is not None:
             async_pool.disconnect()
 
+        # Close the connections kombu opened to the Sentinel nodes
+        # themselves.  ``pool.disconnect()`` above only tears down the
+        # master/slave connection pool; every ``redis.Sentinel`` instance
+        # keeps its own pool per sentinel node which was previously left
+        # open (celery/kombu#1108): when a sentinel node goes away, kombu
+        # never closes the socket whose peer is gone, and those
+        # connections linger in CLOSE_WAIT until the file descriptor
+        # limit is reached.
+        manager = self._sentinel_manager
+        async_manager = self._async_sentinel_manager
+
+        self._sentinel_manager = self._async_sentinel_manager = None
+
+        for sentinel_manager in (manager, async_manager):
+            if sentinel_manager is not None and hasattr(sentinel_manager, 'close'):
+                # redis-py >= 8.1.0 provides Sentinel.close()
+                # (redis/redis-py#4184); older versions have no such API
+                # and keep the previous behaviour.  Both managers hold the
+                # same kind of synchronous ``redis.sentinel.Sentinel``:
+                # ``asynchronous=True`` only switches the master/slave
+                # connection class via ``_connparams`` and never creates a
+                # ``redis.asyncio`` Sentinel, so ``close()`` is the API to
+                # use for both (see review on celery/kombu#2631).
+                sentinel_manager.close()
+
     def _on_connection_disconnect(self, connection):
         if self._in_poll is connection:
             self._in_poll = None
@@ -544,32 +1348,41 @@ class Channel(virtual.Channel):
             self.connection.cycle._on_connection_disconnect(connection)
 
     def _do_restore_message(self, payload, exchange, routing_key,
-                            client=None, leftmost=False):
-        with self.conn_or_acquire(client) as client:
+                            pipe, leftmost=False):
+        try:
             try:
-                try:
-                    payload['headers']['redelivered'] = True
-                except KeyError:
-                    pass
-                for queue in self._lookup(exchange, routing_key):
-                    (client.lpush if leftmost else client.rpush)(
-                        queue, dumps(payload),
-                    )
-            except Exception:
-                crit('Could not restore message: %r', payload, exc_info=True)
+                payload['headers']['redelivered'] = True
+                payload['properties']['delivery_info']['redelivered'] = True
+            except KeyError:
+                pass
+            for queue in self._lookup(exchange, routing_key):
+                pri = self._get_message_priority(payload, reverse=False)
+
+                (pipe.lpush if leftmost else pipe.rpush)(
+                    self._q_for_pri(queue, pri), dumps(payload),
+                )
+        except self.connection_errors:
+            # Abort the transaction: it would otherwise remove the message
+            # from the unacked hash without requeueing it.
+            raise
+        except Exception:
+            crit('Could not restore message: %r', payload, exc_info=True)
 
     def _restore(self, message, leftmost=False):
         if not self.ack_emulation:
-            return super(Channel, self)._restore(message)
+            return super()._restore(message)
         tag = message.delivery_tag
-        with self.conn_or_acquire() as client:
-            with client.pipeline() as pipe:
-                P, _ = pipe.hget(self.unacked_key, tag) \
-                           .hdel(self.unacked_key, tag) \
-                           .execute()
+
+        def restore_transaction(pipe):
+            P = pipe.hget(self.unacked_key, tag)
+            pipe.multi()
+            pipe.hdel(self.unacked_key, tag)
             if P:
                 M, EX, RK = loads(bytes_to_str(P))  # json is unicode
-                self._do_restore_message(M, EX, RK, client, leftmost)
+                self._do_restore_message(M, EX, RK, pipe, leftmost)
+
+        with self.conn_or_acquire() as client:
+            client.transaction(restore_transaction, self.unacked_key)
 
     def _restore_at_beginning(self, message):
         return self._restore(message, leftmost=True)
@@ -579,7 +1392,7 @@ class Channel(virtual.Channel):
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
-        ret = super(Channel, self).basic_consume(queue, *args, **kwargs)
+        ret = super().basic_consume(queue, *args, **kwargs)
 
         # Update fair cycle between queues.
         #
@@ -623,7 +1436,7 @@ class Channel(virtual.Channel):
             self._fanout_to_queue.pop(exchange)
         except KeyError:
             pass
-        ret = super(Channel, self).basic_cancel(consumer_tag)
+        ret = super().basic_cancel(consumer_tag)
         self._update_queue_cycle()
         return ret
 
@@ -632,13 +1445,26 @@ class Channel(virtual.Channel):
             return ''.join([self.keyprefix_fanout, exchange, '/', routing_key])
         return ''.join([self.keyprefix_fanout, exchange])
 
+    def _get_publish_topics(self, exchange, routing_key):
+        """Return every PUB/SUB topic a fanout message is published to.
+
+        Subclasses can return additional topics when the same message
+        has to reach subscribers that use a different topic layout.
+        """
+        return [self._get_publish_topic(exchange, routing_key)]
+
     def _get_subscribe_topic(self, queue):
         exchange, routing_key = self._fanout_queues[queue]
         return self._get_publish_topic(exchange, routing_key)
 
+    def _get_subscribe_topics(self, queue):
+        exchange, routing_key = self._fanout_queues[queue]
+        return self._get_publish_topics(exchange, routing_key)
+
     def _subscribe(self):
-        keys = [self._get_subscribe_topic(queue)
-                for queue in self.active_fanout_queues]
+        keys = [topic
+                for queue in self.active_fanout_queues
+                for topic in self._get_subscribe_topics(queue)]
         if not keys:
             return
         c = self.subclient
@@ -648,22 +1474,26 @@ class Channel(virtual.Channel):
         c.psubscribe(keys)
 
     def _unsubscribe_from(self, queue):
-        topic = self._get_subscribe_topic(queue)
+        topics = self._get_subscribe_topics(queue)
         c = self.subclient
         if c.connection and c.connection._sock:
-            c.unsubscribe([topic])
+            # topics were registered with PSUBSCRIBE, so only PUNSUBSCRIBE
+            # removes them again.
+            c.punsubscribe(topics)
 
     def _handle_message(self, client, r):
-        if bytes_to_str(r[0]) == 'unsubscribe' and r[2] == 0:
-            client.subscribed = False
-            return
-
-        if bytes_to_str(r[0]) == 'pmessage':
-            type, pattern, channel, data = r[0], r[1], r[2], r[3]
+        message_type = bytes_to_str(r[0])
+        if message_type == 'pmessage':
+            pattern, channel, data = r[1], r[2], r[3]
         else:
-            type, pattern, channel, data = r[0], None, r[1], r[2]
+            pattern, channel, data = None, r[1], r[2]
+        if message_type in ('unsubscribe', 'punsubscribe'):
+            # Let redis-py update its own subscription bookkeeping, so that
+            # ``client.subscribed`` is cleared once nothing is left and a
+            # cancelled pattern is not re-subscribed to on reconnect.
+            client.handle_message(r)
         return {
-            'type': type,
+            'type': r[0],
             'pattern': pattern,
             'channel': channel,
             'data': data,
@@ -676,9 +1506,8 @@ class Channel(virtual.Channel):
             ret.append(self._receive_one(c))
         except Empty:
             pass
-        if c.connection is not None:
-            while c.connection.can_read(timeout=0):
-                ret.append(self._receive_one(c))
+        while c.connection is not None and c.connection.can_read(timeout=0):
+            ret.append(self._receive_one(c))
         return any(ret)
 
     def _receive_one(self, c):
@@ -688,7 +1517,7 @@ class Channel(virtual.Channel):
         except self.connection_errors:
             self._in_listen = None
             raise
-        if response is not None:
+        if isinstance(response, (list, tuple)):
             payload = self._handle_message(c, response)
             if bytes_to_str(payload['type']).endswith('message'):
                 channel = bytes_to_str(payload['channel'])
@@ -698,23 +1527,35 @@ class Channel(virtual.Channel):
                     try:
                         message = loads(bytes_to_str(payload['data']))
                     except (TypeError, ValueError):
-                        warn('Cannot process event on channel %r: %s',
-                             channel, repr(payload)[:4096], exc_info=1)
+                        warning('Cannot process event on channel %r: %s',
+                                channel, repr(payload)[:4096], exc_info=1)
                         raise Empty()
                     exchange = channel.split('/', 1)[0]
-                    self.connection._deliver(
-                        message, self._fanout_to_queue[exchange])
-                    return True
+                    return self._deliver_fanout_message(message, exchange)
 
-    def _brpop_start(self, timeout=1):
+    def _deliver_fanout_message(self, message, exchange):
+        """Deliver a decoded fanout *message* received for *exchange*.
+
+        Returns True once the message has been delivered.
+        """
+        self.connection._deliver(message, self._fanout_to_queue[exchange])
+        return True
+
+    def _brpop_start(self, timeout=None):
+        if timeout is None:
+            timeout = self.brpop_timeout
         queues = self._queue_cycle.consume(len(self.active_queues))
         if not queues:
             return
-        _q_for_pri = self._queue_for_priority
-        keys = [_q_for_pri(queue, pri) for pri in self.priority_steps
+        keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
+        command_args = ['BRPOP', *keys]
+        if self.global_keyprefix:
+            command_args = self.client._prefix_args(command_args)
+
+        self.client.connection.send_command(*command_args)
         self._in_poll = self.client.connection
-        self.client.connection.send_command('BRPOP', *keys)
+        self._brpop_sent_at = monotonic()
 
     def _brpop_read(self, **options):
         try:
@@ -727,6 +1568,16 @@ class Channel(virtual.Channel):
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
                 raise
+            except self.ResponseError as exc:
+                if not str(exc).startswith('UNBLOCKED'):
+                    raise
+                # The server ended the blocking pop: the node became a
+                # replica, or an operator sent CLIENT UNBLOCK <id> ERROR.
+                # Both are handled as a lost connection (see ReadOnlyError
+                # in get_redis_error_classes()), so don't narrow this to
+                # the replica message.
+                self.client.connection.disconnect()
+                raise exceptions.ConnectionError(str(exc)) from exc
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
@@ -737,6 +1588,10 @@ class Channel(virtual.Channel):
                 raise Empty()
         finally:
             self._in_poll = None
+            # The BRPOP connection is now idle (its reply has been fully
+            # consumed and no new BRPOP has been issued yet): this is the
+            # safe moment to flush any pending streaming re-auth token.
+            self._flush_brpop_reauth()
 
     def _poll_error(self, type, **options):
         if type == 'LISTEN':
@@ -744,57 +1599,229 @@ class Channel(virtual.Channel):
         else:
             self.client.parse_response(self.client.connection, type)
 
+    @staticmethod
+    def _pending_reauth_token(connection):
+        """Return a streaming re-auth token stored on ``connection``, if any.
+
+        redis-py's :class:`~redis.event.RegisterReAuthForPooledConnections`
+        listener calls ``Connection.set_re_auth_token`` for every *in-use*
+        pooled connection whenever a
+        :class:`~redis.credentials.StreamingCredentialProvider` emits a fresh
+        token.  The token is stored on the connection and only turned into an
+        actual ``AUTH`` command when the connection is released back to the
+        pool.  We key off this attribute so that we do not have to couple to
+        the credential provider itself; it is only ever set when streaming
+        re-authentication is in effect.
+        """
+        if connection is None:
+            return None
+        return getattr(connection, '_re_auth_token', None)
+
+    @staticmethod
+    def _pubsub_reauth_handled_by_redis(connection):
+        """Whether redis-py re-authenticates ``connection`` itself.
+
+        redis-py only re-authenticates *subscribed* connections in place when
+        the RESP3 protocol has been negotiated (see
+        ``redis.event.RegisterReAuthForPubSub``); a RESP2 subscriber
+        connection cannot process an ``AUTH`` command at all.  When RESP3 is in
+        use we therefore leave the pub/sub connection to redis-py and avoid
+        interfering with it.
+        """
+        get_protocol = getattr(connection, 'get_protocol', None)
+        if get_protocol is not None:
+            protocol = get_protocol()
+        else:
+            protocol = getattr(connection, 'protocol', 2)
+        return str(protocol) == '3'
+
+    def maybe_reauth(self):
+        """Flush pending streaming re-auth tokens onto long-lived connections.
+
+        The transport holds two connections for the lifetime of the worker
+        that are never released back to the pool: the ``BRPOP`` connection
+        (used to consume from ordinary queues) and the pub/sub ``LISTEN``
+        connection (used to consume from fanout queues).  Because they are
+        never released, redis-py's release-triggered re-authentication never
+        fires for them, so a streaming credential provider's rotated tokens
+        never reach them and the broker eventually severs the connections when
+        the original credentials expire (e.g. the 12h limit imposed by AWS
+        ElastiCache with IAM auth).
+
+        This is called periodically from the event loop (a single thread), so
+        it can safely flush the tokens without racing the socket reads.
+        """
+        self._flush_brpop_reauth()
+        self._flush_listen_reauth()
+
+    def _flush_brpop_reauth(self):
+        """Send a pending re-auth token's ``AUTH`` on the BRPOP connection.
+
+        Only safe to do while no ``BRPOP`` command is in flight, otherwise the
+        ``AUTH`` reply would interleave with the blocking pop's reply.  We are
+        called both from the periodic timer and from :meth:`_brpop_read` (right
+        after a reply has been fully consumed), so the token is flushed at the
+        first idle moment after it is emitted.
+        """
+        if self._in_poll:
+            # A BRPOP is outstanding; retry at the next idle opportunity.
+            return
+        client = self.__dict__.get('client')  # only if property is cached
+        connection = getattr(client, 'connection', None)
+        if self._pending_reauth_token(connection) is None:
+            return
+        if getattr(connection, '_sock', None) is None:
+            # The socket is already down (e.g. a BRPOP connection error just
+            # disconnected it, or a previous flush failed).  ``re_auth`` would
+            # transparently reconnect a *fresh* socket via ``send_command``,
+            # but behind the poller's back: ``_register_BRPOP`` would then skip
+            # re-registering it (its ``_chan_to_sock`` entry survives the
+            # disconnect and ``_sock`` is no longer ``None``), so the new fd is
+            # never handed to the event loop and the channel silently stalls.
+            # Leave it to ``_register_BRPOP`` to reconnect *and* re-register;
+            # ``on_connect`` re-authenticates with the current credentials.
+            return
+        try:
+            connection.re_auth()
+        except self.connection_errors + (self.ResponseError,):
+            # The AUTH failed: a network/auth error (ConnectionError,
+            # AuthenticationError, ...) or a rejected token surfacing as a
+            # ResponseError.  Drop the socket so the next poll reconnects and
+            # authenticates with fresh credentials from the credential
+            # provider.  Also clear the stored token: ``re_auth`` only clears
+            # it on success, and once the socket is dropped the reconnect
+            # applies the current credentials via ``on_connect`` — re-sending
+            # this same (possibly expired/rejected) token in place would just
+            # fail again on every tick.  This runs from ``_brpop_read``'s
+            # ``finally`` block, so it must never raise.
+            warning('Redis streaming re-auth failed on BRPOP connection; '
+                    'reconnecting', exc_info=True)
+            try:
+                connection.set_re_auth_token(None)
+            except AttributeError:
+                pass
+            try:
+                connection.disconnect()
+            except self.connection_errors:
+                pass
+
+    def _flush_listen_reauth(self):
+        """Refresh credentials on the long-lived pub/sub (LISTEN) connection.
+
+        A subscribed RESP2 connection cannot process an ``AUTH`` command, so
+        the stored re-auth token can never be flushed in place.  Instead we
+        drop the connection; the poller reconnects and re-subscribes on the
+        next tick, authenticating with the current credentials from the
+        credential provider.  Fanout delivery is best-effort, so the brief
+        reconnect is far less disruptive than a broker-forced disconnect.
+
+        Under RESP3, redis-py re-authenticates pub/sub connections itself, so
+        we leave those untouched.
+        """
+        subclient = self.__dict__.get('subclient')  # only if property cached
+        connection = getattr(subclient, 'connection', None)
+        if self._pending_reauth_token(connection) is None:
+            return
+        if self._pubsub_reauth_handled_by_redis(connection):
+            return
+        logger.info('Refreshing Redis pub/sub connection to apply rotated '
+                    'streaming credentials')
+        # Clear the stored token first so we do not reconnect again on the
+        # next cycle, then drop the socket.  The poller re-registers the
+        # LISTEN connection and re-subscribes on the next tick.
+        try:
+            connection.set_re_auth_token(None)
+        except AttributeError:
+            pass
+        self._in_listen = None
+        connection.disconnect()
+
     def _get(self, queue):
         with self.conn_or_acquire() as client:
             for pri in self.priority_steps:
-                queue_name = self._queue_for_priority(queue, pri)
-                item = client.rpop(queue_name)
+                item = client.rpop(self._q_for_pri(queue, pri))
                 if item:
+                    self._maybe_update_queues_expire(client, queue)
                     return loads(bytes_to_str(item))
+
+            self._maybe_update_queues_expire(client, queue)
             raise Empty()
 
     def _size(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    queue_name = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(queue_name)
+                    pipe = pipe.llen(self._q_for_pri(queue, pri))
                 sizes = pipe.execute()
-                size = sum(size for size in sizes
+                return sum(size for size in sizes
                            if isinstance(size, numbers.Integral))
-                return size
 
-    def _queue_for_priority(self, queue, pri):
+    def _q_for_pri(self, queue, pri):
         pri = self.priority(pri)
         if pri:
-            queue_args = (queue, self.sep, pri)
-        else:
-            queue_args = (queue, '', '')
-        priority_queue_name = '%s%s%s' % queue_args
-        return priority_queue_name
+            return f"{queue}{self.sep}{pri}"
+        return queue
 
     def priority(self, n):
         steps = self.priority_steps
         return steps[bisect(steps, n) - 1]
 
+    def create_publish_batch(self, max_size):
+        """Create a producer-scoped Redis publish batch."""
+        return PublishBatch(self, max_size)
+
     def _put(self, queue, message, **kwargs):
         """Deliver message."""
         pri = self._get_message_priority(message, reverse=False)
+        key = self._q_for_pri(queue, pri)
+        publish_batch = kwargs.pop('_publish_batch', None)
+
+        if publish_batch is not None:
+            publish_batch.add('lpush', key, dumps(message))
+            if self._expires and queue in self._expires:
+                for p in self.priority_steps:
+                    publish_batch.add(
+                        'pexpire',
+                        self._q_for_pri(queue, p),
+                        self._expires[queue],
+                    )
+            return
 
         with self.conn_or_acquire() as client:
-            client.lpush(self._queue_for_priority(queue, pri), dumps(message))
+            if self._expires and queue in self._expires:
+                with client.pipeline() as pipe:
+                    pipe.lpush(key, dumps(message))
+                    for p in self.priority_steps:
+                        pipe.pexpire(self._q_for_pri(queue, p), self._expires[queue])
+                    pipe.execute()
+            else:
+                client.lpush(key, dumps(message))
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
         """Deliver fanout message."""
+        publish_batch = kwargs.pop('_publish_batch', None)
+        topics = self._get_publish_topics(exchange, routing_key)
+        payload = dumps(message)
+        if publish_batch is not None:
+            for topic in topics:
+                publish_batch.add('publish', topic, payload)
+            return
         with self.conn_or_acquire() as client:
-            client.publish(
-                self._get_publish_topic(exchange, routing_key),
-                dumps(message),
-            )
+            for topic in topics:
+                client.publish(topic, payload)
 
     def _new_queue(self, queue, auto_delete=False, **kwargs):
         if auto_delete:
             self.auto_delete_queues.add(queue)
+
+        expire = self._get_queue_expire(kwargs)
+        if expire is not None:
+            self._expires[queue] = expire
+        else:
+            # If the queue is redeclared without an expiration, ensure that
+            # any previous expiration configuration is cleared so that
+            # stale TTLs are not applied unexpectedly.
+            self._expires.pop(queue, None)
 
     def _queue_bind(self, exchange, routing_key, pattern, queue):
         if self.typeof(exchange).type == 'fanout':
@@ -802,29 +1829,137 @@ class Channel(virtual.Channel):
             self._fanout_queues[queue] = (
                 exchange, routing_key.replace('#', '*'),
             )
+        key = self.keyprefix_queue % (exchange,)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire() as client:
-            client.sadd(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            if queue in self._expires:
+                self._refresh_binding(
+                    keys=[key, self._script_binding_deadlines],
+                    args=[member, exchange, self._binding_ttl(queue)],
+                    client=client)
+            else:
+                with client.pipeline() as pipe:
+                    pipe.sadd(key, member)
+                    # The sweep keeps the table while this set has members.
+                    pipe.sadd(self.keyprefix_binding_permanent % (exchange,),
+                              member)
+                    pipe.execute()
+
+    @cached_property
+    def _refresh_binding(self):
+        return self._create_client().register_script(REFRESH_BINDING)
+
+    @cached_property
+    def _sweep_bindings(self):
+        return self._create_client().register_script(SWEEP_BINDINGS)
+
+    @property
+    def _script_binding_deadlines(self):
+        # The prefixed client prefixes only the first key of an EVALSHA.
+        return self.global_keyprefix + self.keyprefix_binding_deadlines
+
+    def _binding_ttl(self, queue):
+        return max(self._expires[queue] * BINDING_EXPIRES_FACTOR,
+                   MIN_BINDING_TTL)
+
+    def sweep_bindings(self, limit=100):
+        """Delete binding tables that no consumer refreshed in time.
+
+        Returns the number of tables removed from the deadline set.
+        """
+        prefixes = [self.global_keyprefix + keyprefix % ('',) for keyprefix in
+                    (self.keyprefix_queue, self.keyprefix_binding_permanent)]
+        with self.conn_or_acquire() as client:
+            return self._sweep_bindings(
+                keys=[self.keyprefix_binding_deadlines],
+                args=[*prefixes, limit], client=client)
+
+    def maybe_refresh_binding_expiry(self):
+        """Keep the binding tables of consumed, expiring queues alive.
+
+        Also sweeps overdue tables at most every BINDING_SWEEP_INTERVAL
+        seconds, so a channel consuming an expiring queue cleans up after
+        stopped ones. A channel without one runs no script.
+        """
+        queues = [q for q in self._active_queues if q in self._expires]
+        if not queues:
+            return
+        now = monotonic()
+        refresh_every = min(self._binding_ttl(q) for q in queues) / 1000 / 3
+        # Refresh first, so a sweep never deletes this channel's own tables.
+        if now - self._binding_expiry_refreshed_at >= refresh_every:
+            self._refresh_bindings(queues)
+            self._binding_expiry_refreshed_at = now
+        if now - self._bindings_swept_at >= BINDING_SWEEP_INTERVAL:
+            self.sweep_bindings()
+            self._bindings_swept_at = now
+
+    def _refresh_bindings(self, queues):
+        with self.conn_or_acquire() as client:
+            with client.pipeline() as pipe:
+                for queue in queues:
+                    for exchange, routing_key, args in \
+                            self.state.queue_bindings(queue):
+                        # Passing the member re-creates a wiped table.
+                        _, pattern, _ = self.typeof(exchange).prepare_bind(
+                            queue, exchange, routing_key, args)
+                        self._refresh_binding(
+                            keys=[self.keyprefix_queue % (exchange,),
+                                  self._script_binding_deadlines],
+                            args=[self.sep.join(
+                                [routing_key or '', pattern or '', queue]),
+                                exchange, self._binding_ttl(queue)],
+                            client=pipe)
+                pipe.execute()
+
+    def _maybe_update_queues_expire(self, client, queue):
+        """Update expiration on queue keys.
+
+        For each queue, set expiration time in milliseconds.
+        Will only be set if x-expires argument was provided when creating the queue.
+        """
+        if not self._expires or queue not in self._expires:
+            return
+
+        with client.pipeline() as pipe:
+            for priority in self.priority_steps:
+                pipe = pipe.pexpire(self._q_for_pri(queue, priority), self._expires[queue])
+            pipe.execute()
+
+    def _get_queue_expire(self, args):
+        """Get expiration header named `x-expires` of queue definition.
+
+        Returns expiration time in milliseconds or None if not set.
+
+        Arguments:
+        ---------
+            args (dict): Queue arguments dictionary
+        """
+        try:
+            value = args['arguments']['x-expires']
+            return int(value)
+        except (KeyError, TypeError, ValueError):
+            return None
+
+    def prepare_queue_arguments(self, arguments, **kwargs):
+        return to_rabbitmq_queue_arguments(arguments, **kwargs)
 
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         self.auto_delete_queues.discard(queue)
+        member = self.sep.join([routing_key or '', pattern or '', queue or ''])
         with self.conn_or_acquire(client=kwargs.get('client')) as client:
-            client.srem(self.keyprefix_queue % (exchange,),
-                        self.sep.join([routing_key or '',
-                                       pattern or '',
-                                       queue or '']))
+            client.srem(self.keyprefix_queue % (exchange,), member)
+            client.srem(self.keyprefix_binding_permanent % (exchange,), member)
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.delete(self._queue_for_priority(queue, pri))
+                    pipe = pipe.delete(self._q_for_pri(queue, pri))
                 pipe.execute()
 
     def _has_queue(self, queue, **kwargs):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    pipe = pipe.exists(self._queue_for_priority(queue, pri))
+                    pipe = pipe.exists(self._q_for_pri(queue, pri))
                 return any(pipe.execute())
 
     def get_table(self, exchange):
@@ -832,63 +1967,31 @@ class Channel(virtual.Channel):
         with self.conn_or_acquire() as client:
             values = client.smembers(key)
             if not values:
-                raise InconsistencyError(NO_ROUTE_ERROR.format(exchange, key))
+                # table does not exists since all queues bound to the exchange
+                # were deleted. We need just return empty list.
+                return []
             return [tuple(bytes_to_str(val).split(self.sep)) for val in values]
-
-    def _lookup(self, exchange, routing_key, default=None):
-        """Find all queues matching `routing_key` for the given `exchange`.
-
-        Returns:
-            str: queue name -- must return the string `default`
-                if no queues matched.
-        """
-        pattern = ''
-        result = []
-        if default is None:
-            default = self.deadletter_queue
-        if not exchange:  # anon exchange
-            return [routing_key or default]
-
-        queue = routing_key
-        redis_key = self.keyprefix_queue % exchange
-        try:
-            queue_bind = self.sep.join([
-                routing_key or '',
-                pattern,
-                queue or '',
-            ])
-            with self.conn_or_acquire() as client:
-                if not client.scard(redis_key):
-                    pass  # Do not check if its a member because set is empty
-                elif client.sismember(redis_key, queue_bind):
-                    result = [queue]
-        except KeyError:
-            pass
-
-        if not result:
-            if default is not None:
-                warnings.warn(UndeliverableWarning(UNDELIVERABLE_FMT.format(
-                    exchange=exchange, routing_key=routing_key)),
-                )
-                self._new_queue(default)
-                result = [default]
-            else:
-                raise InconsistencyError(NO_ROUTE_ERROR.format(
-                    exchange, redis_key))
-
-        return result
 
     def _purge(self, queue):
         with self.conn_or_acquire() as client:
             with client.pipeline() as pipe:
                 for pri in self.priority_steps:
-                    priority_queue = self._queue_for_priority(queue, pri)
-                    pipe = pipe.llen(priority_queue).delete(priority_queue)
+                    priq = self._q_for_pri(queue, pri)
+                    pipe = pipe.llen(priq).delete(priq)
                 sizes = pipe.execute()
                 return sum(sizes[::2])
 
     def close(self):
+        # The drain and the fanout cleanup need the server.  If it is gone,
+        # skip them and still close: a channel left open is closed again
+        # later, possibly after Connection.collect() detached the transport
+        # it needs (celery/celery#11054).
         self._closing = True
+        if self._in_poll:
+            try:
+                self._brpop_read()
+            except (Empty,) + self.connection_errors:
+                pass
         if not self.closed:
             # remove from channel poller.
             self.connection.cycle.discard(self)
@@ -896,12 +1999,15 @@ class Channel(virtual.Channel):
             # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
             if client is not None:
-                for queue in self._fanout_queues:
-                    if queue in self.auto_delete_queues:
-                        self.queue_delete(queue, client=client)
+                try:
+                    for queue in self._fanout_queues:
+                        if queue in self.auto_delete_queues:
+                            self.queue_delete(queue, client=client)
+                except self.connection_errors:
+                    pass
             self._disconnect_pools()
             self._close_clients()
-        super(Channel, self).close()
+        super().close()
 
     def _close_clients(self):
         # Close connections
@@ -923,7 +2029,7 @@ class Channel(virtual.Channel):
                 vhost = int(vhost)
             except ValueError:
                 raise ValueError(
-                    'Database is int between 0 and limit - 1, not {0}'.format(
+                    'Database is int between 0 and limit - 1, not {}'.format(
                         vhost,
                     ))
         return vhost
@@ -932,30 +2038,72 @@ class Channel(virtual.Channel):
                                socket_keepalive_options=None, **params):
         return params
 
+    def _process_credential_provider(self, credential_provider, connparams):
+        if credential_provider:
+            if isinstance(credential_provider, str):
+                credential_provider_cls = symbol_by_name(credential_provider)
+                credential_provider = credential_provider_cls()
+
+            if not isinstance(credential_provider, CredentialProvider):
+                raise ValueError(
+                    "Credential provider is not an instance of a redis.CredentialProvider or a subclass"
+                )
+
+            connparams['credential_provider'] = credential_provider
+            # drop username and password if credential provider is configured
+            connparams.pop("username", None)
+            connparams.pop("password", None)
+
     def _connparams(self, asynchronous=False):
         conninfo = self.connection.client
         connparams = {
             'host': conninfo.hostname or '127.0.0.1',
             'port': conninfo.port or self.connection.default_port,
             'virtual_host': conninfo.virtual_host,
+            'username': conninfo.userid,
             'password': conninfo.password,
             'max_connections': self.max_connections,
             'socket_timeout': self.socket_timeout,
             'socket_connect_timeout': self.socket_connect_timeout,
             'socket_keepalive': self.socket_keepalive,
             'socket_keepalive_options': self.socket_keepalive_options,
+            'health_check_interval': self.health_check_interval,
+            'retry_on_timeout': self.retry_on_timeout,
+            'client_name': self.client_name,
         }
+
+        self._process_credential_provider(conninfo.credential_provider, connparams)
+
+        conn_class = self.connection_class
+
+        # If the connection class does not support the `health_check_interval`
+        # argument then remove it.
+        if hasattr(conn_class, '__init__'):
+            # Check the class and its direct bases (but skip `object`: `inspect` may report
+            # `object.__init__` as accepting **kwargs, which would otherwise match anything).
+            classes = [conn_class]
+            if hasattr(conn_class, '__bases__'):
+                classes += [b for b in conn_class.__bases__ if b is not object]
+            for klass in classes:
+                arg_spec = inspect.getfullargspec(klass.__init__)
+                if ('health_check_interval' in arg_spec.args
+                        or 'health_check_interval' in arg_spec.kwonlyargs
+                        or arg_spec.varkw is not None):
+                    break
+            else:  # no break
+                connparams.pop('health_check_interval')
+
         if conninfo.ssl:
             # Connection(ssl={}) must be a dict containing the keys:
             # 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_certfile', 'ssl_keyfile'
             try:
                 connparams.update(conninfo.ssl)
-                connparams['connection_class'] = redis.SSLConnection
+                connparams['connection_class'] = self.connection_class_ssl
             except TypeError:
                 pass
         host = connparams['host']
         if '://' in host:
-            scheme, _, _, _, password, path, query = _parse_url(host)
+            scheme, _, _, username, password, path, query = _parse_url(host)
             if scheme == 'socket':
                 connparams = self._filter_tcp_connparams(**connparams)
                 connparams.update({
@@ -965,7 +2113,12 @@ class Channel(virtual.Channel):
                 connparams.pop('socket_connect_timeout', None)
                 connparams.pop('socket_keepalive', None)
                 connparams.pop('socket_keepalive_options', None)
+            connparams['username'] = username
             connparams['password'] = password
+
+            # credential provider as query string
+            credential_provider = query.pop("credential_provider", None)
+            self._process_credential_provider(credential_provider, connparams)
 
             connparams.pop('host', None)
             connparams.pop('port', None)
@@ -980,9 +2133,12 @@ class Channel(virtual.Channel):
 
         if asynchronous:
             class Connection(connection_cls):
-                def disconnect(self):
-                    super(Connection, self).disconnect()
-                    channel._on_connection_disconnect(self)
+                def disconnect(self, *args, **kwargs):
+                    super().disconnect(*args, **kwargs)
+                    # We remove the connection from the poller
+                    # only if it has been added properly.
+                    if channel._registered:
+                        channel._on_connection_disconnect(self)
             connection_cls = Connection
 
         connparams['connection_class'] = connection_cls
@@ -991,8 +2147,20 @@ class Channel(virtual.Channel):
 
     def _create_client(self, asynchronous=False):
         if asynchronous:
-            return self.Client(connection_pool=self.async_pool)
-        return self.Client(connection_pool=self.pool)
+            client_kwargs = {'connection_pool': self.async_pool}
+            credential_provider = self.async_pool.connection_kwargs.get(
+                'credential_provider',
+            )
+            if credential_provider is not None:
+                client_kwargs['credential_provider'] = credential_provider
+            return self.Client(**client_kwargs)
+        client_kwargs = {'connection_pool': self.pool}
+        credential_provider = self.pool.connection_kwargs.get(
+            'credential_provider',
+        )
+        if credential_provider is not None:
+            client_kwargs['credential_provider'] = credential_provider
+        return self.Client(**client_kwargs)
 
     def _get_pool(self, asynchronous=False):
         params = self._connparams(asynchronous=asynchronous)
@@ -1000,11 +2168,19 @@ class Channel(virtual.Channel):
         return redis.ConnectionPool(**params)
 
     def _get_client(self):
-        if redis.VERSION < (3, 2, 0):
+        # Keep in sync with requirements/extras/redis.txt.
+        if redis.VERSION < (6, 1, 0):
             raise VersionMismatch(
-                'Redis transport requires redis-py versions 3.2.0 or later. '
+                'Redis transport requires redis-py versions 6.1.0 or later. '
                 'You have {0.__version__}'.format(redis))
-        return redis.StrictRedis
+
+        if self.global_keyprefix:
+            return functools.partial(
+                PrefixedStrictRedis,
+                global_keyprefix=self.global_keyprefix,
+            )
+
+        return redis.Redis
 
     @contextmanager
     def conn_or_acquire(self, client=None):
@@ -1045,9 +2221,11 @@ class Channel(virtual.Channel):
 
     @property
     def active_queues(self):
-        """Set of queues being consumed from (excluding fanout queues)."""
-        return {queue for queue in self._active_queues
-                if queue not in self.active_fanout_queues}
+        """List of queues being consumed from (excluding fanout queues)."""
+        return list(dict.fromkeys(
+            queue for queue in self._active_queues
+            if queue not in self.active_fanout_queues
+        ))
 
 
 class Transport(virtual.Transport):
@@ -1056,24 +2234,41 @@ class Transport(virtual.Transport):
     Channel = Channel
 
     polling_interval = None  # disable sleep between unsuccessful polls.
+    brpop_timeout = 1
     default_port = DEFAULT_PORT
     driver_type = 'redis'
     driver_name = 'redis'
 
     implements = virtual.Transport.implements.extend(
         asynchronous=True,
-        exchange_type=frozenset(['direct', 'topic', 'fanout'])
+        batch_publish=True,
+        exchange_type=frozenset(['direct', 'topic', 'fanout']),
     )
+
+    @property
+    def supports_batch_publish(self):
+        """Return whether configured timeout handling permits safe batching."""
+        if not _batch_publish_retry_safe(self.client.transport_options):
+            return False
+        hostname = self.client.hostname or ''
+        if '://' not in hostname:
+            return True
+        *_, query = _parse_url(hostname)
+        return _batch_publish_retry_safe(query)
+
+    if redis:
+        connection_errors, channel_errors = get_redis_error_classes()
 
     def __init__(self, *args, **kwargs):
         if redis is None:
             raise ImportError('Missing redis library (pip install redis)')
-        super(Transport, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
-        # Get redis-py exceptions.
-        self.connection_errors, self.channel_errors = self._get_errors()
         # All channels share the same poller.
         self.cycle = MultiChannelPoller()
+        # Use polling_interval to set brpop_timeout if provided, but do not modify polling_interval itself.
+        if self.polling_interval is not None:
+            self.brpop_timeout = self.polling_interval
 
     def driver_version(self):
         return redis.__version__
@@ -1084,25 +2279,90 @@ class Transport(virtual.Transport):
         cycle_poll_start = cycle.on_poll_start
         add_reader = loop.add_reader
         on_readable = self.on_readable
+        cycle._unregister_from_poll = loop.remove_reader
 
         def _on_disconnect(connection):
-            if connection._sock:
-                loop.remove(connection._sock)
+            cycle._discard_paused_connection(connection)
+            # redis-py clears connection._sock before calling us. Use existing
+            # registrations, without evaluating cached client/subclient properties.
+            disconnected = set()
+            for key in list(cycle._chan_to_sock):
+                channel, client, type = key
+                if client.connection is connection:
+                    del cycle._chan_to_sock[key]
+                    disconnected.add((channel, type))
+            for fd, channel_and_type in list(cycle._fd_to_chan.items()):
+                if channel_and_type in disconnected:
+                    loop.remove(fd)
+                    del cycle._fd_to_chan[fd]
+            # Keep on_poll_start registered so reconnected sockets are polled.
         cycle._on_connection_disconnect = _on_disconnect
 
         def on_poll_start():
             cycle_poll_start()
             [add_reader(fd, on_readable, fd) for fd in cycle.fds]
         loop.on_tick.add(on_poll_start)
-        loop.call_repeatedly(10, cycle.maybe_restore_messages)
+
+        # Cancel stale timer entries from a previous connection before
+        # registering new ones. Without this, each reconnect accumulates
+        # an extra entry in hub.timer._queue; they all fire against the
+        # same cycle and can crash the event loop during reconnect.
+        for attr in ('_restore_messages_tref', '_subclient_health_tref',
+                     '_brpop_health_tref', '_reauth_tref',
+                     '_binding_expiry_tref'):
+            old_tref = getattr(cycle, attr, None)
+            if old_tref is not None:
+                old_tref.cancel()
+
+        restore_interval = connection.client.transport_options.get(
+            'unacked_restore_interval', Channel.unacked_restore_interval
+        )
+        if restore_interval <= 0:
+            restore_interval = Channel.unacked_restore_interval
+        cycle._restore_messages_tref = loop.call_repeatedly(
+            restore_interval, cycle.maybe_restore_messages
+        )
+        health_check_interval = connection.client.transport_options.get(
+            'health_check_interval',
+            DEFAULT_HEALTH_CHECK_INTERVAL
+        )
+        cycle._subclient_health_tref = loop.call_repeatedly(
+            health_check_interval,
+            cycle.maybe_check_subclient_health
+        )
+        cycle._brpop_health_tref = loop.call_repeatedly(
+            health_check_interval,
+            cycle.maybe_check_brpop_health
+        )
+        reauth_check_interval = connection.client.transport_options.get(
+            'reauth_check_interval',
+            DEFAULT_REAUTH_CHECK_INTERVAL
+        )
+        cycle._reauth_tref = loop.call_repeatedly(
+            reauth_check_interval,
+            cycle.maybe_reauth
+        )
+        cycle._binding_expiry_tref = loop.call_repeatedly(
+            1, cycle.maybe_refresh_binding_expiry
+        )
 
     def on_readable(self, fileno):
         """Handle AIO event for one of our file descriptors."""
         self.cycle.on_readable(fileno)
 
-    def _get_errors(self):
-        """Utility to import redis-py's exceptions at runtime."""
-        return get_redis_error_classes()
+
+if sentinel:
+    class SentinelManagedSSLConnection(
+            sentinel.SentinelManagedConnection,
+            redis.SSLConnection):
+        """Connect to a Redis server using Sentinel + TLS.
+
+        Use Sentinel to identify which Redis server is the current master
+        to connect to and when connecting to the Master server, use an
+        SSL Connection.
+        """
+
+        pass
 
 
 class SentinelChannel(Channel):
@@ -1110,24 +2370,67 @@ class SentinelChannel(Channel):
 
     Broker url is supposed to look like:
 
-    sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
+    .. code-block::
+
+        sentinel://0.0.0.0:26379;sentinel://0.0.0.0:26380/...
 
     where each sentinel is separated by a `;`.
 
     Other arguments for the sentinel should come from the transport options
-    (see :method:`Celery.connection` which is in charge of creating the
-    `Connection` object).
+    (see `transport_options` of :class:`~kombu.connection.Connection`).
 
     You must provide at least one option in Transport options:
      * `master_name` - name of the redis group to poll
+
+    Optional transport options:
+     * `sentinel_fanout_compat` - also use the fanout topic of kombu < 5.4.0
+       while performing a rolling upgrade, see :attr:`sentinel_fanout_compat`.
+
+    Example:
+    -------
+    .. code-block:: python
+
+        >>> import kombu
+        >>> c = kombu.Connection(
+             'sentinel://sentinel1:26379;sentinel://sentinel2:26379',
+             transport_options={'master_name': 'mymaster'}
+        )
+        >>> c.connect()
     """
 
     from_transport_options = Channel.from_transport_options + (
         'master_name',
         'min_other_sentinels',
-        'sentinel_kwargs')
+        'sentinel_kwargs',
+        'sentinel_fanout_compat')
 
     connection_class = sentinel.SentinelManagedConnection if sentinel else None
+    connection_class_ssl = SentinelManagedSSLConnection if sentinel else None
+
+    #: Also publish to, and subscribe on, the legacy fanout topic used by
+    #: kombu < 5.4.0 (literally ``/{db}.<exchange>``) in addition to the
+    #: current ``/<db>.<exchange>`` topic, so that participants running
+    #: either version keep exchanging broadcast messages (for example
+    #: Celery control commands) during a rolling upgrade.  A message that
+    #: arrives on both topics is delivered only once.
+    #:
+    #: Disabled by default; enable it via ``transport_options`` on every
+    #: upgraded worker and control client for the duration of the upgrade.
+    #:
+    #: .. versionadded:: 5.7.0
+    sentinel_fanout_compat = False
+
+    #: Number of recently delivered fanout messages remembered for
+    #: de-duplication while :attr:`sentinel_fanout_compat` is enabled.
+    _fanout_compat_dedup_size = 1000
+
+    #: The unformatted fanout prefix (``/{db}.``), captured before
+    #: :meth:`_get_pool` substitutes the database number into it.
+    _legacy_keyprefix_fanout = None
+
+    def __init__(self, *args, **kwargs):
+        self._seen_fanout_tags = OrderedDict()
+        super().__init__(*args, **kwargs)
 
     def _sentinel_managed_pool(self, asynchronous=False):
         connparams = self._connparams(asynchronous)
@@ -1141,7 +2444,8 @@ class SentinelChannel(Channel):
         for url in self.connection.client.alt:
             url = _parse_url(url)
             if url.scheme == 'sentinel':
-                sentinels.append((url.hostname, url.port))
+                port = url.port or self.connection.default_port
+                sentinels.append((url.hostname, port))
 
         # Fallback for when only one sentinel is provided.
         if not sentinels:
@@ -1153,15 +2457,101 @@ class SentinelChannel(Channel):
             sentinel_kwargs=getattr(self, 'sentinel_kwargs', None),
             **additional_params)
 
+        # Keep a reference to the Sentinel instance so that the
+        # connections it opened to the sentinel nodes can be closed again
+        # in :meth:`_disconnect_pools` (celery/kombu#1108).
+        if asynchronous:
+            self._async_sentinel_manager = sentinel_inst
+        else:
+            self._sentinel_manager = sentinel_inst
+
         master_name = getattr(self, 'master_name', None)
+
+        if master_name is None:
+            raise ValueError(
+                "'master_name' transport option must be specified."
+            )
+
+        master_kwargs = {
+            k: additional_params[k]
+            for k in ('username', 'password') if k in additional_params
+        }
 
         return sentinel_inst.master_for(
             master_name,
-            self.Client,
+            redis.Redis,
+            **master_kwargs,
         ).connection_pool
 
     def _get_pool(self, asynchronous=False):
+        params = self._connparams(asynchronous=asynchronous)
+        if self._legacy_keyprefix_fanout is None:
+            # kombu < 5.4.0 never substituted the database number into the
+            # sentinel fanout prefix, so older workers publish and listen
+            # on the literal '/{db}.' topic.  Keep the unformatted prefix
+            # so that ``sentinel_fanout_compat`` can still address them.
+            self._legacy_keyprefix_fanout = self.keyprefix_fanout
+        self.keyprefix_fanout = self.keyprefix_fanout.format(db=params['db'])
         return self._sentinel_managed_pool(asynchronous)
+
+    @property
+    def _fanout_compat_active(self):
+        """Whether fanout traffic must also use the legacy topic.
+
+        This is the case when :attr:`sentinel_fanout_compat` is enabled
+        and formatting the prefix actually changed it: with a custom
+        prefix that has no ``{db}`` placeholder, old and new workers
+        already share the same topic.
+        """
+        return bool(
+            self.sentinel_fanout_compat
+            and self._legacy_keyprefix_fanout is not None
+            and self._legacy_keyprefix_fanout != self.keyprefix_fanout
+        )
+
+    def _get_legacy_publish_topic(self, exchange, routing_key):
+        # Same layout as _get_publish_topic, using the unformatted prefix.
+        if routing_key and self.fanout_patterns:
+            return ''.join([
+                self._legacy_keyprefix_fanout, exchange, '/', routing_key,
+            ])
+        return ''.join([self._legacy_keyprefix_fanout, exchange])
+
+    def _get_publish_topics(self, exchange, routing_key):
+        topics = super()._get_publish_topics(exchange, routing_key)
+        if self._fanout_compat_active:
+            topics.append(
+                self._get_legacy_publish_topic(exchange, routing_key))
+        return topics
+
+    def _deliver_fanout_message(self, message, exchange):
+        if (self._fanout_compat_active and
+                self._is_duplicate_fanout_message(message, exchange)):
+            return False
+        return super()._deliver_fanout_message(message, exchange)
+
+    def _is_duplicate_fanout_message(self, message, exchange):
+        """Return True if *message* was already received on the other topic.
+
+        Every message published through kombu carries a unique
+        ``delivery_tag`` (see
+        :meth:`kombu.transport.virtual.Channel._inplace_augment_message`),
+        so seeing a tag again means the message arrived on both the
+        current and the legacy topic.  Messages without a tag cannot be
+        told apart and are never treated as duplicates.
+        """
+        try:
+            tag = message['properties']['delivery_tag']
+        except (KeyError, TypeError):
+            return False
+        key = (exchange, tag)
+        seen = self._seen_fanout_tags
+        if key in seen:
+            return True
+        seen[key] = None
+        if len(seen) > self._fanout_compat_dedup_size:
+            seen.popitem(last=False)
+        return False
 
 
 class SentinelTransport(Transport):

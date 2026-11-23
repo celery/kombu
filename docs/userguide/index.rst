@@ -16,3 +16,4 @@
     simple
     pools
     serialization
+    failover

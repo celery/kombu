@@ -1,3 +1,0 @@
-pylint:
-  disable:
-    - cyclic-import

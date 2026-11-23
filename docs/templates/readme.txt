@@ -10,12 +10,12 @@
 
 .. include:: ../includes/resources.txt
 
-.. |build-status| image:: https://secure.travis-ci.org/celery/kombu.png?branch=master
+.. |build-status| image:: https://github.com/celery/kombu/actions/workflows/ci.yaml/badge.svg
     :alt: Build status
-    :target: https://travis-ci.org/celery/kombu
+    :target: https://github.com/celery/kombu/actions/workflows/ci.yml
 
-.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=master
-    :target: https://codecov.io/github/celery/kombu?branch=master
+.. |coverage| image:: https://codecov.io/github/celery/kombu/coverage.svg?branch=main
+    :target: https://codecov.io/github/celery/kombu?branch=main
 
 .. |license| image:: https://img.shields.io/pypi/l/kombu.svg
     :alt: BSD License

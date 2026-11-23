@@ -32,22 +32,44 @@ The accept argument can also include MIME-types.
 
 Each option has its advantages and disadvantages.
 
-`json` -- JSON is supported in many programming languages, is now
-    a standard part of Python (since 2.6), and is fairly fast to
-    decode using the modern Python libraries such as `cjson` or
-    `simplejson`.
+`json` -- JSON is supported in many programming languages, is
+    a standard part of Python, and is fairly fast to
+    decode.
 
     The primary disadvantage to `JSON` is that it limits you to
     the following data types: strings, Unicode, floats, boolean,
-    dictionaries, and lists. Decimals and dates are notably missing.
+    dictionaries, lists, decimals, DjangoPromise, datetimes, dates,
+    time, bytes and UUIDs.
+
+    For dates, datetimes, UUIDs and bytes the serializer will generate
+    a dict that will later instruct the deserializer how to produce
+    the right type.
 
     Also, binary data will be transferred using Base64 encoding, which
     will cause the transferred data to be around 34% larger than an
-    encoding which supports native binary types.
+    encoding which supports native binary types. This will only happen
+    if the bytes object can't be decoded into utf8.
 
     However, if your data fits inside the above constraints and
     you need cross-language support, the default setting of `JSON`
     is probably your best choice.
+
+    If you need support for custom types, you can write serialize/deserialize
+    functions and register them as follows:
+
+    .. code-block:: python
+
+        from kombu.utils.json import register_type
+        from django.db.models import Model
+        from django.apps import apps
+
+        # Allow serialization of django models:
+        register_type(
+            Model,
+            "model",
+            lambda o: [o._meta.label, o.pk],
+            lambda o: apps.get_model(o[0]).objects.get(pk=o[1]),
+        )
 
 `pickle` -- If you have no desire to support any language other than
     Python, then using the `pickle` encoding will gain you
@@ -67,7 +89,7 @@ Each option has its advantages and disadvantages.
         to limit access to the broker so that untrusted
         parties do not have the ability to send messages!
 
-    By default Kombu uses pickle protocol 2, but this can be changed
+    By default Kombu uses pickle protocol 4, but this can be changed
     using the :envvar:`PICKLE_PROTOCOL` environment variable or by changing
     the global :data:`kombu.serialization.pickle_protocol` flag.
 

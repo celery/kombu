@@ -1,10 +1,10 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import logging
+from unittest.mock import Mock, patch
 
-from case import Mock, patch
+import pytest
 
-from kombu.five import bytes_if_py2
 from kombu.utils.debug import Logwrapped, setup_logging
 
 
@@ -32,12 +32,12 @@ class test_Logwrapped:
             assert W.instance is not None
             assert W.logger is logger
 
-            W.instance.__repr__ = lambda s: bytes_if_py2('foo')
+            W.instance.__repr__ = lambda s: 'foo'
             assert repr(W) == 'foo'
             W.instance.some_attr = 303
             assert W.some_attr == 303
 
-            W.instance.some_method.__name__ = bytes_if_py2('some_method')
+            W.instance.some_method.__name__ = 'some_method'
             W.some_method(1, 2, kw=1)
             W.instance.some_method.assert_called_with(1, 2, kw=1)
 
@@ -53,3 +53,63 @@ class test_Logwrapped:
             assert 'ident' in logger.debug.call_args[0][0]
 
             assert dir(W) == dir(W.instance)
+
+    def test_context_manager(self):
+        """Test that Logwrapped supports the context manager protocol.
+
+        Regression test for https://github.com/celery/kombu/issues/2422
+        """
+        with patch('kombu.utils.debug.get_logger'):
+            instance = Mock()
+            instance.__enter__ = Mock(return_value=instance)
+            instance.__exit__ = Mock(return_value=None)
+
+            W = Logwrapped(instance, 'kombu.test')
+
+            with W as ctx:
+                assert ctx is W
+
+            instance.__enter__.assert_called_once()
+            instance.__exit__.assert_called_once_with(None, None, None)
+
+    def test_context_manager_propagates_exception(self):
+        """Test that Logwrapped propagates exceptions through __exit__."""
+        with patch('kombu.utils.debug.get_logger'):
+            instance = Mock()
+            instance.__enter__ = Mock(return_value=instance)
+            instance.__exit__ = Mock(return_value=False)
+
+            W = Logwrapped(instance, 'kombu.test')
+
+            class TestError(Exception):
+                pass
+
+            with pytest.raises(TestError):
+                with W:
+                    raise TestError("test")
+
+            instance.__exit__.assert_called_once()
+            args = instance.__exit__.call_args[0]
+            assert args[0] is TestError
+            assert isinstance(args[1], TestError)
+
+    def test_context_manager_suppresses_exception(self):
+        """Test that Logwrapped suppresses exceptions when __exit__ returns True."""
+        with patch('kombu.utils.debug.get_logger'):
+            instance = Mock()
+            instance.__enter__ = Mock(return_value=instance)
+            instance.__exit__ = Mock(return_value=True)
+
+            W = Logwrapped(instance, 'kombu.test')
+
+            class TestError(Exception):
+                pass
+
+            # Exception should be suppressed because __exit__ returns True
+            with W:
+                raise TestError("this should be suppressed")
+
+            instance.__exit__.assert_called_once()
+            args = instance.__exit__.call_args[0]
+            assert args[0] is TestError
+            assert isinstance(args[1], TestError)

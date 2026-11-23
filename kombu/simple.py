@@ -1,26 +1,35 @@
 """Simple messaging interface."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import socket
-
 from collections import deque
+from queue import Empty
+from time import monotonic
+from typing import TYPE_CHECKING
 
-from . import entity
-from . import messaging
+from . import entity, messaging
 from .connection import maybe_channel
-from .five import Empty, monotonic
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 __all__ = ('SimpleQueue', 'SimpleBuffer')
 
 
-class SimpleBase(object):
+class SimpleBase:
     Empty = Empty
     _consuming = False
 
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
 
     def __init__(self, channel, producer, consumer, no_ack=False):
@@ -67,7 +76,7 @@ class SimpleBase(object):
                 remaining = timeout - elapsed
 
     def get_nowait(self):
-        m = self.queue.get(no_ack=self.no_ack)
+        m = self.queue.get(no_ack=self.no_ack, accept=self.consumer.accept)
         if not m:
             raise self.Empty()
         return m
@@ -118,7 +127,7 @@ class SimpleQueue(SimpleBase):
 
     def __init__(self, channel, name, no_ack=None, queue_opts=None,
                  queue_args=None, exchange_opts=None, serializer=None,
-                 compression=None, **kwargs):
+                 compression=None, accept=None):
         queue = name
         queue_opts = dict(self.queue_opts, **queue_opts or {})
         queue_args = dict(self.queue_args, **queue_args or {})
@@ -134,13 +143,13 @@ class SimpleQueue(SimpleBase):
         else:
             exchange = queue.exchange
             routing_key = queue.routing_key
-        consumer = messaging.Consumer(channel, queue)
+        consumer = messaging.Consumer(channel, queue, accept=accept)
         producer = messaging.Producer(channel, exchange,
                                       serializer=serializer,
                                       routing_key=routing_key,
                                       compression=compression)
-        super(SimpleQueue, self).__init__(channel, producer,
-                                          consumer, no_ack, **kwargs)
+        super().__init__(channel, producer,
+                         consumer, no_ack)
 
 
 class SimpleBuffer(SimpleQueue):
@@ -148,7 +157,8 @@ class SimpleBuffer(SimpleQueue):
 
     no_ack = True
     queue_opts = {'durable': False,
-                  'auto_delete': True}
+                  'auto_delete': True,
+                  'exclusive': True}
     exchange_opts = {'durable': False,
                      'delivery_mode': 'transient',
                      'auto_delete': True}

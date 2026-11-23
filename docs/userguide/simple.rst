@@ -32,10 +32,10 @@ This is equivalent to:
 
 .. code-block:: pycon
 
-    >>> from kombu.simple import SimpleQueue, SimpleBuffer
+    >>> from kombu.simple import SimpleBuffer
 
     >>> channel = connection.channel()
-    >>> queue = SimpleBuffer(channel)
+    >>> queue = SimpleBuffer(channel, 'mybuffer')
     >>> # ... do something with queue
     >>> channel.close()
     >>> queue.close()
@@ -61,7 +61,7 @@ to produce and consume logging messages:
     from kombu import Connection
 
 
-    class Logger(object):
+    class Logger:
 
         def __init__(self, connection, queue_name='log_queue',
                 serializer='json', compression=None):

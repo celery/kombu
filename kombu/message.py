@@ -1,11 +1,11 @@
 """Message class."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import sys
 
 from .compression import decompress
-from .exceptions import MessageStateError
-from .five import python_2_unicode_compatible, reraise, text_t
+from .exceptions import MessageStateError, reraise
 from .serialization import loads
 from .utils.functional import dictfilter
 
@@ -15,12 +15,11 @@ ACK_STATES = {'ACK', 'REJECTED', 'REQUEUED'}
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 
-@python_2_unicode_compatible
-class Message(object):
+class Message:
     """Base class for received messages.
 
     Keyword Arguments:
-
+    -----------------
         channel (ChannelT): If message was received, this should be the
             channel that the message was received on.
 
@@ -84,7 +83,7 @@ class Message(object):
             except Exception:
                 self.errors.append(sys.exc_info())
 
-        if not self.errors and postencode and isinstance(body, text_t):
+        if not self.errors and postencode and isinstance(body, str):
             try:
                 body = body.encode(postencode)
             except Exception:
@@ -104,7 +103,8 @@ class Message(object):
 
         This will remove the message from the queue.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -129,6 +129,10 @@ class Message(object):
     def ack_log_error(self, logger, errors, multiple=False):
         try:
             self.ack(multiple=multiple)
+        except BrokenPipeError as exc:
+            logger.critical("Couldn't ack %r, reason:%r",
+                            self.delivery_tag, exc, exc_info=True)
+            raise
         except errors as exc:
             logger.critical("Couldn't ack %r, reason:%r",
                             self.delivery_tag, exc, exc_info=True)
@@ -145,7 +149,8 @@ class Message(object):
 
         The message will be discarded by the server.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -163,10 +168,12 @@ class Message(object):
         """Reject this message and put it back on the queue.
 
         Warning:
+        -------
             You must not use this method as a means of selecting messages
             to process.
 
-        Raises:
+        Raises
+        ------
             MessageStateError: If the message has already been
                 acknowledged/requeued/rejected.
         """
@@ -186,6 +193,7 @@ class Message(object):
         Returning the original python structure sent by the publisher.
 
         Note:
+        ----
             The return value is memoized, use `_decode` to force
             re-evaluation.
         """
@@ -208,7 +216,7 @@ class Message(object):
         return self._decoded_cache if self._decoded_cache else self.decode()
 
     def __repr__(self):
-        return '<{0} object at {1:#x} with details {2!r}>'.format(
+        return '<{} object at {:#x} with details {!r}>'.format(
             type(self).__name__, id(self), dictfilter(
                 state=self._state,
                 content_type=self.content_type,

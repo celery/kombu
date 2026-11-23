@@ -1,8 +1,15 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from typing import Any
+
+from kombu.asynchronous.aws.sqs.connection import AsyncSQSConnection
 
 
-def connect_sqs(aws_access_key_id=None, aws_secret_access_key=None, **kwargs):
+def connect_sqs(
+    aws_access_key_id: str | None = None,
+    aws_secret_access_key: str | None = None,
+    **kwargs: Any
+) -> AsyncSQSConnection:
     """Return async connection to Amazon SQS."""
     from .sqs.connection import AsyncSQSConnection
     return AsyncSQSConnection(

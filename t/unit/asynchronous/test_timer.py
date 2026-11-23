@@ -1,13 +1,11 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from unittest.mock import Mock, patch
 
 import pytest
 
-from datetime import datetime
-
-from case import Mock, patch
-
 from kombu.asynchronous.timer import Entry, Timer, to_timestamp
-from kombu.five import bytes_if_py2
 
 
 class test_to_timestamp:
@@ -16,7 +14,7 @@ class test_to_timestamp:
         assert to_timestamp(3.13) == 3.13
 
     def test_datetime(self):
-        assert to_timestamp(datetime.utcnow())
+        assert to_timestamp(datetime.now(timezone.utc))
 
 
 class test_Entry:
@@ -100,7 +98,7 @@ class test_Timer:
             t.schedule.enter_after = Mock()
 
             myfun = Mock()
-            myfun.__name__ = bytes_if_py2('myfun')
+            myfun.__name__ = 'myfun'
             t.call_repeatedly(0.03, myfun)
 
             assert t.schedule.enter_after.call_count == 1
@@ -156,3 +154,27 @@ class test_Timer:
         tref = Mock()
         t.cancel(tref)
         tref.cancel.assert_called_with()
+
+
+class test_without_tzdata:
+
+    def test_import_with_no_time_zone_data(self, tmp_path):
+        # PYTHONTZPATH hides the system database; the tzdata package, when
+        # it is installed, has to be hidden as well.
+        import os
+        import subprocess
+        import sys
+        code = ("import sys; sys.modules['tzdata'] = None; "
+                "import kombu.asynchronous")
+        result = subprocess.run(
+            [sys.executable, '-c', code],
+            env=dict(os.environ, PYTHONTZPATH=str(tmp_path)),
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+
+    def test_naive_datetime_is_read_as_utc(self):
+        aware = datetime.now(timezone.utc) + timedelta(hours=1)
+        naive = aware.replace(tzinfo=None)
+        assert to_timestamp(naive) == pytest.approx(
+            to_timestamp(aware), abs=1)

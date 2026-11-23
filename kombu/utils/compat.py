@@ -1,39 +1,42 @@
 """Python Compatibility Utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import numbers
 import sys
-
-from functools import wraps
-
 from contextlib import contextmanager
-import importlib_metadata
+from functools import wraps
+from importlib import metadata as importlib_metadata
+from io import UnsupportedOperation
 
-from kombu.five import reraise
+from kombu.exceptions import reraise
 
-try:
-    from io import UnsupportedOperation
-    FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
-except ImportError:  # pragma: no cover
-    # Py2
-    FILENO_ERRORS = (AttributeError, ValueError)  # noqa
+FILENO_ERRORS = (AttributeError, ValueError, UnsupportedOperation)
 
 try:
     from billiard.util import register_after_fork
 except ImportError:  # pragma: no cover
     try:
-        from multiprocessing.util import register_after_fork  # noqa
+        from multiprocessing.util import register_after_fork
     except ImportError:
-        register_after_fork = None  # noqa
+        register_after_fork = None
 
-try:
-    from typing import NamedTuple
-except ImportError:
-    import collections
 
-    def NamedTuple(name, fields):
-        """Typed version of collections.namedtuple."""
-        return collections.namedtuple(name, [k for k, _ in fields])
+def get_gevent_concurrent_error():
+    """Lazily return gevent's ConcurrentObjectUseError, or None.
+
+    Evaluated at call time (not import time) so that it correctly handles
+    the common startup ordering where kombu is imported before gevent's
+    monkey-patching takes place.
+    """
+    if 'gevent' in sys.modules:
+        try:
+            from gevent.exceptions import ConcurrentObjectUseError
+            return ConcurrentObjectUseError
+        except ImportError:
+            pass
+    return None
+
 
 _environment = None
 
@@ -52,8 +55,9 @@ def _detect_environment():
     # ## -eventlet-
     if 'eventlet' in sys.modules:
         try:
-            from eventlet.patcher import is_monkey_patched as is_eventlet
             import socket
+
+            from eventlet.patcher import is_monkey_patched as is_eventlet
 
             if is_eventlet(socket):
                 return 'eventlet'
@@ -63,8 +67,9 @@ def _detect_environment():
     # ## -gevent-
     if 'gevent' in sys.modules:
         try:
-            from gevent import socket as _gsocket
             import socket
+
+            from gevent import socket as _gsocket
 
             if socket.socket is _gsocket.socket:
                 return 'gevent'
@@ -84,9 +89,18 @@ def detect_environment():
 
 def entrypoints(namespace):
     """Return setuptools entrypoints for namespace."""
+    if sys.version_info >= (3,10):
+        entry_points = importlib_metadata.entry_points(group=namespace)
+    else:
+        entry_points = importlib_metadata.entry_points()
+        try:
+            entry_points = entry_points.get(namespace, [])
+        except AttributeError:
+            entry_points = entry_points.select(group=namespace)
+
     return (
         (ep, ep.load())
-        for ep in importlib_metadata.entry_points().get(namespace, [])
+        for ep in entry_points
     )
 
 
@@ -94,6 +108,10 @@ def fileno(f):
     """Get fileno from file-like object."""
     if isinstance(f, numbers.Integral):
         return f
+    if f is None:
+        # Celery's iterate_file_descriptors_safely catches ValueError,
+        # not AttributeError, so a closed/missing fd must be ValueError.
+        raise ValueError('file descriptor is None')
     return f.fileno()
 
 

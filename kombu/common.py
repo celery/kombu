@@ -1,31 +1,23 @@
 """Common Utilities."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import os
 import socket
 import threading
-
 from collections import deque
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
-from uuid import uuid5, uuid4, uuid3, NAMESPACE_OID
+from uuid import NAMESPACE_OID, uuid3, uuid4, uuid5
 
 from amqp import ChannelError, RecoverableConnectionError
 
 from .entity import Exchange, Queue
-from .five import bytes_if_py2, range
 from .log import get_logger
 from .serialization import registry as serializers
+from .utils.compat import get_gevent_concurrent_error
 from .utils.uuid import uuid
-
-try:
-    from _thread import get_ident
-except ImportError:                             # pragma: no cover
-    try:                                        # noqa
-        from thread import get_ident            # noqa
-    except ImportError:                         # pragma: no cover
-        from dummy_thread import get_ident      # noqa
 
 __all__ = ('Broadcast', 'maybe_declare', 'uuid',
            'itermessages', 'send_reply',
@@ -48,8 +40,8 @@ def get_node_id():
 
 
 def generate_oid(node_id, process_id, thread_id, instance):
-    ent = bytes_if_py2('%x-%x-%x-%x' % (
-        node_id, process_id, thread_id, id(instance)))
+    ent = '{:x}-{:x}-{:x}-{:x}'.format(
+        node_id, process_id, thread_id, id(instance))
     try:
         ret = str(uuid3(NAMESPACE_OID, ent))
     except ValueError:
@@ -61,7 +53,7 @@ def oid_from(instance, threads=True):
     return generate_oid(
         get_node_id(),
         os.getpid(),
-        get_ident() if threads else 0,
+        threading.get_ident() if threads else 0,
         instance,
     )
 
@@ -75,13 +67,14 @@ class Broadcast(Queue):
     and both the queue and exchange is configured with auto deletion.
 
     Arguments:
+    ---------
         name (str): This is used as the name of the exchange.
         queue (str): By default a unique id is used for the queue
             name for every consumer.  You can specify a custom
             queue name here.
         unique (bool): Always create a unique queue
             even if a queue name is supplied.
-        **kwargs (Any): See :class:`~kombu.Queue` for a list
+        ``**kwargs`` (Any): See :class:`~kombu.Queue` for a list
             of additional keyword arguments supported.
     """
 
@@ -96,10 +89,10 @@ class Broadcast(Queue):
                  alias=None,
                  **kwargs):
         if unique:
-            queue = '{0}.{1}'.format(queue or 'bcast', uuid())
+            queue = '{}.{}'.format(queue or 'bcast', uuid())
         else:
-            queue = queue or 'bcast.{0}'.format(uuid())
-        super(Broadcast, self).__init__(
+            queue = queue or f'bcast.{uuid()}'
+        super().__init__(
             alias=alias or name,
             queue=queue,
             name=queue,
@@ -132,9 +125,9 @@ def _ensure_channel_is_bound(entity, channel):
     if not is_bound:
         if not channel:
             raise ChannelError(
-                "Cannot bind channel {} to entity {}".format(channel, entity))
+                f"Cannot bind channel {channel} to entity {entity}")
         entity = entity.bind(channel)
-        return entity
+    return entity
 
 
 def _maybe_declare(entity, channel):
@@ -143,10 +136,12 @@ def _maybe_declare(entity, channel):
 
     _ensure_channel_is_bound(entity, channel)
 
-    if channel is None:
+    if channel is None or channel.connection is None:
+        # If this was called from the `ensure()` method then the channel could have been invalidated
+        # and the correct channel was re-bound to the entity by calling the `entity.revive()` method.
         if not entity.is_bound:
             raise ChannelError(
-                "channel is None and entity {} not bound.".format(entity))
+                f"channel is None and entity {entity} not bound.")
         channel = entity.channel
 
     declared = ident = None
@@ -167,7 +162,17 @@ def _maybe_declare(entity, channel):
 
 
 def _imaybe_declare(entity, channel, **retry_policy):
-    _ensure_channel_is_bound(entity, channel)
+    entity = _ensure_channel_is_bound(entity, channel)
+
+    if not entity.channel.connection and getattr(channel, 'connection', None):
+        # The entity is still bound to a channel that was closed, e.g. when
+        # a Producer.publish() retry passes the exchange it declared before
+        # the reconnect: declare it on the channel we were given instead.
+        entity.revive(channel)
+
+    if not entity.channel.connection:
+        raise RecoverableConnectionError('channel disconnected')
+
     return entity.channel.connection.client.ensure(
         entity, _maybe_declare, **retry_policy)(entity, channel)
 
@@ -208,7 +213,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
 
     ``eventloop`` is a generator.
 
-    Examples:
+    Examples
+    --------
         >>> from kombu.common import eventloop
 
         >>> def run(conn):
@@ -224,7 +230,8 @@ def eventloop(conn, limit=None, timeout=None, ignore_timeouts=False):
         for _ in eventloop(connection, limit=1, timeout=1):
             pass
 
-    See Also:
+    See Also
+    --------
         :func:`itermessages`, which is an event loop bound to one or more
         consumers, that yields any messages received.
     """
@@ -241,6 +248,7 @@ def send_reply(exchange, req, msg,
     """Send reply for request.
 
     Arguments:
+    ---------
         exchange (kombu.Exchange, str): Reply exchange
         req (~kombu.Message): Original request, a message with
             a ``reply_to`` property.
@@ -248,7 +256,7 @@ def send_reply(exchange, req, msg,
         retry (bool): If true must retry according to
             the ``reply_policy`` argument.
         retry_policy (Dict): Retry settings.
-        **props (Any): Extra properties.
+        ``**props`` (Any): Extra properties.
     """
     return producer.publish(
         msg, exchange=exchange,
@@ -287,7 +295,9 @@ def _ensure_errback(exc, interval):
 def _ignore_errors(conn):
     try:
         yield
-    except conn.connection_errors + conn.channel_errors:
+    except conn.connection_errors + conn.channel_errors + (
+        (conc_err,) if (conc_err := get_gevent_concurrent_error()) is not None else ()
+    ):
         pass
 
 
@@ -314,6 +324,7 @@ def ignore_errors(conn, fun=None, *args, **kwargs):
 
 
     Note:
+    ----
         Connection and channel errors should be properly handled,
         and not ignored.  Using this function is only acceptable in a cleanup
         phase, like when a connection is lost or at shutdown.
@@ -349,16 +360,21 @@ def insured(pool, fun, args, kwargs, errback=None, on_revive=None, **opts):
         return retval
 
 
-class QoS(object):
+class QoS:
     """Thread safe increment/decrement of a channels prefetch_count.
 
     Arguments:
+    ---------
         callback (Callable): Function used to set new prefetch count,
             e.g. ``consumer.qos`` or ``channel.basic_qos``.  Will be called
             with a single ``prefetch_count`` keyword argument.
         initial_value (int): Initial prefetch count value..
+        max_prefetch (int or None): Maximum allowed prefetch count. If specified
+            as an integer, increment_eventually will not allow the value to exceed this limit.
+            If None (the default), there is no upper limit on the prefetch count.
 
     Example:
+    -------
         >>> from kombu import Consumer, Connection
         >>> connection = Connection('amqp://')
         >>> consumer = Consumer(connection)
@@ -392,27 +408,34 @@ class QoS(object):
 
     prev = None
 
-    def __init__(self, callback, initial_value):
+    def __init__(self, callback, initial_value, max_prefetch=None):
         self.callback = callback
         self._mutex = threading.RLock()
         self.value = initial_value or 0
+        self.max_prefetch = max_prefetch
 
     def increment_eventually(self, n=1):
         """Increment the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
-            when necessary.
+            when necessary. If max_prefetch is set, the value will not
+            exceed this limit.
         """
         with self._mutex:
             if self.value:
-                self.value = self.value + max(n, 0)
+                new_value = self.value + max(n, 0)
+                if self.max_prefetch is not None and new_value > self.max_prefetch:
+                    new_value = self.max_prefetch
+                self.value = new_value
         return self.value
 
     def decrement_eventually(self, n=1):
         """Decrement the value, but do not update the channels QoS.
 
         Note:
+        ----
             The MainThread will be responsible for calling :meth:`update`
             when necessary.
         """

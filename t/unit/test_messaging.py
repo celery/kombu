@@ -1,24 +1,79 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import pickle
-import pytest
 import sys
-
+import threading
 from collections import defaultdict
+from unittest.mock import ANY, Mock, patch
 
-from case import Mock, patch
+import amqp
+import pytest
+from amqp.exceptions import RecoverableConnectionError
 
-from kombu import Connection, Consumer, Producer, Exchange, Queue
-from kombu.exceptions import MessageStateError
+from kombu import Connection, Consumer, Exchange, Producer, Queue
+from kombu.exceptions import MessageStateError, OperationalError
+from kombu.transport import memory, virtual
 from kombu.utils import json
 from kombu.utils.functional import ChannelPromise
-
 from t.mocks import Transport
+
+
+class BaseErrorsTransport(Transport):
+    # Classifies errors like kombu.transport.base.Transport does (no
+    # recoverable/irrecoverable split). Declared here because other tests
+    # overwrite connection_errors and channel_errors on t.mocks.Transport.
+    connection_errors = (amqp.ConnectionError,)
+    channel_errors = (amqp.ChannelError,)
+
+
+class AMQPErrorsTransport(Transport):
+    # Classifies errors like the py-amqp transport does.
+    connection_errors = amqp.Connection.connection_errors
+    channel_errors = amqp.Connection.channel_errors
+    recoverable_connection_errors = amqp.Connection.recoverable_connection_errors
+    recoverable_channel_errors = amqp.Connection.recoverable_channel_errors
+
+
+class RecordingPublishBatch:
+    def __init__(self, channel, max_size):
+        self.channel = channel
+        self.max_size = max_size
+        self.published = []
+        self.pending = 0
+        self.flush_count = 0
+        self.discard_count = 0
+        self.close_count = 0
+        self.flush_error = None
+        self.discard_error = None
+        self.close_error = None
+
+    def publish(self, message, **kwargs):
+        self.published.append((message, kwargs))
+        self.pending += 1
+        return 'buffered'
+
+    def flush(self):
+        if self.flush_error is not None:
+            raise self.flush_error
+        if self.pending:
+            self.flush_count += 1
+            self.pending = 0
+
+    def discard(self):
+        self.discard_count += 1
+        self.pending = 0
+        if self.discard_error is not None:
+            raise self.discard_error
+
+    def close(self):
+        self.close_count += 1
+        if self.close_error is not None:
+            raise self.close_error
 
 
 class test_Producer:
 
-    def setup(self):
+    def setup_method(self):
         self.exchange = Exchange('foo', 'direct')
         self.connection = Connection(transport=Transport)
         self.connection.connect()
@@ -97,7 +152,7 @@ class test_Producer:
         assert json.loads(zlib.decompress(m).decode('utf-8')) == message
 
     def test_prepare_custom_content_type(self):
-        message = 'the quick brown fox'.encode('utf-8')
+        message = b'the quick brown fox'
         channel = self.connection.channel()
         p = Producer(channel, self.exchange, serializer='json')
         m, ctype, cencoding = p._prepare(message, content_type='custom')
@@ -124,6 +179,17 @@ class test_Producer:
         assert ctype == 'text/plain'
         assert cencoding == 'utf-8'
 
+    def test_publish_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        expected_retry_policy = {
+            'max_retries': 20
+        }
+        p.publish('hello', retry=True, retry_policy=expected_retry_policy)
+
+        assert self.connection.transport_options == expected_retry_policy
+
     def test_publish_with_Exchange_instance(self):
         p = self.connection.Producer()
         p.channel = Mock()
@@ -138,6 +204,66 @@ class test_Producer:
         p.publish('hello', exchange=Exchange('foo'), expiration=10)
         properties = p._channel.prepare_message.call_args[0][5]
         assert properties['expiration'] == '10000'
+
+    def test_publish_with_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1)
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
+
+    def test_publish_with_timeout_and_retry_policy(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), timeout=1, retry_policy={
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        })
+        timeout = p._channel.basic_publish.call_args[1]['timeout']
+        assert timeout == 1
+
+    def test_publish_with_confirm_timeout(self):
+        p = self.connection.Producer()
+        p.channel = Mock()
+        p.channel.connection.client.declared_entities = set()
+        p.publish('test_timeout', exchange=Exchange('foo'), confirm_timeout=1)
+        confirm_timeout = p._channel.basic_publish.call_args[1]['confirm_timeout']
+        assert confirm_timeout == 1
+
+    @patch('kombu.messaging.maybe_declare')
+    def test_publish_maybe_declare_with_retry_policy(self, maybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        maybe_declare.assert_called_once_with(
+            ANY, ANY, True, on_revive=ANY, **expected_retry_policy)
+
+    @patch('kombu.common._imaybe_declare')
+    def test_publish_maybe_declare_with_retry_policy_ensure_connection(self, _imaybe_declare):
+        p = self.connection.Producer(exchange=Exchange('foo'))
+        p.channel = Mock()
+        expected_retry_policy = {
+            "max_retries": 20,
+            "interval_start": 1,
+            "interval_step": 2,
+            "interval_max": 30,
+            "retry_errors": (OperationalError,)
+        }
+        p.publish('test_maybe_declare', exchange=Exchange('foo'), retry=True, retry_policy=expected_retry_policy)
+        _imaybe_declare.assert_called_once_with(
+            ANY, ANY, on_revive=ANY, **expected_retry_policy)
 
     def test_publish_with_reply_to(self):
         p = self.connection.Producer()
@@ -169,7 +295,251 @@ class test_Producer:
         p.connection.ensure = Mock()
         ex = Exchange('foo')
         p._publish('hello', 0, '', '', {}, {}, 'rk', 0, 0, ex, declare=[ex])
-        p.maybe_declare.assert_called_with(ex)
+        p.maybe_declare.assert_called_with(ex, retry=False)
+
+    def _declaration_retry_connection(self):
+        state = {'failures': 1, 'events': [], 'prepared': []}
+
+        class ReconnectingChannel(memory.Channel):
+            queues = {}
+
+            def queue_declare(self, *args, **kwargs):
+                state['events'].append(('declare', self))
+                if state['failures']:
+                    state['failures'] -= 1
+                    raise RecoverableConnectionError('declaration disconnected')
+                return super().queue_declare(*args, **kwargs)
+
+            def prepare_message(self, *args, **kwargs):
+                state['events'].append(('prepare', self))
+                message = super().prepare_message(*args, **kwargs)
+                state['prepared'].append((self, message))
+                return message
+
+            def basic_publish(self, message, **kwargs):
+                # A real closed virtual channel is detached from its connection.
+                # Memory's normal _put does not inspect this, unlike SQS's _put.
+                assert self.connection.client is connection
+                assert state['prepared'][-1] == (self, message)
+                state['events'].append(('publish', self))
+                return super().basic_publish(message, **kwargs)
+
+        class ReconnectingTransport(memory.Transport):
+            Channel = ReconnectingChannel
+            global_state = virtual.BrokerState()
+
+        connection = Connection(transport=ReconnectingTransport)
+        return connection, state
+
+    @pytest.mark.parametrize('binding', ['connection', 'channel'])
+    @pytest.mark.parametrize('declaration_count', [1, 2])
+    def test_publish_after_declaration_reconnect(self, binding,
+                                                 declaration_count):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection if binding == 'connection'
+                         else connection.default_channel)
+            first = p.channel
+            revived = []
+
+            def on_revive(channel):
+                revived.append((channel, p.channel))
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            original_policy = policy.copy()
+            queues = [Queue(f'reconnect-{i}')
+                      for i in range(declaration_count)]
+            p.publish({'n': 1}, routing_key='reconnect-0', declare=queues,
+                      retry=True, retry_policy=policy)
+
+            second = p.channel
+            assert second is not first
+            assert first.connection is None
+            assert revived == [(second, second)]
+            assert policy == original_policy
+            assert policy['on_revive'] is on_revive
+            assert state['prepared'][0][0] is second
+            assert state['events'].index(('prepare', second)) > max(
+                i for i, (kind, _) in enumerate(state['events'])
+                if kind == 'declare')
+            assert sum(kind == 'declare' for kind, _ in state['events']) == (
+                declaration_count + 1)
+            received = Queue('reconnect-0')(second)
+            assert received.get(no_ack=True).payload == {'n': 1}
+            assert received.get(no_ack=True) is None
+
+            # A following publish uses the revived producer and cached declares.
+            p.publish({'n': 2}, routing_key='reconnect-0', declare=queues,
+                      retry=True, retry_policy=policy)
+            assert p.channel is second
+            assert revived == [(second, second)]
+            assert sum(kind == 'declare' for kind, _ in state['events']) == (
+                declaration_count + 1)
+            assert received.get(no_ack=True).payload == {'n': 2}
+
+    @pytest.mark.parametrize('binding', ['connection', 'channel'])
+    @pytest.mark.parametrize('operation', ['publish', 'maybe_declare'])
+    def test_declaration_reconnect_on_another_connection(
+            self, binding, operation):
+        with Connection('memory://') as connection, Connection('memory://') as other:
+            p = Producer(connection if binding == 'connection'
+                         else connection.default_channel)
+            original_channel = p.channel
+            first_other_channel = other.default_channel
+            queue = Queue('foreign-declare-reconnect',
+                          channel=first_other_channel)
+            revived = []
+
+            def on_revive(channel):
+                revived.append((channel, p.channel))
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            queue_declare = queue.declare
+            calls = []
+
+            def fail_once(*args, **kwargs):
+                calls.append(kwargs['channel'])
+                if len(calls) == 1:
+                    raise RecoverableConnectionError('declaration disconnected')
+                return queue_declare(*args, **kwargs)
+
+            with patch.object(queue, 'declare', side_effect=fail_once) as declare:
+                if operation == 'publish':
+                    p.publish('hello', routing_key=queue.name,
+                              declare=[queue], retry=True,
+                              retry_policy=policy)
+                else:
+                    p.maybe_declare(queue, retry=True, **policy)
+
+            assert other.default_channel is not first_other_channel
+            assert first_other_channel.connection is None
+            assert queue.channel is other.default_channel
+            assert p.channel is original_channel
+            assert p.connection is connection
+            assert p.channel.connection.client is connection
+            assert revived == [(other.default_channel, original_channel)]
+            assert declare.call_count == 2
+            received = queue(original_channel)
+            if operation == 'publish':
+                assert received.get(no_ack=True).payload == 'hello'
+            assert received.get(no_ack=True) is None
+            received.delete()
+
+    def test_declaration_reconnect_callback_error(self):
+        connection, state = self._declaration_retry_connection()
+        error = RuntimeError('caller revival failed')
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            callbacks = []
+
+            def on_revive(channel):
+                callbacks.append((channel, p.channel))
+                raise error
+
+            policy = {'max_retries': 1, 'on_revive': on_revive}
+            original_policy = policy.copy()
+            with pytest.raises(RuntimeError) as caught:
+                p.publish('hello', declare=[Queue('reconnect')], retry=True,
+                          retry_policy=policy)
+            assert caught.value is error
+            assert first.connection is None
+            assert p.channel is not first
+            assert callbacks == [(p.channel, p.channel)]
+            assert policy == original_policy
+            assert state['prepared'] == []
+
+    def test_declaration_reconnect_exhausted_before_prepare(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            callback = Mock()
+            with pytest.raises(OperationalError, match='declaration disconnected'):
+                p.publish('hello', declare=[Queue('reconnect')], retry=True,
+                          retry_policy={'max_retries': 0,
+                                        'on_revive': callback})
+            assert p.channel is first
+            callback.assert_not_called()
+            assert state['prepared'] == []
+
+    def test_declaration_reconnect_autogenerated_reply_to(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            reply = Queue('', channel=first, exclusive=True, auto_delete=True)
+            p.publish('hello', routing_key='reconnect', declare=[reply],
+                      reply_to=reply, retry=True,
+                      retry_policy={'max_retries': 1})
+            assert reply.name
+            assert reply.channel is p.channel
+            message = Queue('reconnect')(p.channel).get(no_ack=True)
+            assert message.payload == 'hello'
+            assert message.properties['reply_to'] == reply.name
+            assert state['prepared'][0][0] is p.channel
+
+    def test_declaration_reconnect_rejects_existing_batch_channel(self):
+        connection, state = self._declaration_retry_connection()
+        with connection:
+            p = Producer(connection)
+            first = p.channel
+            session = RecordingPublishBatch(first, 10)
+            first.create_publish_batch = lambda **kwargs: session
+            with pytest.raises(RuntimeError, match='channel changed'):
+                with p.batch():
+                    p.publish('buffered')
+                    p.publish('after reconnect', declare=[Queue('reconnect')],
+                              retry=True, retry_policy={'max_retries': 1})
+            assert first.connection is None
+            assert p.channel is not first
+            assert len(session.published) == 1
+            assert session.discard_count == 1
+            assert session.close_count == 1
+            assert not any(kind == 'publish' for kind, _ in state['events'])
+
+    def _drop_connection_on_publish(self, channel, error):
+        # basic_publish fails with a connection error, and closing the
+        # channel detaches it from its connection, as transport channels do.
+        channel.basic_publish = Mock(side_effect=error)
+        channel.close = lambda: setattr(channel, 'connection', None)
+
+    @pytest.mark.parametrize('transport,error', [
+        (BaseErrorsTransport, amqp.ConnectionError('connection lost')),
+        (AMQPErrorsTransport, ConnectionResetError('connection reset')),
+    ])
+    def test_publish_retry_declares_exchange_on_new_channel(self, transport,
+                                                            error):
+        conn = Connection(transport=transport)
+        p = Producer(conn, exchange=Exchange('foo', 'direct'))
+        first = p.channel
+        self._drop_connection_on_publish(first, error)
+        errback = Mock()
+
+        p.publish('hello', routing_key='rk', retry=True,
+                  retry_policy={'max_retries': 3, 'errback': errback})
+
+        second = p.channel
+        assert second is not first
+        assert 'exchange_declare' in second
+        assert 'basic_publish' in second
+        assert errback.call_count == 1
+
+    def test_publish_retry_default_exchange_after_reconnect(self):
+        conn = Connection(transport=BaseErrorsTransport)
+        p = Producer(conn)
+        first = p.channel
+        self._drop_connection_on_publish(
+            first, amqp.ConnectionError('connection lost'))
+        queue = Queue('bar', Exchange('foo', 'direct'), 'bar')
+
+        p.publish('hello', routing_key='bar', declare=[queue], retry=True,
+                  retry_policy={'max_retries': 3})
+
+        second = p.channel
+        assert second is not first
+        assert 'queue_declare' in second
+        assert 'basic_publish' in second
 
     def test_revive_when_channel_is_connection(self):
         p = self.connection.Producer()
@@ -184,9 +554,8 @@ class test_Producer:
     def test_enter_exit(self):
         p = self.connection.Producer()
         p.release = Mock()
-
-        assert p.__enter__() is p
-        p.__exit__()
+        with p as x:
+            assert x is p
         p.release.assert_called_with()
 
     def test_connection_property_handles_AttributeError(self):
@@ -211,6 +580,331 @@ class test_Producer:
         assert m['properties']['delivery_mode'] == 2
         assert exc == p.exchange.name
         assert rkey == 'process'
+
+    def test_batch_unsupported_transport_publishes_immediately(self):
+        channel = self.connection.channel()
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch() as batch:
+            result = producer.publish({'message': 1})
+            batch.flush()
+            assert 'basic_publish' in channel
+
+        assert result[0]['body'] == '{"message": 1}'
+        assert producer.supports_batch_publish is False
+
+    def test_unsupported_batch_tracks_a_revived_channel(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        producer = Producer(first_channel, serializer='json')
+
+        with producer.batch():
+            producer.publish({'channel': 'first'})
+            producer.revive(second_channel)
+            result = producer.publish({'channel': 'second'})
+
+        assert 'basic_publish' in first_channel
+        assert 'basic_publish' in second_channel
+        assert result[0]['body'] == '{"channel": "second"}'
+
+    def test_batch_successful_exit_flushes(self):
+        channel = self.connection.channel()
+        sessions = []
+
+        def create_publish_batch(max_size):
+            session = RecordingPublishBatch(channel, max_size)
+            sessions.append(session)
+            return session
+
+        channel.create_publish_batch = create_publish_batch
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch(max_size=7):
+            assert producer.publish({'message': 1}) == 'buffered'
+            assert producer.publish({'message': 2}) == 'buffered'
+            assert sessions[0].flush_count == 0
+
+        assert sessions[0].max_size == 7
+        assert sessions[0].flush_count == 1
+        assert sessions[0].close_count == 1
+        assert 'basic_publish' not in channel
+
+    def test_batch_explicit_flush_and_continue(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = lambda max_size: session
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch() as batch:
+            producer.publish({'message': 1})
+            batch.flush()
+            producer.publish({'message': 2})
+
+        assert session.flush_count == 2
+
+    def test_batch_flush_requires_active_context(self):
+        producer = Producer(self.connection.channel())
+        batch = producer.batch()
+
+        with pytest.raises(RuntimeError, match='not active'):
+            batch.flush()
+        with batch:
+            batch.flush()
+        with pytest.raises(RuntimeError, match='not active'):
+            batch.flush()
+
+    def test_batch_context_cannot_be_reentered(self):
+        producer = Producer(self.connection.channel())
+        batch = producer.batch()
+
+        with batch:
+            with pytest.raises(RuntimeError, match='cannot be re-entered'):
+                batch.__enter__()
+
+    def test_empty_batch_does_not_create_transport_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel)
+
+        with producer.batch() as batch:
+            batch.flush()
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_nested_batches_share_session_and_outer_exit_flushes(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 10)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch(max_size=10):
+            producer.publish({'message': 1})
+            with producer.batch(max_size=1):
+                producer.publish({'message': 2})
+            assert session.flush_count == 0
+
+        channel.create_publish_batch.assert_called_once_with(max_size=10)
+        assert session.flush_count == 1
+
+    def test_supported_batch_fails_closed_after_channel_revival(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        session = RecordingPublishBatch(first_channel, 1000)
+        first_channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(first_channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='channel changed'):
+            with producer.batch():
+                producer.publish({'channel': 'first'})
+                producer.revive(second_channel)
+                producer.publish({'channel': 'second'})
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+        assert 'basic_publish' not in second_channel
+
+    def test_batch_exception_discards_and_restores_producer(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='message construction failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+                raise ValueError('message construction failed')
+
+        assert session.discard_count == 1
+        assert session.flush_count == 0
+        assert session.close_count == 1
+
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_body_error_survives_discard_and_close_errors(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.discard_error = RuntimeError('discard failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='body failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+                raise ValueError('body failed')
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_message_serialization_failure_does_not_create_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel)
+
+        with pytest.raises(Exception):
+            with producer.batch():
+                producer.publish(object(), serializer='missing-serializer')
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_declaration_failure_does_not_create_session(self):
+        channel = self.connection.channel()
+        channel.create_publish_batch = Mock()
+        producer = Producer(channel, serializer='json')
+        producer.maybe_declare = Mock(
+            side_effect=RuntimeError('declaration failed'),
+        )
+
+        with pytest.raises(RuntimeError, match='declaration failed'):
+            with producer.batch():
+                producer.publish({'message': 1}, declare=[Mock()])
+
+        channel.create_publish_batch.assert_not_called()
+
+    def test_inner_exception_aborts_nested_batch(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with producer.batch():
+            producer.publish({'message': 1})
+            with pytest.raises(ValueError):
+                with producer.batch():
+                    raise ValueError('stop nested batch')
+            with pytest.raises(RuntimeError, match='aborted batch'):
+                producer.publish({'message': 2})
+
+        assert session.discard_count == 1
+        assert session.flush_count == 0
+
+    def test_propagated_nested_exception_discards_once(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError):
+            with producer.batch():
+                producer.publish({'message': 1})
+                with producer.batch():
+                    raise ValueError('stop nested batch')
+
+        assert session.discard_count == 1
+        assert session.close_count == 1
+
+    def test_flush_failure_cleans_up_batch_state(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.flush_error = RuntimeError('broker response lost')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(RuntimeError, match='broker response lost'):
+            with producer.batch():
+                producer.publish({'message': 1})
+
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_flush_error_survives_close_error(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        session.flush_error = ValueError('flush failed')
+        session.close_error = RuntimeError('close failed')
+        channel.create_publish_batch = Mock(return_value=session)
+        producer = Producer(channel, serializer='json')
+
+        with pytest.raises(ValueError, match='flush failed'):
+            with producer.batch():
+                producer.publish({'message': 1})
+
+        assert session.close_count == 1
+        producer.publish({'message': 2})
+        assert 'basic_publish' in channel
+
+    def test_batch_is_scoped_to_one_producer(self):
+        channel = self.connection.channel()
+        session = RecordingPublishBatch(channel, 1000)
+        channel.create_publish_batch = Mock(return_value=session)
+        batched = Producer(channel, serializer='json')
+        immediate = Producer(channel, serializer='json')
+
+        with batched.batch():
+            batched.publish({'producer': 'batched'})
+            result = immediate.publish({'producer': 'immediate'})
+
+        assert len(session.published) == 1
+        assert result[0]['body'] == '{"producer": "immediate"}'
+        assert 'basic_publish' in channel
+
+    def test_batch_is_scoped_to_one_channel(self):
+        first_channel = self.connection.channel()
+        second_channel = self.connection.channel()
+        first_session = RecordingPublishBatch(first_channel, 1000)
+        second_session = RecordingPublishBatch(second_channel, 1000)
+        first_channel.create_publish_batch = Mock(return_value=first_session)
+        second_channel.create_publish_batch = Mock(return_value=second_session)
+        first = Producer(first_channel, serializer='json')
+        second = Producer(second_channel, serializer='json')
+
+        with first.batch():
+            first.publish({'channel': 'first'})
+            with second.batch():
+                second.publish({'channel': 'second'})
+
+        assert len(first_session.published) == 1
+        assert len(second_session.published) == 1
+        assert first_session.flush_count == second_session.flush_count == 1
+
+    def test_batch_is_scoped_to_one_thread(self):
+        channel = self.connection.channel()
+        sessions = []
+        sessions_lock = threading.Lock()
+        barrier = threading.Barrier(2)
+
+        def create_publish_batch(max_size):
+            session = RecordingPublishBatch(channel, max_size)
+            with sessions_lock:
+                sessions.append(session)
+            return session
+
+        channel.create_publish_batch = create_publish_batch
+        producer = Producer(channel, serializer='json')
+        errors = []
+
+        def publish(index):
+            try:
+                with producer.batch():
+                    producer.publish({'thread': index})
+                    barrier.wait()
+            except BaseException as exc:
+                errors.append(exc)
+
+        threads = [
+            threading.Thread(target=publish, args=(index,))
+            for index in range(2)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert not errors
+        assert len(sessions) == 2
+        assert all(len(session.published) == 1 for session in sessions)
+        assert all(session.flush_count == 1 for session in sessions)
+
+    @pytest.mark.parametrize('max_size', [0, -1, 1.5, True, None])
+    def test_batch_rejects_invalid_max_size(self, max_size):
+        producer = Producer(self.connection.channel())
+
+        with pytest.raises(ValueError, match='positive integer'):
+            producer.batch(max_size=max_size)
 
     def test_no_exchange(self):
         chan = self.connection.channel()
@@ -238,7 +932,7 @@ class test_Producer:
 
 class test_Consumer:
 
-    def setup(self):
+    def setup_method(self):
         self.connection = Connection(transport=Transport)
         self.connection.connect()
         assert self.connection.connection.connected
@@ -648,6 +1342,83 @@ class test_Consumer:
         assert consumer.channel is channel2
         assert consumer.queues[0].channel is channel2
         assert consumer.queues[0].exchange.channel is channel2
+
+    def test_revive__resumes_consuming_if_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert consumer._active_tags
+        assert 'basic_consume' in channel2
+
+    def test_revive__does_not_consume_if_not_active(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+        assert not consumer._active_tags
+        assert 'basic_consume' not in channel2
+
+    def test_revive__does_not_resume_never_active_queue(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume()
+        assert 'qname1' in consumer._active_tags
+
+        # registered but deliberately not consumed from yet
+        consumer.add_queue(b2)
+        assert 'qname2' not in consumer._active_tags
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert 'qname1' in consumer._active_tags
+        assert 'qname2' not in consumer._active_tags
+
+    def test_revive__preserves_per_call_no_ack_override(self):
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        b2 = Queue('qname2', self.exchange, 'rkey2')
+        consumer = Consumer(channel, [b1])
+        consumer.consume(no_ack=True)
+
+        # a later consume() call with a different override only
+        # affects the queue that wasn't already consuming.
+        consumer.add_queue(b2)
+        consumer.consume(no_ack=False)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+        channel2 = self.connection.channel()
+        consumer.revive(channel2)
+
+        assert consumer._active_queue_no_ack['qname1'] is True
+        assert consumer._active_queue_no_ack['qname2'] is False
+
+    def test_active_tags_reflects_intent_not_broker_ack(self):
+        # tag is recorded before channel.basic_consume is called
+        channel = self.connection.channel()
+        b1 = Queue('qname1', self.exchange, 'rkey')
+        consumer = Consumer(channel, [b1])
+
+        def _boom(*args, **kwargs):
+            raise OperationalError('connection lost before broker ack')
+        channel.basic_consume = _boom
+
+        with pytest.raises(OperationalError):
+            consumer.consume()
+
+        assert consumer._active_tags
+        assert 'basic_consume' not in channel
 
     def test_revive__with_prefetch_count(self):
         channel = Mock(name='channel')

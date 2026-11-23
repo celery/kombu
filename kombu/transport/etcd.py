@@ -1,21 +1,40 @@
-"""Etcd Transport.
+"""Etcd Transport module for Kombu.
 
 It uses Etcd as a store to transport messages in Queues
 
 It uses python-etcd for talking to Etcd's HTTP API
+
+Features
+========
+* Type: Virtual
+* Supports Direct: *Unreviewed*
+* Supports Topic: *Unreviewed*
+* Supports Fanout: *Unreviewed*
+* Supports Priority: *Unreviewed*
+* Supports TTL: *Unreviewed*
+
+Connection String
+=================
+
+Connection string has the following format:
+
+.. code-block::
+
+    'etcd'://SERVER:PORT
+
 """
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import os
 import socket
-
 from collections import defaultdict
 from contextlib import contextmanager
+from queue import Empty
 
 from kombu.exceptions import ChannelError
-from kombu.five import Empty
 from kombu.log import get_logger
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 
 from . import virtual
@@ -44,7 +63,7 @@ class Channel(virtual.Channel):
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
-        super(Channel, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         port = self.connection.client.port or self.connection.default_port
         host = self.connection.client.hostname or DEFAULT_HOST
@@ -59,9 +78,10 @@ class Channel(virtual.Channel):
         """Create and return the `queue` with the proper prefix.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
-        return '{0}/{1}'.format(self.prefix, queue)
+        return f'{self.prefix}/{queue}'
 
     @contextmanager
     def _queue_lock(self, queue):
@@ -74,22 +94,24 @@ class Channel(virtual.Channel):
         means that they have to wait before the lock is released.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         lock = etcd.Lock(self.client, queue)
         lock._uuid = self.lock_value
-        logger.debug('Acquiring lock {0}'.format(lock.name))
+        logger.debug(f'Acquiring lock {lock.name}')
         lock.acquire(blocking=True, lock_ttl=self.lock_ttl)
         try:
             yield
         finally:
-            logger.debug('Releasing lock {0}'.format(lock.name))
+            logger.debug(f'Releasing lock {lock.name}')
             lock.release()
 
     def _new_queue(self, queue, **_):
         """Create a new `queue` if the `queue` doesn't already exist.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         self.queues[queue] = queue
@@ -98,13 +120,14 @@ class Channel(virtual.Channel):
                 return self.client.write(
                     key=self._key_prefix(queue), dir=True, value=None)
             except etcd.EtcdNotFile:
-                logger.debug('Queue "{0}" already exists'.format(queue))
+                logger.debug(f'Queue "{queue}" already exists')
                 return self.client.read(key=self._key_prefix(queue))
 
     def _has_queue(self, queue, **kwargs):
         """Verify that queue exists.
 
-        Returns:
+        Returns
+        -------
             bool: Should return :const:`True` if the queue exists
                 or :const:`False` otherwise.
         """
@@ -118,6 +141,7 @@ class Channel(virtual.Channel):
         """Delete a `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         self.queues.pop(queue, None)
@@ -129,6 +153,7 @@ class Channel(virtual.Channel):
         This simply writes a key to the Etcd store
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
             payload (dict): Message data which will be dumped to etcd.
         """
@@ -138,7 +163,7 @@ class Channel(virtual.Channel):
                     key=key,
                     value=dumps(payload),
                     append=True):
-                raise ChannelError('Cannot add key {0!r} to etcd'.format(key))
+                raise ChannelError(f'Cannot add key {key!r} to etcd')
 
     def _get(self, queue, timeout=None):
         """Get the first available message from the queue.
@@ -147,6 +172,7 @@ class Channel(virtual.Channel):
         only one node reads at the same time. This is for read consistency
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
             timeout (int): Optional seconds to wait for a response.
         """
@@ -163,13 +189,13 @@ class Channel(virtual.Channel):
                     raise Empty()
 
                 item = result._children[-1]
-                logger.debug('Removing key {0}'.format(item['key']))
+                logger.debug('Removing key {}'.format(item['key']))
 
                 msg_content = loads(item['value'])
                 self.client.delete(key=item['key'])
                 return msg_content
             except (TypeError, IndexError, etcd.EtcdException) as error:
-                logger.debug('_get failed: {0}:{1}'.format(type(error), error))
+                logger.debug(f'_get failed: {type(error)}:{error}')
 
             raise Empty()
 
@@ -177,17 +203,19 @@ class Channel(virtual.Channel):
         """Remove all `message`s from a `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         with self._queue_lock(queue):
             key = self._key_prefix(queue)
-            logger.debug('Purging queue at key {0}'.format(key))
+            logger.debug(f'Purging queue at key {key}')
             return self.client.delete(key=key, recursive=True)
 
     def _size(self, queue):
         """Return the size of the `queue`.
 
         Arguments:
+        ---------
             queue (str): The name of the queue.
         """
         with self._queue_lock(queue):
@@ -209,7 +237,7 @@ class Channel(virtual.Channel):
 
     @cached_property
     def lock_value(self):
-        return '{0}.{1}'.format(socket.gethostname(), os.getpid())
+        return f'{socket.gethostname()}.{os.getpid()}'
 
 
 class Transport(virtual.Transport):
@@ -225,20 +253,21 @@ class Transport(virtual.Transport):
     implements = virtual.Transport.implements.extend(
         exchange_type=frozenset(['direct']))
 
+    if etcd:
+        connection_errors = (
+            virtual.Transport.connection_errors + (etcd.EtcdException, )
+        )
+
+        channel_errors = (
+            virtual.Transport.channel_errors + (etcd.EtcdException, )
+        )
+
     def __init__(self, *args, **kwargs):
         """Create a new instance of etcd.Transport."""
         if etcd is None:
             raise ImportError('Missing python-etcd library')
 
-        super(Transport, self).__init__(*args, **kwargs)
-
-        self.connection_errors = (
-            virtual.Transport.connection_errors + (etcd.EtcdException, )
-        )
-
-        self.channel_errors = (
-            virtual.Transport.channel_errors + (etcd.EtcdException, )
-        )
+        super().__init__(*args, **kwargs)
 
     def verify_connection(self, connection):
         """Verify the connection works."""

@@ -1,38 +1,28 @@
 """Functional Utilities."""
-from __future__ import absolute_import, unicode_literals
 
+from __future__ import annotations
+
+import inspect
 import random
-import sys
 import threading
-
-from collections import OrderedDict
-
-try:
-    from collections.abc import Iterable, Mapping
-except ImportError:
-    from collections import Iterable, Mapping
-
+from collections import OrderedDict, UserDict
+from collections.abc import Iterable, Mapping
 from itertools import count, repeat
 from time import sleep, time
 
 from vine.utils import wraps
 
-from kombu.five import (
-    UserDict, items, keys, python_2_unicode_compatible, string_t,
-)
-
 from .encoding import safe_repr as _safe_repr
 
 __all__ = (
     'LRUCache', 'memoize', 'lazy', 'maybe_evaluate',
-    'is_list', 'maybe_list', 'dictfilter',
+    'is_list', 'maybe_list', 'dictfilter', 'retry_over_time',
 )
 
 KEYWORD_MARK = object()
 
 
-@python_2_unicode_compatible
-class ChannelPromise(object):
+class ChannelPromise:
 
     def __init__(self, contract):
         self.__contract__ = contract
@@ -41,20 +31,22 @@ class ChannelPromise(object):
         try:
             return self.__value__
         except AttributeError:
-            value = self.__value__ = self.__contract__()
-            return value
+            pass
+        value = self.__value__ = self.__contract__()
+        return value
 
     def __repr__(self):
         try:
             return repr(self.__value__)
         except AttributeError:
-            return '<promise: 0x{0:x}>'.format(id(self.__contract__))
+            return f'<promise: 0x{id(self.__contract__):x}>'
 
 
 class LRUCache(UserDict):
     """LRU Cache implementation using a doubly linked list to track access.
 
     Arguments:
+    ---------
         limit (int): The maximum number of keys to keep in the cache.
             When a new key is inserted and the limit has been exceeded,
             the *Least Recently Used* key will be discarded from the
@@ -87,7 +79,13 @@ class LRUCache(UserDict):
     def __setitem__(self, key, value):
         # remove least recently used key.
         with self.mutex:
-            if self.limit and len(self.data) >= self.limit:
+            # Only an insert can push the cache over its limit; overwriting
+            # a key that is already there keeps the same number of entries,
+            # so evicting for it would shrink the cache below the limit and
+            # throw away an unrelated key. ``update`` already gets this
+            # right, it only trims once the data has actually grown.
+            if (key not in self.data and
+                    self.limit and len(self.data) >= self.limit):
                 self.data.pop(next(iter(self.data)))
             self.data[key] = value
 
@@ -116,7 +114,7 @@ class LRUCache(UserDict):
     def _iterate_keys(self):
         # userdict.keys in py3k calls __getitem__
         with self.mutex:
-            return keys(self.data)
+            return self.data.keys()
     iterkeys = _iterate_keys
 
     def incr(self, key, delta=1):
@@ -136,20 +134,9 @@ class LRUCache(UserDict):
         self.__dict__ = state
         self.mutex = threading.RLock()
 
-    if sys.version_info[0] == 3:  # pragma: no cover
-        keys = _iterate_keys
-        values = _iterate_values
-        items = _iterate_items
-    else:  # noqa
-
-        def keys(self):
-            return list(self._iterate_keys())
-
-        def values(self):
-            return list(self._iterate_values())
-
-        def items(self):
-            return list(self._iterate_items())
+    keys = _iterate_keys
+    values = _iterate_values
+    items = _iterate_items
 
 
 def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
@@ -189,8 +176,7 @@ def memoize(maxsize=None, keyfun=None, Cache=LRUCache):
     return _memoize
 
 
-@python_2_unicode_compatible
-class lazy(object):
+class lazy:
     """Holds lazy evaluation.
 
     Evaluated when called or if the :meth:`evaluate` method is called.
@@ -231,13 +217,6 @@ class lazy(object):
         return (self.__class__, (self._fun,), {'_args': self._args,
                                                '_kwargs': self._kwargs})
 
-    if sys.version_info[0] < 3:
-
-        def __cmp__(self, rhs):
-            if isinstance(rhs, self.__class__):
-                return -cmp(rhs, self())
-            return cmp(self(), rhs)
-
 
 def maybe_evaluate(value):
     """Evaluate value only if value is a :class:`lazy` instance."""
@@ -246,24 +225,25 @@ def maybe_evaluate(value):
     return value
 
 
-def is_list(l, scalars=(Mapping, string_t), iters=(Iterable,)):
+def is_list(obj, scalars=(Mapping, str), iters=(Iterable,)):
     """Return true if the object is iterable.
 
     Note:
+    ----
         Returns false if object is a mapping or string.
     """
-    return isinstance(l, iters) and not isinstance(l, scalars or ())
+    return isinstance(obj, iters) and not isinstance(obj, scalars or ())
 
 
-def maybe_list(l, scalars=(Mapping, string_t)):
+def maybe_list(obj, scalars=(Mapping, str)):
     """Return list of one element if ``l`` is a scalar."""
-    return l if l is None or is_list(l, scalars) else [l]
+    return obj if obj is None or is_list(obj, scalars) else [obj]
 
 
 def dictfilter(d=None, **kw):
     """Remove all keys from dict ``d`` whose value is :const:`None`."""
     d = kw if d is None else (dict(d, **kw) if kw else d)
-    return {k: v for k, v in items(d) if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def shufflecycle(it):
@@ -308,11 +288,13 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     is increased for every retry until the max seconds is reached.
 
     Arguments:
+    ---------
         fun (Callable): The function to try
         catch (Tuple[BaseException]): Exceptions to catch, can be either
             tuple or a single exception class.
 
     Keyword Arguments:
+    -----------------
         args (Tuple): Positional arguments passed on to the function.
         kwargs (Dict): Keyword arguments passed on to the function.
         errback (Callable): Callback for when an exception in ``catch``
@@ -334,9 +316,15 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
     """
     kwargs = {} if not kwargs else kwargs
     args = [] if not args else args
-    interval_range = fxrange(interval_start,
-                             interval_max + interval_start,
-                             interval_step, repeatlast=True)
+    interval_range = (
+        min(value, float(interval_max))
+        for value in fxrange(
+            interval_start,
+            interval_max + interval_start,
+            interval_step,
+            repeatlast=True,
+        )
+    )
     end = time() + timeout if timeout else None
     for retries in count():
         try:
@@ -350,6 +338,10 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
                 callback()
             tts = float(errback(exc, interval_range, retries) if errback
                         else next(interval_range))
+            # The iterator values are clamped before they are observed by
+            # errback, and custom errback return values are clamped again
+            # before sleeping to honor the configured ceiling.
+            tts = min(tts, float(interval_max))
             if tts:
                 for _ in range(int(tts)):
                     if callback:
@@ -360,15 +352,23 @@ def retry_over_time(fun, catch, args=None, kwargs=None, errback=None,
 
 
 def reprkwargs(kwargs, sep=', ', fmt='{0}={1}'):
-    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in items(kwargs))
+    return sep.join(fmt.format(k, _safe_repr(v)) for k, v in kwargs.items())
 
 
 def reprcall(name, args=(), kwargs=None, sep=', '):
     kwargs = {} if not kwargs else kwargs
-    return '{0}({1}{2}{3})'.format(
+    return '{}({}{}{})'.format(
         name, sep.join(map(_safe_repr, args or ())),
         (args and kwargs) and sep or '',
         reprkwargs(kwargs, sep),
+    )
+
+
+def accepts_argument(func, argument_name):
+    argument_spec = inspect.getfullargspec(func)
+    return (
+        argument_name in argument_spec.args or
+        argument_name in argument_spec.kwonlyargs
     )
 
 

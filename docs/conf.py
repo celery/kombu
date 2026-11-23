@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 from sphinx_celery import conf
 
 globals().update(conf.build_config(
     'kombu', __file__,
     project='Kombu',
-    version_dev='4.6',
-    version_stable='4.5',
+    version_dev='5.4',
+    version_stable='5.3',
     canonical_url='https://kombu.readthedocs.io/',
     webdomain='kombu.readthedocs.io',
     github_project='celery/kombu',
@@ -25,6 +24,7 @@ globals().update(conf.build_config(
         'kombu.asynchronous.aws.ext',
         'kombu.asynchronous.aws.sqs.ext',
         'kombu.transport.qpid_patches',
+        'kombu.transport.librabbitmq',
         'kombu.utils',
         'kombu.transport.virtual.base',
     ],

@@ -1,18 +1,16 @@
-# -*- coding: utf-8 -*-
 """Mixins."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import socket
-
 from contextlib import contextmanager
 from functools import partial
 from itertools import count
 from time import sleep
 
 from .common import ignore_errors
-from .five import range
-from .messaging import Consumer, Producer
 from .log import get_logger
+from .messaging import Consumer, Producer
 from .utils.compat import nested
 from .utils.encoding import safe_repr
 from .utils.limits import TokenBucket
@@ -37,7 +35,7 @@ Broker connection error, trying again in %s seconds: %r.\
 """
 
 
-class ConsumerMixin(object):
+class ConsumerMixin:
     """Convenience mixin for implementing consumer programs.
 
     It can be used outside of threads, with threads, or greenthreads
@@ -51,6 +49,7 @@ class ConsumerMixin(object):
     channels can be used for different QoS requirements.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerMixin):
@@ -67,8 +66,8 @@ class ConsumerMixin(object):
                     print('Got task: {0!r}'.format(body))
                     message.ack()
 
-    Methods:
-
+    Methods
+    -------
         * :meth:`extra_context`
 
             Optional extra context manager that will be entered
@@ -200,7 +199,7 @@ class ConsumerMixin(object):
                     elapsed += safety_interval
                     if timeout and elapsed >= timeout:
                         raise
-                except socket.error:
+                except OSError:
                     if not self.should_stop:
                         raise
                 else:
@@ -259,6 +258,7 @@ class ConsumerProducerMixin(ConsumerMixin):
     publishing messages.
 
     Example:
+    -------
         .. code-block:: python
 
             class Worker(ConsumerProducerMixin):

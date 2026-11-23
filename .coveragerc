@@ -25,7 +25,7 @@ omit =
     *kombu/transport/zmq.py
     *kombu/transport/django.py
     *kombu/transport/pyro.py
-    *kombu/transport/azure*
+    *kombu/transport/azurestoragequeues.py
     *kombu/transport/qpid*
 exclude_lines =
     pragma: no cover

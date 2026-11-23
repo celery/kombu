@@ -53,3 +53,16 @@ for priorities using different queues.
 :file:`client.py`:
 
 .. literalinclude:: ../../examples/simple_task_queue/client.py
+
+.. _native-delayed-delivery-example:
+
+Native Delayed Delivery
+=======================
+
+This example demonstrates how to declare native delayed delivery queues and exchanges and publish a message using
+the native delayed delivery mechanism.
+
+:file:`delayed_infra.py`:
+
+.. literalinclude:: ../../examples/delayed_infra.py
+    :language: python

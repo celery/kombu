@@ -1,14 +1,15 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
-import pytest
 import socket
 
-from kombu import Connection, Exchange, Queue, Consumer, Producer
+import pytest
+
+from kombu import Connection, Consumer, Exchange, Producer, Queue
 
 
 class test_MemoryTransport:
 
-    def setup(self):
+    def setup_method(self):
         self.c = Connection(transport='memory')
         self.e = Exchange('test_transport_memory')
         self.q = Queue('test_transport_memory',
@@ -132,8 +133,8 @@ class test_MemoryTransport:
         with pytest.raises(socket.timeout):
             self.c.drain_events(timeout=0.1)
 
-        del(c1)  # so pyflakes doesn't complain.
-        del(c2)
+        del c1  # so pyflakes doesn't complain.
+        del c2
 
     def test_drain_events_unregistered_queue(self):
         c1 = self.c.channel()
@@ -148,7 +149,7 @@ class test_MemoryTransport:
         )
         message = consumer.queues[0].get()._raw
 
-        class Cycle(object):
+        class Cycle:
 
             def get(self, callback, timeout=None):
                 return (message, 'foo'), c1

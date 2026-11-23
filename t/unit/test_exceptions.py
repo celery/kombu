@@ -1,11 +1,11 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
-from case import Mock
+from unittest.mock import Mock
 
 from kombu.exceptions import HttpError
 
 
 class test_HttpError:
 
-    def test_str(self):
+    def test_str(self) -> None:
         assert str(HttpError(200, 'msg', Mock(name='response')))

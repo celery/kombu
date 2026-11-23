@@ -1,17 +1,15 @@
-from __future__ import absolute_import, unicode_literals
-
-import pytest
+from __future__ import annotations
 
 from io import BytesIO
+from unittest.mock import Mock
 
+import pytest
 from vine import promise
 
-from case import Mock, skip
-
+import t.skip
 from kombu.asynchronous import http
 from kombu.asynchronous.http.base import BaseClient, normalize_header
 from kombu.exceptions import HttpError
-
 from t.mocks import PromiseMock
 
 
@@ -137,6 +135,23 @@ class test_BaseClient:
     def test_close(self):
         BaseClient(Mock(name='hub')).close()
 
+    def test_subclass_close_without_args_survives_hub_close(self):
+        # BaseClient is public API: a subclass may override close() with
+        # its original no-argument signature.
+        closed = []
+
+        class Client(BaseClient):
+            def close(self):
+                closed.append(self)
+
+        c = Client(self.hub)
+        self.hub._current_http_client = c
+        self.hub.reset()
+        assert closed == [c]
+        assert not hasattr(self.hub, '_current_http_client')
+        self.hub.close()
+        assert closed == [c]
+
     def test_as_context(self):
         c = BaseClient(Mock(name='hub'))
         c.close = Mock(name='close')
@@ -145,11 +160,11 @@ class test_BaseClient:
         c.close.assert_called_with()
 
 
-@skip.if_pypy()
-@skip.unless_module('pycurl')
+@t.skip.if_pypy
 class test_Client:
 
     def test_get_client(self, hub):
+        pytest.importorskip('pycurl')
         client = http.get_client()
         assert client.hub is hub
         client2 = http.get_client(hub)

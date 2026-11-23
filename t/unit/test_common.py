@@ -1,30 +1,29 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import socket
+from typing import TYPE_CHECKING
+from unittest.mock import Mock, patch
 
 import pytest
-import socket
-
 from amqp import RecoverableConnectionError
-from case import ContextMock, Mock, patch
 
-from kombu import common
-from kombu.common import (
-    Broadcast, maybe_declare,
-    send_reply, collect_replies,
-    declaration_cached, ignore_errors,
-    QoS, PREFETCH_COUNT_MAX, generate_oid
-)
+from kombu import Exchange, common
+from kombu.common import (PREFETCH_COUNT_MAX, Broadcast, QoS, collect_replies,
+                          declaration_cached, generate_oid, ignore_errors,
+                          maybe_declare, send_reply)
+from t.mocks import ContextMock, MockPool
 
-from t.mocks import MockPool
+if TYPE_CHECKING:
+    from types import TracebackType
 
 
 def test_generate_oid():
     from uuid import NAMESPACE_OID
-    from kombu.five import bytes_if_py2
 
     instance = Mock()
 
     args = (1, 1001, 2001, id(instance))
-    ent = bytes_if_py2('%x-%x-%x-%x' % args)
+    ent = '%x-%x-%x-%x' % args
 
     with patch('kombu.common.uuid3') as mock_uuid3, \
             patch('kombu.common.uuid5') as mock_uuid5:
@@ -54,6 +53,93 @@ def test_ignore_errors():
     with pytest.raises(KeyError):
         with ignore_errors(connection):
             raise KeyError()
+
+
+def test_ignore_errors_catches_concurrent_object_use_error_when_gevent_available():
+    """ignore_errors() must suppress ConcurrentObjectUseError when gevent is installed."""
+
+    class _ConcurrentObjectUseError(Exception):
+        """Stand-in for gevent.exceptions.ConcurrentObjectUseError."""
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=_ConcurrentObjectUseError):
+        # context-manager form
+        with ignore_errors(connection):
+            raise _ConcurrentObjectUseError()
+
+        # function-call form
+        def raising():
+            raise _ConcurrentObjectUseError()
+
+        ignore_errors(connection, raising)
+
+
+def test_ignore_errors_reraises_when_gevent_not_available():
+
+    class _ConcurrentObjectUseError(Exception):
+        pass
+
+    connection = Mock()
+    connection.channel_errors = ()
+    connection.connection_errors = ()
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        with pytest.raises(_ConcurrentObjectUseError):
+            with ignore_errors(connection):
+                raise _ConcurrentObjectUseError()
+
+
+def test_ignore_errors_lazy_evaluation_does_not_crash_with_mock_connection():
+
+    connection = Mock()  # connection_errors and channel_errors are both Mock
+
+    with patch('kombu.common.get_gevent_concurrent_error', return_value=None):
+        # Must not raise TypeError during normal (no-exception) execution
+        with ignore_errors(connection):
+            pass  # no exception raised → except clause never evaluated
+
+
+def test_ignore_errors_celery_shutdown_step_pattern():
+    """Regression test: simulates the exact Celery ConsumerStep.shutdown() pattern
+    that broke CI in PR #2473.
+
+    Celery's test setup passes a plain Mock() as the connection, so
+    connection.connection_errors and connection.channel_errors are both
+    Mock instances — not tuples.  Before the lazy-evaluation fix, the line
+
+        errors = conn.connection_errors + conn.channel_errors
+
+    executed eagerly (outside the try block), causing:
+        TypeError: unsupported operand type(s) for +: 'Mock' and 'Mock'
+
+    With the fix, the tuple composition only happens when an exception is
+    actually raised, so the mock attributes are never added together during
+    a normal (no-exception) shutdown and the test passes cleanly.
+    """
+    # Mirrors Celery: connection is a bare Mock, errors attrs are Mock too
+    connection = Mock()
+    assert isinstance(connection.connection_errors, Mock)
+    assert isinstance(connection.channel_errors, Mock)
+
+    # Mirrors Celery: consumer with a mock channel
+    consumer = Mock()
+
+    # Mirrors Celery ConsumerStep.shutdown():
+    #   for consumer in self._consumers:
+    #       with ignore_errors(connection):
+    #           consumer.channel.close()
+    with ignore_errors(connection):
+        consumer.channel.close()
+
+    consumer.channel.close.assert_called_once_with()
+
+    # Also verify the function-call form works the same way
+    consumer2 = Mock()
+    ignore_errors(connection, consumer2.channel.close)
+    consumer2.channel.close.assert_called_once_with()
 
 
 class test_declaration_cached:
@@ -198,6 +284,36 @@ class test_maybe_declare:
         # Then: the connection client used ensure to ensure the retry policy
         assert channel.connection.client.ensure.call_count
 
+    def test_with_retry_dropped_connection(self):
+        # Given: A mock Channel and mock entity
+        channel = self._get_mock_channel()
+        # Given: A mock Entity that is already bound
+        entity = self._get_mock_entity(
+            is_bound=True, can_cache_declaration=True)
+        entity.channel = channel
+        assert entity.is_bound, "Expected entity is bound to begin this test."
+        # When: Entity channel connection has gone away
+        entity.channel.connection = None
+        # When: calling maybe_declare with retry
+        # Then: the RecoverableConnectionError should be raised
+        with pytest.raises(RecoverableConnectionError):
+            maybe_declare(entity, channel, retry=True)
+
+    def test_with_retry_entity_bound_to_closed_channel(self):
+        # Given: An exchange bound to a channel that has since been closed
+        old_channel = self._get_mock_channel()
+        exchange = Exchange('foo', 'direct')(old_channel)
+        old_channel.connection = None
+        # Given: A live channel (e.g. opened by a reconnect)
+        channel = self._get_mock_channel()
+        channel.connection.client.ensure = lambda obj, fun, **policy: fun
+        # When: calling maybe_declare with retry on the live channel
+        assert maybe_declare(exchange, channel, retry=True)
+        # Then: the exchange was declared on the live channel
+        channel.exchange_declare.assert_called_once()
+        old_channel.exchange_declare.assert_not_called()
+        assert exchange.channel is channel
+
 
 class test_replies:
 
@@ -318,7 +434,7 @@ class test_insured:
         conn.ensure_connection.assert_called_with(errback=custom_errback)
 
 
-class MockConsumer(object):
+class MockConsumer:
     consumers = set()
 
     def __init__(self, channel, queues=None, callbacks=None, **kwargs):
@@ -330,13 +446,18 @@ class MockConsumer(object):
         self.consumers.add(self)
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.consumers.discard(self)
 
 
 class test_itermessages:
 
-    class MockConnection(object):
+    class MockConnection:
         should_raise_timeout = False
 
         def drain_events(self, **kwargs):
@@ -388,7 +509,7 @@ class test_QoS:
     class _QoS(QoS):
         def __init__(self, value):
             self.value = value
-            QoS.__init__(self, None, value)
+            super().__init__(None, value)
 
         def set(self, value):
             return value
@@ -497,3 +618,81 @@ class test_QoS:
         qos.set(12)
         assert qos.prev == 12
         qos.set(qos.prev)
+
+    def test_qos_max_prefetch_limit(self):
+        """Test that max_prefetch limits increment_eventually."""
+        qos = self._QoS(5)
+        qos.max_prefetch = 10
+
+        # Normal increment should work
+        assert qos.increment_eventually() == 6
+        assert qos.increment_eventually(3) == 9
+
+        # Should reach the limit
+        assert qos.increment_eventually(2) == 10
+
+        # Should not exceed the limit
+        assert qos.increment_eventually() == 10
+        assert qos.increment_eventually(5) == 10
+
+        # Decrement should still work
+        assert qos.decrement_eventually(2) == 8
+
+        # Can increment again within limit
+        assert qos.increment_eventually() == 9
+
+    def test_qos_max_prefetch_no_limit(self):
+        """Test that QoS works normally when max_prefetch is None."""
+        qos = self._QoS(5)
+        qos.max_prefetch = None
+
+        # Should increment normally without limit
+        assert qos.increment_eventually() == 6
+        assert qos.increment_eventually(100) == 106
+        assert qos.increment_eventually(1000) == 1106
+
+    def test_qos_max_prefetch_zero_initial(self):
+        """Test max_prefetch with zero initial value (disabled QoS)."""
+        qos = self._QoS(0)
+        qos.max_prefetch = 5
+
+        # Zero value should remain zero regardless of max_prefetch
+        assert qos.increment_eventually() == 0
+        assert qos.increment_eventually(10) == 0
+
+    def test_qos_max_prefetch_constructor(self):
+        """Test that max_prefetch can be set via constructor."""
+        callback = Mock()
+        qos = QoS(callback, 5, max_prefetch=10)
+
+        assert qos.max_prefetch == 10
+        assert qos.value == 5
+
+    def test_qos_max_prefetch_thread_safety(self):
+        """Test that max_prefetch enforcement is thread-safe."""
+        qos = self._QoS(8)
+        qos.max_prefetch = 10
+
+        def increment_to_limit():
+            for i in range(100):  # Try to increment many times
+                qos.increment_eventually()
+
+        from threading import Thread
+        threads = [Thread(target=increment_to_limit) for _ in range(5)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        # Should never exceed max_prefetch despite multiple threads
+        assert qos.value == 10
+
+    def test_qos_max_prefetch_negative_increment(self):
+        """Test that negative increments are handled with max_prefetch."""
+        qos = self._QoS(5)
+        qos.max_prefetch = 10
+
+        # Negative increments should be treated as 0 (existing behavior)
+        assert qos.increment_eventually(-5) == 5
+        assert qos.increment_eventually(8) == 10  # Should hit limit
+        assert qos.increment_eventually(-2) == 10  # Should stay at limit

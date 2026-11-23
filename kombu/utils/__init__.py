@@ -1,12 +1,12 @@
 """DEPRECATED - Import from modules below."""
-from __future__ import absolute_import, print_function, unicode_literals
+
+from __future__ import annotations
 
 from .collections import EqualityDict
 from .compat import fileno, maybe_fileno, nested, register_after_fork
 from .div import emergency_dump_state
-from .functional import (
-    fxrange, fxrangemax, maybe_list, reprcall, retry_over_time,
-)
+from .functional import (fxrange, fxrangemax, maybe_list, reprcall, reprkwargs,
+                         retry_over_time)
 from .imports import symbol_by_name
 from .objects import cached_property
 from .uuid import uuid

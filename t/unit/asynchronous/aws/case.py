@@ -1,14 +1,14 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 import pytest
 
-from case import skip
+import t.skip
+
+pytest.importorskip('boto3')
+pytest.importorskip('pycurl')
 
 
-@skip.if_pypy()
-@skip.unless_module('boto3')
-@skip.unless_module('pycurl')
+@t.skip.if_pypy
 @pytest.mark.usefixtures('hub')
-class AWSCase(object):
+class AWSCase:
     pass

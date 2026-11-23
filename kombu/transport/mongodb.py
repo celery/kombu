@@ -1,27 +1,57 @@
-"""MongoDB transport.
+# copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
+# license: BSD, see LICENSE for more details.
 
-:copyright: (c) 2010 - 2013 by Flavio Percoco Premoli.
-:license: BSD, see LICENSE for more details.
+"""MongoDB transport module for kombu.
+
+Features
+========
+* Type: Virtual
+* Supports Direct: Yes
+* Supports Topic: Yes
+* Supports Fanout: Yes
+* Supports Priority: Yes
+* Supports TTL: Yes
+
+Connection String
+=================
+ *Unreviewed*
+
+Transport Options
+=================
+
+* ``connect_timeout``,
+* ``ssl``,
+* ``ttl``,
+* ``capped_queue_size``,
+* ``default_hostname``,
+* ``default_port``,
+* ``default_database``,
+* ``messages_collection``,
+* ``routing_collection``,
+* ``broadcast_collection``,
+* ``queues_collection``,
+* ``calc_queue_size``,
 """
-from __future__ import absolute_import, unicode_literals
 
-import datetime
+from __future__ import annotations
+
+import warnings
+from datetime import datetime, timedelta, timezone
+from queue import Empty
 
 import pymongo
-from pymongo import errors
-from pymongo import MongoClient, uri_parser
+from pymongo import MongoClient, errors, uri_parser
 from pymongo.cursor import CursorType
 
 from kombu.exceptions import VersionMismatch
-from kombu.five import Empty, string_t
 from kombu.utils.compat import _detect_environment
 from kombu.utils.encoding import bytes_to_str
-from kombu.utils.json import loads, dumps
+from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
+from kombu.utils.url import maybe_sanitize_url
 
 from . import virtual
 from .base import to_rabbitmq_queue_arguments
-
 
 E_SERVER_VERSION = """\
 Kombu requires MongoDB version 1.3+ (server is {0})\
@@ -32,16 +62,16 @@ Kombu requires MongoDB version 2.2+ (server is {0}) for TTL indexes support\
 """
 
 
-class BroadcastCursor(object):
+class BroadcastCursor:
     """Cursor for broadcast queues."""
 
     def __init__(self, cursor):
         self._cursor = cursor
-
+        self._offset = 0
         self.purge(rewind=False)
 
     def get_size(self):
-        return self._cursor.count() - self._offset
+        return self._cursor.collection.count_documents({}) - self._offset
 
     def close(self):
         self._cursor.close()
@@ -50,8 +80,8 @@ class BroadcastCursor(object):
         if rewind:
             self._cursor.rewind()
 
-        # Fast forward the cursor past old events
-        self._offset = self._cursor.count()
+        # Fast-forward the cursor past old events
+        self._offset = self._cursor.collection.count_documents({})
         self._cursor = self._cursor.skip(self._offset)
 
     def __iter__(self):
@@ -112,7 +142,7 @@ class Channel(virtual.Channel):
     ))
 
     def __init__(self, *vargs, **kwargs):
-        super(Channel, self).__init__(*vargs, **kwargs)
+        super().__init__(*vargs, **kwargs)
 
         self._broadcast_cursors = {}
 
@@ -123,11 +153,17 @@ class Channel(virtual.Channel):
 
     def _new_queue(self, queue, **kwargs):
         if self.ttl:
-            self.queues.update(
+            self.queues.update_one(
                 {'_id': queue},
-                {'_id': queue,
-                 'options': kwargs,
-                 'expire_at': self._get_expire(kwargs, 'x-expires')},
+                {
+                    '$set': {
+                        '_id': queue,
+                        'options': kwargs,
+                        'expire_at': self._get_queue_expire(
+                            kwargs, 'x-expires'
+                        ),
+                    },
+                },
                 upsert=True)
 
     def _get(self, queue):
@@ -137,10 +173,9 @@ class Channel(virtual.Channel):
             except StopIteration:
                 msg = None
         else:
-            msg = self.messages.find_and_modify(
-                query={'queue': queue},
+            msg = self.messages.find_one_and_delete(
+                {'queue': queue},
                 sort=[('priority', pymongo.ASCENDING)],
-                remove=True,
             )
 
         if self.ttl:
@@ -155,12 +190,12 @@ class Channel(virtual.Channel):
         # Do not calculate actual queue size if requested
         # for performance considerations
         if not self.calc_queue_size:
-            return super(Channel, self)._size(queue)
+            return super()._size(queue)
 
         if queue in self._fanout_queues:
             return self._get_broadcast_cursor(queue).get_size()
 
-        return self.messages.find({'queue': queue}).count()
+        return self.messages.count_documents({'queue': queue})
 
     def _put(self, queue, message, **kwargs):
         data = {
@@ -170,13 +205,18 @@ class Channel(virtual.Channel):
         }
 
         if self.ttl:
-            data['expire_at'] = self._get_expire(queue, 'x-message-ttl')
+            data['expire_at'] = self._get_queue_expire(queue, 'x-message-ttl')
+            msg_expire = self._get_message_expire(message)
+            if msg_expire is not None and (
+                data['expire_at'] is None or msg_expire < data['expire_at']
+            ):
+                data['expire_at'] = msg_expire
 
-        self.messages.insert(data)
+        self.messages.insert_one(data)
 
     def _put_fanout(self, exchange, message, routing_key, **kwargs):
-        self.broadcast.insert({'payload': dumps(message),
-                               'queue': exchange})
+        self.broadcast.insert_one({'payload': dumps(message),
+                                  'queue': exchange})
 
     def _purge(self, queue):
         size = self._size(queue)
@@ -184,7 +224,7 @@ class Channel(virtual.Channel):
         if queue in self._fanout_queues:
             self._get_broadcast_cursor(queue).purge()
         else:
-            self.messages.remove({'queue': queue})
+            self.messages.delete_many({'queue': queue})
 
         return size
 
@@ -215,17 +255,17 @@ class Channel(virtual.Channel):
         data = lookup.copy()
 
         if self.ttl:
-            data['expire_at'] = self._get_expire(queue, 'x-expires')
+            data['expire_at'] = self._get_queue_expire(queue, 'x-expires')
 
-        self.routing.update(lookup, data, upsert=True)
+        self.routing.update_one(lookup, {'$set': data}, upsert=True)
 
     def queue_delete(self, queue, **kwargs):
-        self.routing.remove({'queue': queue})
+        self.routing.delete_many({'queue': queue})
 
         if self.ttl:
-            self.queues.remove({'_id': queue})
+            self.queues.delete_one({'_id': queue})
 
-        super(Channel, self).queue_delete(queue, **kwargs)
+        super().queue_delete(queue, **kwargs)
 
         if queue in self._fanout_queues:
             try:
@@ -245,6 +285,10 @@ class Channel(virtual.Channel):
         client = self.connection.client
         hostname = client.hostname
 
+        if hostname.startswith('srv://'):
+            scheme = 'mongodb+srv://'
+            hostname = 'mongodb+' + hostname
+
         if not hostname.startswith(scheme):
             hostname = scheme + hostname
 
@@ -262,7 +306,9 @@ class Channel(virtual.Channel):
 
         port = client.port if client.port else self.default_port
 
-        parsed = uri_parser.parse_uri(hostname, port)
+        # We disable validating and normalization parameters here,
+        # because pymongo will validate and normalize parameters later in __init__ of MongoClient
+        parsed = uri_parser.parse_uri(hostname, port, validate=False)
 
         dbname = parsed['database'] or client.virtual_host
 
@@ -276,7 +322,29 @@ class Channel(virtual.Channel):
                                  if self.connect_timeout else None),
         }
         options.update(parsed['options'])
+        normalized = {}
+        for k, v in options.items():
+            val = v[0] if isinstance(v, list) and len(v) == 1 else v
+            normalized[k] = val
+            lk = k.lower()
+            # Only set the lowercase key if it does not exist, or if it exists and has the same value
+            if lk not in normalized or normalized[lk] == val:
+                normalized[lk] = val
+            elif normalized[lk] == val:
+                # Values match, no action needed
+                pass
+            else:
+                # Conflict: keys differ only in case and have different values; log a warning
+                warnings.warn(
+                    f"MongoDB transport: Option conflict for key '{k}' and '{lk}' with different values: "
+                    f"{normalized.get(lk)!r} vs {val!r}. Using value for '{k}'."
+                )
+                # Do not overwrite the existing value for lk
+        options = normalized
         options = self._prepare_client_options(options)
+
+        if 'tls' in options:
+            options.pop('ssl')
 
         return hostname, dbname, options
 
@@ -320,7 +388,7 @@ class Channel(virtual.Channel):
 
     def _create_broadcast(self, database):
         """Create capped collection for broadcast messages."""
-        if self.broadcast_collection in database.collection_names():
+        if self.broadcast_collection in database.list_collection_names():
             return
 
         database.create_collection(self.broadcast_collection,
@@ -330,20 +398,20 @@ class Channel(virtual.Channel):
     def _ensure_indexes(self, database):
         """Ensure indexes on collections."""
         messages = database[self.messages_collection]
-        messages.ensure_index(
+        messages.create_index(
             [('queue', 1), ('priority', 1), ('_id', 1)], background=True,
         )
 
-        database[self.broadcast_collection].ensure_index([('queue', 1)])
+        database[self.broadcast_collection].create_index([('queue', 1)])
 
         routing = database[self.routing_collection]
-        routing.ensure_index([('queue', 1), ('exchange', 1)])
+        routing.create_index([('queue', 1), ('exchange', 1)])
 
         if self.ttl:
-            messages.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
-            routing.ensure_index([('expire_at', 1)], expireAfterSeconds=0)
+            messages.create_index([('expire_at', 1)], expireAfterSeconds=0)
+            routing.create_index([('expire_at', 1)], expireAfterSeconds=0)
 
-            database[self.queues_collection].ensure_index(
+            database[self.queues_collection].create_index(
                 [('expire_at', 1)], expireAfterSeconds=0)
 
     def _create_client(self):
@@ -401,13 +469,19 @@ class Channel(virtual.Channel):
         ret = self._broadcast_cursors[queue] = BroadcastCursor(cursor)
         return ret
 
-    def _get_expire(self, queue, argument):
+    def _get_message_expire(self, message):
+        value = message.get('properties', {}).get('expiration')
+        if value is not None:
+            return self.get_now() + timedelta(milliseconds=int(value))
+
+    def _get_queue_expire(self, queue, argument):
         """Get expiration header named `argument` of queue definition.
 
         Note:
+        ----
             `queue` must be either queue name or options itself.
         """
-        if isinstance(queue, string_t):
+        if isinstance(queue, str):
             doc = self.queues.find_one({'_id': queue})
 
             if not doc:
@@ -422,23 +496,23 @@ class Channel(virtual.Channel):
         except (KeyError, TypeError):
             return
 
-        return self.get_now() + datetime.timedelta(milliseconds=value)
+        return self.get_now() + timedelta(milliseconds=value)
 
     def _update_queues_expire(self, queue):
         """Update expiration field on queues documents."""
-        expire_at = self._get_expire(queue, 'x-expires')
+        expire_at = self._get_queue_expire(queue, 'x-expires')
 
         if not expire_at:
             return
 
-        self.routing.update(
-            {'queue': queue}, {'$set': {'expire_at': expire_at}}, multi=True)
-        self.queues.update(
-            {'_id': queue}, {'$set': {'expire_at': expire_at}}, multi=True)
+        self.routing.update_many(
+            {'queue': queue}, {'$set': {'expire_at': expire_at}})
+        self.queues.update_many(
+            {'_id': queue}, {'$set': {'expire_at': expire_at}})
 
     def get_now(self):
         """Return current time in UTC."""
-        return datetime.datetime.utcnow()
+        return datetime.now(timezone.utc)
 
 
 class Transport(virtual.Transport):
@@ -466,3 +540,15 @@ class Transport(virtual.Transport):
 
     def driver_version(self):
         return pymongo.version
+
+    def as_uri(self, uri: str, include_password=False, mask='**') -> str:
+        if not uri:
+            return 'mongodb://'
+        if include_password:
+            return uri
+
+        if ',' not in uri:
+            return maybe_sanitize_url(uri)
+
+        uri1, remainder = uri.split(',', 1)
+        return ','.join([maybe_sanitize_url(uri1), remainder])

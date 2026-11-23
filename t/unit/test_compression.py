@@ -1,12 +1,13 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
+
+import importlib.util
+import sys
 
 import pytest
 
-import sys
-
-from case import mock, skip
-
 from kombu import compression
+
+_has_brotli = importlib.util.find_spec('brotli') is not None
 
 
 class test_compression:
@@ -14,12 +15,12 @@ class test_compression:
     def test_encoders__gzip(self):
         assert 'application/x-gzip' in compression.encoders()
 
-    @skip.unless_module('bz2')
     def test_encoders__bz2(self):
+        pytest.importorskip('bz2')
         assert 'application/x-bz2' in compression.encoders()
 
     def test_encoders__brotli(self):
-        pytest.importorskip('brotli')
+        pytest.importorskip('brotli' if _has_brotli else 'brotlicffi')
 
         assert 'application/x-brotli' in compression.encoders()
 
@@ -28,13 +29,8 @@ class test_compression:
 
         assert 'application/x-lzma' in compression.encoders()
 
-    def test_encoders__backports_lzma(self):
-        pytest.importorskip('backports.lzma')
-
-        assert 'application/x-lzma' in compression.encoders()
-
     def test_encoders__zstd(self):
-        pytest.importorskip('zstandard')
+        pytest.importorskip('compression.zstd' if sys.version_info >= (3, 14) else 'backports.zstd')
 
         assert 'application/zstd' in compression.encoders()
 
@@ -53,10 +49,13 @@ class test_compression:
         assert d == text
 
     def test_compress__decompress__brotli(self):
-        pytest.importorskip('brotli')
+        pytest.importorskip('brotli' if _has_brotli else 'brotlicffi')
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'brotli')
+        assert text != c
+        d = compression.decompress(c, ctype)
+        assert d == text
 
     def test_compress__decompress__lzma(self):
         pytest.importorskip('lzma')
@@ -67,17 +66,8 @@ class test_compression:
         d = compression.decompress(c, ctype)
         assert d == text
 
-    def test_compress__decompress__backports_lzma(self):
-        pytest.importorskip('backports.lzma')
-
-        text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
-        c, ctype = compression.compress(text, 'lzma')
-        assert text != c
-        d = compression.decompress(c, ctype)
-        assert d == text
-
     def test_compress__decompress__zstd(self):
-        pytest.importorskip('zstandard')
+        pytest.importorskip('compression.zstd' if sys.version_info >= (3, 14) else 'backports.zstd')
 
         text = b'The Brown Quick Fox Over The Lazy Dog Jumps'
         c, ctype = compression.compress(text, 'zstd')
@@ -85,12 +75,22 @@ class test_compression:
         d = compression.decompress(c, ctype)
         assert d == text
 
-    @mock.mask_modules('bz2')
-    def test_no_bz2(self):
+    @pytest.mark.masked_modules('bz2')
+    def test_no_bz2(self, mask_modules):
         c = sys.modules.pop('kombu.compression')
         try:
             import kombu.compression
             assert not hasattr(kombu.compression, 'bz2')
+        finally:
+            if c is not None:
+                sys.modules['kombu.compression'] = c
+
+    @pytest.mark.masked_modules('lzma')
+    def test_no_lzma(self, mask_modules):
+        c = sys.modules.pop('kombu.compression')
+        try:
+            import kombu.compression
+            assert not hasattr(kombu.compression, 'lzma')
         finally:
             if c is not None:
                 sys.modules['kombu.compression'] = c

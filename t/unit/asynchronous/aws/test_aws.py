@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
-from case import Mock
+from unittest.mock import Mock
 
 from kombu.asynchronous.aws import connect_sqs
 

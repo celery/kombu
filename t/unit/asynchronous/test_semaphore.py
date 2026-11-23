@@ -1,13 +1,13 @@
-from __future__ import absolute_import, unicode_literals
+from __future__ import annotations
 
 from kombu.asynchronous.semaphore import LaxBoundedSemaphore
 
 
 class test_LaxBoundedSemaphore:
 
-    def test_over_release(self):
+    def test_over_release(self) -> None:
         x = LaxBoundedSemaphore(2)
-        calls = []
+        calls: list[int] = []
         for i in range(1, 21):
             x.acquire(calls.append, i)
         x.release()

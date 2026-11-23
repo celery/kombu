@@ -1,22 +1,22 @@
 """Base async HTTP client implementation."""
-from __future__ import absolute_import, unicode_literals
+
+from __future__ import annotations
 
 import sys
+from http.client import responses
+from typing import TYPE_CHECKING
 
-from vine import Thenable, promise, maybe_promise
+from vine import Thenable, maybe_promise, promise
 
 from kombu.exceptions import HttpError
-from kombu.five import items, python_2_unicode_compatible
 from kombu.utils.compat import coro
 from kombu.utils.encoding import bytes_to_str
 from kombu.utils.functional import maybe_list, memoize
 
-try:  # pragma: no cover
-    from http.client import responses
-except ImportError:
-    from httplib import responses  # noqa
+if TYPE_CHECKING:
+    from types import TracebackType
 
-__all__ = ('Headers', 'Response', 'Request')
+__all__ = ('Headers', 'Response', 'Request', 'BaseClient')
 
 PYPY = hasattr(sys, 'pypy_version_info')
 
@@ -40,15 +40,16 @@ class Headers(dict):
 
 
 @Thenable.register
-@python_2_unicode_compatible
-class Request(object):
+class Request:
     """A HTTP Request.
 
     Arguments:
+    ---------
         url (str): The URL to request.
         method (str): The HTTP method to use (defaults to ``GET``).
 
     Keyword Arguments:
+    -----------------
         headers (Dict, ~kombu.asynchronous.http.Headers): Optional headers for
             this request
         body (str): Optional body for this request.
@@ -68,7 +69,7 @@ class Request(object):
         auth_password (str): Password for HTTP authentication.
         auth_mode (str): Type of HTTP authentication (``basic`` or ``digest``).
         user_agent (str): Custom user agent for this request.
-        network_interace (str): Network interface to use for this request.
+        network_interface (str): Network interface to use for this request.
         on_ready (Callable): Callback to be called when the response has been
             received. Must accept single ``response`` argument.
         on_stream (Callable): Optional callback to be called every time body
@@ -123,7 +124,7 @@ class Request(object):
         self.on_prepare = maybe_promise(on_prepare)
         self.on_header = maybe_promise(on_header)
         if kwargs:
-            for k, v in items(kwargs):
+            for k, v in kwargs.items():
                 setattr(self, k, v)
         if not isinstance(headers, Headers):
             headers = Headers(headers or {})
@@ -136,10 +137,11 @@ class Request(object):
         return '<Request: {0.method} {0.url} {0.body}>'.format(self)
 
 
-class Response(object):
+class Response:
     """HTTP Response.
 
-    Arguments:
+    Arguments
+    ---------
         request (~kombu.asynchronous.http.Request): See :attr:`request`.
         code (int): See :attr:`code`.
         headers (~kombu.asynchronous.http.Headers): See :attr:`headers`.
@@ -147,7 +149,8 @@ class Response(object):
         effective_url (str): See :attr:`effective_url`.
         status (str): See :attr:`status`.
 
-    Attributes:
+    Attributes
+    ----------
         request (~kombu.asynchronous.http.Request): object used to
             get this response.
         code (int): HTTP response code (e.g. 200, 404, or 500).
@@ -183,7 +186,8 @@ class Response(object):
     def raise_for_error(self):
         """Raise if the request resulted in an HTTP error code.
 
-        Raises:
+        Raises
+        ------
             :class:`~kombu.exceptions.HttpError`
         """
         if self.error:
@@ -194,7 +198,8 @@ class Response(object):
         """The full contents of the response body.
 
         Note:
-            Accessing this propery will evaluate the buffer
+        ----
+            Accessing this property will evaluate the buffer
             and subsequent accesses will be cached.
         """
         if self._body is None:
@@ -230,7 +235,9 @@ def header_parser(keyt=normalize_header):
             headers[key] = value.strip()
 
 
-class BaseClient(object):
+class BaseClient:
+    """Base HTTP client."""
+
     Headers = Headers
     Request = Request
     Response = Response
@@ -238,6 +245,12 @@ class BaseClient(object):
     def __init__(self, hub, **kwargs):
         self.hub = hub
         self._header_parser = header_parser()
+        # Without this, a client left with a pending request when the hub
+        # closes (e.g. during worker shutdown) keeps that request running
+        # in the background: it can complete and deliver its result well
+        # after the rest of the consumer has already torn down, with
+        # nothing left to act on it (see SQS long-polling in curl.py).
+        self.hub.on_close.add(self._on_hub_close)
 
     def perform(self, request, **kwargs):
         for req in maybe_list(request) or []:
@@ -251,6 +264,18 @@ class BaseClient(object):
     def close(self):
         pass
 
+    def _detach_from_hub(self):
+        # Hub.reset() and a close by the owner both keep the hub, so drop
+        # this client from it: the next get_client() then creates a new
+        # client instead of returning this closed one.
+        self.hub.on_close.discard(self._on_hub_close)
+        if getattr(self.hub, '_current_http_client', None) is self:
+            del self.hub._current_http_client
+
+    def _on_hub_close(self, hub):
+        self._detach_from_hub()
+        self.close()
+
     def on_header(self, headers, line):
         try:
             self._header_parser.send((bytes_to_str(line), headers))
@@ -260,5 +285,10 @@ class BaseClient(object):
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_info):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None
+    ) -> None:
         self.close()
