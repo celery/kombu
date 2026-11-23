@@ -63,7 +63,7 @@ class LaxBoundedSemaphore:
         Arguments:
         ---------
             callback (Callable): The callback to apply.
-            *partial_args (Any): partial arguments to callback.
+            ``*partial_args`` (Any): partial arguments to callback.
         """
         value = self.value
         if value <= 0:

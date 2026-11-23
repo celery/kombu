@@ -250,7 +250,7 @@ class BaseClient:
         # in the background: it can complete and deliver its result well
         # after the rest of the consumer has already torn down, with
         # nothing left to act on it (see SQS long-polling in curl.py).
-        self.hub.on_close.add(self.close)
+        self.hub.on_close.add(self._on_hub_close)
 
     def perform(self, request, **kwargs):
         for req in maybe_list(request) or []:
@@ -261,8 +261,20 @@ class BaseClient:
     def add_request(self, request):
         raise NotImplementedError('must implement add_request')
 
-    def close(self, *args):
+    def close(self):
         pass
+
+    def _detach_from_hub(self):
+        # Hub.reset() and a close by the owner both keep the hub, so drop
+        # this client from it: the next get_client() then creates a new
+        # client instead of returning this closed one.
+        self.hub.on_close.discard(self._on_hub_close)
+        if getattr(self.hub, '_current_http_client', None) is self:
+            del self.hub._current_http_client
+
+    def _on_hub_close(self, hub):
+        self._detach_from_hub()
+        self.close()
 
     def on_header(self, headers, line):
         try:

@@ -100,10 +100,10 @@ class Channel(virtual.Channel):
     """Zookeeper Channel."""
 
     _client = None
-    _queues = {}
 
     def __init__(self, connection, **kwargs):
         super().__init__(connection, **kwargs)
+        self._queues = {}
         vhost = self.connection.client.virtual_host
         self._vhost = '/{}'.format(vhost.strip('/'))
 
@@ -190,6 +190,19 @@ class Channel(virtual.Channel):
         conn = KazooClient(conn_str)
         conn.start()
         return conn
+
+    def close(self):
+        """Close channel, then stop and close its Kazoo client."""
+        try:
+            super().close()
+        finally:
+            client = self._client
+            if client is not None:
+                try:
+                    client.stop()
+                finally:
+                    client.close()
+                    self._client = None
 
     @property
     def client(self):
