@@ -173,7 +173,10 @@ class Channel(virtual.Channel):
         try:
             self.session.commit()
         except OperationalError:
+            # Re-raise so the publish fails (and can be retried) instead of
+            # reporting success for a message that was never stored.
             self.session.rollback()
+            raise
 
     def _get(self, queue):
         obj = self._get_or_create(queue)
@@ -210,7 +213,10 @@ class Channel(virtual.Channel):
         try:
             self.session.commit()
         except OperationalError:
+            # Re-raise so the purge fails instead of reporting messages as
+            # purged that are still in the queue.
             self.session.rollback()
+            raise
         return count
 
     def _size(self, queue):

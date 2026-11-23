@@ -164,6 +164,12 @@ def _maybe_declare(entity, channel):
 def _imaybe_declare(entity, channel, **retry_policy):
     entity = _ensure_channel_is_bound(entity, channel)
 
+    if not entity.channel.connection and getattr(channel, 'connection', None):
+        # The entity is still bound to a channel that was closed, e.g. when
+        # a Producer.publish() retry passes the exchange it declared before
+        # the reconnect: declare it on the channel we were given instead.
+        entity.revive(channel)
+
     if not entity.channel.connection:
         raise RecoverableConnectionError('channel disconnected')
 

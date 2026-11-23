@@ -6,9 +6,10 @@ from unittest.mock import ANY, Mock, call, patch
 import pytest
 
 import t.skip
+from kombu.asynchronous.http import Request, get_client
 from kombu.asynchronous.http.curl import READ, WRITE, CurlClient
 
-pytest.importorskip('pycurl')
+pycurl = pytest.importorskip('pycurl')
 
 
 @t.skip.if_pypy
@@ -60,7 +61,7 @@ class test_CurlClient:
         # consumer has already torn down.
         with patch('kombu.asynchronous.http.curl.pycurl'):
             x = self.Client(hub)
-            assert x.close in hub.on_close
+            assert x._on_hub_close in hub.on_close
 
     def test_hub_close_closes_client(self, hub):
         with patch('kombu.asynchronous.http.curl.pycurl'):
@@ -71,6 +72,70 @@ class test_CurlClient:
             for _curl in x._curls:
                 _curl.close.assert_called_with()
             x._multi.close.assert_called_with()
+
+    def test_hub_reset_does_not_reuse_closed_client(self, hub):
+        # Celery calls hub.reset() after a recoverable error and then
+        # reconnects on the same hub, so get_client() must not hand back
+        # the client that reset() just closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = get_client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            hub.reset()
+            # The old client's in-flight requests belong to the channels
+            # being torn down, so reset() must close it too.
+            x._multi.close.assert_called_once_with()
+            assert x._on_hub_close not in hub.on_close
+            y = get_client(hub)
+            assert y is not x
+            assert y._on_hub_close in hub.on_close
+
+    def test_closed_client_drops_new_requests(self, hub):
+        # Hub.close() runs on_close before the callbacks still queued on the
+        # hub, so a queued poll can reach the client after it was closed.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x._process_queue = Mock(name='_process_queue')
+            hub.close()
+            request = Mock(name='request')
+            assert x.add_request(request) is request
+            assert request not in x._pending
+            x._process_queue.assert_not_called()
+
+    def test_close_is_idempotent(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            x.close()
+            x._multi.close.assert_called_once_with()
+
+    def test_owner_close_removes_client_from_hub(self, hub):
+        # BaseClient is a context manager, so its owner can close the
+        # cached client without the hub closing.
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            with get_client(hub) as x:
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+            assert x._on_hub_close not in hub.on_close
+            assert get_client(hub) is not x
+
+    def test_closed_clients_are_not_kept_by_hub(self, hub):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            before = len(hub.on_close)
+            for _ in range(50):
+                x = self.Client(hub)
+                x._timeout_check_tref = Mock(name='timeout_check_tref')
+                x.close()
+            assert len(hub.on_close) == before
+
+    def test_dropped_request_is_logged(self, hub, caplog):
+        with patch('kombu.asynchronous.http.curl.pycurl'):
+            x = self.Client(hub)
+            x._timeout_check_tref = Mock(name='timeout_check_tref')
+            x.close()
+            with caplog.at_level('DEBUG', logger='kombu.asynchronous.http.curl'):
+                x.add_request(Mock(name='request'))
+            assert 'closed' in caplog.text
 
     def test_add_request(self):
         with patch('kombu.asynchronous.http.curl.pycurl'):
@@ -159,11 +224,15 @@ class test_CurlClient:
             x = self.Client()
             proxy_host = 'http://www.example.com'
             request = Mock(
-                name='request', headers={}, auth_mode=None, proxy_host=None
+                name='request', headers={}, auth_mode=None, proxy_host=None,
+                connect_timeout=Request.connect_timeout,
+                request_timeout=Request.request_timeout,
             )
             proxied_request = Mock(
                 name='request', headers={}, auth_mode=None,
-                proxy_host=proxy_host, proxy_port=123
+                proxy_host=proxy_host, proxy_port=123,
+                connect_timeout=Request.connect_timeout,
+                request_timeout=Request.request_timeout,
             )
             x._setup_request(
                 x.Curl, request, BytesIO(), x.Headers(), _pycurl=_pycurl
@@ -174,3 +243,50 @@ class test_CurlClient:
                 x.Curl, proxied_request, BytesIO(), x.Headers(), _pycurl
             )
             x.Curl.setopt.assert_any_call(_pycurl.PROXY, proxy_host)
+
+
+@t.skip.if_pypy
+class test_RequestTimeouts:
+
+    @pytest.mark.parametrize('timeouts,expected', [
+        ({}, (30000, 30000)),
+        ({'connect_timeout': 7.25, 'request_timeout': 42.75}, (7250, 42750)),
+        ({'connect_timeout': 0.0011, 'request_timeout': 0.0012}, (2, 2)),
+        ({'connect_timeout': 0.0001, 'request_timeout': 0.0002}, (1, 1)),
+        ({'connect_timeout': 0, 'request_timeout': 0}, (0, 0)),
+        ({'connect_timeout': None, 'request_timeout': None}, (0, 0)),
+    ])
+    def test_applies_request_timeouts(self, timeouts, expected):
+        client = object.__new__(CurlClient)
+        curl = Mock()
+        request = Request('http://example.com/', **timeouts)
+        client._setup_request(curl, request, BytesIO(), client.Headers())
+        curl.setopt.assert_any_call(pycurl.CONNECTTIMEOUT_MS, expected[0])
+        curl.setopt.assert_any_call(pycurl.TIMEOUT_MS, expected[1])
+
+    def test_resets_timeouts_on_reused_handle(self):
+        client = object.__new__(CurlClient)
+        curl = Mock()
+        for connect_timeout, request_timeout in [(1, 2), (None, 0)]:
+            request = Request('http://example.com/', connect_timeout=connect_timeout,
+                              request_timeout=request_timeout)
+            client._setup_request(curl, request, BytesIO(), client.Headers())
+        for option in (pycurl.CONNECTTIMEOUT_MS, pycurl.TIMEOUT_MS):
+            values = [c.args[1] for c in curl.setopt.call_args_list if c.args[0] == option]
+            assert len(values) == 2
+            assert values[0] > 0
+            assert values[1] == 0
+
+    def test_on_prepare_can_override_timeouts(self):
+        client = object.__new__(CurlClient)
+        curl = Mock()
+
+        def prepare(handle):
+            assert handle is curl
+            handle.setopt(pycurl.TIMEOUT_MS, 123)
+
+        request = Request('http://example.com/', request_timeout=1, on_prepare=prepare)
+        client._setup_request(curl, request, BytesIO(), client.Headers())
+        values = [c.args[1] for c in curl.setopt.call_args_list
+                  if c.args[0] == pycurl.TIMEOUT_MS]
+        assert values == [1000, 123]

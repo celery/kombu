@@ -101,22 +101,39 @@ Queue Arguments
   This is a per-queue argument and should be supplied via ``Queue(expires=...)``
   or ``Queue(..., queue_arguments={'x-expires': ...})`` rather than as a
   connection-level transport option.
+
+Replicas and failover
+=====================
+A node that answers a write with ``READONLY``, or ends a blocking read with
+``UNBLOCKED``, is handled as a lost connection: the consumer reconnects and
+tries again. This is what happens when the primary becomes a replica in a
+failover that keeps the old node running.
+
+A consumer whose URL points at a node that stays a replica (a reader
+endpoint, or a failover that was not reverted) therefore retries until the
+node accepts writes, where it used to stop with a channel error. Connecting
+to a replica works and the first write fails, so the wait between connection
+attempts does not apply: a Celery worker logs ``You can't write against a
+read only replica`` and reconnects several times a second.
+
+.. versionchanged:: 5.7.1
+    ``READONLY`` and ``UNBLOCKED`` replies are connection errors.
 """
 
 from __future__ import annotations
 
+import errno
 import functools
 import inspect
 import numbers
+import os
 import socket
 from bisect import bisect
 from collections import OrderedDict, namedtuple
 from contextlib import ExitStack, contextmanager
-from importlib.metadata import version
 from queue import Empty
-from time import monotonic, time
+from time import monotonic, sleep, time
 
-from packaging.version import Version
 from vine import promise
 
 from kombu.exceptions import (BatchPublishError, InconsistencyError,
@@ -131,13 +148,14 @@ from kombu.utils.json import dumps, loads
 from kombu.utils.objects import cached_property
 from kombu.utils.scheduling import cycle_by_name
 from kombu.utils.url import _parse_url
+from kombu.utils.uuid import uuid
 
 from . import virtual
 
 try:
     import redis
     from redis import client, exceptions
-    _REDIS_GET_CONNECTION_WITHOUT_ARGS = Version(version("redis")) >= Version("5.3.0")
+    _REDIS_GET_CONNECTION_WITHOUT_ARGS = redis.VERSION[:2] >= (5, 3)
 except ImportError:  # pragma: no cover
     redis = None
     _REDIS_GET_CONNECTION_WITHOUT_ARGS = None
@@ -250,6 +268,10 @@ def get_redis_error_classes():
             exceptions.BusyLoadingError,
             exceptions.AuthenticationError,
             exceptions.TimeoutError,
+            # The node became a replica (a failover that keeps it running):
+            # no write works on this connection any more, so the consumer
+            # has to reconnect, as it does when the node is down.
+            exceptions.ReadOnlyError,
             # A stale fd can still fire on_readable for a channel that was
             # already dropped after a broker restart (#2582): the poller
             # guard from #2561 makes the common path a debug log, but any
@@ -273,16 +295,56 @@ class MutexHeld(Exception):
     """Raised when another party holds the lock."""
 
 
+_restore_lock_tokens = {}
+
+
+def _restore_lock_token():
+    """Return what this process stores in the restore lock (see Mutex).
+
+    One token per process, kept for its lifetime: a consumer that lost its
+    connection in the sweep comes back on a new channel, and has to find
+    its own lock.  A forked child gets a token of its own, since the
+    tokens are kept by process id.
+    """
+    pid = os.getpid()
+    token = _restore_lock_tokens.get(pid)
+    if token is None:
+        # setdefault: two threads on their first sweep get the same token.
+        token = _restore_lock_tokens.setdefault(pid, uuid())
+    return token
+
+
+def _take_over_own_lock(client, lock, token):
+    """Take over a lock that still holds ``token``, and reset its expiry.
+
+    The check and the new expiry are one script on the server, so a lock
+    that another client took in the meantime is left alone.
+    """
+    lock.local.token = client.get_encoder().encode(token)
+    try:
+        return lock.reacquire()
+    except exceptions.LockNotOwnedError:
+        lock.local.token = None
+        return False
+
+
 @contextmanager
-def Mutex(client, name, expire):
+def Mutex(client, name, expire, token=None):
     """Acquire redis lock in non blocking way.
 
     Raise MutexHeld if not successful.
+
+    ``token`` is the value stored in the lock. A caller that passes the
+    same token every time gets back a lock it could not release, for
+    example because the connection was lost in the block: without that,
+    nobody enters until the lock expires.
     """
     lock = client.lock(name, timeout=expire)
     lock_acquired = False
     try:
-        lock_acquired = lock.acquire(blocking=False)
+        lock_acquired = lock.acquire(blocking=False, token=token)
+        if not lock_acquired and token is not None:
+            lock_acquired = _take_over_own_lock(client, lock, token)
         if lock_acquired:
             yield
         else:
@@ -530,7 +592,8 @@ class QoS(virtual.QoS):
             ceil = time() - self.visibility_timeout
             try:
                 with Mutex(client, self.unacked_mutex_key,
-                           self.unacked_mutex_expire):
+                           self.unacked_mutex_expire,
+                           token=_restore_lock_token()):
                     # ZREVRANGEBYSCORE is deprecated since Redis 6.2 and is
                     # not implemented by every Redis-compatible server
                     # (#2050); ``ZRANGE ... BYSCORE REV`` is the documented
@@ -614,6 +677,8 @@ class MultiChannelPoller:
         self._fd_to_chan = {}
         # channel -> socket map
         self._chan_to_sock = {}
+        # Paused BRPOP replies retain their connection and registration.
+        self._paused_brpop = {}
         # poll implementation (epoll/kqueue/select)
         self.poller = poll()
         # one-shot callbacks called after reading from socket.
@@ -628,18 +693,88 @@ class MultiChannelPoller:
         self._channels.clear()
         self._fd_to_chan.clear()
         self._chan_to_sock.clear()
+        self._paused_brpop.clear()
 
     def add(self, channel):
         self._channels.add(channel)
 
     def discard(self, channel):
         self._channels.discard(channel)
+        for fd, (chan, _, _, _) in list(self._paused_brpop.items()):
+            if chan is channel:
+                self._discard_paused_brpop(fd)
 
     def _on_connection_disconnect(self, connection):
+        self._discard_paused_connection(connection)
+        disconnected = set()
+        for key in list(self._chan_to_sock):
+            channel, client, type = key
+            if client.connection is connection:
+                del self._chan_to_sock[key]
+                disconnected.add((channel, type))
+        for fd, channel_and_type in list(self._fd_to_chan.items()):
+            if channel_and_type in disconnected:
+                del self._fd_to_chan[fd]
+                try:
+                    self.poller.unregister(fd)
+                except (KeyError, AttributeError, TypeError, ValueError):
+                    pass
+                except OSError as exc:
+                    if exc.errno != errno.EBADF:
+                        raise
+        if disconnected:
+            return
         try:
             self.poller.unregister(connection._sock)
         except (AttributeError, TypeError, ValueError):
             pass
+
+    def _unregister_from_poll(self, fileno):
+        self.poller.unregister(fileno)
+
+    def _pause_brpop(self, channel, fileno):
+        if fileno not in self._paused_brpop:
+            connection = channel._in_poll
+            self._unregister_from_poll(fileno)
+            self._paused_brpop[fileno] = (
+                channel, channel.client, connection, connection._sock,
+            )
+
+    def _discard_paused_brpop(self, fileno):
+        channel, client, _, sock = self._paused_brpop.pop(fileno)
+        ident = channel, client, 'BRPOP'
+        # A reconnect may already have replaced this registration, possibly
+        # reusing the same fd. Never remove the new socket's registration.
+        if self._chan_to_sock.get(ident) is sock:
+            del self._chan_to_sock[ident]
+            if self._fd_to_chan.get(fileno) == (channel, 'BRPOP'):
+                del self._fd_to_chan[fileno]
+
+    def _discard_paused_connection(self, connection):
+        for fd, (_, _, conn, _) in list(self._paused_brpop.items()):
+            if conn is connection:
+                self._discard_paused_brpop(fd)
+
+    def _update_brpop_polling(self):
+        for fd, (channel, redis_client, connection, sock) in list(
+                self._paused_brpop.items()):
+            ident = channel, redis_client, 'BRPOP'
+            if (channel._in_poll is not connection or
+                    connection._sock is not sock or
+                    self._chan_to_sock.get(ident) is not sock or
+                    self._fd_to_chan.get(fd) != (channel, 'BRPOP')):
+                self._discard_paused_brpop(fd)
+            elif channel.qos.can_consume():
+                self.poller.register(sock, self.eventflags)
+                del self._paused_brpop[fd]
+
+        for fd, (channel, type) in list(self._fd_to_chan.items()):
+            if (type == 'BRPOP' and channel._in_poll and
+                    not channel.qos.can_consume()):
+                # A pending reply may contain a message already popped from
+                # Redis. Keep it intact until credit returns, but stop polling
+                # the readable socket so it cannot spin the event loop.
+                self._pause_brpop(channel, fd)
 
     def _register(self, channel, client, type):
         if (channel, client, type) in self._chan_to_sock:
@@ -670,7 +805,11 @@ class MultiChannelPoller:
             channel._in_poll = False
             self._register(*ident)
         if not channel._in_poll:  # send BRPOP
+            sock = channel.client.connection._sock
             channel._brpop_start()
+            if channel.client.connection._sock is not sock:
+                # A health-check retry can replace the socket while sending.
+                self._register(*ident)
 
     def _register_LISTEN(self, channel):
         """Enable LISTEN mode for channel."""
@@ -681,6 +820,7 @@ class MultiChannelPoller:
             channel._subscribe()  # send SUBSCRIBE
 
     def on_poll_start(self):
+        self._update_brpop_polling()
         for channel in self._channels:
             if channel.active_queues:           # BRPOP mode?
                 if channel.qos.can_consume():
@@ -797,6 +937,8 @@ class MultiChannelPoller:
                 return
 
     def on_readable(self, fileno):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('on_readable: fd %r not mapped, ignoring', fileno)
@@ -804,13 +946,17 @@ class MultiChannelPoller:
         chan, type = chan_type
         if chan.qos.can_consume():
             chan.handlers[type]()
-        elif type == 'BRPOP' and not chan._in_poll:
-            # Nothing is expected without a pending BRPOP: the server closed
-            # the idle connection. Drop it so the poll stops waking up for it;
-            # _register_BRPOP reconnects once the QoS can consume again.
-            chan.client.connection.disconnect()
+        elif type == 'BRPOP':
+            if chan._in_poll:
+                self._pause_brpop(chan, fileno)
+            else:
+                # Nothing is expected without a pending BRPOP: the server
+                # closed the idle connection. Reconnect once credit returns.
+                chan.client.connection.disconnect()
 
     def handle_event(self, fileno, event):
+        if fileno in self._paused_brpop:
+            return
         chan_type = self._fd_to_chan.get(fileno)
         if chan_type is None:
             logger.debug('handle_event: fd %r not mapped, ignoring', fileno)
@@ -827,14 +973,15 @@ class MultiChannelPoller:
             # Without an event loop there is no timer, so refresh here,
             # before can_consume() can skip BRPOP below.
             self.maybe_refresh_binding_expiry()
-            for channel in self._channels:
-                if channel.active_queues:           # BRPOP mode?
-                    if channel.qos.can_consume():
-                        self._register_BRPOP(channel)
-                if channel.active_fanout_queues:    # LISTEN mode?
-                    self._register_LISTEN(channel)
+            self.on_poll_start()
 
-            events = self.poller.poll(timeout)
+            if self._paused_brpop and not self.fds:
+                # select() cannot wait on empty sets on Windows. Also recheck
+                # credit periodically when drain_events has no timeout.
+                sleep(min(timeout, 1) if timeout is not None else 1)
+                events = []
+            else:
+                events = self.poller.poll(timeout)
             if events:
                 for fileno, event in events:
                     ret = self.handle_event(fileno, event)
@@ -860,7 +1007,8 @@ class MultiChannelPoller:
 
     @property
     def fds(self):
-        return self._fd_to_chan
+        return {fd: chan for fd, chan in self._fd_to_chan.items()
+                if fd not in self._paused_brpop}
 
 
 def _batch_publish_retry_safe(connection_kwargs):
@@ -1213,6 +1361,10 @@ class Channel(virtual.Channel):
                 (pipe.lpush if leftmost else pipe.rpush)(
                     self._q_for_pri(queue, pri), dumps(payload),
                 )
+        except self.connection_errors:
+            # Abort the transaction: it would otherwise remove the message
+            # from the unacked hash without requeueing it.
+            raise
         except Exception:
             crit('Could not restore message: %r', payload, exc_info=True)
 
@@ -1397,14 +1549,13 @@ class Channel(virtual.Channel):
             return
         keys = [self._q_for_pri(queue, pri) for pri in self.priority_steps
                 for queue in queues] + [timeout or 0]
-        self._in_poll = self.client.connection
-        self._brpop_sent_at = monotonic()
-
         command_args = ['BRPOP', *keys]
         if self.global_keyprefix:
             command_args = self.client._prefix_args(command_args)
 
         self.client.connection.send_command(*command_args)
+        self._in_poll = self.client.connection
+        self._brpop_sent_at = monotonic()
 
     def _brpop_read(self, **options):
         try:
@@ -1417,6 +1568,16 @@ class Channel(virtual.Channel):
                 # iteration will reconnect automatically.
                 self.client.connection.disconnect()
                 raise
+            except self.ResponseError as exc:
+                if not str(exc).startswith('UNBLOCKED'):
+                    raise
+                # The server ended the blocking pop: the node became a
+                # replica, or an operator sent CLIENT UNBLOCK <id> ERROR.
+                # Both are handled as a lost connection (see ReadOnlyError
+                # in get_redis_error_classes()), so don't narrow this to
+                # the replica message.
+                self.client.connection.disconnect()
+                raise exceptions.ConnectionError(str(exc)) from exc
             if dest__item:
                 dest, item = dest__item
                 dest = bytes_to_str(dest).rsplit(self.sep, 1)[0]
@@ -1821,11 +1982,15 @@ class Channel(virtual.Channel):
                 return sum(sizes[::2])
 
     def close(self):
+        # The drain and the fanout cleanup need the server.  If it is gone,
+        # skip them and still close: a channel left open is closed again
+        # later, possibly after Connection.collect() detached the transport
+        # it needs (celery/celery#11054).
         self._closing = True
         if self._in_poll:
             try:
                 self._brpop_read()
-            except Empty:
+            except (Empty,) + self.connection_errors:
                 pass
         if not self.closed:
             # remove from channel poller.
@@ -1834,9 +1999,12 @@ class Channel(virtual.Channel):
             # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
             if client is not None:
-                for queue in self._fanout_queues:
-                    if queue in self.auto_delete_queues:
-                        self.queue_delete(queue, client=client)
+                try:
+                    for queue in self._fanout_queues:
+                        if queue in self.auto_delete_queues:
+                            self.queue_delete(queue, client=client)
+                except self.connection_errors:
+                    pass
             self._disconnect_pools()
             self._close_clients()
         super().close()
@@ -2111,8 +2279,10 @@ class Transport(virtual.Transport):
         cycle_poll_start = cycle.on_poll_start
         add_reader = loop.add_reader
         on_readable = self.on_readable
+        cycle._unregister_from_poll = loop.remove_reader
 
         def _on_disconnect(connection):
+            cycle._discard_paused_connection(connection)
             # redis-py clears connection._sock before calling us. Use existing
             # registrations, without evaluating cached client/subclient properties.
             disconnected = set()
