@@ -43,8 +43,44 @@ def connection(request):
         vhost=getattr(
             request.config, "slaveinput", {}
         ).get("slaveid", None),
-        transport_options=request.param
+        transport_options=dict(request.param or {})
     )
+
+
+@pytest.mark.env('redis')
+@pytest.mark.parametrize('binding', ['connection', 'channel'])
+def test_publish_after_declare_reconnects(connection, binding):
+    name = f'declare-reconnect-{uuid4().hex}'
+    exchange = kombu.Exchange(name, type='direct')
+    queue = kombu.Queue(name, exchange=exchange, routing_key=name)
+    queue_declare = Channel.queue_declare
+    calls = []
+
+    def fail_once(channel, *args, **kwargs):
+        calls.append(channel)
+        if len(calls) == 1:
+            raise redis.exceptions.ConnectionError('connection lost')
+        return queue_declare(channel, *args, **kwargs)
+
+    with connection as conn:
+        conn.connect()
+        producer = kombu.Producer(
+            conn if binding == 'connection' else conn.channel())
+        try:
+            with patch.object(Channel, 'queue_declare', fail_once):
+                producer.publish(
+                    {'n': 1}, exchange=exchange, routing_key=name,
+                    declare=[queue], retry=True,
+                    retry_policy={'max_retries': 3, 'interval_start': 0},
+                )
+            assert len(calls) == 2
+            bound = queue(conn.default_channel)
+            message = bound.get(no_ack=True)
+            assert message is not None
+            assert message.payload == {'n': 1}
+            assert bound.get(no_ack=True) is None
+        finally:
+            queue(conn.default_channel).delete()
 
 
 @pytest.fixture()
@@ -64,6 +100,45 @@ def redis_client(connection):
 @pytest.fixture()
 def invalid_connection():
     return kombu.Connection('redis://localhost:12345')
+
+
+@pytest.mark.env('redis')
+def test_sync_consumer_receives_after_brpop_health_retry(
+        connection, redis_client):
+    connection.transport_options.update(
+        health_check_interval=1, retry_on_timeout=True)
+    name = f'health-reconnect-{uuid4().hex}'
+    queue = kombu.Queue(name)
+    received = []
+
+    def on_message(body, message):
+        received.append(body)
+        message.ack()
+
+    with connection, connection.clone() as publisher:
+        try:
+            for sequence in range(3):
+                with kombu.Consumer(connection, queues=[queue],
+                                    callbacks=[on_message]) as consumer:
+                    kombu.Producer(publisher).publish(
+                        sequence, routing_key=name, declare=[queue],
+                        serializer='json')
+                    if sequence:
+                        pending = consumer.channel.client.connection
+                        host, port = pending._sock.getsockname()[:2]
+                        client = next(item for item in redis_client.client_list()
+                                      if item['addr'] == f'{host}:{port}')
+                        assert redis_client.execute_command(
+                            'CLIENT', 'KILL', 'ID', client['id']) == 1
+                        # Force the same health-check retry as an idle timeout,
+                        # without sleeping or changing shared server settings.
+                        pending.next_health_check = 0
+                    connection.drain_events(timeout=5)
+                assert received == list(range(sequence + 1))
+                key = connection.transport_options.get('global_keyprefix', '')
+                assert redis_client.llen(key + name) == 0
+        finally:
+            queue(connection.default_channel).delete()
 
 
 @pytest.mark.env('redis')
@@ -154,6 +229,44 @@ def test_failed_health_check_raises_connection_error():
         sleep(1.5)  # let the health check come due
         with pytest.raises(redis.exceptions.ConnectionError):
             redis_connection.send_command('PING')
+
+
+@pytest.mark.env('redis')
+def test_restore_lock_left_by_a_lost_connection(connection, redis_client):
+    """A consumer whose connection drops inside the restore sweep leaves the
+    lock set. Consumers in other processes skip their sweep, as they do
+    while a sweep runs. The consumer that left the lock gets it back, on
+    the new channel it has after it reconnected."""
+    from kombu.transport.redis import _restore_lock_token
+
+    name = f'unacked_mutex_{uuid4().hex}'
+    channel = connection.channel()
+    channel.unacked_mutex_key = name
+    key = channel.global_keyprefix + name
+    try:
+        with patch('redis.lock.Lock.release',
+                   side_effect=redis.ConnectionError()):
+            with pytest.raises(redis.ConnectionError):
+                channel.qos.restore_visible()
+        assert redis_client.get(key) == _restore_lock_token()
+        redis_client.pexpire(key, 5000)
+
+        other = connection.channel()
+        other.unacked_mutex_key = name
+        with patch('kombu.transport.redis._restore_lock_token',
+                   return_value='another process'), \
+                patch.object(other.qos, 'restore_by_tag') as restore:
+            other.qos.restore_visible()
+        restore.assert_not_called()
+        assert redis_client.get(key) == _restore_lock_token()
+        assert 0 < redis_client.pttl(key) <= 5000
+
+        reconnected = connection.channel()
+        reconnected.unacked_mutex_key = name
+        reconnected.qos.restore_visible()
+        assert not redis_client.exists(key)
+    finally:
+        redis_client.delete(key)
 
 
 @pytest.mark.env('redis')
