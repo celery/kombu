@@ -5,6 +5,29 @@
 ================
 
 
+.. _version-5.7.0:
+
+5.7.0
+========
+:release-date: 03 November, 2026
+:release-by: Asif Saif Uddin
+
+
+What's Changed
+~~~~~~~~~~~~~~
+- fix(redis): keep an unacked message when its restore hits a connection error (#2767).
+- fix(sqs): avoid KeyError when a receive completes after basic_cancel (#2772).
+- fix(redis): pause pending BRPOP polling while QoS is full (#2776).
+- fix(asynchronous): close the HTTP client with the hub, and not reuse it after Hub.reset() (#2782).
+- fix(sqs): delete a message rejected without requeue (#2784).
+- fix(sqlalchemy): raise when a published message cannot be stored (#2793).
+- Update tzdata version constraint for Windows platform (#2808).
+- fix(common): publish(retry=True) fails after a reconnect with a named exchange (#2797).
+- Update amqp version to 5.4.2 (#2810).
+- fix(sqlalchemy): raise when a purge cannot be committed (#2811).
+
+
+
 .. _version-5.7.0rc1:
 
 5.7.0rc1

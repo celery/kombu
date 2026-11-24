@@ -5,7 +5,7 @@ from __future__ import annotations
 import heapq
 import sys
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import total_ordering
 from time import monotonic
 from time import time as _time
@@ -16,11 +16,6 @@ from vine.utils import wraps
 
 from kombu.log import get_logger
 
-if sys.version_info >= (3, 9):
-    from zoneinfo import ZoneInfo
-else:
-    from backports.zoneinfo import ZoneInfo
-
 if TYPE_CHECKING:
     from types import TracebackType
 
@@ -29,13 +24,13 @@ __all__ = ('Entry', 'Timer', 'to_timestamp')
 logger = get_logger(__name__)
 
 DEFAULT_MAX_INTERVAL = 2
-EPOCH = datetime.fromtimestamp(0, ZoneInfo("UTC"))
+EPOCH = datetime.fromtimestamp(0, timezone.utc)
 IS_PYPY = hasattr(sys, 'pypy_version_info')
 
 scheduled = namedtuple('scheduled', ('eta', 'priority', 'entry'))
 
 
-def to_timestamp(d, default_timezone=ZoneInfo("UTC"), time=monotonic):
+def to_timestamp(d, default_timezone=timezone.utc, time=monotonic):
     """Convert datetime to timestamp.
 
     If d' is already a timestamp, then that will be used.

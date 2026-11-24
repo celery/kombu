@@ -154,6 +154,21 @@ def test_queue_service_sas():
         assert channel._namespace == "hostname.servicebus.windows.net"
 
 
+@pytest.mark.parametrize("key", ["ke/y+z=", "ke%2Fy%2Bz%3D", "ke%2fy+z%3d"])
+def test_queue_service_sas_url_escaped(key):
+    conn = Connection(
+        f"azureservicebus://policyname:{key}@hostname",
+        transport=azureservicebus.Transport,
+    )
+    with patch("kombu.transport.azureservicebus.ServiceBusClient") as client:
+        channel = conn.channel()
+        assert channel._sas_key == "ke/y+z="
+        _ = channel.queue_service
+        connection_string = client.from_connection_string.call_args.args[0]
+        assert "SharedAccessKey=ke/y+z=" in connection_string
+        assert "ke%" not in connection_string
+
+
 def test_queue_service_da():
     conn = Connection(URL_CREDS_DA, transport=azureservicebus.Transport)
     channel = conn.channel()
