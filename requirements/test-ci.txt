@@ -7,7 +7,7 @@ pymongo==4.18.3; sys_platform != 'win32'
 -r extras/msgpack.txt
 -r extras/azureservicebus.txt
 -r extras/azurestoragequeues.txt
-boto3>=1.43.118; sys_platform != 'win32'
+boto3>=1.44.9; sys_platform != 'win32'
 pycurl>=7.49.0; platform_python_implementation=="CPython"
 urllib3>=2.6.3; sys_platform != 'win32'
 -r extras/consul.txt
