@@ -400,6 +400,16 @@ class AbstractChannel:
         """
         self._purge(queue)
 
+    def _queue_unbind(self, exchange, routing_key, pattern, queue):
+        """Remove `queue` binding from `exchange`.
+
+        Note:
+        ----
+            Transports persisting bindings outside of the in-memory
+            routing table can override this method to keep their
+            backing store in sync when a binding is removed.
+        """
+
     def _new_queue(self, queue, **kwargs):
         """Create new queue.
 
@@ -600,6 +610,8 @@ class Channel(AbstractChannel, base.StdChannel):
         # TODO: the complexity of this operation is O(number of bindings).
         # Should be optimized.  Modifying table in place.
         table[:] = [meta for meta in table if meta != binding_meta]
+        if self.supports_fanout:
+            self._queue_unbind(exchange, *binding_meta)
 
     def list_bindings(self):
         return ((queue, exchange, rkey)

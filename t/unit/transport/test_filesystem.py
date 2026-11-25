@@ -97,6 +97,48 @@ class test_FilesystemTransport(WithJanitorMixin):
         bind: tuple = channel.typeof(self.e_name).prepare_bind(queue.name, self.e_name, queue.routing_key, None)
         return tuple(map(lambda v: v or '', bind))
 
+    def test_queue_unbind_removes_binding_from_exchange_file(self):
+        channel = self._add_channel(self.c.channel())
+        channel.exchange_declare('dx', 'direct')
+        channel.queue_declare('uq')
+        channel.queue_bind('uq', 'dx', 'rk')
+
+        assert channel.get_table('dx') != []
+
+        channel.queue_unbind('uq', 'dx', 'rk')
+
+        assert channel.get_table('dx') == []
+
+        # a fresh channel reading the exchange file must not see the binding
+        other = self._add_channel(self.c.channel())
+        assert other.get_table('dx') == []
+
+    def test_queue_unbind_keeps_other_bindings(self):
+        channel = self._add_channel(self.c.channel())
+        channel.exchange_declare('dx', 'direct')
+        channel.queue_declare('uq')
+        channel.queue_declare('uq2')
+        channel.queue_bind('uq', 'dx', 'rk')
+        channel.queue_bind('uq2', 'dx', 'rk2')
+
+        channel.queue_unbind('uq', 'dx', 'rk')
+
+        remaining = channel.get_table('dx')
+        assert len(remaining) == 1
+        assert remaining[0].queue == 'uq2'
+        assert remaining[0].routing_key == 'rk2'
+
+    def test_queue_unbind_stops_routing(self):
+        channel = self._add_channel(self.c.channel())
+        channel.exchange_declare('dx', 'direct')
+        channel.queue_declare('uq')
+        channel.queue_bind('uq', 'dx', 'rk')
+        channel.queue_unbind('uq', 'dx', 'rk')
+
+        Producer(channel).publish({'x': 1}, exchange='dx', routing_key='rk',
+                                  declare=[])
+        assert channel._size('uq') == 0
+
     def test_produce_consume_noack(self):
         consumer_channel = self._add_channel(self.c.channel())
         producer = Producer(self._add_channel(self.p.channel()), self.e)

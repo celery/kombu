@@ -317,12 +317,13 @@ class Channel(virtual.Channel):
 
         raise Empty()
 
-    def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
-        super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
-
-        file = self._exchange_file(exchange)
+    def _queue_unbind(self, exchange, routing_key, pattern, queue):
         queue_val = exchange_queue_t(routing_key or "", pattern or "",
                                      queue or "")
+        self._remove_binding(exchange, queue_val)
+
+    def _remove_binding(self, exchange, queue_val):
+        file = self._exchange_file(exchange)
         f_obj = None
         try:
             try:
@@ -333,20 +334,22 @@ class Channel(virtual.Channel):
             lock(f_obj, LOCK_EX)
             exchange_table = loads(bytes_to_str(f_obj.read()))
             queues = [exchange_queue_t(*q) for q in exchange_table]
-            original_len = len(queues)
-            try:
-                queues.remove(queue_val)
-            except ValueError:
-                # queue_val was not present; nothing to remove
-                pass
-            if len(queues) != original_len:
+            remaining = [q for q in queues if q != queue_val]
+            if len(remaining) != len(queues):
                 f_obj.seek(0)
-                f_obj.write(str_to_bytes(dumps(queues)))
+                f_obj.write(str_to_bytes(dumps(remaining)))
                 f_obj.truncate()
         finally:
             if f_obj is not None:
                 unlock(f_obj)
                 f_obj.close()
+
+    def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
+        super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
+
+        queue_val = exchange_queue_t(routing_key or "", pattern or "",
+                                     queue or "")
+        self._remove_binding(exchange, queue_val)
 
     def _purge(self, queue):
         """Remove all messages from `queue`."""
