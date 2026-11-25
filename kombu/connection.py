@@ -553,9 +553,11 @@ class Connection:
     def revive(self, new_channel):
         """Revive connection after connection re-established."""
         with self._default_channel_lock:
-            default_channel, self._default_channel = self._default_channel, None
-        if default_channel and new_channel is not default_channel:
-            self.maybe_close_channel(default_channel)
+            default_channel = self._default_channel
+            if default_channel is None or new_channel is default_channel:
+                return
+            self._default_channel = None
+        self.maybe_close_channel(default_channel)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
