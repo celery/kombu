@@ -2515,6 +2515,34 @@ class test_Channel:
                 'BYSCORE', 'REV', 'LIMIT', 0, 10, 'WITHSCORES',
             )]
 
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_restore_visible_fallback(self, mock_execute_command):
+        # On Redis < 6.2 the fallback command must read the prefixed key too.
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        def execute_command(command, *args, **kwargs):
+            if command == 'ZRANGE':
+                raise ResponseError('value is not an integer or out of range')
+            return [] if command == 'ZREVRANGEBYSCORE' else True
+        mock_execute_command.side_effect = execute_command
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos._vrestore_count = 0
+            with patch('kombu.transport.redis.time', return_value=1000000.0):
+                channel.qos.restore_visible(start=0, num=10)
+
+            fallback, = (
+                call.args for call in mock_execute_command.mock_calls
+                if call.args and call.args[0] == 'ZREVRANGEBYSCORE'
+            )
+            assert fallback[1] == 'foo_unacked_index'
+
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""
         args = {"arguments": {"x-expires": "5000"}}
@@ -2763,7 +2791,10 @@ class test_Channel:
         assert zset == {'ex': 1_005_000}
 
     @pytest.mark.parametrize('current,expected', [
-        (1_000_500, 1_005_000), (2_000_000, 2_000_000)])
+        (1_000_500, 1_005_000), (2_000_000, 2_000_000),
+        # Fewer digits: as strings '999999' > '1005000', so this only
+        # passes if the script compares the scores as numbers.
+        (999_999, 1_005_000)])
     def test_refresh_binding_only_raises_the_deadline(self, current,
                                                       expected):
         zset = {'ex': current}
