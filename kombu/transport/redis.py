@@ -392,6 +392,7 @@ class GlobalKeyPrefixMixin:
         "ZADD",
         "ZRANGE",
         "ZREM",
+        "ZREVRANGEBYSCORE",
         "PEXPIRE",
     ]
 
@@ -607,10 +608,17 @@ class QoS(virtual.QoS):
                     # and returns the same rows as the old command.  The
                     # ``byscore``/``offset``/``num`` arguments need redis-py
                     # >= 4.0, which ``_get_client`` guarantees.
-                    visible = client.zrange(
-                        self.unacked_index_key, ceil, 0,
-                        desc=True, byscore=True,
-                        offset=num and start, num=num, withscores=True)
+                    try:
+                        visible = client.zrange(
+                            self.unacked_index_key, ceil, 0,
+                            desc=True, byscore=True,
+                            offset=num and start, num=num, withscores=True)
+                    except self.channel.ResponseError:
+                        # Redis < 6.2 has no ``BYSCORE``/``REV`` on ZRANGE
+                        # (#2819), so fall back to the old command there.
+                        visible = client.zrevrangebyscore(
+                            self.unacked_index_key, ceil, 0,
+                            start=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:

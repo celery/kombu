@@ -1262,6 +1262,24 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_falls_back_to_zrevrangebyscore(self):
+        # Redis < 6.2 rejects ``ZRANGE ... BYSCORE REV`` (#2819).
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.side_effect = self.channel.ResponseError(
+            'value is not an integer or out of range')
+        client.zrevrangebyscore.return_value = [(1, 10), (2, 20)]
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+
+        qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_called_once_with(
+            qos.unacked_index_key, ANY, 0,
+            start=0, num=10, withscores=True)
+        restore.assert_has_calls([call(1, client), call(2, client)])
+
     def test_qos_restore_visible_stores_the_process_token_in_the_lock(self):
         client = self.channel._create_client = Mock(name='client')
         client = client()
