@@ -10,6 +10,13 @@ Features
 * Supports Queue TTL: Yes
 * Supports Message TTL: No
 
+Supported Servers
+=================
+Redis 6.2 and later is supported (6.2, 7.2, 7.4 and 8.x), and so is
+Valkey 7.2 and later. Redis 6.0 works on a best-effort basis for the
+5.7 series, but it no longer gets security fixes, so kombu logs an error
+when it connects to a server older than 6.2. Upgrade the server.
+
 Connection String
 =================
 Connection string has the following format:
@@ -168,6 +175,10 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
+
+#: Oldest Redis server kombu supports. Older ones get an error in the log.
+MIN_SERVER_VERSION = (6, 2)
+_server_version_checked = False
 crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
@@ -1300,6 +1311,7 @@ class Channel(virtual.Channel):
         except Exception:
             self._disconnect_pools()
             raise
+        self._check_server_version()
 
         self.connection.cycle.add(self)  # add to channel poller.
         # and set to true after successfully added channel to the poll.
@@ -1553,6 +1565,24 @@ class Channel(virtual.Channel):
         """
         self.connection._deliver(message, self._fanout_to_queue[exchange])
         return True
+
+    def _check_server_version(self):
+        """Log an error, once per process, if the server is too old."""
+        global _server_version_checked
+        if _server_version_checked:
+            return
+        _server_version_checked = True
+        try:
+            version = self.client.info('server').get('redis_version', '')
+            parsed = tuple(int(part) for part in version.split('.')[:2])
+        except Exception:  # pylint: disable=broad-except
+            return  # Not answered, or not a version: nothing to say.
+        if parsed < MIN_SERVER_VERSION:
+            logger.error(
+                'Redis server %s is older than %s, the oldest version kombu '
+                'supports. It works on a best-effort basis only, and it no '
+                'longer gets security fixes: upgrade the server.',
+                version, '.'.join(map(str, MIN_SERVER_VERSION)))
 
     def _brpop_start(self, timeout=None):
         if timeout is None:

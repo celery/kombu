@@ -2543,6 +2543,34 @@ class test_Channel:
             )
             assert fallback[1] == 'foo_unacked_index'
 
+    @pytest.mark.parametrize('version, logged', [
+        ('6.0.20', True),
+        ('5.0.14', True),
+        ('6.2.0', False),
+        ('8.2.1', False),
+        ('7.2.4', False),
+    ])
+    def test_check_server_version(self, version, logged, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = Mock(return_value={'redis_version': version})
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+            self.channel._check_server_version()
+        assert error.call_count == (1 if logged else 0)
+        self.channel.client.info.assert_called_once_with('server')
+
+    @pytest.mark.parametrize('info', [
+        Mock(side_effect=ResponseError('unknown command')),
+        Mock(return_value={}),
+        Mock(return_value={'redis_version': 'unknown'}),
+    ])
+    def test_check_server_version_unreadable(self, info, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = info
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+        error.assert_not_called()
+
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""
         args = {"arguments": {"x-expires": "5000"}}
