@@ -1987,7 +1987,9 @@ class Channel(virtual.Channel):
         # later, possibly after Connection.collect() detached the transport
         # it needs (celery/celery#11054).
         self._closing = True
-        if self._in_poll:
+
+        # Only the owning process may consume the pending BRPOP response.
+        if self._in_poll and self._in_poll.pid == os.getpid():
             try:
                 self._brpop_read()
             except (Empty,) + self.connection_errors:
