@@ -317,12 +317,37 @@ class Channel(virtual.Channel):
 
         raise Empty()
 
+    def queue_unbind(self, queue, exchange=None, routing_key='',
+                     arguments=None, **kwargs):
+        """Remove a binding from this process and the exchange file.
+
+        Bindings are matched on ``(routing_key, queue)``.  ``BrokerState``
+        is per process, so unbinding from another process does not update
+        this process's state: a process that still holds the binding in
+        memory will skip re-binding it (same limitation as ``queue_delete``).
+        """
+        exchange = exchange or 'amq.direct'
+        self.state.binding_delete(queue, exchange, routing_key)
+        try:
+            # get_table() reads the file here; trim the in-memory table.
+            table = self.state.exchanges[exchange]['table']
+        except KeyError:
+            pass
+        else:
+            table[:] = [m for m in table
+                        if (m[0], m[2]) != (routing_key or '', queue)]
+        self._remove_binding(exchange, routing_key, queue)
+
     def _delete(self, queue, exchange, routing_key, pattern, *args, **kwargs):
         super()._delete(queue, exchange, routing_key, pattern, *args, **kwargs)
+        self._remove_binding(exchange, routing_key, queue)
 
+    def _remove_binding(self, exchange, routing_key, queue):
+        # OSError while locking/reading/writing the exchange file is raised
+        # as ChannelError (this also applies to queue_delete).
         file = self._exchange_file(exchange)
-        queue_val = exchange_queue_t(routing_key or "", pattern or "",
-                                     queue or "")
+        routing_key = routing_key or ""
+        queue = queue or ""
         f_obj = None
         try:
             try:
@@ -331,18 +356,21 @@ class Channel(virtual.Channel):
                 # Exchange file was removed concurrently; nothing to update.
                 return
             lock(f_obj, LOCK_EX)
-            exchange_table = loads(bytes_to_str(f_obj.read()))
-            queues = [exchange_queue_t(*q) for q in exchange_table]
-            original_len = len(queues)
-            try:
-                queues.remove(queue_val)
-            except ValueError:
-                # queue_val was not present; nothing to remove
-                pass
-            if len(queues) != original_len:
+            content = bytes_to_str(f_obj.read())
+            if not content.strip():
+                # Exchange file is being created concurrently.
+                return
+            queues = [exchange_queue_t(*q) for q in loads(content)]
+            # The pattern depends on the exchange type, which this process
+            # may not know, so match on routing key and queue only.
+            remaining = [q for q in queues
+                         if (q.routing_key, q.queue) != (routing_key, queue)]
+            if len(remaining) != len(queues):
                 f_obj.seek(0)
-                f_obj.write(str_to_bytes(dumps(queues)))
+                f_obj.write(str_to_bytes(dumps(remaining)))
                 f_obj.truncate()
+        except OSError as exc:
+            raise ChannelError(f"Cannot update {file}") from exc
         finally:
             if f_obj is not None:
                 unlock(f_obj)

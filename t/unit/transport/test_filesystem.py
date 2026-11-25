@@ -319,6 +319,73 @@ class test_FilesystemFanout(WithJanitorMixin):
         self.q2(self.consume_channel).purge()
         assert self.q2(self.consume_channel).get() is None
 
+    def test_queue_unbind_updates_exchange_file(self):
+        # broker state is shared between channels, so use unique names
+        exchange = Exchange("unbind_exchange_fanout", type="fanout")
+        q1 = Queue("unbind_queue1", exchange=exchange)
+        q2 = Queue("unbind_queue2", exchange=exchange)
+        q1(self.consume_channel).declare()
+        q2(self.consume_channel).declare()
+        q1(self.consume_channel).unbind_from(exchange)
+
+        assert [q.queue for q in
+                self.producer_channel.get_table(exchange.name)
+                ] == ["unbind_queue2"]
+        Producer(self.producer_channel, exchange).publish({"foo": 1})
+        assert q1(self.consume_channel).get() is None
+        assert q2(self.consume_channel).get()
+
+    @pytest.mark.parametrize("exchange_type,key", [
+        ("direct", "k"), ("topic", "a.*"),
+    ])
+    def test_queue_unbind_direct_and_topic(self, exchange_type, key):
+        exchange = Exchange(f"unbind_exchange_{exchange_type}",
+                            type=exchange_type)
+        q = Queue(f"unbind_queue_{exchange_type}", exchange=exchange,
+                  routing_key=key)
+        q(self.consume_channel).declare()
+        assert len(self.producer_channel.get_table(exchange.name)) == 1
+        q(self.consume_channel).unbind_from(exchange, routing_key=key)
+        assert self.producer_channel.get_table(exchange.name) == []
+        # unbinding again is a no-op
+        q(self.consume_channel).unbind_from(exchange, routing_key=key)
+        assert self.producer_channel.get_table(exchange.name) == []
+
+    def test_queue_unbind_default_exchange(self):
+        self.consume_channel.exchange_declare("amq.direct", "direct")
+        self.consume_channel.queue_bind("unbind_default_q", routing_key="k")
+        self.consume_channel.queue_unbind("unbind_default_q", routing_key="k")
+        assert not [q for q in self.producer_channel.get_table("amq.direct")
+                    if q.queue == "unbind_default_q"]
+
+    def test_queue_unbind_topic_unknown_to_this_process(self):
+        exchange = Exchange("unbind_exchange_topic_x", type="topic")
+        q = Queue("unbind_queue_topic_x", exchange=exchange,
+                  routing_key="a.*")
+        q(self.consume_channel).declare()
+        self.consume_channel.state.exchanges.pop(exchange.name)
+        self.consume_channel.queue_unbind(
+            q.name, exchange.name, routing_key="a.*")
+        assert self.producer_channel.get_table(exchange.name) == []
+
+    def test_queue_unbind_trims_in_memory_table(self):
+        exchange = Exchange("unbind_table_ex", type="direct")
+        q = Queue("unbind_table_q", exchange=exchange, routing_key="k")
+        q(self.consume_channel).declare()
+        table = self.consume_channel.state.exchanges[exchange.name]['table']
+        assert any(m[2] == q.name for m in table)
+        self.consume_channel.queue_unbind(q.name, exchange.name, "k")
+        assert not any(m[2] == q.name for m in table)
+
+    def test_queue_unbind_without_exchange_file(self):
+        self.consume_channel.queue_unbind("q", "unbind_never_bound", "rk")
+
+    def test_queue_unbind_empty_exchange_file(self):
+        path = self.consume_channel._exchange_file("unbind_empty_ex")
+        path.write_bytes(b"")
+        self.consume_channel.queue_unbind("q", "unbind_empty_ex", "rk")
+        assert path.read_bytes() == b""
+
 
 @t.skip.if_win32
 class test_FilesystemLock(WithJanitorMixin):
@@ -594,6 +661,22 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
         with pytest.raises(ChannelError) as excinfo:
             self.channel._queue_bind("ex", "rk", "", "q")
         assert isinstance(excinfo.value.__cause__, IsADirectoryError)
+
+    def test_queue_unbind_raises_channel_error_when_file_cannot_be_opened(
+            self):
+        self.channel._exchange_file("ex").write_bytes(b"[]")
+        with patch("pathlib.Path.open", side_effect=PermissionError):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel.queue_unbind("q", "ex", "rk")
+        assert isinstance(excinfo.value.__cause__, PermissionError)
+
+    def test_queue_unbind_raises_channel_error_when_read_fails(self):
+        self.channel._exchange_file("ex").write_bytes(b"[]")
+        with patch("kombu.transport.filesystem.bytes_to_str",
+                   side_effect=OSError("read failed")):
+            with pytest.raises(ChannelError) as excinfo:
+                self.channel.queue_unbind("q", "ex", "rk")
+        assert isinstance(excinfo.value.__cause__, OSError)
 
     def test_get_closes_file_when_read_fails(self):
         path = os.path.join(self.data_folder_in, "1_x.q.msg")
