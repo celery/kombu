@@ -43,7 +43,7 @@ def connection(request):
         vhost=getattr(
             request.config, "slaveinput", {}
         ).get("slaveid", None),
-        transport_options=request.param
+        transport_options=dict(request.param or {})
     )
 
 
