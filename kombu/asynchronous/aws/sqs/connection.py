@@ -131,6 +131,15 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
         signer.sign(operation_name, request, signing_type=signing_type)
         prepared_request = request.prepare()
 
+        # A long poll legitimately holds the request for WaitTimeSeconds, so
+        # the HTTP deadline has to outlast it or empty polls get cut off and
+        # messages returned near the end are lost until visibility expires.
+        wait_time = (params or {}).get('WaitTimeSeconds')
+        if wait_time:
+            return self._mexe(
+                prepared_request, callback=callback,
+                timeout=max(20.0, float(wait_time) + 10.0),
+            )
         return self._mexe(prepared_request, callback=callback)
 
     @staticmethod
