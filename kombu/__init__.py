@@ -83,10 +83,13 @@ class module(ModuleType):
 
     def __dir__(self) -> list[str]:
         result = list(new_module.__all__)
-        result.extend(('__file__', '__path__', '__doc__', '__all__',
-                       '__docformat__', '__name__', '__path__', 'VERSION',
+        result.extend(('__doc__', '__all__',
+                       '__docformat__', '__name__', 'VERSION',
                        '__package__', '__version__', '__author__',
                        '__contact__', '__homepage__', '__docformat__'))
+        for optional in ('__file__', '__path__'):
+            if optional in self.__dict__:
+                result.append(optional)
         return result
 
 
@@ -94,9 +97,12 @@ class module(ModuleType):
 old_module = sys.modules[__name__]
 
 new_module = sys.modules[__name__] = module(__name__)
-new_module.__dict__.update({
-    '__file__': __file__,
-    '__path__': __path__,
+# __file__ is optional. Frozen importers such as PyOxidizer set __path__
+# and omit __file__. Reading __file__ here raised NameError while
+# installing the lazy module (Issue #1121). __path__ stays required:
+# without it this module is not a package, and the first attribute load
+# fails later with ModuleNotFoundError.
+_copied = {
     '__doc__': __doc__,
     '__all__': tuple(object_origins),
     '__version__': __version__,
@@ -107,8 +113,12 @@ new_module.__dict__.update({
     '__package__': __package__,
     'version_info_t': version_info_t,
     'version_info': version_info,
-    'VERSION': VERSION
-})
+    'VERSION': VERSION,
+}
+if '__file__' in globals():
+    _copied['__file__'] = globals()['__file__']
+_copied['__path__'] = __path__
+new_module.__dict__.update(_copied)
 
 if os.environ.get('KOMBU_LOG_DEBUG'):  # pragma: no cover
     os.environ.update(KOMBU_LOG_CHANNEL='1', KOMBU_LOG_CONNECTION='1')
