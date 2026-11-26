@@ -7,6 +7,7 @@ slightly.
 from __future__ import annotations
 
 import base64
+import json
 import logging
 import os
 import random
@@ -2148,6 +2149,55 @@ class test_Channel:
         call_kwargs = sqs_queue_mock.send_message.call_args[1]
         assert call_kwargs['MessageGroupId'] == 'tenant-456'
         assert call_kwargs['MessageDeduplicationId'] == 'unique-msg-789'
+
+    def test_put_keeps_message_attributes_when_the_message_is_sent_again(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        channel = connection.channel()
+        channel.sqs = Mock()
+        send_message = channel.sqs.return_value.send_message
+        attributes = {'tenant': {'DataType': 'String', 'StringValue': '42'}}
+        message = channel.prepare_message(
+            'body', properties={'message_attributes': attributes},
+        )
+
+        channel._put('queue-1', message)
+        channel._put('queue-1', message)
+
+        assert [
+            sent.kwargs['MessageAttributes']
+            for sent in send_message.call_args_list
+        ] == [attributes, attributes]
+        assert message['properties']['message_attributes'] == attributes
+        body = json.loads(
+            base64.b64decode(send_message.call_args.kwargs['MessageBody'])
+        )
+        assert 'message_attributes' not in body['properties']
+
+    def test_put_keeps_message_attributes_on_a_retried_publish(self):
+        connection = Connection(transport=SQS.Transport, transport_options={
+            'predefined_queues': example_predefined_queues,
+        })
+        sqs_client = Mock()
+        sqs_client.send_message.side_effect = [
+            EndpointConnectionError(endpoint_url='https://sqs.us-east-1'),
+            {'MessageId': '1'},
+        ]
+        attributes = {'tenant': {'DataType': 'String', 'StringValue': '42'}}
+
+        with patch.object(SQS.Channel, 'sqs', return_value=sqs_client):
+            messaging.Producer(connection).publish(
+                'body', routing_key='queue-1', retry=True,
+                retry_policy={'max_retries': 1, 'interval_start': 0,
+                              'interval_step': 0, 'interval_max': 0},
+                message_attributes=attributes,
+            )
+
+        assert [
+            sent.kwargs['MessageAttributes']
+            for sent in sqs_client.send_message.call_args_list
+        ] == [attributes, attributes]
 
     def test_message_group_id_with_special_characters(self):
         """Test MessageGroupId with special characters"""
