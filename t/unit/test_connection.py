@@ -599,6 +599,17 @@ class test_Connection:
         defchan.close.assert_called_with()
         assert conn._default_channel is None
 
+    def test_revive_when_default_channel_is_same_channel(self):
+        # revive() with the current default channel must be a no-op:
+        # it used to drop the reference without closing the channel,
+        # so the next access opened a second channel and orphaned
+        # the first one (see #2873 review by MehrazRumman).
+        conn = self.conn
+        defchan = conn.default_channel
+        conn.revive(defchan)
+
+        assert conn._default_channel is defchan
+
     def test_ensure_connection(self):
         assert self.conn.ensure_connection()
 
