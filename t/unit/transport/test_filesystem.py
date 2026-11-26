@@ -601,7 +601,10 @@ class test_FilesystemOpenErrors(WithJanitorMixin):
             f.write(dumps({"body": "x"}))
         broken = mock_open()
         broken.return_value.read.side_effect = OSError("read failed")
-        with patch("builtins.open", broken):
+        with (
+            patch("tempfile.gettempdir", return_value=self.data_folder_out),
+            patch("builtins.open", broken),
+        ):
             with pytest.raises(ChannelError) as excinfo:
                 self.channel._get("q")
         assert isinstance(excinfo.value.__cause__, OSError)
