@@ -5,13 +5,17 @@ from __future__ import annotations
 from collections import deque
 from functools import partial
 from io import BytesIO
+from math import ceil
 from time import time
 
 from kombu.asynchronous.hub import READ, WRITE, Hub, get_event_loop
 from kombu.exceptions import HttpError
+from kombu.log import get_logger
 from kombu.utils.encoding import bytes_to_str
 
 from .base import BaseClient
+
+logger = get_logger(__name__)
 
 try:
     import pycurl
@@ -51,6 +55,7 @@ class CurlClient(BaseClient):
         self._curls = [self.Curl() for i in range(max_clients)]
         self._free_list = self._curls[:]
         self._pending = deque()
+        self._closed = False
         self._fds = {}
 
         self._socket_action = self._multi.socket_action
@@ -63,13 +68,23 @@ class CurlClient(BaseClient):
         self._multi.add_handle(dummy_curl_handle)
         self._multi.remove_handle(dummy_curl_handle)
 
-    def close(self, *args):
+    def close(self):
+        if self._closed:
+            return
+        self._closed = True
+        self._detach_from_hub()
         self._timeout_check_tref.cancel()
         for _curl in self._curls:
             _curl.close()
         self._multi.close()
 
     def add_request(self, request):
+        if self._closed:
+            # Hub.close() runs on_close before the callbacks still queued on
+            # the hub, so a queued poll can get here after the curl handles
+            # are gone. Nothing may run once the hub has closed.
+            logger.debug('dropping %r: HTTP client is closed', request)
+            return request
         self._pending.append(request)
         self._process_queue()
         self._set_timeout(0)
@@ -196,6 +211,13 @@ class CurlClient(BaseClient):
     def _setup_request(self, curl, request, buffer, headers, _pycurl=pycurl):
         setopt = curl.setopt
         setopt(_pycurl.URL, bytes_to_str(request.url))
+
+        # Reset both timeouts on every request because curl handles are reused.
+        # Zero (or None) restores libcurl's 300-second connect timeout and
+        # disables the overall request timeout, respectively. A positive
+        # request timeout also limits the connection phase.
+        setopt(_pycurl.CONNECTTIMEOUT_MS, ceil((request.connect_timeout or 0) * 1000))
+        setopt(_pycurl.TIMEOUT_MS, ceil((request.request_timeout or 0) * 1000))
 
         # see tornado curl client
         request.headers.setdefault('Expect', '')

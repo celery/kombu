@@ -341,7 +341,8 @@ class Hub:
         self.writers.clear()
         self.consolidate.clear()
         self._close_poller()
-        for callback in self.on_close:
+        # A callback may remove itself from on_close, so iterate a copy.
+        for callback in list(self.on_close):
             callback(self)
 
         # Complete remaining todo before Hub close

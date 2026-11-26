@@ -89,8 +89,12 @@ else:
 try:
     import brotli
 except ImportError:  # pragma: no cover
-    pass
-else:
+    try:
+        import brotlicffi as brotli  # PyPy
+    except ImportError:
+        brotli = None
+
+if brotli is not None:
     register(brotli.compress,
              brotli.decompress,
              'application/x-brotli', aliases=['brotli'])

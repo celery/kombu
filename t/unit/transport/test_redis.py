@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import base64
 import copy
+import errno
 import importlib
 import socket
+import subprocess
 import sys
+import threading
 import types
 from collections import defaultdict
 from contextlib import contextmanager
@@ -999,12 +1002,115 @@ class test_Channel:
         client.rpush.assert_any_call('george', spl2)
         client.rpush.assert_any_call('elaine', spl2)
 
-        client.rpush.side_effect = KeyError()
+        client.rpush.side_effect = ValueError()
         with patch('kombu.transport.redis.crit') as crit:
             self.channel._do_restore_message(
                 pl2, 'ex', 'rkey', client,
             )
             crit.assert_called()
+
+    def test_do_restore_message_connection_error_propagates(self):
+        # A connection error while looking up the bindings must reach the
+        # restore transaction, so it aborts instead of deleting the message.
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._do_restore_message(
+                    {'body': 'BODY', 'headers': {}}, 'ex', 'rkey', pipe,
+                )
+        crit.assert_not_called()
+        pipe.rpush.assert_not_called()
+        pipe.lpush.assert_not_called()
+
+    def test_do_restore_message_other_error_logged_with_payload(self):
+        payload = {'body': 'BODY', 'headers': {}}
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=ValueError('bad binding'),
+        )
+        pipe = Mock(name='pipe')
+        with patch('kombu.transport.redis.crit') as crit:
+            self.channel._do_restore_message(payload, 'ex', 'rkey', pipe)
+        crit.assert_called_once_with(
+            'Could not restore message: %r', payload, exc_info=True,
+        )
+        pipe.rpush.assert_not_called()
+
+    def _stored_unacked_transaction(self, stored):
+        # Like redis-py's ``Redis.transaction``: the queued commands are only
+        # sent (EXEC) when the callable returns without raising.
+        def transaction(func, *watches):
+            queued = []
+            pipe = Mock(name='pipe')
+
+            def queue(command):
+                queued.append(command)
+                return pipe
+
+            pipe.hget.side_effect = lambda key, tag: stored[key].get(tag)
+            pipe.hdel.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.zrem.side_effect = lambda key, tag: queue(
+                lambda: stored[key].pop(tag, None))
+            pipe.rpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).append(value))
+            pipe.lpush.side_effect = lambda key, value: queue(
+                lambda: stored.setdefault(key, []).insert(0, value))
+            func(pipe)
+            for command in queued:
+                command()
+        return transaction
+
+    def _stored_unacked_message(self, tag):
+        message = [{'body': 'BODY', 'headers': {}, 'properties': {
+            'delivery_info': {}}}, 'ex', 'rkey']
+        stored = {
+            self.channel.unacked_key: {tag: dumps(message)},
+            self.channel.unacked_index_key: {tag: 1.0},
+        }
+        client = self.channel._create_client = Mock(name='client')
+        client.return_value.transaction.side_effect = (
+            self._stored_unacked_transaction(stored))
+        return stored, dumps(message)
+
+    def test_restore_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        message = Mock(name='message', delivery_tag='tag1')
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel._restore(message)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+
+    def test_restore_by_tag_keeps_unacked_message_on_connection_error(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        exc_type = self.channel.connection_errors[0]
+        self.channel._lookup = Mock(
+            name='_lookup', side_effect=exc_type('Timeout reading from socket'),
+        )
+        with patch('kombu.transport.redis.crit') as crit:
+            with pytest.raises(exc_type, match='Timeout reading from socket'):
+                self.channel.qos.restore_by_tag('tag1', leftmost=True)
+        crit.assert_not_called()
+        assert stored[self.channel.unacked_key] == {'tag1': raw}
+        assert stored[self.channel.unacked_index_key] == {'tag1': 1.0}
+
+    def test_restore_by_tag_requeues_when_lookup_succeeds(self):
+        stored, raw = self._stored_unacked_message('tag1')
+        self.channel._lookup = Mock(name='_lookup', return_value=['work'])
+        self.channel.qos.restore_by_tag('tag1')
+        assert stored[self.channel.unacked_key] == {}
+        assert stored[self.channel.unacked_index_key] == {}
+        requeued = loads(stored[self.channel._q_for_pri('work', 0)][0])
+        assert requeued['body'] == 'BODY'
+        assert requeued['headers']['redelivered'] is True
 
     def test_do_restore_message_celery(self):
         # Payload value from real Celery project
@@ -1155,6 +1261,74 @@ class test_Channel:
         qos._vrestore_count = 0
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
+
+    def test_qos_restore_visible_falls_back_to_zrevrangebyscore(self):
+        # Redis < 6.2 rejects ``ZRANGE ... BYSCORE REV`` (#2819).
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.side_effect = self.channel.ResponseError(
+            'value is not an integer or out of range')
+        client.zrevrangebyscore.return_value = [(1, 10), (2, 20)]
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+
+        qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_called_once_with(
+            qos.unacked_index_key, ANY, 0,
+            start=0, num=10, withscores=True)
+        restore.assert_has_calls([call(1, client), call(2, client)])
+
+    def test_qos_restore_visible_stores_the_process_token_in_the_lock(self):
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.return_value = []
+
+        with patch('kombu.transport.redis.Mutex') as Mutex:
+            redis.QoS(self.channel).restore_visible()
+            # a consumer that reconnected has a new channel and a new QoS
+            redis.QoS(self.channel).restore_visible()
+
+        tokens = [c.kwargs['token'] for c in Mutex.call_args_list]
+        assert tokens == [redis._restore_lock_token()] * 2
+        assert tokens[0]
+
+    def test_restore_lock_token_is_per_process(self):
+        token = redis._restore_lock_token()
+        assert redis._restore_lock_token() == token
+
+        with patch('kombu.transport.redis.os.getpid', return_value=-1):
+            child = redis._restore_lock_token()
+            assert child != token
+            assert redis._restore_lock_token() == child
+        assert redis._restore_lock_token() == token
+
+    def test_restore_lock_token_is_the_same_for_two_threads(self):
+        # Both threads miss the token and are making their own before
+        # either stores one.
+        barrier = threading.Barrier(2, timeout=5)
+        made = iter(['first', 'second'])
+
+        def uuid():
+            barrier.wait()
+            return next(made)
+
+        tokens = []
+        with patch.dict(redis._restore_lock_tokens, clear=True), \
+                patch('kombu.transport.redis.uuid', uuid):
+            threads = [
+                threading.Thread(
+                    target=lambda: tokens.append(redis._restore_lock_token()))
+                for _ in range(2)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(5)
+            assert len(tokens) == 2
+            assert tokens[0] == tokens[1]
+            assert redis._restore_lock_token() == tokens[0]
 
     def test_qos_restore_visible_interval_throttles(self):
         client = self.channel._create_client = Mock(name='client')
@@ -1368,6 +1542,17 @@ class test_Channel:
         assert self.channel._in_poll is self.channel.client.connection
         assert self.channel._brpop_sent_at == 42.0
 
+    def test_brpop_start_keeps_pending_command_after_health_retry(self):
+        self.channel._queue_cycle = Mock()
+        self.channel._queue_cycle.consume.return_value = ['queue']
+        connection = self.channel.client.connection
+        connection.send_command = Mock(side_effect=lambda *args: (
+            self.channel._on_connection_disconnect(connection)))
+
+        self.channel._brpop_start()
+
+        assert self.channel._in_poll is connection
+
     def test_brpop_health_drop_resets_in_poll(self):
         """Dropping a stale BRPOP connection lets the next tick resend it.
 
@@ -1484,6 +1669,34 @@ class test_Channel:
 
         c.connection.disconnect.assert_called_with()
 
+    def test_brpop_read_unblocked_by_a_role_change(self):
+        # Redis ends a blocking pop with this reply when the node becomes
+        # a replica.  The consumer has to reconnect, as for a lost
+        # connection.
+        c = self.channel.client = Mock()
+        unblocked = ResponseError(
+            'UNBLOCKED force unblock from blocking operation, '
+            'instance state changed (master -> replica?)')
+        c.parse_response.side_effect = unblocked
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError) as exc:
+            self.channel._brpop_read()
+
+        assert exc.value.__cause__ is unblocked
+        assert 'UNBLOCKED' in str(exc.value)
+        assert isinstance(
+            exc.value, redis.get_redis_error_classes().connection_errors)
+        c.connection.disconnect.assert_called_once_with()
+
+    def test_brpop_read_other_response_errors_are_channel_errors(self):
+        c = self.channel.client = Mock()
+        c.parse_response.side_effect = ResponseError('WRONGTYPE')
+
+        with pytest.raises(ResponseError):
+            self.channel._brpop_read()
+
+        c.connection.disconnect.assert_not_called()
+
     def test_brpop_read_gives_None(self):
         c = self.channel.client = Mock()
         c.parse_response.return_value = None
@@ -1595,6 +1808,49 @@ class test_Channel:
 
         self.channel.close()
         connection.disconnect.assert_called_with()
+
+    def test_close_when_in_poll_read_fails(self):
+        chan = self.channel
+        chan._in_poll = True
+
+        def _brpop_read(**options):
+            chan._in_poll = None
+            raise chan.connection_errors[0]('connection lost')
+        chan._brpop_read = _brpop_read
+        cycle = chan.connection.cycle
+
+        chan.close()
+
+        assert chan.closed
+        assert chan not in cycle._channels
+
+    def test_close_after_collect_while_server_is_down(self):
+        # celery/celery#11054: after a connection error the worker calls
+        # collect() and then close().  Deleting the fanout bindings failed
+        # while the server was down, which left the channel open, so the
+        # close() after the server came back restored unacked messages
+        # through the transport collect() had detached.
+        chan = self.channel
+        chan._fanout_queues = {'foo': ('foo', '')}
+        chan.auto_delete_queues = ['foo']
+        chan.client
+        server_down = True
+
+        def queue_delete(queue, client=None):
+            if server_down:
+                raise chan.connection_errors[0]('connection lost')
+        chan.queue_delete = queue_delete
+        transport = chan.connection
+        restored_with = []
+        chan.qos.restore_unacked_once = Mock(
+            side_effect=lambda: restored_with.append(transport.client))
+
+        self.connection.collect()
+        server_down = False
+        self.connection.close()
+
+        assert chan.closed
+        assert restored_with == [self.connection]
 
     def test_invalid_database_raises_ValueError(self):
 
@@ -2037,6 +2293,23 @@ class test_Channel:
             if InvalidData is not None:
                 exceptions.InvalidData = InvalidData
 
+    def test_a_read_only_reply_is_a_connection_error(self):
+        # After a failover that keeps the old primary running, every write
+        # on a connection to it gets this reply.
+        from redis import exceptions
+
+        from kombu.transport.redis import get_redis_error_classes
+
+        errors = get_redis_error_classes()
+        assert exceptions.ReadOnlyError in errors.connection_errors
+        assert isinstance(
+            exceptions.ReadOnlyError("You can't write against a read only "
+                                     "replica."),
+            errors.connection_errors)
+        # other replies stay channel errors
+        assert exceptions.ResponseError not in errors.connection_errors
+        assert exceptions.ResponseError in errors.channel_errors
+
     def test_empty_queues_key(self):
         channel = self.channel
         channel._in_poll = False
@@ -2241,6 +2514,62 @@ class test_Channel:
                 1000000.0 - channel.visibility_timeout, 0,
                 'BYSCORE', 'REV', 'LIMIT', 0, 10, 'WITHSCORES',
             )]
+
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_restore_visible_fallback(self, mock_execute_command):
+        # On Redis < 6.2 the fallback command must read the prefixed key too.
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        def execute_command(command, *args, **kwargs):
+            if command == 'ZRANGE':
+                raise ResponseError('value is not an integer or out of range')
+            return [] if command == 'ZREVRANGEBYSCORE' else True
+        mock_execute_command.side_effect = execute_command
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos._vrestore_count = 0
+            with patch('kombu.transport.redis.time', return_value=1000000.0):
+                channel.qos.restore_visible(start=0, num=10)
+
+            fallback, = (
+                call.args for call in mock_execute_command.mock_calls
+                if call.args and call.args[0] == 'ZREVRANGEBYSCORE'
+            )
+            assert fallback[1] == 'foo_unacked_index'
+
+    @pytest.mark.parametrize('version, logged', [
+        ('6.0.20', True),
+        ('5.0.14', True),
+        ('6.2.0', False),
+        ('8.2.1', False),
+        ('7.2.4', False),
+    ])
+    def test_check_server_version(self, version, logged, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = Mock(return_value={'redis_version': version})
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+            self.channel._check_server_version()
+        assert error.call_count == (1 if logged else 0)
+        self.channel.client.info.assert_called_once_with('server')
+
+    @pytest.mark.parametrize('info', [
+        Mock(side_effect=ResponseError('unknown command')),
+        Mock(return_value={}),
+        Mock(return_value={'redis_version': 'unknown'}),
+    ])
+    def test_check_server_version_unreadable(self, info, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = info
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+        error.assert_not_called()
 
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""
@@ -2455,6 +2784,50 @@ class test_Channel:
         assert getattr(channel, name) is register.return_value
         assert getattr(channel, name) is register.return_value
         register.assert_called_once_with(getattr(redis, script))
+
+    @staticmethod
+    def _run_refresh_binding(zset, ttl, now=(1000, 0)):
+        # Runs REFRESH_BINDING against a stub of the Redis 6.0 commands it
+        # uses. ZADD on 6.0 takes no GT/LT flags.
+        lupa = pytest.importorskip('lupa')
+        runtime = lupa.LuaRuntime()
+
+        def call(command, *args):
+            if command == 'SADD':
+                return 1
+            if command == 'TIME':
+                return runtime.table(str(now[0]), str(now[1]))
+            if command == 'ZSCORE':
+                score = zset.get(args[1])
+                return False if score is None else str(score)
+            if command == 'ZADD':
+                if len(args) != 3:
+                    raise RuntimeError('ERR syntax error')
+                zset[args[2]] = int(args[1])
+                return 1
+            raise AssertionError(command)
+
+        script = runtime.eval(
+            'function(call, KEYS, ARGV) redis = {call = call}\n'
+            + redis.REFRESH_BINDING + '\nend')
+        script(call, runtime.table('table', 'deadlines'),
+               runtime.table('q', 'ex', str(ttl)))
+
+    def test_refresh_binding_runs_on_redis_6_0(self):
+        zset = {}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': 1_005_000}
+
+    @pytest.mark.parametrize('current,expected', [
+        (1_000_500, 1_005_000), (2_000_000, 2_000_000),
+        # Fewer digits: as strings '999999' > '1005000', so this only
+        # passes if the script compares the scores as numbers.
+        (999_999, 1_005_000)])
+    def test_refresh_binding_only_raises_the_deadline(self, current,
+                                                      expected):
+        zset = {'ex': current}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': expected}
 
     def _brpop_queue(self, channel):
         channel._active_queues = ['q']
@@ -2882,6 +3255,365 @@ class test_DisconnectRegistration:
         self.loop.remove.assert_called_once_with(old_fd)
 
 
+class test_PausedBRPOP:
+
+    def setup_method(self):
+        self.connection = Connection(transport=Transport)
+        self.channel = self.connection.default_channel
+        self.channel.queue_declare('paused-brpop')
+        self.channel.basic_consume(
+            'paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='paused-consumer',
+        )
+        self.cycle = self.connection.transport.cycle
+        self.cycle.poller = Mock()
+        self.cycle.poller.poll.return_value = []
+        self.cycle._register_BRPOP(self.channel)
+        self.client = self.channel.client
+        self.pending = self.client.connection
+        self.sock = self.pending._sock
+        self.fd = self.sock.fileno()
+        self.ident = self.channel, self.client, 'BRPOP'
+        self.read = self.channel.handlers['BRPOP'] = Mock()
+        self.qos_patch = patch.object(
+            self.channel.qos, 'can_consume', return_value=False,
+        )
+        self.can_consume = self.qos_patch.start()
+        self.channel.qos.restore_visible = Mock()
+        self.cycle.poller.reset_mock()
+
+    def teardown_method(self):
+        self.qos_patch.stop()
+        self.channel._in_poll = None
+        self.connection.close()
+
+    def bind_hub(self):
+        loop = Mock(on_tick=set())
+        with patch.object(self.channel.qos, 'restore_visible'):
+            self.connection.register_with_event_loop(loop)
+        return loop
+
+    def test_pause_preserves_pending_reply_and_connection(self):
+        registrations = self.cycle._fd_to_chan.copy()
+        sockets = self.cycle._chan_to_sock.copy()
+        commands = self.sock.data[:]
+
+        with patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.cycle._fd_to_chan == registrations
+        assert self.cycle._chan_to_sock == sockets
+        assert self.cycle._paused_brpop[self.fd] == (
+            self.channel, self.client, self.pending, self.sock,
+        )
+        assert self.channel._in_poll is self.pending
+        assert self.pending._sock is self.sock
+        assert self.sock.data == commands
+        self.read.assert_not_called()
+        disconnect.assert_not_called()
+
+    def test_pause_is_idempotent_for_stale_read_events(self):
+        self.cycle.on_readable(self.fd)
+        self.cycle.on_readable(self.fd)
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    def test_full_qos_pauses_before_polling(self, poll_method):
+        if poll_method == 'get':
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0)
+        else:
+            self.cycle.on_poll_start()
+
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+        assert self.fd not in self.cycle.fds
+        assert self.channel._in_poll is self.pending
+        self.read.assert_not_called()
+
+    @pytest.mark.parametrize(
+        ('timeout', 'expected_wait'),
+        [(0, 0), (0.1, 0.1), (5, 1), (None, 1)],
+    )
+    def test_paused_only_polling_wait_is_bounded(
+        self, timeout, expected_wait,
+    ):
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep, \
+                patch.object(self.cycle, 'maybe_check_brpop_health') as health:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=timeout)
+
+        sleep.assert_called_once_with(expected_wait)
+        self.cycle.poller.poll.assert_not_called()
+        health.assert_called_once_with()
+        self.channel.qos.restore_visible.assert_called_once()
+        self.read.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    def test_paused_channel_keeps_polling_other_socket(self):
+        other = self.connection.channel()
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.cycle.on_readable(self.fd)
+
+        with patch('kombu.transport.redis.sleep') as sleep:
+            with pytest.raises(Empty):
+                self.cycle.get(Mock(), timeout=0.1)
+
+        sleep.assert_not_called()
+        self.cycle.poller.poll.assert_called_once_with(0.1)
+        assert other.client.connection._sock.fileno() in self.cycle.fds
+
+    @pytest.mark.parametrize('event', [redis.ERR, redis.READ | redis.ERR])
+    def test_stale_events_do_not_read_paused_reply(self, event):
+        self.cycle.on_readable(self.fd)
+
+        with patch.object(self.channel, '_poll_error') as poll_error:
+            self.cycle.handle_event(self.fd, event)
+
+        self.read.assert_not_called()
+        poll_error.assert_not_called()
+        assert self.channel._in_poll is self.pending
+
+    @pytest.mark.parametrize('poll_method', ['on_poll_start', 'get'])
+    @pytest.mark.parametrize('cancel_consumer', [False, True])
+    def test_credit_resumes_pending_brpop_without_sending_another(
+        self, poll_method, cancel_consumer,
+    ):
+        self.cycle.on_readable(self.fd)
+        if cancel_consumer:
+            self.channel.basic_cancel('paused-consumer')
+            assert not self.channel.active_queues
+        self.cycle.poller.reset_mock()
+        self.can_consume.return_value = True
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            if poll_method == 'get':
+                with pytest.raises(Empty):
+                    self.cycle.get(Mock(), timeout=0)
+            else:
+                self.cycle.on_poll_start()
+
+        assert self.cycle.fds[self.fd] == (self.channel, 'BRPOP')
+        assert not self.cycle._paused_brpop
+        assert self.cycle._chan_to_sock[self.ident] is self.sock
+        assert self.channel._in_poll is self.pending
+        self.cycle.poller.register.assert_called_once_with(
+            self.sock, self.cycle.eventflags,
+        )
+        start.assert_not_called()
+        self.cycle.on_readable(self.fd)
+        self.read.assert_called_once_with()
+
+    def test_hub_does_not_readd_paused_reader(self):
+        loop = self.bind_hub()
+
+        self.cycle.on_readable(self.fd)
+        for _ in range(3):
+            for callback in loop.on_tick:
+                callback()
+
+        loop.remove_reader.assert_called_once_with(self.fd)
+        loop.add_reader.assert_not_called()
+        self.read.assert_not_called()
+
+        self.can_consume.return_value = True
+        for callback in loop.on_tick:
+            callback()
+
+        loop.add_reader.assert_called_once_with(
+            self.fd, self.connection.transport.on_readable, self.fd,
+        )
+        assert self.channel._in_poll is self.pending
+
+    def test_pause_preserves_other_channel_and_listen(self):
+        other = self.connection.channel()
+        other.qos.can_consume = Mock(return_value=True)
+        self.cycle._register(other, other.client, 'BRPOP')
+        other_fd = other.client.connection._sock.fileno()
+        self.cycle._register(
+            self.channel, self.channel.subclient, 'LISTEN',
+        )
+        listen_fd = self.channel.subclient.connection._sock.fileno()
+
+        self.cycle.on_readable(self.fd)
+
+        assert self.cycle.fds == {
+            other_fd: (other, 'BRPOP'),
+            listen_fd: (self.channel, 'LISTEN'),
+        }
+        self.cycle.poller.unregister.assert_called_once_with(self.fd)
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    @pytest.mark.parametrize('reuse_fd', [False, True])
+    def test_disconnect_clears_pause_before_reconnect(
+        self, use_hub, reuse_fd,
+    ):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        assert self.channel._in_poll is None
+
+        replacement = Client._sconnection._socket()
+        if reuse_fd:
+            replacement._fileno = self.fd
+        self.pending._sock = replacement
+        self.can_consume.return_value = True
+        self.cycle.on_poll_start()
+
+        assert self.cycle.fds == {
+            replacement.fileno(): (self.channel, 'BRPOP'),
+        }
+        assert self.cycle._chan_to_sock[self.ident] is replacement
+        assert self.channel._in_poll is self.pending
+        assert len(replacement.data) == 1
+
+    @pytest.mark.parametrize('use_hub', [False, True])
+    def test_late_disconnect_preserves_replacement_with_same_fd(self, use_hub):
+        if use_hub:
+            self.bind_hub()
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+
+    def test_poll_start_preserves_replacement_before_disconnect_callback(self):
+        self.cycle.on_readable(self.fd)
+        replacement = Client._sconnection(self.client)
+        replacement._sock._fileno = self.fd
+        self.client.connection = replacement
+        self.channel._in_poll = replacement
+        self.cycle._register(self.channel, self.client, 'BRPOP')
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        with patch.object(self.channel, '_brpop_start') as start:
+            self.cycle.on_poll_start()
+            self.cycle.on_readable(self.fd)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (self.channel, 'BRPOP')}
+        assert self.cycle._chan_to_sock[self.ident] is replacement._sock
+        assert self.channel._in_poll is replacement
+        self.cycle.poller.register.assert_not_called()
+        start.assert_not_called()
+        self.read.assert_called_once_with()
+
+    @pytest.mark.parametrize('operation', ['discard', 'disconnect'])
+    def test_removing_paused_channel_preserves_another(self, operation):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other.queue_declare('other-paused-brpop')
+        other.basic_consume(
+            'other-paused-brpop', no_ack=False, callback=Mock(),
+            consumer_tag='other-paused-consumer',
+        )
+        self.cycle._register_BRPOP(other)
+        other.qos.can_consume = Mock(return_value=False)
+        other_connection = other.client.connection
+        other_socket = other_connection._sock
+        other_fd = other_socket.fileno()
+        self.cycle.on_readable(other_fd)
+        other_pause = self.cycle._paused_brpop[other_fd]
+
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.pending._sock = None
+            self.channel._on_connection_disconnect(self.pending)
+
+        assert self.cycle._paused_brpop == {other_fd: other_pause}
+        assert self.cycle._fd_to_chan == {other_fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert not self.cycle.fds
+        assert other._in_poll is other_connection
+        assert other_connection._sock is other_socket
+
+    def test_late_disconnect_preserves_fd_reused_by_another_channel(self):
+        self.cycle.on_readable(self.fd)
+        other = self.connection.channel()
+        other_socket = other.client.connection._sock
+        other_socket._fileno = self.fd
+        self.cycle._register(other, other.client, 'BRPOP')
+        self.pending._sock = None
+
+        self.channel._on_connection_disconnect(self.pending)
+
+        assert not self.cycle._paused_brpop
+        assert self.cycle.fds == {self.fd: (other, 'BRPOP')}
+        assert self.cycle._chan_to_sock == {
+            (other, other.client, 'BRPOP'): other_socket,
+        }
+        assert other.client.connection._sock is other_socket
+
+    @pytest.mark.parametrize('operation', ['close', 'discard'])
+    def test_poller_removal_cannot_resume_paused_channel(self, operation):
+        self.cycle.on_readable(self.fd)
+        if operation == 'discard':
+            self.cycle.discard(self.channel)
+        else:
+            self.cycle.close()
+        self.can_consume.return_value = True
+        self.cycle.poller.reset_mock()
+
+        self.cycle.on_poll_start()
+
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+        self.cycle.poller.register.assert_not_called()
+
+    def test_channel_close_drains_pending_reply_and_removes_pause(self):
+        self.cycle.on_readable(self.fd)
+        with patch.object(self.channel, '_brpop_read',
+                          side_effect=Empty) as read:
+            self.channel.close()
+
+        read.assert_called_once_with()
+        assert not self.cycle.fds
+        assert not self.cycle._fd_to_chan
+        assert not self.cycle._chan_to_sock
+        assert not self.cycle._paused_brpop
+
+    def test_health_check_preserves_readable_paused_connection(self):
+        self.cycle.on_readable(self.fd)
+        self.channel._brpop_sent_at = 0
+        with patch('kombu.transport.redis.monotonic', return_value=1000), \
+                patch('kombu.transport.redis._socket_readable',
+                      return_value=True), \
+                patch.object(self.pending, 'disconnect') as disconnect:
+            self.cycle.maybe_check_brpop_health()
+
+        disconnect.assert_not_called()
+        assert self.channel._in_poll is self.pending
+        assert self.fd not in self.cycle.fds
+
+
 class test_Redis:
 
     def setup_method(self):
@@ -3040,6 +3772,95 @@ class test_MultiChannelPoller:
 
     def setup_method(self):
         self.Poller = redis.MultiChannelPoller
+
+    @pytest.mark.parametrize('command', ['BRPOP', 'LISTEN'])
+    @pytest.mark.parametrize('socket_state', ['cleared', 'closed'])
+    def test_sync_disconnect_clears_stored_registration(
+            self, command, socket_state):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel, other = Mock(), Mock()
+        client = channel.client
+        sock = client.connection._sock
+        sock.fileno.return_value = 13
+        poller._register(channel, client, command)
+        poller._fd_to_chan[14] = other, 'BRPOP'
+        if socket_state == 'cleared':
+            client.connection._sock = None
+        else:
+            sock.fileno.return_value = -1
+            poller.poller.unregister.side_effect = OSError(
+                errno.EBADF, 'Bad file descriptor')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert (channel, client, command) not in poller._chan_to_sock
+        assert poller._fd_to_chan == {14: (other, 'BRPOP')}
+        poller.poller.unregister.assert_any_call(13)
+
+    @pytest.mark.parametrize('error', [
+        KeyError, AttributeError, TypeError, ValueError,
+    ])
+    def test_sync_disconnect_ignores_stale_poller_registration(self, error):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        poller.poller.unregister.side_effect = error('stale registration')
+
+        poller._on_connection_disconnect(client.connection)
+
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_sync_disconnect_propagates_unexpected_poller_error(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        client = channel.client
+        client.connection._sock.fileno.return_value = 13
+        poller._register(channel, client, 'BRPOP')
+        client.connection._sock = None
+        error = OSError(errno.EIO, 'Unexpected poller failure')
+        poller.poller.unregister.side_effect = error
+
+        with pytest.raises(OSError) as exc:
+            poller._on_connection_disconnect(client.connection)
+
+        assert exc.value is error
+        assert poller._chan_to_sock == {}
+        assert poller._fd_to_chan == {}
+        poller.poller.unregister.assert_called_once_with(13)
+
+    def test_register_brpop_polls_socket_replaced_while_sending(self):
+        poller = self.Poller()
+        poller.poller = Mock()
+        channel = Mock()
+        channel._in_poll = None
+        connection = channel.client.connection
+        connection._sock.fileno.return_value = 13
+        replacement = Mock()
+        replacement.fileno.return_value = 14
+
+        def reconnect():
+            connection._sock = None
+            poller._on_connection_disconnect(connection)
+            connection._sock = replacement
+            channel._in_poll = connection
+
+        channel._brpop_start.side_effect = reconnect
+        poller._register_BRPOP(channel)
+
+        assert poller._fd_to_chan == {14: (channel, 'BRPOP')}
+        assert poller._chan_to_sock[
+            channel, channel.client, 'BRPOP'] is replacement
+        poller.poller.register.assert_called_with(
+            replacement, poller.eventflags)
+        assert channel._brpop_start.call_count == 1
 
     def test_maybe_refresh_binding_expiry(self):
         p = self.Poller()
@@ -3422,8 +4243,11 @@ class test_MultiChannelPoller:
 
     def test_handle_event(self):
         p = self.Poller()
+        p.poller = Mock()
         chan = Mock(name='chan')
-        p._fd_to_chan[13] = chan, 'BRPOP'
+        chan.client.connection._sock.fileno.return_value = 13
+        chan._in_poll = chan.client.connection
+        p._register(chan, chan.client, 'BRPOP')
         chan.handlers = {'BRPOP': Mock(name='BRPOP')}
 
         chan.qos.can_consume.return_value = False
@@ -3431,6 +4255,7 @@ class test_MultiChannelPoller:
         chan.handlers['BRPOP'].assert_not_called()
 
         chan.qos.can_consume.return_value = True
+        p.on_poll_start()
         p.handle_event(13, redis.READ)
         chan.handlers['BRPOP'].assert_called_with()
 
@@ -3730,7 +4555,7 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -3743,7 +4568,7 @@ class test_Mutex:
             with redis.Mutex(client, 'foo1', 100):
                 held = True
             assert not held
-        lock.acquire.assert_called_with(blocking=False)
+        lock.acquire.assert_called_with(blocking=False, token=None)
         client.lock.assert_called_with('foo1', timeout=100)
 
         client.reset_mock()
@@ -3756,6 +4581,73 @@ class test_Mutex:
         with redis.Mutex(client, 'foo1', 100):
             held = True
         assert held
+
+    def test_without_a_token_a_held_lock_is_never_taken_over(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100):
+                pass
+
+        lock.reacquire.assert_not_called()
+        lock.release.assert_not_called()
+
+    def test_token_is_stored_in_the_lock(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            pass
+
+        lock.acquire.assert_called_once_with(blocking=False, token='mine')
+        lock.reacquire.assert_not_called()
+        lock.release.assert_called_once_with()
+
+    def test_takes_over_a_lock_that_holds_its_token(self):
+        # The lock was left by this caller: its release failed.
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.return_value = True
+
+        held = False
+        with redis.Mutex(client, 'foo1', 100, token='mine'):
+            held = True
+
+        assert held
+        client.get_encoder.return_value.encode.assert_called_once_with('mine')
+        assert lock.local.token is client.get_encoder().encode.return_value
+        lock.reacquire.assert_called_once_with()
+        lock.release.assert_called_once_with()
+
+    def test_lock_with_another_token_is_held(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = False
+        lock.reacquire.side_effect = (
+            redis.redis.exceptions.LockNotOwnedError())
+
+        held = False
+        with pytest.raises(redis.MutexHeld):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                held = True
+
+        assert not held
+        assert lock.local.token is None
+        lock.release.assert_not_called()
+
+    def test_lock_stays_when_the_release_fails(self):
+        client = Mock(name='client')
+        lock = client.lock.return_value
+        lock.acquire.return_value = True
+        lock.release.side_effect = redis.redis.exceptions.ConnectionError()
+
+        with pytest.raises(redis.redis.exceptions.ConnectionError):
+            with redis.Mutex(client, 'foo1', 100, token='mine'):
+                pass
 
 
 class test_RedisSentinel:
@@ -4415,5 +5307,32 @@ def test_transport_imports_when_redis_parent_module_was_evicted():
         assert importlib.import_module('kombu.transport.redis').Transport
     finally:
         sys.modules['redis'] = saved_redis
+        sys.modules['kombu.transport.redis'] = saved_transport
+        kombu.transport.redis = saved_transport
+
+
+def test_import_without_packaging():
+    # packaging is only in the redis extra; the transport must not need it.
+    code = (
+        "import sys\n"
+        "sys.modules['packaging'] = None\n"
+        "sys.modules['packaging.version'] = None\n"
+        "import kombu.transport.redis as r\n"
+        "assert r.redis is not None\n"
+    )
+    subprocess.run([sys.executable, '-c', code], check=True)
+
+
+def test_transport_imports_with_prerelease_redis_version():
+    import redis as real_redis
+
+    import kombu.transport
+
+    saved_transport = sys.modules.pop('kombu.transport.redis')
+    try:
+        with patch.object(real_redis, 'VERSION', (5, 3, '0b5')):
+            mod = importlib.import_module('kombu.transport.redis')
+            assert mod._REDIS_GET_CONNECTION_WITHOUT_ARGS is True
+    finally:
         sys.modules['kombu.transport.redis'] = saved_transport
         kombu.transport.redis = saved_transport
