@@ -1264,6 +1264,24 @@ class test_Channel:
         client.setnx.side_effect = redis.MutexHeld()
         qos.restore_visible()
 
+    def test_qos_restore_visible_falls_back_to_zrevrangebyscore(self):
+        # Redis < 6.2 rejects ``ZRANGE ... BYSCORE REV`` (#2819).
+        client = self.channel._create_client = Mock(name='client')
+        client = client()
+        client.zrange.side_effect = self.channel.ResponseError(
+            'value is not an integer or out of range')
+        client.zrevrangebyscore.return_value = [(1, 10), (2, 20)]
+        qos = redis.QoS(self.channel)
+        restore = qos.restore_by_tag = Mock(name='restore_by_tag')
+        qos._vrestore_count = 0
+
+        qos.restore_visible(start=0, num=10)
+
+        client.zrevrangebyscore.assert_called_once_with(
+            qos.unacked_index_key, ANY, 0,
+            start=0, num=10, withscores=True)
+        restore.assert_has_calls([call(1, client), call(2, client)])
+
     def test_qos_restore_visible_stores_the_process_token_in_the_lock(self):
         client = self.channel._create_client = Mock(name='client')
         client = client()
@@ -2500,6 +2518,62 @@ class test_Channel:
                 'BYSCORE', 'REV', 'LIMIT', 0, 10, 'WITHSCORES',
             )]
 
+    @patch("redis.StrictRedis.execute_command")
+    def test_global_keyprefix_restore_visible_fallback(self, mock_execute_command):
+        # On Redis < 6.2 the fallback command must read the prefixed key too.
+        from kombu.transport.redis import PrefixedStrictRedis
+
+        def execute_command(command, *args, **kwargs):
+            if command == 'ZRANGE':
+                raise ResponseError('value is not an integer or out of range')
+            return [] if command == 'ZREVRANGEBYSCORE' else True
+        mock_execute_command.side_effect = execute_command
+
+        with Connection(transport=Transport) as conn:
+            client = PrefixedStrictRedis(global_keyprefix='foo_')
+
+            channel = conn.channel()
+            channel._create_client = Mock()
+            channel._create_client.return_value = client
+
+            channel.qos._vrestore_count = 0
+            with patch('kombu.transport.redis.time', return_value=1000000.0):
+                channel.qos.restore_visible(start=0, num=10)
+
+            fallback, = (
+                call.args for call in mock_execute_command.mock_calls
+                if call.args and call.args[0] == 'ZREVRANGEBYSCORE'
+            )
+            assert fallback[1] == 'foo_unacked_index'
+
+    @pytest.mark.parametrize('version, logged', [
+        ('6.0.20', True),
+        ('5.0.14', True),
+        ('6.2.0', False),
+        ('8.2.1', False),
+        ('7.2.4', False),
+    ])
+    def test_check_server_version(self, version, logged, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = Mock(return_value={'redis_version': version})
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+            self.channel._check_server_version()
+        assert error.call_count == (1 if logged else 0)
+        self.channel.client.info.assert_called_once_with('server')
+
+    @pytest.mark.parametrize('info', [
+        Mock(side_effect=ResponseError('unknown command')),
+        Mock(return_value={}),
+        Mock(return_value={'redis_version': 'unknown'}),
+    ])
+    def test_check_server_version_unreadable(self, info, monkeypatch):
+        monkeypatch.setattr(redis, '_server_version_checked', False)
+        self.channel.client.info = info
+        with patch.object(redis.logger, 'error') as error:
+            self.channel._check_server_version()
+        error.assert_not_called()
+
     def test_get_queue_expire_valid_string(self):
         """Test _get_queue_expire with valid string value."""
         args = {"arguments": {"x-expires": "5000"}}
@@ -2713,6 +2787,50 @@ class test_Channel:
         assert getattr(channel, name) is register.return_value
         assert getattr(channel, name) is register.return_value
         register.assert_called_once_with(getattr(redis, script))
+
+    @staticmethod
+    def _run_refresh_binding(zset, ttl, now=(1000, 0)):
+        # Runs REFRESH_BINDING against a stub of the Redis 6.0 commands it
+        # uses. ZADD on 6.0 takes no GT/LT flags.
+        lupa = pytest.importorskip('lupa')
+        runtime = lupa.LuaRuntime()
+
+        def call(command, *args):
+            if command == 'SADD':
+                return 1
+            if command == 'TIME':
+                return runtime.table(str(now[0]), str(now[1]))
+            if command == 'ZSCORE':
+                score = zset.get(args[1])
+                return False if score is None else str(score)
+            if command == 'ZADD':
+                if len(args) != 3:
+                    raise RuntimeError('ERR syntax error')
+                zset[args[2]] = int(args[1])
+                return 1
+            raise AssertionError(command)
+
+        script = runtime.eval(
+            'function(call, KEYS, ARGV) redis = {call = call}\n'
+            + redis.REFRESH_BINDING + '\nend')
+        script(call, runtime.table('table', 'deadlines'),
+               runtime.table('q', 'ex', str(ttl)))
+
+    def test_refresh_binding_runs_on_redis_6_0(self):
+        zset = {}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': 1_005_000}
+
+    @pytest.mark.parametrize('current,expected', [
+        (1_000_500, 1_005_000), (2_000_000, 2_000_000),
+        # Fewer digits: as strings '999999' > '1005000', so this only
+        # passes if the script compares the scores as numbers.
+        (999_999, 1_005_000)])
+    def test_refresh_binding_only_raises_the_deadline(self, current,
+                                                      expected):
+        zset = {'ex': current}
+        self._run_refresh_binding(zset, 5000)
+        assert zset == {'ex': expected}
 
     def _brpop_queue(self, channel):
         channel._active_queues = ['q']
