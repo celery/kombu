@@ -116,6 +116,38 @@ class test_Mailbox:
         assert reply == [{'current': 'reply'}]
         assert list(mailbox.unclaimed[old_ticket]) == [{'old': 'reply'}]
 
+    def test_reply__collect_stops_at_the_limit(self):
+        mailbox = pidbox.Mailbox('test_reply__collect_stops')(self.connection)
+        exchange = mailbox.reply_exchange.name
+        channel = self.connection.channel()
+        mailbox.reply_queue(channel).declare()
+        ticket = uuid()
+        mailbox._publish_reply({'old': 'reply'}, exchange, mailbox.oid, uuid())
+        mailbox._publish_reply({'current': 'reply'}, exchange, mailbox.oid, ticket)
+
+        drain_events = self.connection.drain_events
+        with patch.object(self.connection, 'drain_events',
+                          side_effect=drain_events) as drained:
+            reply = mailbox._collect(ticket, limit=1, channel=channel)
+
+        assert reply == [{'current': 'reply'}]
+        # one read per message, and none after the limit is reached
+        assert drained.call_count == 2
+
+    def test_reply__collect_without_limit_reads_until_timeout(self):
+        mailbox = pidbox.Mailbox('test_reply__collect_nolimit')(self.connection)
+        exchange = mailbox.reply_exchange.name
+        channel = self.connection.channel()
+        mailbox.reply_queue(channel).declare()
+        ticket = uuid()
+        mailbox._publish_reply({'first': 'reply'}, exchange, mailbox.oid, ticket)
+        mailbox._publish_reply({'old': 'reply'}, exchange, mailbox.oid, uuid())
+        mailbox._publish_reply({'second': 'reply'}, exchange, mailbox.oid, ticket)
+
+        reply = mailbox._collect(ticket, timeout=0.1, channel=channel)
+
+        assert reply == [{'first': 'reply'}, {'second': 'reply'}]
+
     def test_reply__collect_uses_default_channel(self):
         class ConsumerCalled(Exception):
             pass
