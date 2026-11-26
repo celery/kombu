@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+from collections import deque
 
 import pytest
 
@@ -122,6 +123,22 @@ class test_MemoryTransport:
         assert self.q2(channel).get()
         self.q2(channel).purge()
         assert self.q2(channel).get() is None
+
+    def test_purge_holds_queue_mutex(self):
+        channel = self.c.channel()
+        queue = channel._queue_for(self.q.name)
+
+        class GuardedDeque(deque):
+            def clear(self):
+                acquired = queue.mutex.acquire(blocking=False)
+                if acquired:
+                    queue.mutex.release()
+                assert not acquired
+                super().clear()
+
+        queue.queue = GuardedDeque(['first', 'second'])
+        assert self.q(channel).purge() == 2
+        assert queue.empty()
 
     def test_drain_events(self):
         with pytest.raises(socket.timeout):
