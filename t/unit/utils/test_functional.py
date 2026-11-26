@@ -138,6 +138,32 @@ class test_LRUCache:
         assert list(x.keys()) == ['a', 'b']
         assert y.popitem(last=False) == ('b', 2)
 
+    def test_or(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        y = x | {'c': 3}
+        assert isinstance(y, LRUCache)
+        assert y.limit == 2
+        assert list(y.items()) == [('b', 2), ('c', 3)]
+        y['d'] = 4
+        assert list(y.keys()) == ['c', 'd']
+        assert list(x.keys()) == ['a', 'b']
+
+    def test_ror(self):
+        x = LRUCache(limit=2)
+        x.update(b=2, c=3)
+        y = {'a': 1} | x
+        assert isinstance(y, LRUCache)
+        assert y.limit == 2
+        assert list(y.items()) == [('b', 2), ('c', 3)]
+
+    def test_ior(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        x |= {'c': 3}
+        assert isinstance(x, LRUCache)
+        assert list(x.items()) == [('b', 2), ('c', 3)]
+
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)

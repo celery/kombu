@@ -80,6 +80,28 @@ class LRUCache(UserDict):
             c.data.update(self.data)
             return c
 
+    # The UserDict operators would build the result as ``LRUCache(dict)``,
+    # putting the dict in ``limit``, and ``|=`` would skip eviction.
+    def __or__(self, other):
+        if not isinstance(other, (UserDict, dict)):
+            return NotImplemented
+        c = self.copy()
+        c.update(other)
+        return c
+
+    def __ror__(self, other):
+        if not isinstance(other, (UserDict, dict)):
+            return NotImplemented
+        with self.mutex:
+            c = self.__class__(self.limit)
+            c.update(other)
+            c.update(self.data)
+            return c
+
+    def __ior__(self, other):
+        self.update(other)
+        return self
+
     def popitem(self, last=True):
         with self.mutex:
             return self.data.popitem(last)
