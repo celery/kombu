@@ -104,7 +104,9 @@ def as_url(scheme, host=None, port=None, user=None, password=None,
 def sanitize_url(url, mask='**'):
     # type: (str, str) -> str
     """Return copy of URL with password removed."""
-    return as_url(*_parse_url(url), sanitize=True, mask=mask)
+    parts = _parse_url(url)
+    parts = parts._replace(path=quote(parts.path or ''))
+    return as_url(*parts, sanitize=True, mask=mask)
 
 
 def maybe_sanitize_url(url, mask='**'):

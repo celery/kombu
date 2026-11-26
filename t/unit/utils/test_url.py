@@ -99,3 +99,15 @@ def test_parse_ssl_cert_reqs(query_param, ssl_available, expected):
 def test_parse_ssl_cert_reqs_bad_value():
     with pytest.raises(KeyError):
         parse_ssl_cert_reqs('badvalue')
+
+
+@pytest.mark.parametrize('path', ['vhost%3Fone%23two%25', '%252F', 'nested/vhost'])
+def test_sanitize_url_preserves_encoded_path(path):
+    original = f'amqp://user:password@localhost/{path}'
+
+    sanitized = kombu.utils.url.sanitize_url(original)
+
+    original_parts = kombu.utils.url.url_to_parts(original)
+    sanitized_parts = kombu.utils.url.url_to_parts(sanitized)
+    assert sanitized_parts.path == original_parts.path
+    assert sanitized_parts.password == '**'
