@@ -1803,6 +1803,26 @@ class test_Channel:
             call('foo', client=client),
         ])
 
+    @pytest.mark.parametrize('pending', [False, True])
+    def test_close_in_fork_skips_autodelete_fanout_queues(self, pending):
+        channel = self.channel
+        channel._fanout_queues = {'foo': ('foo', '')}
+        channel.auto_delete_queues = ['foo']
+        channel.queue_delete = Mock()
+        client_connection = channel.client.connection
+        channel._owner_pid = os.getpid() + 1
+        channel._in_poll = client_connection if pending else None
+        channel._brpop_read = Mock()
+        cycle = channel.connection.cycle
+
+        channel.close()
+
+        channel.queue_delete.assert_not_called()
+        channel._brpop_read.assert_not_called()
+        assert channel.closed
+        assert channel not in cycle._channels
+        assert client_connection.disconnected
+
     def test_close_client_close_raises(self):
         c = self.channel.client = Mock()
         connection = c.connection
@@ -3733,6 +3753,7 @@ class test_Redis:
     def test_close_in_poll(self):
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
+        del conn1.pid
         conn1._sock.data = [('BRPOP', ('test_Redis',))]
         c._in_poll = conn1
         c.close()
@@ -3743,7 +3764,7 @@ class test_Redis:
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
         conn1._sock.data = [('BRPOP', ('test_Redis',))]
-        conn1.pid = os.getpid() + 1
+        c._owner_pid = os.getpid() + 1
         c._in_poll = conn1
 
         c.close()
