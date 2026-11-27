@@ -64,14 +64,20 @@ class ProducerPool(Resource):
             try:
                 p.revive(conn)
             except BaseException:
+                # revive may have attached the connection before raising.
+                p.__connection__ = None
+                p.channel = None
                 conn.release()
                 raise
         return p
 
     def release(self, resource):
-        if resource.__connection__:
-            resource.__connection__.release()
+        connection = resource.__connection__
+        # A cached producer must not retain ownership of a returned connection.
+        resource.__connection__ = None
         resource.channel = None
+        if connection:
+            connection.release()
         super().release(resource)
 
 
