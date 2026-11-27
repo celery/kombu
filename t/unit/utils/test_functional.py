@@ -157,6 +157,13 @@ class test_LRUCache:
         assert y.limit == 2
         assert list(y.items()) == [('b', 2), ('c', 3)]
 
+    def test_or_non_mapping(self):
+        x = LRUCache(limit=2)
+        with pytest.raises(TypeError):
+            x | 1
+        with pytest.raises(TypeError):
+            1 | x
+
     def test_ior(self):
         x = LRUCache(limit=2)
         x.update(a=1, b=2)
