@@ -97,6 +97,7 @@ import shutil
 import tempfile
 import uuid
 from collections import namedtuple
+from itertools import count
 from pathlib import Path
 from queue import Empty
 from time import monotonic
@@ -152,6 +153,9 @@ else:
     raise RuntimeError(
         'Filesystem plugin only defined for NT and POSIX platforms')
 
+
+# Breaks ties between messages published in the same millisecond.
+_put_sequence = count()
 
 exchange_queue_t = namedtuple("exchange_queue_t",
                               ["routing_key", "pattern", "queue"])
@@ -261,8 +265,10 @@ class Channel(virtual.Channel):
 
     def _put(self, queue, payload, **kwargs):
         """Put `message` onto `queue`."""
-        filename = '{}_{}.{}.msg'.format(int(round(monotonic() * 1000)),
-                                         uuid.uuid4(), queue)
+        # _get() sorts names as text, so pad the numbers to keep FIFO order.
+        filename = '{:015d}_{:015d}_{}.{}.msg'.format(
+            int(round(monotonic() * 1000)), next(_put_sequence),
+            uuid.uuid4(), queue)
         filename = os.path.join(self.data_folder_out, filename)
 
         f = None
