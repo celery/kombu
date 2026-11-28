@@ -605,6 +605,77 @@ def test_close_connection_continues_on_per_entry_exception(mock_queue: MockQueue
     assert transport._queue_cache == {}
 
 
+def test_store_after_close_replaces_container(mock_queue: MockQueue):
+    """GH issue #2872: a cache store landing after close() must not
+    resurrect the sender on the closed container."""
+    channel = mock_queue.channel
+    old_sender = MagicMock()
+    obj = channel._add_queue_to_cache("q", sender=old_sender)
+
+    obj.close()
+    assert obj.sender is None
+
+    fresh_sender = MagicMock()
+    replacement = channel._add_queue_to_cache("q", sender=fresh_sender)
+
+    assert replacement is not obj
+    assert replacement.sender is fresh_sender
+    assert obj.sender is None
+    fresh_sender.close.assert_not_called()
+    assert channel._queue_cache["q"] is replacement
+
+
+def test_send_receive_store_after_close_returns_false():
+    """SendReceive.store() refuses a store once close() has run."""
+    obj = azureservicebus.SendReceive(sender=MagicMock())
+    obj.close()
+
+    assert obj.store(sender=MagicMock()) is False
+    assert obj.sender is None
+
+
+def test_close_not_undone_by_concurrent_store(mock_queue: MockQueue):
+    """GH issue #2872: close() must stick under a concurrent store.
+
+    Either order is fine -- a store first is closed by close(), a
+    close first makes the store land in a fresh container -- but the
+    closed container must never hold a live sender afterwards.
+    """
+    channel = mock_queue.channel
+
+    for _ in range(50):
+        old_sender = MagicMock()
+        obj = channel._add_queue_to_cache("q", sender=old_sender)
+        fresh_sender = MagicMock()
+        barrier = threading.Barrier(2)
+
+        def closer():
+            barrier.wait()
+            obj.close()
+
+        def storer():
+            barrier.wait()
+            # Let close()'s null land first most of the time.
+            threading.Event().wait(0.002)
+            channel._add_queue_to_cache("q", sender=fresh_sender)
+
+        threads = [threading.Thread(target=closer),
+                   threading.Thread(target=storer)]
+        [t.start() for t in threads]
+        [t.join() for t in threads]
+
+        assert obj.sender is None
+        live = channel._queue_cache["q"]
+        if live is obj:
+            # Store won the race: close() closed the stored sender.
+            fresh_sender.close.assert_called_once()
+        else:
+            # Close won the race: the store replaced the container.
+            assert live.sender is fresh_sender
+            fresh_sender.close.assert_not_called()
+        channel._queue_cache.clear()
+
+
 def test_basic_ack_lock_lost_logs_warning_and_rejects(mock_queue: MockQueue, caplog):
     """Regression: lock-lost ack failures must be logged, not silent."""
     mock_queue.producer.publish("test message")
