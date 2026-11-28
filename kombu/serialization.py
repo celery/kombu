@@ -7,7 +7,6 @@ import os
 import pickle
 import sys
 from collections import namedtuple
-from contextlib import contextmanager
 from io import BytesIO
 
 from .exceptions import (ContentDisallowed, DecodeError, EncodeError,
@@ -34,15 +33,24 @@ pickle_protocol = int(os.environ.get('PICKLE_PROTOCOL', 4))
 codec = namedtuple('codec', ('content_type', 'content_encoding', 'encoder'))
 
 
-@contextmanager
-def _reraise_errors(wrapper,
-                    include=(Exception,), exclude=(SerializerNotInstalled,)):
-    try:
-        yield
-    except exclude:
-        raise
-    except include as exc:
-        reraise(wrapper, wrapper(exc), sys.exc_info()[2])
+# A class and not a @contextmanager, because it is faster:
+# dumps() and loads() use it for each message.
+class _reraise_errors:
+    def __init__(self, wrapper,
+                 include=(Exception,), exclude=(SerializerNotInstalled,)):
+        self.wrapper = wrapper
+        self.include = include
+        self.exclude = exclude
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None or issubclass(exc_type, self.exclude):
+            return False
+        if issubclass(exc_type, self.include):
+            reraise(self.wrapper, self.wrapper(exc_val), exc_tb)
+        return False
 
 
 def pickle_loads(s, load=pickle_load):
