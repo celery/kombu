@@ -692,6 +692,50 @@ class test_AsyncSQSConnection(AWSCase):
             callback=on_ready,
         )
 
+    def test_get_queue__parsed_listqueues_dict(self):
+        # _on_list_ready() hands _on_queue_ready() the botocore-parsed
+        # ListQueues dict ({"QueueUrls": [...]}), not a list of queue
+        # objects; it must turn the URLs into AsyncQueue objects instead
+        # of crashing with AttributeError on the dict keys.
+        parsed = {
+            'QueueUrls': [
+                'https://sqs.us-east-1.amazonaws.com/123/bar',
+                'https://sqs.us-east-1.amazonaws.com/123/foo',
+            ],
+        }
+        queue = self.x._on_queue_ready('foo', parsed)
+        assert isinstance(queue, AsyncQueue)
+        assert queue.url == parsed['QueueUrls'][1]
+        assert queue.connection is self.x
+
+        assert self.x._on_queue_ready('missing', parsed) is None
+        assert self.x._on_queue_ready('foo', {'QueueUrls': []}) is None
+        assert self.x._on_queue_ready('foo', {}) is None
+        # Timeout/5xx path: _on_list_ready() returns [].
+        assert self.x._on_queue_ready('foo', []) is None
+
+    def test_get_queue__through_on_list_ready(self):
+        # End-to-end: a real HTTP 200 ListQueues body flows through
+        # _on_list_ready() into _on_queue_ready() and returns the
+        # matching queue instead of raising AttributeError.
+        response = Mock(status=200)
+        response.response.status_code = 200
+        response.response.headers = {
+            'Content-Type': 'application/x-amz-json-1.0',
+        }
+        response.response.content = json.dumps({
+            'QueueUrls': [
+                'https://sqs.us-east-1.amazonaws.com/123/bar',
+                'https://sqs.us-east-1.amazonaws.com/123/foo',
+            ],
+        }).encode()
+        parsed = self.x._on_list_ready(
+            self.x, [('QueueUrl', AsyncQueue)], 'ListQueues', response,
+        )
+        queue = self.x._on_queue_ready('foo', parsed)
+        assert isinstance(queue, AsyncQueue)
+        assert queue.url.endswith('/foo')
+
     def test_get_dead_letter_source_queues(self):
         queue = Mock(name='queue')
         self.x.get_dead_letter_source_queues(queue, callback=self.callback)

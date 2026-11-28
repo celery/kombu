@@ -320,6 +320,15 @@ class AsyncSQSConnection(AsyncAWSQueryConnection):
     lookup = get_queue
 
     def _on_queue_ready(self, name, queues):
+        if isinstance(queues, dict):
+            # _on_list_ready() hands us the parsed ListQueues response
+            # ({"QueueUrls": [...]}), not the list of AsyncQueue objects
+            # the markers promise; turn the URLs into queues first.
+            # A timeout/5xx response arrives as [] and stays None.
+            queues = [
+                AsyncQueue(self, url)
+                for url in queues.get("QueueUrls", [])
+            ]
         return next(
             (q for q in queues if q.url.endswith(name)), None,
         )
