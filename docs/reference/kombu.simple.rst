@@ -49,6 +49,7 @@
         .. automethod:: __len__
         .. automethod:: qsize
         .. automethod:: close
+        .. automethod:: revive
 
     Buffer
     ------
@@ -90,4 +91,5 @@
         .. automethod:: __len__
         .. automethod:: qsize
         .. automethod:: close
+        .. automethod:: revive
 
