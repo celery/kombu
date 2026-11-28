@@ -1795,6 +1795,41 @@ class test_Channel:
         assert not channel.qos._recorded
         channel.qos._delivered.clear()
 
+    @pytest.mark.parametrize('by_keyword', [True, False])
+    def test_consumer_records_the_message_unless_no_ack(self, by_keyword):
+        name = f'consume-no-ack-{by_keyword}'
+        channel, _ = self._consume(name)
+        unacked = channel.client.hashes[channel.unacked_key]
+        # Only the pop may write the record: a second write by the QoS
+        # raises on this mock.
+        channel.qos.pipe_or_acquire = Mock(name='pipe_or_acquire')
+
+        # _consume() consumed with acks, so each step changes the queue's
+        # mark, and a mark left over from the consumer before would show.
+        for no_ack in (True, False):
+            channel.basic_cancel(name)
+            if by_keyword:
+                channel.basic_consume(queue=name, no_ack=no_ack,
+                                      callback=Mock(), consumer_tag=name)
+            else:
+                channel.basic_consume(name, no_ack, Mock(), name)
+            self._publish(channel, name)
+
+            channel._brpop_start()
+            try:
+                channel._brpop_read()
+            except redis._CommandSent:
+                # Woken from the wait on the wake list: the pop comes next.
+                channel._brpop_read()
+
+            assert bool(unacked) is not no_ack
+            unacked.clear()
+            channel.qos._delivered.clear()
+
+    def test_basic_consume_requires_no_ack(self):
+        with pytest.raises(TypeError):
+            self.channel.basic_consume('no-ack-missing')
+
     def test_basic_get_records_the_message_unless_no_ack(self):
         channel, _ = self._consume('basic-get')
         self._publish(channel, 'basic-get', 'one')

@@ -684,7 +684,7 @@ class QoS(virtual.QoS):
         if delivery_tag in self._recorded:
             replaces = self._recorded.pop(delivery_tag)
             if replaces is None:
-                return self.append_recorded(message, delivery_tag)
+                return self._append_recorded(message, delivery_tag)
         delivery = message.delivery_info
         EX, RK = delivery['exchange'], delivery['routing_key']
         # TODO: Remove this once we solely on Redis-py 3.0.0+
@@ -705,7 +705,7 @@ class QoS(virtual.QoS):
             pipe.execute()
             super().append(message, delivery_tag)
 
-    def append_recorded(self, message, delivery_tag):
+    def _append_recorded(self, message, delivery_tag):
         """Track a message the pop script already recorded in unacked."""
         super().append(message, delivery_tag)
 
@@ -1584,16 +1584,19 @@ class Channel(virtual.Channel):
     def _restore_at_beginning(self, message):
         return self._restore(message, leftmost=True)
 
-    def basic_consume(self, queue, no_ack, *args, **kwargs):
-        if no_ack:
-            self._no_ack_queues.add(queue)
-        else:
-            self._no_ack_queues.discard(queue)
+    def basic_consume(self, queue, *args, **kwargs):
         if queue in self._fanout_queues:
             exchange, _ = self._fanout_queues[queue]
             self.active_fanout_queues.add(queue)
             self._fanout_to_queue[exchange] = queue
-        ret = super().basic_consume(queue, no_ack, *args, **kwargs)
+        ret = super().basic_consume(queue, *args, **kwargs)
+        # The base class requires no_ack, so the call above raised unless
+        # it was passed by keyword or as the first positional argument.
+        no_ack = kwargs['no_ack'] if 'no_ack' in kwargs else args[0]
+        if no_ack:
+            self._no_ack_queues.add(queue)
+        else:
+            self._no_ack_queues.discard(queue)
 
         # Update fair cycle between queues.
         #
@@ -2065,7 +2068,7 @@ class Channel(virtual.Channel):
             return None
         message = self.Message(payload, channel=self)
         if self._recorded_as(payload, tag):
-            self.qos.append_recorded(message, message.delivery_tag)
+            self.qos._append_recorded(message, message.delivery_tag)
         elif not no_ack:
             if tag:
                 # Recorded under another tag: append() replaces that record.
