@@ -679,7 +679,8 @@ class QoS(virtual.QoS):
         #: None, or to the other tag it recorded the message under.
         self._recorded = {}
 
-    def append(self, message, delivery_tag, replaces=None):
+    def append(self, message, delivery_tag):
+        replaces = None
         if delivery_tag in self._recorded:
             replaces = self._recorded.pop(delivery_tag)
             if replaces is None:
@@ -2065,7 +2066,10 @@ class Channel(virtual.Channel):
         if self._recorded_as(payload, tag):
             self.qos.append_recorded(message, message.delivery_tag)
         elif not no_ack:
-            self.qos.append(message, message.delivery_tag, replaces=tag)
+            if tag:
+                # Recorded under another tag: append() replaces that record.
+                self.qos._recorded[message.delivery_tag] = tag
+            self.qos.append(message, message.delivery_tag)
         return message
 
     def _get(self, queue):
