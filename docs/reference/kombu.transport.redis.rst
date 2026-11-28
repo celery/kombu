@@ -19,6 +19,7 @@
 
     .. rubric:: Transport-specific notes
     .. versionadded:: 5.6.0
+
     Redis now honours the generic
     :attr:`~kombu.transport.virtual.Transport.polling_interval`
     option (present in SQS, etcd, Zookeeper, …).  When you pass
@@ -33,16 +34,32 @@
     The default remains **1 second** to stay backward-compatible.
 
     .. versionadded:: 5.7.0
+
     Supports Queue TTL
 
-    Streaming credentials / automatic re-authentication
-    ----------------------------------------------------
-    .. versionadded:: 5.7.0
+    Unacknowledged message restores
+    --------------------------------
 
-    The transport supports rotating credentials supplied by a
-    ``redis.credentials.StreamingCredentialProvider`` (for example the
-    Microsoft Entra ID provider from ``redis-entraid``, or an AWS ElastiCache
-    IAM provider).  Configure it like any other credential provider:
+    With ``ack_emulation`` enabled, delivery records a tag in the unacked
+    payload hash and timestamps it in the sorted-set index. A visibility
+    timeout makes a tag eligible for a restore scan; it is not an exact
+    redelivery deadline. The scanning worker must get an opportunity to run,
+    pass the call throttle and acquire the shared restore mutex.
+
+    .. figure:: ../images/redis-restore-sweep.png
+        :alt: Restore attempts pass a throttle, compute a cutoff using the scanning worker's visibility timeout, and acquire the shared mutex. Due tags are selected and restored; throttled calls, a held mutex and empty scans do not requeue messages.
+        :width: 650px
+
+        Normal Redis restore sweep. The cutoff uses the scanning worker's
+        settings. :download:`Editable SVG <../images/redis-restore-sweep.svg>`.
+        `Edit diagram <https://svgdiagram.ai/diagram-sources/kombu-redis-restore-sweep?version=1>`__.
+
+    Each selected tag is handled by ``restore_by_tag`` in a Redis transaction:
+    the timestamp and payload entry are removed, and a surviving saved payload
+    is re-routed with its redelivery flag set. A concurrent acknowledgement may
+    have already removed the payload, in which case there is nothing to requeue.
+    Acknowledgements also remove the unacked records. This describes broker
+    delivery state, not whether application work has completed.
 
     .. code-block:: python
 
@@ -116,8 +133,22 @@
 
         The janitor only *drives* the sweep; the per-message restore work is
         unchanged, and all workers still contend for the same ``unacked_mutex``
-        so only one sweep runs at a time.  ``ack_emulation`` must stay enabled
+        so a worker holding a live mutex lease prevents another worker from
+        starting a sweep.  ``ack_emulation`` must stay enabled
         for the unacked index to exist.
+
+    Streaming credentials / automatic re-authentication
+    ----------------------------------------------------
+    .. versionadded:: 5.7.0
+
+    The transport supports rotating credentials supplied by a
+    ``redis.credentials.StreamingCredentialProvider`` (for example the
+    Microsoft Entra ID provider from ``redis-entraid``, or an AWS ElastiCache
+    IAM provider).  Configure it like any other credential provider:
+
+    .. code-block:: python
+
+        app.conf.broker_transport_options = {
             "credential_provider": my_streaming_credential_provider,
         }
 
