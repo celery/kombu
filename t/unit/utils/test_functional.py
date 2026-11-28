@@ -127,6 +127,50 @@ class test_LRUCache:
         x.update({x: x for x in range(100)})
         assert list(x.keys()), [98 == 99]
 
+    def test_copy(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        y = x.copy()
+        assert y.limit == 2
+        assert list(y.keys()) == ['a', 'b']
+        y['c'] = 3
+        assert list(y.keys()) == ['b', 'c']
+        assert list(x.keys()) == ['a', 'b']
+        assert y.popitem(last=False) == ('b', 2)
+
+    def test_or(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        y = x | {'c': 3}
+        assert isinstance(y, LRUCache)
+        assert y.limit == 2
+        assert list(y.items()) == [('b', 2), ('c', 3)]
+        y['d'] = 4
+        assert list(y.keys()) == ['c', 'd']
+        assert list(x.keys()) == ['a', 'b']
+
+    def test_ror(self):
+        x = LRUCache(limit=2)
+        x.update(b=2, c=3)
+        y = {'a': 1} | x
+        assert isinstance(y, LRUCache)
+        assert y.limit == 2
+        assert list(y.items()) == [('b', 2), ('c', 3)]
+
+    def test_or_non_mapping(self):
+        x = LRUCache(limit=2)
+        with pytest.raises(TypeError):
+            x | 1
+        with pytest.raises(TypeError):
+            1 | x
+
+    def test_ior(self):
+        x = LRUCache(limit=2)
+        x.update(a=1, b=2)
+        x |= {'c': 3}
+        assert isinstance(x, LRUCache)
+        assert list(x.items()) == [('b', 2), ('c', 3)]
+
     def test_items(self):
         c = LRUCache()
         c.update(a=1, b=2, c=3)
