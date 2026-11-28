@@ -446,6 +446,12 @@ class Consumer:
         self.cycle._register(channel, channel.client, 'BRPOP')
         self.client_id = channel.client.client_id()
 
+    def client_info(self, client):
+        """Return this consumer's entry in CLIENT LIST, if it is connected."""
+        # The ID filter of CLIENT LIST needs Redis 6.2.
+        return [info for info in client.client_list()
+                if int(info['id']) == self.client_id]
+
     def settle(self, client):
         """Wait until Redis ran the pop sent. Return whether it replied:
         if not, it blocks."""
@@ -453,7 +459,7 @@ class Consumer:
         for _ in range(500):
             if select.select([sock], [], [], 0.01)[0]:
                 return True
-            info = client.client_list(client_id=[self.client_id])
+            info = self.client_info(client)
             if info and 'b' in info[0]['flags']:
                 return False
         raise AssertionError('the pop neither replied nor blocked')
@@ -496,7 +502,7 @@ class Consumer:
         self.conn.release()
         # Until Redis sees the connection close, a pop it blocks in can
         # still take a message; wait for that, so runs are repeatable.
-        while client.client_list(client_id=[self.client_id]):
+        while self.client_info(client):
             sleep(0.005)
 
 
