@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import pickle
 import socket
+import threading
+import time
 from copy import copy, deepcopy
 from unittest.mock import Mock, patch
 
@@ -546,6 +548,34 @@ class test_Connection:
             c.default_channel
             cf_mock.assert_called_once_with()
 
+    def test_default_channel_created_once_under_concurrency(self):
+        # Tests GH issue: #2869
+        # Concurrent first access to default_channel must create
+        # exactly one channel; the second caller reuses it instead
+        # of creating (and orphaning) a second one.
+        conn = Connection('memory://')
+        created = []
+        orig_channel = Connection.channel
+
+        def counting_channel(self):
+            # Widen the race window so both threads are inside
+            # channel() before either one assigns _default_channel.
+            time.sleep(0.2)
+            chan = orig_channel(self)
+            created.append(chan)
+            return chan
+
+        with patch.object(Connection, 'channel', counting_channel):
+            threads = [
+                threading.Thread(target=lambda: conn.default_channel)
+                for _ in range(2)
+            ]
+            [t.start() for t in threads]
+            [t.join() for t in threads]
+
+        assert len(created) == 1
+        assert conn.default_channel is created[0]
+
     def test_close_when_default_channel_close_raises(self):
 
         class Conn(Connection):
@@ -568,6 +598,17 @@ class test_Connection:
 
         defchan.close.assert_called_with()
         assert conn._default_channel is None
+
+    def test_revive_when_default_channel_is_same_channel(self):
+        # revive() with the current default channel must be a no-op:
+        # it used to drop the reference without closing the channel,
+        # so the next access opened a second channel and orphaned
+        # the first one (see #2873 review by MehrazRumman).
+        conn = self.conn
+        defchan = conn.default_channel
+        conn.revive(defchan)
+
+        assert conn._default_channel is defchan
 
     def test_ensure_connection(self):
         assert self.conn.ensure_connection()

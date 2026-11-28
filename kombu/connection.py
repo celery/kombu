@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import socket
 import sys
+import threading
 from contextlib import contextmanager
 from itertools import count, cycle
 from operator import itemgetter
@@ -286,6 +287,7 @@ class Connection:
             self.uri_prefix = uri_prefix
 
         self.declared_entities = set()
+        self._default_channel_lock = threading.Lock()
 
     def switch(self, conn_str):
         """Switch connection parameters to use a new URL or hostname.
@@ -550,9 +552,12 @@ class Connection:
 
     def revive(self, new_channel):
         """Revive connection after connection re-established."""
-        if self._default_channel and new_channel is not self._default_channel:
-            self.maybe_close_channel(self._default_channel)
+        with self._default_channel_lock:
+            default_channel = self._default_channel
+            if default_channel is None or new_channel is default_channel:
+                return
             self._default_channel = None
+        self.maybe_close_channel(default_channel)
 
     def ensure(self, obj, fun, errback=None, max_retries=None,
                interval_start=1, interval_step=1, interval_max=1,
@@ -1053,7 +1058,9 @@ class Connection:
         self._ensure_connection(**conn_opts)
 
         if self._default_channel is None:
-            self._default_channel = self.channel()
+            with self._default_channel_lock:
+                if self._default_channel is None:
+                    self._default_channel = self.channel()
         return self._default_channel
 
     @property
