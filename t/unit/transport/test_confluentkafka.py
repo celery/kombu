@@ -5,11 +5,43 @@ from unittest.mock import Mock
 import pytest
 
 pytest.importorskip('confluent_kafka')
+from confluent_kafka import TopicPartition  # noqa: E402
 
-from kombu.transport.confluentkafka import QoS  # noqa: E402
+from kombu.transport.confluentkafka import Channel, QoS  # noqa: E402
+from kombu.utils.json import dumps  # noqa: E402
 
 
 class test_QoS:
+
+    def test_get_preserves_kafka_message_metadata(self):
+        channel = Channel.__new__(Channel)
+        channel.connection = Mock()
+        channel.connection.client.transport_options = {'wait_time_seconds': 0}
+
+        consumer = Mock()
+        record = Mock()
+        record.error.return_value = None
+        record.value.return_value = dumps({
+            'body': None,
+            'properties': {'delivery_tag': 'tag-1'},
+        })
+        record.topic.return_value = 'orders'
+        record.partition.return_value = 2
+        record.offset.return_value = 42
+        consumer.poll.return_value = record
+        channel._kafka_consumers = {'orders': consumer}
+
+        payload = channel._get('orders')
+
+        assert payload['topic'] == 'orders'
+        assert payload['partition'] == 2
+        assert payload['offset'] == 42
+
+        message = channel.Message(payload, channel=channel)
+
+        assert message.topic == 'orders'
+        assert message.partition == 2
+        assert message.offset == 42
 
     def test_unacked_messages_are_tracked_per_channel(self):
         busy = QoS(Mock(), prefetch_count=1)
@@ -24,10 +56,65 @@ class test_QoS:
     def test_ack_commits_consumer_and_frees_prefetch_slot(self):
         channel = Mock()
         qos = QoS(channel, prefetch_count=1)
-        qos.append(Mock(topic='orders'), 'tag-1')
+        qos.append(Mock(topic='orders', partition=0, offset=10), 'tag-1')
 
         qos.ack('tag-1')
 
         channel._get_consumer.assert_called_once_with('orders')
-        channel._get_consumer.return_value.commit.assert_called_once_with()
+        channel._get_consumer.return_value.commit.assert_called_once_with(
+            offsets=[TopicPartition('orders', 0, 11)]
+        )
         assert qos.can_consume()
+
+    def test_ack_does_not_commit_past_unacked_message(self):
+        channel = Mock()
+        qos = QoS(channel, prefetch_count=2)
+        qos.append(Mock(topic='orders', partition=0, offset=5), 'tag-1')
+        qos.append(Mock(topic='orders', partition=0, offset=6), 'tag-2')
+
+        qos.ack('tag-2')
+
+        channel._get_consumer.return_value.commit.assert_called_once_with(
+            offsets=[TopicPartition('orders', 0, 5)]
+        )
+
+        qos.ack('tag-1')
+
+        assert channel._get_consumer.return_value.commit.call_args_list == [
+            ((), {'offsets': [TopicPartition('orders', 0, 5)]}),
+            ((), {'offsets': [TopicPartition('orders', 0, 7)]}),
+        ]
+        assert qos._acked_offsets == {}
+
+    def test_ack_tracking_is_isolated_per_partition(self):
+        channel = Mock()
+        qos = QoS(channel, prefetch_count=4)
+        qos.append(Mock(topic='orders', partition=0, offset=5), 'p0-tag-1')
+        qos.append(Mock(topic='orders', partition=0, offset=6), 'p0-tag-2')
+        qos.append(Mock(topic='orders', partition=1, offset=10), 'p1-tag-1')
+        qos.append(Mock(topic='orders', partition=1, offset=11), 'p1-tag-2')
+
+        qos.ack('p0-tag-2')
+        qos.ack('p1-tag-2')
+        qos.ack('p0-tag-1')
+        qos.ack('p1-tag-1')
+
+        assert channel._get_consumer.return_value.commit.call_args_list == [
+            ((), {'offsets': [TopicPartition('orders', 0, 5)]}),
+            ((), {'offsets': [TopicPartition('orders', 1, 10)]}),
+            ((), {'offsets': [TopicPartition('orders', 0, 7)]}),
+            ((), {'offsets': [TopicPartition('orders', 1, 12)]}),
+        ]
+        assert qos._acked_offsets == {}
+
+    def test_ack_only_commits_offset_for_message_partition(self):
+        channel = Mock()
+        qos = QoS(channel, prefetch_count=2)
+        qos.append(Mock(topic='orders', partition=0, offset=5), 'tag-1')
+        qos.append(Mock(topic='orders', partition=1, offset=10), 'tag-2')
+
+        qos.ack('tag-1')
+
+        channel._get_consumer.return_value.commit.assert_called_once_with(
+            offsets=[TopicPartition('orders', 0, 6)]
+        )
