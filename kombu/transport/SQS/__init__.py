@@ -247,6 +247,7 @@ import binascii
 import re
 import socket
 import string
+import threading
 import uuid
 from datetime import datetime, timedelta, timezone
 from json import JSONDecodeError
@@ -391,6 +392,9 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         if boto3 is None:
             raise ImportError('boto3 is not installed')
+        # Created before super().__init__(): _update_queue_cache()
+        # below can call self.sqs(), which uses this lock.
+        self._lazy_client_lock = threading.Lock()
         super().__init__(*args, **kwargs)
         self._validate_predifined_queues()
 
@@ -1177,11 +1181,14 @@ class Channel(virtual.Channel):
             return self._sqs
 
         # Initialise a new SQS client and return it
-        c = self._sqs = self.new_sqs_client(
-            region=self.region,
-            access_key_id=self.conninfo.userid,
-            secret_access_key=self.conninfo.password,
-        )
+        with self._lazy_client_lock:
+            if self._sqs is not None:
+                return self._sqs
+            c = self._sqs = self.new_sqs_client(
+                region=self.region,
+                access_key_id=self.conninfo.userid,
+                secret_access_key=self.conninfo.password,
+            )
         return c
 
     @property
