@@ -307,6 +307,30 @@ class test_Serialization:
         assert loads('tainted', 'application/x-doomsday', 'binary',
                      accept=['application/x-doomsday'])
 
+    @pytest.mark.parametrize('content_type', [
+        'application/json; charset=utf-8',
+        'application/json;charset=utf-8',
+        'application/json ; charset="utf-8"',
+    ])
+    def test_loads__content_type_with_parameters(self, content_type):
+        assert loads(b'{"a": 1}', content_type, 'utf-8') == {'a': 1}
+        assert loads(b'{"a": 1}', content_type, 'utf-8',
+                     accept=['application/json']) == {'a': 1}
+
+    def test_loads__content_type_with_parameters_not_accepted(self):
+        with pytest.raises(ContentDisallowed):
+            loads(b'{"a": 1}', 'application/json; charset=utf-8', 'utf-8',
+                  accept=['application/x-yaml'])
+
+    def test_loads__disabled_content_type_with_parameters(self):
+        disable_insecure_serializers(allowed=['json'])
+        try:
+            with pytest.raises(ContentDisallowed):
+                loads(b'data', 'application/x-python-serialize; x=1',
+                      'binary')
+        finally:
+            enable_insecure_serializers()
+
     def test_raw_encode(self):
         assert raw_encode(b'foo') == (
             'application/data', 'binary', b'foo',
