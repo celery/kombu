@@ -1445,6 +1445,7 @@ class Channel(virtual.Channel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self._owner_pid = os.getpid()
         if not self.ack_emulation:  # disable visibility timeout
             self.QoS = virtual.QoS
         self._registered = False
@@ -2341,7 +2342,10 @@ class Channel(virtual.Channel):
         # later, possibly after Connection.collect() detached the transport
         # it needs (celery/celery#11054).
         self._closing = True
-        if self._in_poll:
+        forked = self._owner_pid != os.getpid()
+
+        # Only the owning process may consume the pending BRPOP response.
+        if self._in_poll and not forked:
             try:
                 self._brpop_read()
             except (Empty,) + self.connection_errors:
@@ -2352,7 +2356,7 @@ class Channel(virtual.Channel):
 
             # delete fanout bindings
             client = self.__dict__.get('client')  # only if property cached
-            if client is not None:
+            if client is not None and not forked:
                 try:
                     for queue in self._fanout_queues:
                         if queue in self.auto_delete_queues:

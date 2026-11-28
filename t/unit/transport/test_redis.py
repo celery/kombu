@@ -4,6 +4,7 @@ import base64
 import copy
 import errno
 import importlib
+import os
 import socket
 import subprocess
 import sys
@@ -280,6 +281,7 @@ class Client:
 
         def __init__(self, client):
             self.client = client
+            self.pid = os.getpid()
             self._sock = self._socket()
 
         def disconnect(self):
@@ -2185,6 +2187,26 @@ class test_Channel:
             call('foo', client=client),
         ])
 
+    @pytest.mark.parametrize('pending', [False, True])
+    def test_close_in_fork_skips_autodelete_fanout_queues(self, pending):
+        channel = self.channel
+        channel._fanout_queues = {'foo': ('foo', '')}
+        channel.auto_delete_queues = ['foo']
+        channel.queue_delete = Mock()
+        client_connection = channel.client.connection
+        channel._owner_pid = os.getpid() + 1
+        channel._in_poll = client_connection if pending else None
+        channel._brpop_read = Mock()
+        cycle = channel.connection.cycle
+
+        channel.close()
+
+        channel.queue_delete.assert_not_called()
+        channel._brpop_read.assert_not_called()
+        assert channel.closed
+        assert channel not in cycle._channels
+        assert client_connection.disconnected
+
     def test_close_client_close_raises(self):
         c = self.channel.client = Mock()
         connection = c.connection
@@ -2195,16 +2217,17 @@ class test_Channel:
 
     def test_close_when_in_poll_read_fails(self):
         chan = self.channel
-        chan._in_poll = True
+        chan._in_poll = chan.client.connection
 
         def _brpop_read(**options):
             chan._in_poll = None
             raise chan.connection_errors[0]('connection lost')
-        chan._brpop_read = _brpop_read
+        chan._brpop_read = Mock(side_effect=_brpop_read)
         cycle = chan.connection.cycle
 
         chan.close()
 
+        chan._brpop_read.assert_called_once_with()
         assert chan.closed
         assert chan not in cycle._channels
 
@@ -4146,13 +4169,26 @@ class test_Redis:
     def test_close_in_poll(self):
         c = Connection(transport=Transport).channel()
         conn1 = c.client.connection
+        del conn1.pid
         keys, args = c._pop_unacked_args(['test_Redis'], [True])
         conn1._sock.data = [('EVALSHA', ('pop-unacked', len(keys), *keys, *args))]
         c._pop_queues = ['test_Redis']
-        c._in_poll = True
+        c._in_poll = conn1
         c.close()
         assert conn1.disconnected
         assert conn1._sock.data == []
+
+    def test_close_in_poll_skips_read_in_forked_process(self):
+        c = Connection(transport=Transport).channel()
+        conn1 = c.client.connection
+        conn1._sock.data = [('BRPOP', ('test_Redis',))]
+        c._owner_pid = os.getpid() + 1
+        c._in_poll = conn1
+
+        c.close()
+
+        assert conn1.disconnected
+        assert conn1._sock.data == [('BRPOP', ('test_Redis',))]
 
     def test_get__Empty(self):
         channel = self.connection.channel()
