@@ -7,7 +7,6 @@ import warnings
 from collections import defaultdict, deque
 from contextlib import contextmanager
 from copy import copy
-from itertools import count
 from time import time
 
 from . import Consumer, Exchange, Producer, Queue
@@ -402,7 +401,7 @@ class Mailbox:
         consumer.register_callback(on_message)
         try:
             with consumer:
-                for i in limit and range(limit) or count():
+                while not limit or len(responses) < limit:
                     try:
                         self.connection.drain_events(timeout=timeout)
                     except socket.timeout:
