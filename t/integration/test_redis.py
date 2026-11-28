@@ -13,6 +13,7 @@ import redis
 
 import kombu
 import kombu.transport.redis
+from kombu import pidbox
 from kombu.asynchronous.hub import Hub
 from kombu.transport.redis import (SUBCLIENT_MAX_MISSED_HEALTH_CHECKS, Channel,
                                    SentinelChannel, Transport)
@@ -45,6 +46,30 @@ def connection(request):
         ).get("slaveid", None),
         transport_options=dict(request.param or {})
     )
+
+
+@pytest.mark.env('redis')
+def test_pidbox_collect_skips_a_late_reply_to_an_earlier_call(connection):
+    # The reply to a call that timed out is still in the reply queue when
+    # the next call collects its own.
+    with connection as conn:
+        mailbox = pidbox.Mailbox(f'late-reply-{uuid4().hex}', type='direct')(conn)
+        channel = conn.default_channel
+        queue = mailbox.reply_queue(channel)
+        queue.declare()
+        exchange = mailbox.reply_exchange.name
+        earlier, current = uuid4().hex, uuid4().hex
+        try:
+            mailbox._publish_reply({'pong': 1}, exchange, mailbox.oid, earlier)
+            mailbox._publish_reply({'pong': 2}, exchange, mailbox.oid, current)
+
+            replies = mailbox._collect(current, limit=1, timeout=1,
+                                       channel=channel)
+
+            assert replies == [{'pong': 2}]
+            assert list(mailbox.unclaimed[earlier]) == [{'pong': 1}]
+        finally:
+            queue(channel).delete()
 
 
 @pytest.mark.env('redis')
