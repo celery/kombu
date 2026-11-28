@@ -10,6 +10,13 @@ Features
 * Supports Queue TTL: Yes
 * Supports Message TTL: No
 
+Supported Servers
+=================
+Redis 6.2 and later is supported (6.2, 7.2, 7.4 and 8.x), and so is
+Valkey 7.2 and later. Redis 6.0 works on a best-effort basis for the
+5.7 series, but it no longer gets security fixes, so kombu logs an error
+when it connects to a server older than 6.2. Upgrade the server.
+
 Connection String
 =================
 Connection string has the following format:
@@ -168,6 +175,10 @@ except ImportError:  # pragma: no cover
 
 
 logger = get_logger('kombu.transport.redis')
+
+#: Oldest Redis server kombu supports. Older ones get an error in the log.
+MIN_SERVER_VERSION = (6, 2)
+_server_version_checked = False
 crit, warning = logger.critical, logger.warning
 
 DEFAULT_PORT = 6379
@@ -201,12 +212,17 @@ BINDING_SWEEP_INTERVAL = 60
 #: Adds member ARGV[1] to binding table KEYS[1] and raises exchange ARGV[2]'s
 #: deadline in sorted set KEYS[2] to ARGV[3] ms from now, by the server clock.
 #: Binding tables never get a TTL, so a volatile-* eviction policy can't drop
-#: them.
+#: them. The deadline is compared in Lua rather than with ZADD GT, which needs
+#: Redis 6.2.
 REFRESH_BINDING = """
 redis.call('SADD', KEYS[1], ARGV[1])
 local now = redis.call('TIME')
 local ms = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
-redis.call('ZADD', KEYS[2], 'GT', ms + tonumber(ARGV[3]), ARGV[2])
+local deadline = ms + tonumber(ARGV[3])
+local current = redis.call('ZSCORE', KEYS[2], ARGV[2])
+if not current or tonumber(current) < deadline then
+    redis.call('ZADD', KEYS[2], deadline, ARGV[2])
+end
 """
 
 #: Deletes up to ARGV[3] binding tables whose deadline in sorted set KEYS[1]
@@ -510,6 +526,7 @@ class GlobalKeyPrefixMixin:
         "ZADD",
         "ZRANGE",
         "ZREM",
+        "ZREVRANGEBYSCORE",
         "PEXPIRE",
     ]
 
@@ -741,10 +758,17 @@ class QoS(virtual.QoS):
                     # and returns the same rows as the old command.  The
                     # ``byscore``/``offset``/``num`` arguments need redis-py
                     # >= 4.0, which ``_get_client`` guarantees.
-                    visible = client.zrange(
-                        self.unacked_index_key, ceil, 0,
-                        desc=True, byscore=True,
-                        offset=num and start, num=num, withscores=True)
+                    try:
+                        visible = client.zrange(
+                            self.unacked_index_key, ceil, 0,
+                            desc=True, byscore=True,
+                            offset=num and start, num=num, withscores=True)
+                    except self.channel.ResponseError:
+                        # Redis < 6.2 has no ``BYSCORE``/``REV`` on ZRANGE
+                        # (#2819), so fall back to the old command there.
+                        visible = client.zrevrangebyscore(
+                            self.unacked_index_key, ceil, 0,
+                            start=num and start, num=num, withscores=True)
                     for tag, score in visible or []:
                         self.restore_by_tag(tag, client)
             except MutexHeld:
@@ -1455,6 +1479,7 @@ class Channel(virtual.Channel):
         except Exception:
             self._disconnect_pools()
             raise
+        self._check_server_version()
 
         self.connection.cycle.add(self)  # add to channel poller.
         # and set to true after successfully added channel to the poll.
@@ -1714,6 +1739,24 @@ class Channel(virtual.Channel):
         """
         self.connection._deliver(message, self._fanout_to_queue[exchange])
         return True
+
+    def _check_server_version(self):
+        """Log an error, once per process, if the server is too old."""
+        global _server_version_checked
+        if _server_version_checked:
+            return
+        _server_version_checked = True
+        try:
+            version = self.client.info('server').get('redis_version', '')
+            parsed = tuple(int(part) for part in version.split('.')[:2])
+        except Exception:  # pylint: disable=broad-except
+            return  # Not answered, or not a version: nothing to say.
+        if parsed < MIN_SERVER_VERSION:
+            logger.error(
+                'Redis server %s is older than %s, the oldest version kombu '
+                'supports. It works on a best-effort basis only, and it no '
+                'longer gets security fixes: upgrade the server.',
+                version, '.'.join(map(str, MIN_SERVER_VERSION)))
 
     def _wake_key(self, queue):
         return f'{queue}{self.sep}wake'
